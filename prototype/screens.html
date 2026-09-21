@@ -270,7 +270,7 @@ const lines = [];
 let seq = 0;
 function say(raw, out) {
   const d = new Date(Date.now());
-  lines.push({ t: d.toTimeString().slice(0, 8), raw, out: !!out, why: decode(raw), n: ++seq });
+  lines.push({ t: d.toTimeString().slice(0, 8), ms: d.getTime(), raw, out: !!out, why: decode(raw), n: ++seq });
   if (lines.length > 400) lines.shift();
 }
 
@@ -334,13 +334,24 @@ const ICON = {
   clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>',
 };
 
+/* The band is what is true of the whole system, and the line is what it is
+   about rather than whether it is pressable (control's tc-header). Here that
+   is two things: the station answers, and the rails are hot.
+
+   Read-only, deliberately. control's band presses ON/STOP/OFF because layout
+   checks that nothing is moving first (ADR-0062). This page is not on the bus,
+   so its press would go straight down the wire with nothing checking. The
+   flash sequence is the one caller that cuts the supply, and it sequences
+   itself. The command box can still type <0>, which is what a raw monitor is.
+
+   The build is not here: it is long, and it belongs beside the release list it
+   gets compared against. */
 function band() {
   return '<div class="band">' +
     '<h1>dcc-ex</h1>' +
     '<div class="right">' +
       '<div class="stat"><span class="dot ' + (station.link ? "up" : "down") + '"></span>' +
         (station.link ? "answering" : "not answering") + '</div>' +
-      '<div class="stat drop"><span>build</span><b>' + (station.build || "—") + '</b></div>' +
       '<div class="stat drop"><span>track</span><b>' + (station.power ? station.mA + " mA" : "off") + '</b></div>' +
     '</div></div>';
 }
@@ -408,11 +419,9 @@ let cOpen = false;
 function variantC() {
   const rail = '<div class="rail">' +
     '<div class="group">' +
-      railButton("power", station.power ? "Off" : "On", { act: "power" }) +
       railButton("pause", paused ? "Run" : "Pause", { act: "pause", on: paused }) +
-    '</div>' +
-    '<div class="group">' + railButton("stop", "Stop", { act: "estop", cls: "stop" }) + '</div>' +
-    '</div>';
+      railButton("clear", "Clear", { act: "clear" }) +
+    '</div></div>';
 
   const tile = (k, v, tone) =>
     '<div style="border:1px solid var(--line); border-radius:9px; padding:12px 14px; background:var(--paper-2)">' +
@@ -422,10 +431,10 @@ function variantC() {
 
   const board = '<div style="padding:16px 18px 0">' +
     '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px">' +
-      tile("Station", station.link ? "answering" : "not answering", station.link ? "ok" : "stop") +
       tile("Build", station.build || "—") +
-      tile("Track", station.power ? station.mA + " mA" : "off", station.power ? "ok" : null) +
+      tile("Current", station.power ? station.mA + " mA" : "—", station.power ? "ok" : null) +
       tile("On 2560", station.clients + " clients") +
+      tile("Last answer", station.link ? lastAnswer() : "—", station.link ? null : "stop") +
     '</div>' +
     '<div style="margin-top:12px; border:1px solid var(--line); border-radius:9px; overflow:hidden">' +
       '<button class="go ghost" data-act="c-open" style="width:100%; border:0; border-radius:0; text-align:left; display:flex; gap:10px; align-items:center; padding:11px 14px; background:var(--paper-2)">' +
@@ -472,6 +481,16 @@ function tellEl() {
   return '<form class="tell" id="tell">' +
     '<input id="cmd" placeholder="&lt;s&gt;" autocomplete="off" spellcheck="false">' +
     '<button class="go" type="submit">Send</button></form>';
+}
+
+/* How long since the station last said anything. The link is the station
+   answering, not the socket being open (ADR-0066), so this is the reading the
+   band's word is made of. */
+function lastAnswer() {
+  const heard = lines.filter(l => !l.out).slice(-1)[0];
+  if (!heard) return "—";
+  const secs = Math.round((Date.now() - heard.ms) / 1000);
+  return secs < 2 ? "just now" : secs + "s ago";
 }
 
 const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));

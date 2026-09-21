@@ -38,22 +38,46 @@ is already made. What varies is the work pane.
   state reads at arm's length, the stream underneath is the evidence for it,
   and the releases sit in the same column.
 
-## Open questions it surfaces
+## The answer
 
-1. **The band's right.** LOOK.md says it holds the UI's *controls*. All three
-   variants put *status* there — link, build, track. Either the rule means
-   something wider than it says, or this status belongs in the work and the
-   band's right is empty, which LOOK.md explicitly allows.
-2. **Red on the chrome.** B and C draw an emergency stop on the rail. LOOK.md
-   says the first UI that draws one adds the token to `tokens.css` and its
-   line to the table. Nothing has yet.
-3. **Whether the page should have a stop at all**, given the flash sequence
-   already stops the locomotives on its own.
-4. **C repeats itself.** Its tiles say what the band says. That is either the
-   band being wrong or the tiles being redundant, and it is the clearest
-   evidence for question 1.
+**C won**, 2026-09-21. State above, evidence below.
+
+C is also the variant that forced the two questions below, and both are now
+settled. C in this branch has been amended to the settled form; A and B have
+not, so their bands still carry a build they would not carry.
+
+**The band's right carries status, and LOOK.md is narrower than the
+practice.** LOOK.md says it holds the UI's *controls*. `control`'s band
+already carries which railroad is loaded, whether it holds unsaved edits and
+whether what the app talks to is answering, and `tc-header.ts` records why:
+*the line is what it is about, not whether it is pressable*. So status on the
+band is right and C's tiles were the redundancy. The band now carries two
+things — the station answers, the rails are hot — and the build moved to a
+tile beside the releases it gets compared against.
+
+**The band is read-only here, and that is a departure from `control`.**
+`control`'s band presses ON, STOP and OFF because track power is a fact about
+the whole railroad. This page is not on the bus, so its press would go down
+the wire as `<0>` with nothing checking that the railroad is drained — which
+is the rule `layout` holds (ADR-0062). So nothing on this page commands power.
+The flash sequence is the one caller that cuts it, and it sequences itself.
+The command box can still type `<0>`; that is what a raw monitor is, and it is
+not a named control on the page.
+
+Consequently C's rail carries Pause and Clear and nothing else, and **no
+emergency stop is drawn on the chrome** — so the red token LOOK.md reserves
+for the first UI that draws one is still unclaimed. That last part is an
+assumption from the power decision rather than something asked; say so if an
+emergency stop belongs here anyway.
+
+## Still open
+
+- Whether the release list belongs in a collapsed row inside the state column,
+  as C has it, or as a view of its own once it grows past four entries.
+- What the tiles say while the link is down. Build clears with the link
+  (ADR-0066 d.5), so three of the four go blank at once.
 
 ## Not checked
 
-Narrow widths. The rules are written — the band drops two readouts below
+Narrow widths. The rules are written — the band drops the track reading below
 560px, the release rows wrap — and were not confirmed in a browser.
