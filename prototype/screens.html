@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dcc-ex UI screens</title>
+<!--
+  THROWAWAY PROTOTYPE. Not the UI. Three variants of the dcc-ex UI's work
+  pane, switchable via ?variant=A|B|C, on one page. No build, no framework,
+  fake data, a fake serial stream.
+
+  The question: what should the dcc-ex UI look like, given that its whole
+  content is a firmware release list, a flash, and a two-way decoding serial
+  monitor (ui-work-plan.md, Wave 4).
+
+  The band and the rail are NOT what varies. LOOK.md binds them and the
+  dcc-ex UI takes everything. What varies is the work pane, which is the only
+  part that is actually open.
+
+  tokens.css beside this file is the verbatim copy; tokens.commit says where
+  it came from.
+-->
+<style>
+/* --- verbatim from tokens.css, see tokens.commit ----------------------- */
+:root {
+  --band: #1d4ed8;
+  --band-ink: #ffffff;
+  --rail: #064e3b;
+  --rail-group: #059669;
+  --rail-button: 44px;
+  --rail-turns: 640px;
+}
+/* --- derived, and free: ADR-0003 binds place and colour, not components - */
+:root {
+  --paper: #ffffff;
+  --paper-2: #f4f5f7;
+  --ink: #16181d;
+  --muted: #5b6470;
+  --line: #d8dbe0;
+  --ok: #059669;
+  --warn: #b45309;
+  --stop: #b91c1c;
+  --sent: #1d4ed8;
+  --rail-pad: 8px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14171c;
+    --paper-2: #1b1f26;
+    --ink: #e6e9ee;
+    --muted: #98a2b0;
+    --line: #2b313a;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --stop: #f87171;
+    --sent: #8ab0ff;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14171c;
+  --paper-2: #1b1f26;
+  --ink: #e6e9ee;
+  --muted: #98a2b0;
+  --line: #2b313a;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --stop: #f87171;
+  --sent: #8ab0ff;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, sans-serif;
+}
+
+/* --- the chrome: a band across the top, a rail down the left ----------- */
+.app {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "band band" "rail work";
+  height: 100dvh;
+}
+.band {
+  grid-area: band;
+  background: var(--band);
+  color: var(--band-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  min-height: 48px;
+}
+.band h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+.band .right { display: flex; align-items: center; gap: 14px; font-size: 12.5px; }
+.band .stat { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.band .stat b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.band .stat span { opacity: .72; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.up { background: #6ee7b7; }
+.dot.down { background: #fca5a5; }
+
+.rail {
+  grid-area: rail;
+  background: var(--rail);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--rail-pad);
+  overflow: auto;
+}
+.rail .group { display: flex; flex-direction: column; gap: 2px; }
+.rail .group + .group { margin-top: 10px; border-top: 2px solid var(--rail-group); padding-top: 10px; }
+.rail button {
+  width: var(--rail-button);
+  height: var(--rail-button);
+  flex: 0 0 var(--rail-button);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.05;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  cursor: pointer;
+  opacity: .78;
+}
+.rail button svg { width: 19px; height: 19px; justify-self: center; }
+.rail button:hover { opacity: 1; background: rgba(255,255,255,.1); }
+.rail button[aria-pressed="true"] { opacity: 1; background: var(--rail-group); }
+.rail button.stop { color: #fecaca; }
+.rail button.stop:hover { background: var(--stop); color: #fff; }
+
+/* Narrow: the band cannot carry three readouts next to the name. The link is
+   the one that must survive, because it is the one that says the station is
+   unreachable rather than the railroad merely looking idle (ADR-0050). */
+@media (max-width: 560px) {
+  .band { padding: 0 11px; }
+  .band .right { gap: 10px; }
+  .band .stat.drop { display: none; }
+  .rel .row { flex-wrap: wrap; row-gap: 7px; }
+  .rel .spacer { flex: 1 0 100%; height: 0; }
+  .pad { padding: 14px; }
+}
+
+@media (max-height: 640px) {
+  .app { grid-template-columns: 1fr; grid-template-areas: "band" "rail" "work"; }
+  .rail { flex-direction: row; align-items: center; }
+  .rail .group { flex-direction: row; }
+  .rail .group + .group { margin: 0 0 0 10px; border-top: 0; border-left: 2px solid var(--rail-group); padding: 0 0 0 10px; }
+}
+
+.work { grid-area: work; background: var(--paper); overflow: hidden; min-width: 0; min-height: 0; }
+
+/* --- pieces the variants share --------------------------------------- */
+.stream {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--paper-2);
+  min-height: 0;
+}
+.stream .ln { display: flex; gap: 10px; align-items: baseline; padding: 1px 0; }
+.stream .t { color: var(--muted); flex: 0 0 auto; font-size: 11px; }
+.stream .raw { flex: 0 0 auto; }
+.stream .raw.out { color: var(--sent); font-weight: 600; }
+.stream .why { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tell { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); background: var(--paper); }
+.tell input {
+  flex: 1; min-width: 0;
+  font: 13px var(--mono);
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+.tell input:focus { outline: 2px solid var(--band); outline-offset: -1px; }
+button.go {
+  font: inherit; font-weight: 600; font-size: 13px;
+  padding: 9px 15px; border: 0; border-radius: 7px;
+  background: var(--band); color: var(--band-ink); cursor: pointer;
+}
+button.go[disabled] { opacity: .4; cursor: default; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+.rel { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.rel .row { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-top: 1px solid var(--line); }
+.rel .row:first-child { border-top: 0; }
+.rel .row.on { background: color-mix(in srgb, var(--ok) 11%, transparent); }
+.rel .tag { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.rel .when { color: var(--muted); font-size: 12px; }
+.rel .spacer { flex: 1; }
+.badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ok); color: #04231a; white-space: nowrap; }
+
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.note { color: var(--muted); font-size: 12.5px; margin: 9px 0 0; }
+.pad { padding: 18px; overflow: auto; height: 100%; }
+
+/* --- the switcher: deliberately not part of the design ---------------- */
+.switch {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  z-index: 50; display: flex; align-items: center; gap: 2px;
+  background: #0b0d10; color: #fff; border-radius: 999px;
+  padding: 4px; box-shadow: 0 6px 22px rgba(0,0,0,.45); font-size: 12.5px;
+}
+.switch { opacity: .42; transition: opacity .12s; }
+.switch:hover, .switch:focus-within { opacity: 1; }
+.switch button { background: transparent; border: 0; color: #fff; font: inherit; cursor: pointer; padding: 6px 11px; border-radius: 999px; }
+.switch button:hover { background: rgba(255,255,255,.14); }
+.switch .label { padding: 0 10px; white-space: nowrap; }
+.switch .label b { font-weight: 600; }
+.switch .label span { opacity: .6; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="switch" id="switch"></div>
+
+<script>
+/* PROTOTYPE ONLY: ?theme=dark|light, so both themes can be checked on one
+   machine. The real UI has no toggle; prefers-color-scheme decides (LOOK.md). */
+{
+  const t = new URLSearchParams(location.search).get("theme");
+  if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+}
+
+/* ===================== fake station ===================================== */
+const RELEASES = [
+  { tag: "v5.6.4-rails49.3", when: "2026-09-12", note: "EX-CSB1 with EX8874" },
+  { tag: "v5.6.4-rails49.2", when: "2026-08-30", note: "EX-CSB1 with EX8874" },
+  { tag: "v5.6.4-rails49.1", when: "2026-07-18", note: "EX-CSB1 with EX8874" },
+  { tag: "v5.4.7-rails49.4", when: "2026-05-02", note: "EX-CSB1 with EX8874" },
+];
+
+const station = { build: "v5.6.4-rails49.2", link: true, power: false, mA: 0, clients: 3 };
+
+/* What the UI recognises. Everything else shows raw with no gloss, which is
+   the honest thing: a translator that guessed would be worse than silence. */
+function decode(raw) {
+  let m;
+  if ((m = raw.match(/^<iDCC-EX V-([\d.]+).*?G-(\S+)>$/))) return "banner: DCC-EX " + m[1] + ", build " + m[2];
+  if ((m = raw.match(/^<p([01])(?: (\w+))?>$/)))          return "track power " + (m[1] === "1" ? "on" : "off") + (m[2] ? " (" + m[2] + ")" : "");
+  if ((m = raw.match(/^<c \w+ (-?\d+) C Milli/)))          return "current " + m[1] + " mA";
+  if ((m = raw.match(/^<l (\d+) \d+ (\d+) \d+>$/)))        { const s = +m[2] & 127; return "loco " + m[1] + ": step " + (s < 2 ? 0 : s - 1) + ", " + ((+m[2] & 128) ? "forward" : "reverse"); }
+  if ((m = raw.match(/^<H (\d+) ([01])>$/)))               return "turnout " + m[1] + " " + (m[2] === "1" ? "thrown" : "closed");
+  if ((m = raw.match(/^<([qQ]) (\d+)>$/)))                 return "sensor " + m[2] + " " + (m[1] === "Q" ? "active" : "inactive");
+  if (raw === "<!>")                                       return "emergency stop, all locomotives";
+  if (raw === "<s>")                                       return "status poll";
+  if (raw === "<0>")                                       return "track power off";
+  if (raw === "<1>")                                       return "track power on";
+  if (raw.startsWith("<* ") )                              return "diagnostic";
+  if ((m = raw.match(/^<X>$/)))                            return "the station did not understand that";
+  return null;
+}
+
+const lines = [];
+let seq = 0;
+function say(raw, out) {
+  const d = new Date(Date.now());
+  lines.push({ t: d.toTimeString().slice(0, 8), raw, out: !!out, why: decode(raw), n: ++seq });
+  if (lines.length > 400) lines.shift();
+}
+
+/* Seed enough that the monitor is never empty on load. */
+say("<iDCC-EX V-5.6.4 / ESP32 / EX-CSB1_WITH_EX8874 G-v5.6.4-rails49.2>");
+say("<p0>");
+say("<c CurrentMAIN 0 C Milli 0 2000 1000 2000>");
+say("<H 12 0>");
+say("<H 17 1>");
+
+const CHATTER = [
+  () => "<c CurrentMAIN " + (station.power ? 90 + Math.floor(Math.random() * 380) : 0) + " C Milli 0 2000 1000 2000>",
+  () => "<l " + [3, 11, 24][Math.floor(Math.random() * 3)] + " 0 " + (128 + Math.floor(Math.random() * 90)) + " 0>",
+  () => "<" + (Math.random() < .5 ? "q" : "Q") + " " + (1 + Math.floor(Math.random() * 8)) + ">",
+  () => "<H " + [12, 17, 23][Math.floor(Math.random() * 3)] + " " + Math.round(Math.random()) + ">",
+];
+
+let paused = false;
+setInterval(() => {
+  if (paused || flashing) return;
+  if (Math.random() < .3) { say("<s>", true); say("<iDCC-EX V-5.6.4 / ESP32 / EX-CSB1_WITH_EX8874 G-" + station.build + ">"); }
+  else say(CHATTER[Math.floor(Math.random() * CHATTER.length)]());
+  station.mA = station.power ? 90 + Math.floor(Math.random() * 380) : 0;
+  render();
+}, 1400);
+
+/* The page's own gestures. Flashing is sequenced here and guarded by nobody:
+   stop the locomotives, cut the supply, then write. The responder checks
+   neither (ADR-0065 d.7, ADR-0066). */
+let flashing = null;
+function send(raw) { say(raw, true); if (raw === "<1>") station.power = true; if (raw === "<0>" || raw === "<!>") station.power = false; render(); }
+
+function flash(tag) {
+  if (flashing) return;
+  flashing = { tag, step: 0 };
+  const steps = [
+    ["stopping the locomotives", () => send("<!>")],
+    ["cutting track power", () => send("<0>")],
+    ["fetching " + tag + " and checking its digest", () => {}],
+    ["closing the device; every client on 2560 drops", () => { station.link = false; station.build = ""; }],
+    ["writing flash", () => {}],
+    ["reopening; waiting for the station to answer", () => { station.link = true; station.build = tag; say("<iDCC-EX V-5.6.4 / ESP32 / EX-CSB1_WITH_EX8874 G-" + tag + ">"); say("<p0>"); }],
+  ];
+  let i = 0;
+  const tick = () => {
+    if (i >= steps.length) { flashing = null; render(); return; }
+    flashing.step = i; flashing.what = steps[i][0];
+    steps[i][1](); i++; render();
+    setTimeout(tick, 1100);
+  };
+  tick();
+}
+
+/* ===================== chrome ========================================== */
+const ICON = {
+  chip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></svg>',
+  wave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h3l2.5-7 4 14 3-9 2 2h5.5"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>',
+  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v9"/><path d="M6.5 6.8a8 8 0 1 0 11 0"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="6" width="3" height="12" rx="1"/><rect x="14" y="6" width="3" height="12" rx="1"/></svg>',
+  clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>',
+};
+
+function band() {
+  return '<div class="band">' +
+    '<h1>dcc-ex</h1>' +
+    '<div class="right">' +
+      '<div class="stat"><span class="dot ' + (station.link ? "up" : "down") + '"></span>' +
+        (station.link ? "answering" : "not answering") + '</div>' +
+      '<div class="stat drop"><span>build</span><b>' + (station.build || "—") + '</b></div>' +
+      '<div class="stat drop"><span>track</span><b>' + (station.power ? station.mA + " mA" : "off") + '</b></div>' +
+    '</div></div>';
+}
+
+function railButton(icon, label, opts = {}) {
+  return '<button aria-pressed="' + !!opts.on + '"' + (opts.cls ? ' class="' + opts.cls + '"' : "") +
+    ' data-act="' + opts.act + '" title="' + label + '">' + ICON[icon] + label + '</button>';
+}
+
+/* ===================== variant A — two views on the rail =============== */
+/* The house style. The rail switches the work between firmware and the
+   monitor, exactly as control's rail switches between its views. One thing
+   on screen at a time. */
+let aView = "monitor";
+function variantA() {
+  const rail = '<div class="rail">' +
+    '<div class="group">' +
+      railButton("chip", "Firmware", { act: "a-firmware", on: aView === "firmware" }) +
+      railButton("wave", "Monitor", { act: "a-monitor", on: aView === "monitor" }) +
+    '</div></div>';
+
+  const work = aView === "firmware"
+    ? '<div class="pad"><h2>Releases</h2>' + releaseList() +
+      '<p class="note">From the source <code>dccex-usb</code> is configured with. A tag chooses among builds already published there; nothing here names a URL, and <code>latest</code> is not a tag.</p>' +
+      flashBanner() + '</div>'
+    : '<div style="display:grid; grid-template-rows:1fr auto; height:100%; min-height:0">' + streamEl() + tellEl() + '</div>';
+
+  return '<div class="app">' + band() + rail + '<div class="work">' + work + '</div></div>';
+}
+
+/* ===================== variant B — the monitor is the page ============= */
+/* The station's conversation is the subject and never goes away. Firmware is
+   rare, so it arrives as a sheet over the stream rather than taking it. */
+let bSheet = false;
+function variantB() {
+  const rail = '<div class="rail">' +
+    '<div class="group">' +
+      railButton("chip", "Flash", { act: "b-sheet", on: bSheet }) +
+    '</div>' +
+    '<div class="group">' +
+      railButton("power", station.power ? "Off" : "On", { act: "power" }) +
+      railButton("pause", paused ? "Run" : "Pause", { act: "pause", on: paused }) +
+      railButton("clear", "Clear", { act: "clear" }) +
+    '</div>' +
+    '<div class="group">' + railButton("stop", "Stop", { act: "estop", cls: "stop" }) + '</div>' +
+    '</div>';
+
+  const sheet = bSheet ? '<div style="position:absolute; inset:0; background:var(--paper); display:grid; grid-template-rows:auto 1fr; z-index:5">' +
+      '<div style="display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid var(--line)">' +
+        '<h2 style="margin:0">Firmware</h2><div style="flex:1"></div>' +
+        '<button class="go ghost" data-act="b-sheet">Close</button></div>' +
+      '<div class="pad">' + releaseList() + flashBanner() + '</div></div>' : "";
+
+  return '<div class="app">' + band() + rail +
+    '<div class="work" style="position:relative">' + sheet +
+    '<div style="display:grid; grid-template-rows:1fr auto; height:100%; min-height:0">' + streamEl() + tellEl() + '</div>' +
+    '</div></div>';
+}
+
+/* ===================== variant C — state above, evidence below ========= */
+/* Nothing hides anything. What the station is doing reads at arm's length;
+   the stream underneath is the evidence for it, and the releases sit in the
+   same column because flashing is a thing you do to the state above. */
+let cOpen = false;
+function variantC() {
+  const rail = '<div class="rail">' +
+    '<div class="group">' +
+      railButton("power", station.power ? "Off" : "On", { act: "power" }) +
+      railButton("pause", paused ? "Run" : "Pause", { act: "pause", on: paused }) +
+    '</div>' +
+    '<div class="group">' + railButton("stop", "Stop", { act: "estop", cls: "stop" }) + '</div>' +
+    '</div>';
+
+  const tile = (k, v, tone) =>
+    '<div style="border:1px solid var(--line); border-radius:9px; padding:12px 14px; background:var(--paper-2)">' +
+      '<div style="font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted)">' + k + '</div>' +
+      '<div style="font-size:19px; font-weight:600; margin-top:3px; font-variant-numeric:tabular-nums' +
+        (tone ? "; color:var(--" + tone + ")" : "") + '">' + v + '</div></div>';
+
+  const board = '<div style="padding:16px 18px 0">' +
+    '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px">' +
+      tile("Station", station.link ? "answering" : "not answering", station.link ? "ok" : "stop") +
+      tile("Build", station.build || "—") +
+      tile("Track", station.power ? station.mA + " mA" : "off", station.power ? "ok" : null) +
+      tile("On 2560", station.clients + " clients") +
+    '</div>' +
+    '<div style="margin-top:12px; border:1px solid var(--line); border-radius:9px; overflow:hidden">' +
+      '<button class="go ghost" data-act="c-open" style="width:100%; border:0; border-radius:0; text-align:left; display:flex; gap:10px; align-items:center; padding:11px 14px; background:var(--paper-2)">' +
+        '<span style="flex:1">Firmware — ' + RELEASES.length + ' releases, newest ' + RELEASES[0].tag + '</span>' +
+        '<span style="color:var(--muted)">' + (cOpen ? "hide" : "show") + '</span></button>' +
+      (cOpen ? '<div style="padding:13px">' + releaseList() + flashBanner() + '</div>' : "") +
+    '</div></div>';
+
+  return '<div class="app">' + band() + rail +
+    '<div class="work" style="display:grid; grid-template-rows:auto 1fr auto; min-height:0">' +
+      board + streamEl(true) + tellEl() +
+    '</div></div>';
+}
+
+/* ===================== shared pieces =================================== */
+function releaseList() {
+  return '<div class="rel">' + RELEASES.map(r => {
+    const on = r.tag === station.build;
+    return '<div class="row' + (on ? " on" : "") + '">' +
+      '<span class="tag">' + r.tag + '</span>' +
+      '<span class="when">' + r.when + '</span>' +
+      '<span class="spacer"></span>' +
+      (on ? '<span class="badge">on the station</span>'
+          : '<button class="go" data-act="flash" data-tag="' + r.tag + '"' + (flashing ? " disabled" : "") + '>Flash</button>') +
+      '</div>';
+  }).join("") + '</div>';
+}
+
+function flashBanner() {
+  if (!flashing) return '<p class="note">Flashing stops the locomotives, cuts track power and resets the station; every throttle on 2560 drops. Nothing checks that this is a safe moment.</p>';
+  return '<div style="margin-top:13px; border:1px solid var(--warn); border-radius:9px; padding:12px 14px; background:color-mix(in srgb, var(--warn) 12%, transparent)">' +
+    '<b>Writing ' + flashing.tag + '</b><div style="color:var(--muted); margin-top:3px">Step ' + (flashing.step + 1) + ' of 6 — ' + flashing.what + '</div></div>';
+}
+
+function streamEl(tight) {
+  const rows = lines.slice(-120).map(l =>
+    '<div class="ln"><span class="t">' + l.t + '</span>' +
+    '<span class="raw' + (l.out ? " out" : "") + '">' + (l.out ? "→ " : "") + esc(l.raw) + '</span>' +
+    (l.why ? '<span class="why">' + l.why + '</span>' : "") + '</div>').join("");
+  return '<div class="stream" id="stream"' + (tight ? ' style="margin:16px 18px 0; border:1px solid var(--line); border-radius:9px"' : "") + '>' + rows + '</div>';
+}
+
+function tellEl() {
+  return '<form class="tell" id="tell">' +
+    '<input id="cmd" placeholder="&lt;s&gt;" autocomplete="off" spellcheck="false">' +
+    '<button class="go" type="submit">Send</button></form>';
+}
+
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+/* ===================== switcher ======================================== */
+const VARIANTS = {
+  A: { name: "Two views on the rail", draw: variantA },
+  B: { name: "The monitor is the page", draw: variantB },
+  C: { name: "State above, evidence below", draw: variantC },
+};
+const keys = Object.keys(VARIANTS);
+const current = () => keys.includes(new URLSearchParams(location.search).get("variant")) ? new URLSearchParams(location.search).get("variant") : "A";
+function goto(k) { const u = new URL(location); u.searchParams.set("variant", k); history.replaceState(null, "", u); render(); }
+function step(d) { const i = keys.indexOf(current()); goto(keys[(i + d + keys.length) % keys.length]); }
+
+function render() {
+  const k = current();
+  const stream = document.getElementById("stream");
+  const stuck = !stream || stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 30;
+  const focused = document.activeElement && document.activeElement.id === "cmd";
+  const typed = focused ? document.activeElement.value : "";
+
+  document.getElementById("root").innerHTML = VARIANTS[k].draw();
+  document.getElementById("switch").innerHTML =
+    '<button data-nav="-1" aria-label="previous variant">←</button>' +
+    '<span class="label"><b>' + k + '</b> <span>' + VARIANTS[k].name + '</span></span>' +
+    '<button data-nav="1" aria-label="next variant">→</button>';
+
+  const s = document.getElementById("stream");
+  if (s && stuck) s.scrollTop = s.scrollHeight;
+  if (focused) { const c = document.getElementById("cmd"); if (c) { c.value = typed; c.focus(); } }
+}
+
+document.addEventListener("click", e => {
+  const nav = e.target.closest("[data-nav]");
+  if (nav) return step(+nav.dataset.nav);
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const a = el.dataset.act;
+  if (a === "a-firmware") aView = "firmware";
+  else if (a === "a-monitor") aView = "monitor";
+  else if (a === "b-sheet") bSheet = !bSheet;
+  else if (a === "c-open") cOpen = !cOpen;
+  else if (a === "power") send(station.power ? "<0>" : "<1>");
+  else if (a === "estop") send("<!>");
+  else if (a === "pause") paused = !paused;
+  else if (a === "clear") lines.length = 0;
+  else if (a === "flash") flash(el.dataset.tag);
+  render();
+});
+
+document.addEventListener("submit", e => {
+  e.preventDefault();
+  const c = document.getElementById("cmd");
+  const v = c.value.trim();
+  if (v) send(v.startsWith("<") ? v : "<" + v + ">");
+  c.value = "";
+  c.focus();
+});
+
+document.addEventListener("keydown", e => {
+  if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.key === "ArrowLeft") step(-1);
+  if (e.key === "ArrowRight") step(1);
+});
+
+render();
+</script>
+</body>
+</html>
