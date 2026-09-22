@@ -1,0 +1,19 @@
+[project]
+name = "dccex-usb"
+version = "0.1.0"
+description = "The command station's serial device, mirrored on a TCP port"
+requires-python = ">=3.12"
+dependencies = ["esptool>=5.4"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dccex_usb"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
