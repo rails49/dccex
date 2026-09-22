@@ -67,3 +67,10 @@ sorting the diff is told which side of it is ours:
   where the write buffer may never drain, which hung `Station.close()` and
   held the device with it. They are aborted at all three sites now, as the
   cut-off already did, and three tests hold that shut.
+- **#24** — `station.py` and the tests for it: a client's message being
+  written when the device was let go — the flash handover, or a cable pulled
+  — was parked on a descriptor closed underneath it and never woken, so it
+  held the write lock for the life of the process and every client's message
+  queued behind it. The descriptor is taken off the loop and the parked write
+  woken with a private `DeviceGone` before it is closed; the message is
+  dropped like anything else sent into an outage. Two tests hold it.

@@ -95,7 +95,9 @@ the device with backoff — it goes away when the command station is switched
 off, or when the cable is pulled — and for the length of the grace below the
 clients wait through it without noticing anything but that their commands did
 nothing. A command is honored now or ignored: a queue that flushes on
-reconnect is a train that moves minutes after someone asked for it.
+reconnect is a train that moves minutes after someone asked for it. A message
+the app is part way through writing when the device goes is dropped the same
+way and at once, rather than waiting on a cable that is no longer there.
 
 **An outage that outlasts the grace disconnects every client on the port.**
 The grace is two reopens at the first backoff, about a second, counted off
