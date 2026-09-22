@@ -17,10 +17,14 @@ cd "$(dirname "$0")/.."
 
 if command -v uv >/dev/null 2>&1 && [ -f uv.lock ]; then
   PY=(uv run --frozen --quiet python)
+  tool() { uv run --frozen --quiet "$@"; }
 else
-  # No uv: the package is where it lies and pytest is whatever is installed.
+  # No uv: the package is where it lies and the tools are whatever is
+  # installed. A tool that is not there is red rather than skipped — a gate
+  # that passes by not running its type checker says nothing.
   export PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}"
   PY=(python3)
+  tool() { "$@"; }
 fi
 
 red=""
@@ -68,9 +72,16 @@ source_recorded() {
   echo "rails49/control at ${commit:0:7}"
 }
 
+# ruff, black and pyright are `control`'s, over the same `src` and `tests`
+# and configured in `pyproject.toml` exactly as they are there. The code came
+# across written for them, and `__main__.py` — the one file here that is not a
+# copy — is the one nobody else has ever type-checked.
 check syntax "${PY[@]}" -m compileall -q src tests
 check words words
 check source source_recorded
+check ruff tool ruff check .
+check black tool black --check .
+check pyright tool pyright
 check tests "${PY[@]}" -m pytest -q
 
 if [ -n "$red" ]; then

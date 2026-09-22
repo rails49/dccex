@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = ["esptool>=5.4"]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff", "black", "pyright"]
 
 [build-system]
 requires = ["hatchling"]
@@ -17,3 +17,19 @@ packages = ["src/dccex_usb"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# The three below are `control`'s at deee7b6, unchanged. The code they read
+# was written under them — fully annotated, black-formatted, four `cast(...)`
+# calls in `firmware.py` that exist for strict mode alone — and a side that
+# formats differently is a package that stops being diffable against the
+# commit `src/SOURCE.md` names.
+
+[tool.ruff]
+src = ["src", "tests"]
+
+[tool.black]
+target-version = ["py312"]
+
+[tool.pyright]
+include = ["src", "tests"]
+typeCheckingMode = "strict"
