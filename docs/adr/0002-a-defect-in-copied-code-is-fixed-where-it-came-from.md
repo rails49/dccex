@@ -50,10 +50,20 @@ this ADR is superseded rather than quietly ignored.
 ## Consequences
 
 - A `station.py` defect found here is two pieces of work: one in `control`, one
-  here. On this tracker the second is a re-copy ticket blocked by the first.
-- A defect cannot be fixed here by an agent working only this repository, which
-  is why #23, #24 and #26 are `ready-for-human` rather than `ready-for-agent`
-  despite being fully specified.
+  here. It stays one ticket, and it closes on the re-copy — a ticket that says
+  the mirror deadlocks has no business closing while this repository's mirror
+  still deadlocks.
+- A defect cannot be landed here alone. The fix goes to `control` first, and
+  `control`'s `main` moves only by pull request with its gate green. That is
+  what makes #23, #24 and #26 `ready-for-human` rather than `ready-for-agent`
+  despite being fully specified — not that the other repository is out of an
+  agent's reach. It is checked out on the same machine. What needs a person is
+  landing a change to the railroad's own mirror and deploying it.
+- This route has an end, and the ticket for it is already written.
+  rails49/control#567 deletes `src/tc49/dccex_usb` and `tests/dccex_usb/` once
+  the box runs the mirror from here (#16). A copy with nothing left to be a
+  copy of is what d.4 is for. Until then, a fix that has not come back is a fix
+  this repository does not have: each re-copy has to land before #567 does.
 - #13 waits on #24 landing in `control` and coming back, not on a local patch.
 - Someone has to be able to land changes in `control`. If that stops being
   true, this decision has to be revisited, and d.4 is how.
