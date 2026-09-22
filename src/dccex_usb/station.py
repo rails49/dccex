@@ -64,7 +64,7 @@ import sys
 import termios
 from collections.abc import AsyncGenerator, Callable
 
-from tc49.dccex_usb.framing import frame
+from dccex_usb.framing import frame
 
 # Every interface: the container publishes the port and JMRI reaches it by
 # the service name, so what limits the reach is the LAN, not a bind address
@@ -138,7 +138,7 @@ class Station:
         self._writing = asyncio.Lock()
 
     async def run(self) -> None:
-        """Serve until cancelled — the whole of `python -m tc49.dccex_usb`."""
+        """Serve until cancelled — the whole of `python -m dccex_usb`."""
         await self.start()
         try:
             await self.serve_forever()

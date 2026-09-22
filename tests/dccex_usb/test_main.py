@@ -1,6 +1,6 @@
 """The mirror as a process: what the entrypoint does when the mirror ends.
 
-`mirroring` is the loop `python -m tc49.dccex_usb` runs — the mirror on a
+`mirroring` is the loop `python -m dccex_usb` runs — the mirror on a
 task of its own and the bus drained beside it — and what is asserted here is
 its side of that arrangement: a mirror that cannot serve ends the process
 rather than leaving it draining a bus with no TCP port and no device (#526).
@@ -22,9 +22,9 @@ import threading
 
 import pytest
 
-from tc49.dccex_usb.__main__ import mirroring
-from tc49.dccex_usb.firmware import Flasher
-from tc49.dccex_usb.station import HOST, Station
+from dccex_usb.__main__ import mirroring
+from dccex_usb.firmware import Flasher
+from dccex_usb.station import HOST, Station
 from tc49.lib.bus import Bus, InProcessBus
 from tc49.lib.clock import Clock
 from tests.brokers import free_port
@@ -193,7 +193,7 @@ def test_a_port_already_in_use_exits_non_zero() -> None:
             [
                 sys.executable,
                 "-m",
-                "tc49.dccex_usb",
+                "dccex_usb",
                 "--broker",
                 f"127.0.0.1:{free_port()}",  # nothing there: the mirror waits for none
                 "--device",

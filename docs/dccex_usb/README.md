@@ -20,7 +20,7 @@ still reads no payload and speaks no topic.
 ## The command line
 
 ```
-python -m tc49.dccex_usb --broker broker:1883 --device /dev/dccex --port 2560
+python -m dccex_usb --broker broker:1883 --device /dev/dccex --port 2560
 ```
 
 The device to open, the port to serve it on, and the broker where the flash
