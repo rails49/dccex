@@ -32,8 +32,11 @@ diff -u /tmp/control/src/tc49/dccex_usb/station.py src/dccex_usb/station.py
 
 ## What the copy changed
 
-`framing.py` came across untouched. `station.py` differs in one line, the
-import it spends on `framing`. The rest is the bus being cut, which is
+`framing.py` came across untouched. `station.py` differs in two lines: the
+import it spends on `framing`, and the docstring on `Station.run`, where
+`python -m tc49.dccex_usb` became `python -m dccex_usb` — the package cannot
+be run under the old path, so leaving it would have shipped a false statement.
+The rest is the bus being cut, which is
 [ADR-0001](../docs/adr/0001-the-mirror-leaves-the-bus-for-a-face.md):
 
 - `__main__.py` is not a copy. It was built on `tc49.lib.startup.command_line`,
