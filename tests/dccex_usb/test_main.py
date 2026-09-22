@@ -1,4 +1,5 @@
-"""The mirror as a process: what the entrypoint does when the mirror ends.
+"""The mirror as a process: the command line it is started with, and what the
+entrypoint does when the mirror ends.
 
 `mirroring` is the loop `python -m dccex_usb` runs — the mirror on a task of
 its own, watched for as long as the process is up — and what is asserted here
@@ -6,6 +7,13 @@ is its side of that arrangement: a mirror that cannot serve ends the process
 rather than leaving it up with no TCP port and no device (#526). A box whose
 2560 is already taken, or whose command station is not enumerated yet, depends
 on the exit: `restart: unless-stopped` is what tries again.
+
+The parser is the part of `__main__.py` that arrived with no tests behind it:
+the rest of the package came across as a copy and brought `control`'s. What is
+asserted of it is the device and the port it is started with, the releases URL
+it falls back to, and the two arguments the bus took with it (ADR-0001 d.1).
+Those two are absent only for as long as nobody adds them back, which is what
+the refusals are here to notice.
 
 The bus that was drained beside the mirror is gone with the rest of it
 (ADR-0001), so the loop's only business is the mirror and the flash in flight.
@@ -24,8 +32,8 @@ import threading
 
 import pytest
 
-from dccex_usb.__main__ import mirroring
-from dccex_usb.firmware import Flasher
+from dccex_usb.__main__ import command_line, mirroring
+from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import HOST, Station
 
 DEVICE = "/dev/dccex-that-is-not-there"
@@ -35,6 +43,65 @@ TIMEOUT_S = 5.0
 TURNS = 3
 """Turns of the loop a test waits out before it ends one: enough that the loop
 is going round rather than having gone once."""
+
+
+STARTED = ("--device", DEVICE, "--port", str(PORT))
+"""The whole of what the deployment says, which every one of these adds to or
+leaves alone."""
+
+ELSEWHERE = "https://api.example.invalid/repos/someone-else/CommandStation-EX/releases"
+"""A releases URL that is not the default, so naming it proves the flag is
+read rather than that both spellings happen to agree. Nothing fetches it, and
+the TLD is one that resolves nowhere in case that ever stops being true."""
+
+
+def test_the_device_and_the_port_are_what_the_mirror_is_started_with() -> None:
+    args = command_line().parse_args(STARTED)
+
+    assert args.device == DEVICE
+    assert args.port == PORT
+
+
+def test_releases_are_read_from_this_installation_s_fork_by_default() -> None:
+    """The constant and not the literal: the parser's default and the
+    firmware module's source are one URL, and a test that spelled it out
+    again would let them drift apart quietly."""
+    args = command_line().parse_args(STARTED)
+
+    assert args.firmware_releases == RELEASES
+
+
+def test_another_source_of_releases_can_be_named() -> None:
+    args = command_line().parse_args([*STARTED, "--firmware-releases", ELSEWHERE])
+
+    assert args.firmware_releases == ELSEWHERE
+
+
+@pytest.mark.parametrize(
+    "gone, value", [("--broker", "mqtt://broker:1883"), ("--id", "dccex-usb")]
+)
+def test_the_arguments_that_went_with_the_bus_are_refused(
+    gone: str, value: str
+) -> None:
+    """A broker to dial and a name to key a refusal row by were what started
+    this app in `control`, and both went with the bus (ADR-0001 d.1). Nothing
+    stops them being added back except this: a deployment still passing either
+    is told rather than obeyed.
+
+    The parser is asked directly, so the refusal is a `SystemExit` caught
+    here — no subprocess, and this process goes on. What is asserted after it
+    is that the parser has no such argument, and not what it printed: the
+    usage line names every option the parser does know, so a flag re-added
+    without a value of its own would turn the value away, print the word, and
+    satisfy a test that read stderr.
+    """
+    parser = command_line()
+
+    with pytest.raises(SystemExit) as refused:
+        parser.parse_args([*STARTED, gone, value])
+
+    assert refused.value.code != 0
+    assert gone.removeprefix("--") not in parser.parse_args(STARTED)
 
 
 class Failing(Station):
