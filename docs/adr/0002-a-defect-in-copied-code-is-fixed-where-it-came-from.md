@@ -1,6 +1,13 @@
 # ADR-0002 — a defect in copied code is fixed where it came from
 
-- **Status:** accepted, 2026-09-22
+**Superseded by
+[ADR-0003](0003-the-copy-has-no-source-and-station-py-is-ours.md).** The route
+below was real and it is closed. rails49/control#567 merged a minute after this
+was written and deleted `src/tc49/dccex_usb`, so d.1 and d.2 have no repository
+to send a fix to and d.3's carve-out has nothing left to carve out of. d.4 is
+the clause that fired. #23, #24 and #26 are fixed here.
+
+- **Status:** superseded by ADR-0003, 2026-09-22
 - **Ticket:** rails49/dccex#23, #24, #26
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (d.6,
   the copy and what it promises), [SOURCE.md](../../src/SOURCE.md) (the commit

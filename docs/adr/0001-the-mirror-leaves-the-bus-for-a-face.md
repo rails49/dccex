@@ -1,5 +1,12 @@
 # ADR-0001 — the mirror leaves the bus for a face
 
+**Amended by
+[ADR-0003](0003-the-copy-has-no-source-and-station-py-is-ours.md),
+2026-09-22:** d.6 below is half retired. The code did land as a copy and this
+is still where it came from, but `control` deleted its side, so there is
+nothing to stay diffable against and the numbers d.6 pinned are ordinary code
+now. Everything else here stands.
+
 - **Status:** accepted, 2026-09-22
 - **Ticket:** rails49/dccex#11, under #10
 - **Related:** [ADR-0008](https://github.com/rails49/.github/blob/main/docs/adr/0008-the-dcc-ex-ui-and-its-python-share-a-repository-of-their-own.md)

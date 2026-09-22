@@ -1,6 +1,6 @@
 # Where this package came from
 
-`src/dccex_usb` is a copy. It was written in
+`src/dccex_usb` was written in
 [`rails49/control`](https://github.com/rails49/control) and moved here by
 rails49/dccex#11, under #10, because the app is about a command station and
 nothing in `control` is.
@@ -9,8 +9,14 @@ nothing in `control` is.
 - **Commit:** `deee7b6f54d0215f4e02c128e60f50322fd0978c`
 - **Copied:** 2026-09-22
 
-The copy keeps `control`'s file names so that a diff against that commit shows
-only the bus coming out. What to run to see it:
+**`control` deleted its side on 2026-09-22** (rails49/control#567). This file
+is provenance now and not a constraint: nothing has to stay diffable, and a
+defect here is fixed here
+([ADR-0003](../docs/adr/0003-the-copy-has-no-source-and-station-py-is-ours.md)).
+
+The file names are `control`'s because that is where the code was written. A
+diff against the commit above still runs — deleting a file on `main` does not
+take it out of history — and what it shows is the bus coming out:
 
 ```
 git clone https://github.com/rails49/control /tmp/control
@@ -32,7 +38,10 @@ diff -u /tmp/control/src/tc49/dccex_usb/station.py src/dccex_usb/station.py
 
 ## What the copy changed
 
-`framing.py` came across untouched. `station.py` differs in two lines: the
+These are the differences the move itself made. Anything beyond them is this
+repository's own work, done since.
+
+`framing.py` came across untouched. `station.py` differed in two lines: the
 import it spends on `framing`, and the docstring on `Station.run`, where
 `python -m tc49.dccex_usb` became `python -m dccex_usb` — the package cannot
 be run under the old path, so leaving it would have shipped a false statement.
