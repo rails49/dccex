@@ -7,21 +7,28 @@ talk to it.
 
 ## What is here
 
-Nothing yet but this file. The repository was stood up on 2026-09-21 for the
-effort that moves `src/tc49/dccex` and `src/tc49/dccex_usb` out of `control`
-and writes the UI on top of them.
+The repository was stood up on 2026-09-21 for the effort that moves
+`src/tc49/dccex` and `src/tc49/dccex_usb` out of `control` and writes the UI on
+top of them.
 
-What arrives, in order:
-
-- **`dccex-usb`**, the process that holds the serial device. It opens the cable
-  and mirrors it on TCP 2560, so the translator, JMRI and hand-held throttles
-  are all clients of the port and coexist. It is also the only thing that can
-  write firmware onto the station, because writing flash means owning the port.
+- **`dccex-usb`**, the mirror: the process that holds the serial device. It
+  opens the cable and mirrors it on TCP 2560, so the translator, JMRI and
+  hand-held throttles are all clients of the port and coexist. It is also the
+  only thing that can write firmware onto the station, because writing flash
+  means owning the port. **It is here** — `src/dccex_usb`, copied out of
+  `control` and off the bus ([the page](docs/dccex_usb/README.md),
+  [ADR-0001](docs/adr/0001-the-mirror-leaves-the-bus-for-a-face.md),
+  [SOURCE.md](src/SOURCE.md)).
 - **`dccex`**, the translator. It turns the layout interface's desired values
   into the station's `<…>` bytes and reports what it hears back on the bus.
+  Not here yet.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into.
+  with a box to type into. Not here yet, and it is what the mirror's face is
+  for — until that lands, nothing can ask for a flash.
+
+The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
+`./scripts/check.sh`, one command, and it needs no hardware.
 
 ## What the UI talks to
 
