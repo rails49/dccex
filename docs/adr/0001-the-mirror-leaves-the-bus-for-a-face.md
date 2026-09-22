@@ -76,6 +76,19 @@ their numbers.
 > untouched: the backoff, the grace and the outstanding-bytes bound are what
 > they were.
 
+> **Amended 2026-09-22 (#24, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
+> and a second, on the handover itself. A client's message already being
+> written when the device is let go is dropped now, where it used to wait for
+> ever: closing the descriptor dropped it from the selector without waking
+> what was parked on it, so that write kept the write lock and every message
+> from every client queued behind it — the mirror stopped forwarding to the
+> station, silently, until the process was restarted. The descriptor comes
+> off the loop and the parked write is woken before it is closed, in that
+> order, so nothing is written to and nothing unregistered from a descriptor
+> number the OS may have handed on. What is lost is the tail of one message
+> that was going into an outage, which is where the rest of that message was
+> going anyway. The numbers are untouched again.
+
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
 [CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a
