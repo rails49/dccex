@@ -1,6 +1,9 @@
 # ADR-0002 — a defect in copied code is fixed where it came from
 
-- **Status:** accepted, 2026-09-22
+- **Status:** superseded by
+  [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md),
+  2026-09-22 — `control`'s copy was deleted, so there is no repository to fix
+  a defect in but this one (accepted 2026-09-22)
 - **Ticket:** rails49/dccex#23, #24, #26
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (d.6,
   the copy and what it promises), [SOURCE.md](../../src/SOURCE.md) (the commit

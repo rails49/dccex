@@ -10,7 +10,8 @@ nothing in `control` is.
 - **Copied:** 2026-09-22
 
 The copy keeps `control`'s file names so that a diff against that commit shows
-only the bus coming out. What to run to see it:
+the bus coming out and, since `control`'s copy was deleted, the fixes listed
+under *What has been fixed here* below. What to run to see it:
 
 ```
 git clone https://github.com/rails49/control /tmp/control
@@ -32,6 +33,9 @@ diff -u /tmp/control/src/tc49/dccex_usb/station.py src/dccex_usb/station.py
 
 ## What the copy changed
 
+This is what the copy landed as. What has changed since is the section under
+it.
+
 `framing.py` came across untouched. `station.py` differs in two lines: the
 import it spends on `framing`, and the docstring on `Station.run`, where
 `python -m tc49.dccex_usb` became `python -m dccex_usb` — the package cannot
@@ -47,3 +51,19 @@ The rest is the bus being cut, which is
   and goes nowhere else.
 - The tests came across with it. `test_firmware.py` lost the cases that were
   about the payload and the row; `test_main.py` was adapted with `__main__.py`.
+
+## What has been fixed here
+
+`rails49/control#567` merged on 2026-09-22 and deleted `src/tc49/dccex_usb`
+and `tests/dccex_usb/`. There is no copy there any more, so a defect in this
+package is fixed here rather than upstream and re-copied
+([ADR-0003](../docs/adr/0003-the-copy-has-no-original-left-and-is-fixed-here.md),
+superseding ADR-0002). The commit above still says where the package came
+from and the diff still runs; what it no longer says is that the two files
+are the same. Each change made here since is listed, newest last, so a reader
+sorting the diff is told which side of it is ours:
+
+- **#23** — `station.py` and the tests for it: client streams were closed
+  where the write buffer may never drain, which hung `Station.close()` and
+  held the device with it. They are aborted at all three sites now, as the
+  cut-off already did, and three tests hold that shut.
