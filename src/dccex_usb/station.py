@@ -29,10 +29,13 @@ command is honored now or ignored: a queue that flushes on reconnect is a
 train that moves minutes after someone asked for it. Reopening the device is
 this app's own business — it goes away when the command station is switched
 off — so it retries with backoff, and a client notices only that what it
-sent meanwhile did nothing. Every way the device can fail to be there is the
-same outage — a path that is not there, one that will not take the line
-discipline, one that is gone again the moment it is open — and the watcher
-outlives all of them.
+sent meanwhile did nothing. A message already being written when the device
+goes is dropped the same way and at once: the descriptor it is waiting on is
+closed, so the write is woken and told the device is gone rather than left
+parked on a descriptor the OS is free to hand to somebody else. Every way the
+device can fail to be there is the same outage — a path that is not there, one
+that will not take the line discipline, one that is gone again the moment it
+is open — and the watcher outlives all of them.
 
 **An outage that outlasts the grace takes the clients with it.** A client
 cannot tell an away device from a quiet one, and this port has no way to
@@ -102,6 +105,17 @@ GRACE_REOPENS = 2
 MAX_OUTSTANDING_BYTES = 1 << 20
 
 
+class DeviceGone(OSError):
+    """The device a write was parked on was let go before it could finish.
+
+    This module's own, and it does not leave it: a write raises it, and
+    `_to_device` catches it where it already catches the device going away
+    mid-message, because that is what this is. An `OSError` for that reason,
+    and not a cancellation — cancelling the write would take the client's
+    handler with it and disconnect a client that has done nothing wrong.
+    """
+
+
 def to_stderr(line: str) -> None:
     """The default log: connects, disconnects and the device, and nothing else."""
     print(line, file=sys.stderr, flush=True)
@@ -140,6 +154,10 @@ class Station:
         self._server: asyncio.Server | None = None
         self._watcher: asyncio.Task[None] | None = None
         self._writing = asyncio.Lock()
+        # What is parked on the device having room for more. The station
+        # holds it because the station is what closes the descriptor, and
+        # closing it is what these have to be woken for.
+        self._waiters: set[asyncio.Future[None]] = set()
 
     async def run(self) -> None:
         """Serve until cancelled — the whole of `python -m dccex_usb`."""
@@ -282,11 +300,14 @@ class Station:
                 self._drop()
                 return
             try:
-                await write_all(fd, message)
+                await write_all(fd, message, self._waiters)
             except OSError:
-                # The device went away mid-message. `_mirror` sees the same
-                # thing and the watcher reopens it; this message is dropped
-                # like anything else sent into an outage.
+                # The device went away mid-message — unplugged, or let go for
+                # a flash, which wakes a parked write with `DeviceGone`
+                # rather than leaving it on a descriptor being closed.
+                # `_mirror` sees the same thing and the watcher reopens it;
+                # this message is dropped like anything else sent into an
+                # outage, and the lock goes back on the way out.
                 self._drop()
 
     def _cut_off(self, writer: asyncio.StreamWriter) -> None:
@@ -376,7 +397,7 @@ class Station:
                 # have been reported before it.
                 self._dropped = False
                 self._start_grace()
-                os.close(fd)
+                self._let_go(fd)
                 self._log(f"serial closed {self._device}")
             # Opening is not proof the device is there: a session that ends
             # without a byte keeps the backoff it was reached with, and only
@@ -387,6 +408,26 @@ class Station:
                 backoff = self._first_backoff_s
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, self._max_backoff_s)
+
+    def _let_go(self, fd: int) -> None:
+        """Close the descriptor, taking it back from a parked write first.
+
+        In this order, and the order is the whole of it: the writer
+        registration comes off while the descriptor is still the station's,
+        then whatever is parked on it is woken, then it is closed. Waking a
+        waiter does not resume it — that takes a turn of the loop — so
+        closing first would leave the waiter to remove a writer from, or
+        write command bytes into, a descriptor number the OS may already have
+        handed to somebody else. Doing it here makes that unrepresentable
+        rather than unlikely: after this returns the station holds no waiters
+        and the loop has no writer on the descriptor it let go.
+        """
+        asyncio.get_running_loop().remove_writer(fd)
+        waiters, self._waiters = self._waiters, set()
+        for ready in waiters:
+            if not ready.done():
+                ready.set_exception(DeviceGone(f"the device {self._device} was let go"))
+        os.close(fd)
 
     async def _mirror(self, fd: int) -> bool:
         """Fan every byte the device sends to every client, until it goes away.
@@ -471,20 +512,33 @@ def configure(fd: int) -> None:
     termios.tcsetattr(fd, termios.TCSANOW, [iflag, oflag, cflag, lflag, BAUD, BAUD, cc])
 
 
-async def write_all(fd: int, data: bytes) -> None:
-    """Write every byte, waiting for the device when it is not ready for more."""
+async def write_all(fd: int, data: bytes, waiters: set[asyncio.Future[None]]) -> None:
+    """Write every byte, waiting for the device when it is not ready for more.
+
+    Raises `DeviceGone` if the station lets `fd` go while this is waiting on
+    it: the rest of the message is not written, because there is no longer
+    anything to write it to.
+    """
     loop = asyncio.get_running_loop()
     rest = memoryview(data)
     while rest:
         try:
             written = os.write(fd, rest)
         except BlockingIOError:
-            await writable(loop, fd)
+            await writable(loop, fd, waiters)
             continue
         rest = rest[written:]
 
 
-async def writable(loop: asyncio.AbstractEventLoop, fd: int) -> None:
+async def writable(
+    loop: asyncio.AbstractEventLoop, fd: int, waiters: set[asyncio.Future[None]]
+) -> None:
+    """Wait for `fd` to take more, or for the station to let it go.
+
+    The wait joins `waiters` so that the station can end it: a descriptor
+    that is closed is dropped from the selector without a word, so a wait
+    nobody wakes is a wait that never ends.
+    """
     ready: asyncio.Future[None] = loop.create_future()
 
     def wake() -> None:
@@ -492,7 +546,17 @@ async def writable(loop: asyncio.AbstractEventLoop, fd: int) -> None:
             ready.set_result(None)
 
     loop.add_writer(fd, wake)
+    waiters.add(ready)
+    ours = True
     try:
         await ready
+    except DeviceGone:
+        # The descriptor is not the station's any more, and `_let_go` took
+        # the writer off it before waking this. Removing one now would
+        # unregister whoever holds the number next.
+        ours = False
+        raise
     finally:
-        loop.remove_writer(fd)
+        waiters.discard(ready)
+        if ours:
+            loop.remove_writer(fd)
