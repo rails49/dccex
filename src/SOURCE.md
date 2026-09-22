@@ -1,0 +1,46 @@
+# Where this package came from
+
+`src/dccex_usb` is a copy. It was written in
+[`rails49/control`](https://github.com/rails49/control) and moved here by
+rails49/dccex#11, under #10, because the app is about a command station and
+nothing in `control` is.
+
+- **Repository:** `rails49/control`
+- **Commit:** `deee7b6f54d0215f4e02c128e60f50322fd0978c`
+- **Copied:** 2026-09-22
+
+The copy keeps `control`'s file names so that a diff against that commit shows
+only the bus coming out. What to run to see it:
+
+```
+git clone https://github.com/rails49/control /tmp/control
+git -C /tmp/control checkout deee7b6f54d0215f4e02c128e60f50322fd0978c
+diff -u /tmp/control/src/tc49/dccex_usb/station.py src/dccex_usb/station.py
+```
+
+## What came from where
+
+| In `control` at `deee7b6` | Here |
+| --- | --- |
+| `src/tc49/dccex_usb/framing.py` | `src/dccex_usb/framing.py` |
+| `src/tc49/dccex_usb/station.py` | `src/dccex_usb/station.py` |
+| `src/tc49/dccex_usb/firmware.py` | `src/dccex_usb/firmware.py` |
+| `src/tc49/dccex_usb/__init__.py` | `src/dccex_usb/__init__.py` |
+| `src/tc49/dccex_usb/__main__.py` | `src/dccex_usb/__main__.py` |
+| `tests/dccex_usb/*` | `tests/dccex_usb/*` |
+| `docs/dccex_usb/README.md` | `docs/dccex_usb/README.md` |
+
+## What the copy changed
+
+`framing.py` came across untouched. `station.py` differs in one line, the
+import it spends on `framing`. The rest is the bus being cut, which is
+[ADR-0001](../docs/adr/0001-the-mirror-leaves-the-bus-for-a-face.md):
+
+- `__main__.py` is not a copy. It was built on `tc49.lib.startup.command_line`,
+  which did not come, so it was rewritten around the same arguments less
+  `--broker` and `--id`.
+- `firmware.py` lost the two topics, the payload reader, the subscription, the
+  bus it was constructed on and the row it refused on. A refusal is logged now
+  and goes nowhere else.
+- The tests came across with it. `test_firmware.py` lost the cases that were
+  about the payload and the row; `test_main.py` was adapted with `__main__.py`.
