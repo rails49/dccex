@@ -851,3 +851,175 @@ def test_the_device_is_let_go_though_a_client_takes_nothing(pty: Pty) -> None:
             await shut_down(app)
 
     asyncio.run(scenario())
+
+
+class Peeking(Station):
+    """A station that says what a stranded write is about, which a mirror does not.
+
+    Whether a client's message is holding the write lock, whether anything is
+    parked waiting for the device to take more, and the descriptor number
+    itself — which a test needs in order to ask the loop whether anything is
+    still registered on it once the device has gone. None of the three is any
+    caller's business, so they are reached from a subclass here rather than
+    published.
+    """
+
+    @property
+    def writing(self) -> bool:
+        return self._writing.locked()
+
+    @property
+    def waiting(self) -> int:
+        return len(self._waiters)
+
+    @property
+    def fd(self) -> int:
+        assert self._fd is not None, "the device is not open"
+        return self._fd
+
+
+def parking(device: str, log: Log) -> Peeking:
+    """A station whose grace is long enough to park a write inside."""
+    return Peeking(
+        device,
+        0,
+        log=log,
+        first_backoff_s=PATIENT_BACKOFF_S,
+        max_backoff_s=4 * PATIENT_BACKOFF_S,
+    )
+
+
+async def park_a_write(app: Peeking, writer: asyncio.StreamWriter) -> None:
+    """Send whole messages until one of them is parked on the device.
+
+    Ordinary messages and a handful of them, not one large one: a pty holds
+    about a kilobyte unread and `framing.MAX_MESSAGE` is 1024, so a single
+    big message is discarded by the framing before it is ever written and
+    parks nothing. Nothing reads the device side in these tests, so once its
+    buffer is full it stays full, and a write that is parked stays parked.
+    """
+    message = b"<" + b"t" * 998 + b">"
+    deadline = time.monotonic() + TIMEOUT_S
+    while not app.writing:
+        if time.monotonic() > deadline:
+            raise AssertionError("no write parked on the device")
+        await send(writer, message * 4)
+        await asyncio.sleep(0.005)
+    # Held, and still held a moment later: a lock caught between two messages
+    # is not a write waiting on a device that will never take more.
+    await asyncio.sleep(SETTLE_S)
+    assert app.writing, "the write went through rather than parking"
+
+
+async def drained(fd: int) -> None:
+    """Read the device side empty: what is there is the abandoned write's."""
+    await asyncio.sleep(SETTLE_S)
+    while True:
+        try:
+            if not os.read(fd, READ_SIZE):
+                return
+        except OSError:
+            return
+
+
+def nothing_registered(fd: int) -> bool:
+    """Whether the loop has no writer on `fd`, which is what removing one says."""
+    return asyncio.get_running_loop().remove_writer(fd) is False
+
+
+def test_a_write_parked_on_the_device_is_let_go_with_it(pty: Pty) -> None:
+    """The handover cannot strand a message that was being written.
+
+    A client's message parked on a device taking no more held the write lock
+    across an await that letting the device go never resolved: the descriptor
+    was closed underneath the waiter and the selector dropped it silently, so
+    that handler waited for ever holding the lock and every client's message
+    after it waited behind that. The flash handover is the path this is on.
+
+    What the message gets instead is the answer any message sent into an
+    outage gets: it is dropped, the client stays connected, and the lock is
+    free by the time the handover returns.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = parking(pty.path, log)
+        await app.start()
+        try:
+            _, writer = await connect(app)
+            await log.wait_for("serial open")
+            await park_a_write(app, writer)
+            device = app.fd
+
+            async with app.released():
+                assert not app.writing, "the handover left the write lock held"
+                assert not app.waiting, "a write is still parked on the device"
+                # And nothing of the mirror's is registered on the descriptor
+                # it no longer owns: the number is the OS's to hand out
+                # again, and a callback left on it is another owner's to lose.
+                assert nothing_registered(device)
+
+            await log.wait_for_count("serial open", 2)
+            await drained(pty.master)
+
+            # And the mirror is forwarding again, for a client that was not
+            # the one whose write was dropped.
+            _, after = await connect(app)
+            await send(after, b"<a 12 1>")
+            assert await arriving(pty.master, len(b"<a 12 1>")) == b"<a 12 1>"
+            writer.close()
+            after.close()
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())
+
+
+def test_a_write_parked_on_the_device_is_let_go_when_the_cable_goes(
+    pty: Pty, tmp_path: Path
+) -> None:
+    """The same for the ordinary outage: the cable out from under a write.
+
+    This one pins the end state rather than reproducing the hang. A pty whose
+    master is closed wakes the writer registered on its slave, so the parked
+    write here fails on `EIO` and gives the lock back with the fix taken out
+    as well as with it; the handover above is the regression test. What this
+    holds is that the outage ends the same way — the lock free, nothing
+    parked, nothing registered on the descriptor that has gone — and that a
+    client's message reaches the device the watcher takes back.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = tmp_path / "dccex"
+        cable.symlink_to(pty.path)
+        app = parking(str(cable), log)
+        await app.start()
+        back = Pty()
+        try:
+            _, writer = await connect(app)
+            await log.wait_for("serial open")
+            await park_a_write(app, writer)
+            device = app.fd
+
+            cable.unlink()
+            pty.close()
+            await log.wait_for("device away")
+
+            assert not app.writing, "the outage left the write lock held"
+            assert not app.waiting, "a write is still parked on the device"
+            assert nothing_registered(device)
+
+            cable.symlink_to(back.path)
+            await log.wait_for_count("serial open", 2)
+
+            _, after = await connect(app)
+            await send(after, b"<a 12 1>")
+            assert await arriving(back.master, len(b"<a 12 1>")) == b"<a 12 1>"
+            writer.close()
+            after.close()
+        finally:
+            back.close()
+            await shut_down(app)
+
+    asyncio.run(scenario())
