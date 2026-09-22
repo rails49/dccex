@@ -19,8 +19,10 @@ The face is #12, and until it lands **nothing can ask for a flash at all** —
 the path is there, it is covered, and it has no caller. That is the app being
 quiet, not the app being broken.
 
-The code is a copy of `control`'s at `deee7b6`, its file names kept so the two
-stay diffable; [SOURCE.md](../../src/SOURCE.md) says what came from where.
+The code arrived as a copy of `control`'s at `deee7b6`, its file names kept so
+the two stay diffable; [SOURCE.md](../../src/SOURCE.md) says what came from
+where, and what has been fixed here since `control`'s copy was deleted
+([ADR-0003](../adr/0003-the-copy-has-no-original-left-and-is-fixed-here.md)).
 
 ## The command line
 

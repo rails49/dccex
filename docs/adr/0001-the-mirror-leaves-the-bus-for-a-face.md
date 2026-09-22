@@ -65,6 +65,17 @@ the mirror behaves is not up for reconsideration here: the backoff, the grace,
 the outstanding-bytes cut-off and the handover are what they were, down to
 their numbers.
 
+> **Amended 2026-09-22 (#23, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
+> one of those behaviours has moved, which this says at the time rather than
+> leaving d.6 to read as though nothing did. A client's connection is now
+> aborted wherever it is dropped — shutting down, and when the grace ends an
+> outage, as it already was when the client fell too far behind — because
+> closing it waits for a write buffer that a client which has stopped reading
+> never drains, and that wait hung the shutdown and held the device. What is
+> lost with the abort is bytes that client was not taking. The numbers are
+> untouched: the backoff, the grace and the outstanding-bytes bound are what
+> they were.
+
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
 [CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a
