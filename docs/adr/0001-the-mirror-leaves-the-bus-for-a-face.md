@@ -89,6 +89,18 @@ their numbers.
 > that was going into an outage, which is where the rest of that message was
 > going anyway. The numbers are untouched again.
 
+> **Amended 2026-09-22 (#26, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
+> and a third, on the handover again — this time on how it ends. A handover
+> that finishes on a station which has been closed meanwhile no longer takes
+> the device back: it used to start a fresh watcher whatever had become of the
+> station, which reopens and holds the cable of a mirror nobody is using. That
+> is reachable on a signal mid-flash, where the flash is shielded from the
+> cancellation and the mirror is closed under it. What stopped it being a held
+> device was the event loop's task cleanup happening to cancel that watcher,
+> which is not a statement anything made; the station says it has been closed
+> now, and the handover asks. Nothing a client can see changes, and the numbers
+> are untouched once more.
+
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
 [CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a

@@ -154,7 +154,10 @@ On the ask, in this order, and the order is the point:
    still checked. esptool verifies what it wrote, not what was fetched.
 4. **Then** close the serial device.
 5. Run esptool.
-6. Reopen the device by the existing path.
+6. Reopen the device by the existing path — unless the app is being stopped
+   meanwhile, in which case nothing takes the device back: a flash is shielded
+   from the signal that ends the app, so it can outlive the mirror, and a
+   mirror that has shut down has no port to mirror the cable on.
 
 A network failure costs nothing that way. The reverse order leaves the
 railroad with a closed port and no firmware.
