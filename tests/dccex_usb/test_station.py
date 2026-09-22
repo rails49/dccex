@@ -102,6 +102,23 @@ def pty() -> Iterator[Pty]:
 
 BEHIND_BYTES = 4096
 
+UNREACHABLE_BYTES = 1 << 24
+"""A bound on a client no test reaches, for the tests about a client that has
+stopped reading and is *not* to be cut off: what they are about is the other
+paths a client leaves by, and the cut-off already handles this client."""
+
+WEDGED_BYTES = 8 * 1024 * 1024
+"""Enough said at a client that takes nothing to leave the app holding some.
+
+The kernels either side take a megabyte or two of a stream nobody reads and
+then stop; everything after that is the app's own buffer, which is what a
+polite close waits to drain and never does. Several times the kernels' share,
+because how much that is belongs to the machine the gate runs on."""
+
+SHUTDOWN_S = 2.0
+"""What bounded means for a shutdown here: long enough not to call a loaded
+machine a hang, short enough not to call a hang slow."""
+
 QUICK_BACKOFF_S = 0.005
 PATIENT_BACKOFF_S = 0.2
 """A backoff a test can act inside: the grace is two of it, so a test that
@@ -113,7 +130,13 @@ PATIENT_GRACE_S = 2 * PATIENT_BACKOFF_S
 counts."""
 
 
-def station(device: str, log: Log, *, backoff_s: float = QUICK_BACKOFF_S) -> Station:
+def station(
+    device: str,
+    log: Log,
+    *,
+    backoff_s: float = QUICK_BACKOFF_S,
+    max_outstanding_bytes: int = BEHIND_BYTES,
+) -> Station:
     """A station on an OS-chosen port, with outages measured in milliseconds.
 
     A client falls behind in kilobytes rather than the megabyte of the real
@@ -127,7 +150,7 @@ def station(device: str, log: Log, *, backoff_s: float = QUICK_BACKOFF_S) -> Sta
         log=log,
         first_backoff_s=backoff_s,
         max_backoff_s=4 * backoff_s,
-        max_outstanding_bytes=BEHIND_BYTES,
+        max_outstanding_bytes=max_outstanding_bytes,
     )
 
 
@@ -238,6 +261,33 @@ async def released(held: int, timeout: float = TIMEOUT_S) -> int:
     while open_fds() > held and time.monotonic() < deadline:
         await asyncio.sleep(0.005)
     return open_fds()
+
+
+async def wedge(pty: Pty, count: int = WEDGED_BYTES) -> None:
+    """Say `count` bytes at a client that is taking none of them, and stop.
+
+    What the app is left holding afterwards is the bytes it could not hand
+    over, and the device is quiet again, so what happens next is the path
+    under test rather than more traffic. Nothing reads what is said here, so
+    it is bulk and not messages.
+    """
+    bulk = b"." * READ_SIZE
+    said = 0
+    while said < count:
+        rest = memoryview(bulk)
+        while rest:
+            try:
+                written = os.write(pty.master, rest)
+            except BlockingIOError:
+                await asyncio.sleep(0)
+                continue
+            said += written
+            rest = rest[written:]
+
+
+async def shut_down(app: Station) -> None:
+    """Close the station, or say it did not rather than hang the suite."""
+    await asyncio.wait_for(app.close(), SHUTDOWN_S)
 
 
 def test_a_client_that_stops_reading_is_cut_off_and_its_bytes_released(
@@ -620,6 +670,47 @@ def test_a_device_away_past_the_grace_disconnects_every_client(
     asyncio.run(scenario())
 
 
+def test_a_client_that_takes_nothing_leaves_when_the_grace_ends_too(
+    pty: Pty, tmp_path: Path
+) -> None:
+    """The grace ends every client on the outage, reading or not.
+
+    The socket closing is the whole signal that the device is away
+    (ADR-0066), and a client that has stopped reading is the one that most
+    needs telling — a sleeping laptop wakes to a session it thinks is live.
+    Closing it politely waits for bytes it is not taking, so the signal
+    never reaches it and it lingers on a port with no device behind it until
+    the device comes back and the traffic that follows puts it far enough
+    behind to be cut off. It is aborted instead, and the line saying how
+    many clients the grace is ending counts one that it ends.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = tmp_path / "dccex"
+        cable.symlink_to(pty.path)
+        app = station(str(cable), log, max_outstanding_bytes=UNREACHABLE_BYTES)
+        await app.start()
+        try:
+            _, deaf = await connect_deaf(app)
+            await log.wait_for("serial open")
+            await wedge(pty)
+
+            cable.unlink()
+            pty.close()
+            await log.wait_for("serial closed")
+
+            assert "disconnecting 1 clients" in await log.wait_for("device still away")
+            # And it went because the grace ended, not because it was cut
+            # off: the bound on how far behind it may fall is out of reach.
+            assert "too far behind" not in await log.wait_for("client disconnected")
+            deaf.close()
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())
+
+
 def test_a_client_arriving_into_a_running_grace_leaves_with_it(
     tmp_path: Path,
 ) -> None:
@@ -693,5 +784,70 @@ def test_a_device_back_inside_the_first_reopen_keeps_its_clients(
         finally:
             await app.close()
             again.close()
+
+    asyncio.run(scenario())
+
+
+def test_closing_returns_with_a_client_that_takes_nothing(pty: Pty) -> None:
+    """Shutting the mirror down is not a wedged client's to hold up.
+
+    A client that has stopped reading is holding bytes the app cannot hand
+    over, and closing its stream politely is a wait for them to drain, which
+    for this client never comes. Its handler would never return, the server
+    waits for every handler, and the app would sit there until something
+    killed it. It is aborted instead, the way `_cut_off` aborts.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = station(pty.path, log, max_outstanding_bytes=UNREACHABLE_BYTES)
+        await app.start()
+        try:
+            _, deaf = await connect_deaf(app)
+            await log.wait_for("serial open")
+            await wedge(pty)
+
+            await shut_down(app)
+
+            # And it left by the shutdown rather than by the cut-off, which
+            # the raised bound has put out of reach.
+            assert "too far behind" not in await log.wait_for("client disconnected")
+            deaf.close()
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())
+
+
+def test_the_device_is_let_go_though_a_client_takes_nothing(pty: Pty) -> None:
+    """A client that stopped reading does not get to hold the cable.
+
+    The watcher is stopped after the clients are, so a shutdown that waits
+    on one of them to drain holds the device for the whole of that wait.
+    What that costs in the field is the box taking a SIGTERM and the station
+    still being held when the supervisor gives up on it.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = station(pty.path, log, max_outstanding_bytes=UNREACHABLE_BYTES)
+        await app.start()
+        try:
+            _, deaf = await connect_deaf(app)
+            await log.wait_for("serial open")
+            await wedge(pty)
+            held = open_fds()
+
+            await shut_down(app)
+
+            assert not app.held
+            assert log.said("serial closed")
+            # The three the app was holding: the device, the port it served
+            # it on, and its end of the client's socket. The client's own
+            # end is the test's and is still open and still unread.
+            assert await released(held - 3) == held - 3
+            deaf.close()
+        finally:
+            await shut_down(app)
 
     asyncio.run(scenario())

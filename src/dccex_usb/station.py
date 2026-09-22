@@ -38,7 +38,11 @@ outlives all of them.
 cannot tell an away device from a quiet one, and this port has no way to
 tell it: the socket closing is the whole signal, and it is the one that ends
 the translator's session and lowers `device/link` (ADR-0066). So a device
-still away two reopens in has every connected client disconnected. Inside
+still away two reopens in has every connected client disconnected. The
+connection is aborted rather than closed politely, here as at the cut-off and
+as when the app itself is shutting down: closing waits for what is
+outstanding to reach the client first, so for the client that has stopped
+reading the signal never arrives and the wait never ends. Inside
 the grace nothing changes — a blip the first reopen recovers costs no
 throttle a reconnect, which is what the grace is for. The grace is the
 outage's and not each client's: one that connects while an outage is being
@@ -205,10 +209,13 @@ class Station:
         server, self._server = self._server, None
         if server is not None:
             server.close()
-        # Before waiting on the server, which does not return while a handler
-        # is still running, and a handler runs until its client is gone.
+        # Aborted, and before waiting on the server: closing waits for what
+        # is outstanding to reach a client, which for one that has stopped
+        # reading is never, and the server does not return while a handler is
+        # still running. Shutting down is `_cut_off`'s case — the bytes are
+        # going nowhere — so it is `_cut_off`'s answer.
         for writer in tuple(self._clients):
-            writer.close()
+            writer.transport.abort()
         if server is not None:
             await server.wait_closed()
         await self._stop_watching()
@@ -253,7 +260,12 @@ class Station:
             self._behind.discard(writer)
             why = " too far behind" if cut_off else ""
             self._log(f"client disconnected {peer}{why}")
-            writer.close()
+            # Aborted for the same reason, and waited for after: a handler
+            # that waits on a client that is not reading is a handler the
+            # server's `wait_closed()` waits on in its turn, and an abort is
+            # the one wait that ends. What it costs is bytes a client that
+            # has gone, or is being dropped, was never going to read.
+            writer.transport.abort()
             with contextlib.suppress(ConnectionError):
                 await writer.wait_closed()
 
@@ -318,17 +330,18 @@ class Station:
             grace.cancel()
 
     async def _disconnect_after_grace(self) -> None:
-        """Wait out the grace and close what is still connected.
+        """Wait out the grace and drop what is still connected.
 
-        Closed rather than aborted: what is outstanding to a client that is
-        reading is a reply from before the outage, and it reaches the client
-        the way the bytes before it did. A client that is not reading is
-        `_cut_off`'s, which is a different reason to disconnect and keeps
-        its own path.
+        Aborted rather than closed, as in `_cut_off`: the socket closing is
+        the whole signal that the device is away (ADR-0066), and a close
+        waits for what is outstanding to drain first, which is a signal that
+        never arrives for the client whose window is shut. What the abort
+        costs is bytes from before an outage that has already outlasted its
+        grace, to a client that is about to be told the device is gone.
 
         Each client leaves by its handler, which is where a disconnect is
         logged, so the line here says what this did and the lines under it
-        say to whom.
+        say to whom — and it says it of clients that are all actually going.
         """
         await asyncio.sleep(GRACE_REOPENS * self._first_backoff_s)
         self._grace = None
@@ -340,7 +353,7 @@ class Station:
             f" of {self._device}"
         )
         for writer in clients:
-            writer.close()
+            writer.transport.abort()
 
     async def _watch(self) -> None:
         """Keep the device open, retrying with backoff while it is away."""
