@@ -59,6 +59,7 @@ one that can hand it over (ADR-0065). What is done with it meanwhile is
 
 import asyncio
 import contextlib
+import errno
 import os
 import sys
 import termios
@@ -80,6 +81,18 @@ READ_SIZE = 4096
 # open and that call reports ENODEV as one, and a path that is no tty raises
 # it every time. Both are the device not being there, not the end of the app.
 DEVICE_AWAY = (OSError, termios.error)
+
+
+class DeviceGone(OSError):
+    """Raised into a write that was waiting on a descriptor now let go.
+
+    An `OSError` because that is what it is — the device is not there any
+    more — and because the one place that catches it already catches those.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(errno.EBADF, "the device was let go")
+
 
 FIRST_BACKOFF_S = 0.5
 MAX_BACKOFF_S = 8.0
@@ -136,6 +149,7 @@ class Station:
         self._server: asyncio.Server | None = None
         self._watcher: asyncio.Task[None] | None = None
         self._writing = asyncio.Lock()
+        self._waiters: set[asyncio.Future[None]] = set()
 
     async def run(self) -> None:
         """Serve until cancelled — the whole of `python -m dccex_usb`."""
@@ -172,6 +186,36 @@ class Station:
         arrives.
         """
         return self._fd is not None
+
+    @property
+    def descriptor(self) -> int | None:
+        """Which descriptor the device is open on, where `held` asks whether.
+
+        The identity matters and not only the fact: a descriptor that has
+        been let go must have nothing of this station's left on it, and a
+        number the OS has handed on is not this station's any more.
+        """
+        return self._fd
+
+    @property
+    def writing(self) -> bool:
+        """Whether a client's message is on its way to the device right now.
+
+        One at a time, so this is also whether any other client's message is
+        waiting its turn.
+        """
+        return self._writing.locked()
+
+    @property
+    def waiting(self) -> bool:
+        """Whether a write is parked, waiting for the device to take more.
+
+        A parked write is the one thing here a closed descriptor can strand:
+        it never wakes, and the write lock it is still holding is every other
+        client's message. So letting the device go has to end this, and
+        whether it did is worth being able to ask.
+        """
+        return bool(self._waiters)
 
     @contextlib.asynccontextmanager
     async def released(self) -> AsyncGenerator[None]:
@@ -270,11 +314,12 @@ class Station:
                 self._drop()
                 return
             try:
-                await write_all(fd, message)
+                await write_all(fd, message, self._waiters)
             except OSError:
-                # The device went away mid-message. `_mirror` sees the same
-                # thing and the watcher reopens it; this message is dropped
-                # like anything else sent into an outage.
+                # The device went away mid-message, or was let go out from
+                # under a wait for it to take more (`DeviceGone`). `_mirror`
+                # sees the same thing and the watcher reopens it; this
+                # message is dropped like anything else sent into an outage.
                 self._drop()
 
     def _cut_off(self, writer: asyncio.StreamWriter) -> None:
@@ -363,7 +408,7 @@ class Station:
                 # have been reported before it.
                 self._dropped = False
                 self._start_grace()
-                os.close(fd)
+                self._let_go(fd)
                 self._log(f"serial closed {self._device}")
             # Opening is not proof the device is there: a session that ends
             # without a byte keeps the backoff it was reached with, and only
@@ -374,6 +419,29 @@ class Station:
                 backoff = self._first_backoff_s
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, self._max_backoff_s)
+
+    def _let_go(self, fd: int) -> None:
+        """Give the descriptor up: nothing registered on it, nothing waiting.
+
+        The three steps are one step and their order is the whole of it. A
+        write parked in `writable` is woken by the selector, which silently
+        drops a closed descriptor, so closing first strands that write for
+        ever — still holding the write lock, with every other client's
+        message queued behind it and the mirror quietly stopped. And a
+        waiter that resumed *after* the close would unregister, or write,
+        against a number the OS may have handed to somebody else in between.
+
+        So: unregister, then wake what is parked, then close. What wakes
+        raises `DeviceGone`, which is an outage like any other to the
+        message it was carrying.
+        """
+        loop = asyncio.get_running_loop()
+        loop.remove_writer(fd)
+        waiters, self._waiters = self._waiters, set()
+        for waiter in waiters:
+            if not waiter.done():
+                waiter.set_exception(DeviceGone())
+        os.close(fd)
 
     async def _mirror(self, fd: int) -> bool:
         """Fan every byte the device sends to every client, until it goes away.
@@ -458,20 +526,27 @@ def configure(fd: int) -> None:
     termios.tcsetattr(fd, termios.TCSANOW, [iflag, oflag, cflag, lflag, BAUD, BAUD, cc])
 
 
-async def write_all(fd: int, data: bytes) -> None:
-    """Write every byte, waiting for the device when it is not ready for more."""
+async def write_all(fd: int, data: bytes, waiters: set[asyncio.Future[None]]) -> None:
+    """Write every byte, waiting for the device when it is not ready for more.
+
+    `waiters` is where a wait registers itself, so the station can reach it
+    when it lets the descriptor go (`Station._let_go`).
+    """
     loop = asyncio.get_running_loop()
     rest = memoryview(data)
     while rest:
         try:
             written = os.write(fd, rest)
         except BlockingIOError:
-            await writable(loop, fd)
+            await writable(loop, fd, waiters)
             continue
         rest = rest[written:]
 
 
-async def writable(loop: asyncio.AbstractEventLoop, fd: int) -> None:
+async def writable(
+    loop: asyncio.AbstractEventLoop, fd: int, waiters: set[asyncio.Future[None]]
+) -> None:
+    """Wait for the device to take more, or raise because it was let go."""
     ready: asyncio.Future[None] = loop.create_future()
 
     def wake() -> None:
@@ -479,7 +554,17 @@ async def writable(loop: asyncio.AbstractEventLoop, fd: int) -> None:
             ready.set_result(None)
 
     loop.add_writer(fd, wake)
+    waiters.add(ready)
+    let_go = False
     try:
         await ready
+    except DeviceGone:
+        # `_let_go` unregistered this before waking it and closes the
+        # descriptor next, so `fd` is not ours to touch: the number may
+        # already be somebody else's.
+        let_go = True
+        raise
     finally:
-        loop.remove_writer(fd)
+        waiters.discard(ready)
+        if not let_go:
+            loop.remove_writer(fd)
