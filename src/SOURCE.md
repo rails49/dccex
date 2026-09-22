@@ -74,3 +74,10 @@ sorting the diff is told which side of it is ours:
   queued behind it. The descriptor is taken off the loop and the parked write
   woken with a private `DeviceGone` before it is closed; the message is
   dropped like anything else sent into an outage. Two tests hold it.
+- **#26** — `station.py` and the tests for it: a handover that ended on a
+  station which had been closed meanwhile started a fresh watcher, which
+  reopens and holds the device of a mirror nobody is using — reachable on a
+  signal mid-flash, and a leak rather than a stuck device only because the
+  event loop's task cleanup happened to cancel it. The station records that it
+  has been closed, and the handover asks before it takes the device back. One
+  test holds it.
