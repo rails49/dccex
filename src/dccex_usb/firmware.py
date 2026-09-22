@@ -3,19 +3,25 @@
 The firmware is built elsewhere, against the station's own source, and that
 does not change; what this makes is the writing of a released build onto the
 box something the running system does on a gesture, rather than something a
-person does from a checkout (ADR-0065). The gesture is
-`tc49/layout/firmware_wanted`, one field, a `tag`, and **this app is the only
-thing that can answer it**: flashing means owning the serial port, the mirror
-holds it for as long as the railroad is up, and no container can stop a
-sibling without handing a process the Docker daemon's socket.
+person does from a checkout (ADR-0065). The gesture names one thing, a `tag`,
+and **this app is the only thing that can answer it**: flashing means owning
+the serial port, the mirror holds it for as long as the railroad is up, and no
+container can stop a sibling without handing a process the Docker daemon's
+socket.
 
-**The payload names a tag and never a source.** The LAN is the trust boundary
-and carries no authentication on purpose (ADR-0042), so a payload that said
-where to fetch from would let anyone on the wifi have the station fetch and
-run an arbitrary binary. Where releases are read from is a flag on this app,
-and a tag can only choose among the builds already published there. `latest`
-is not a tag either: it names a different build depending on when it is read,
-and the point of the gesture is to be able to say afterwards what was written.
+**Nothing outside this process can make the gesture.** It arrived on a bus in
+`control` and it will arrive at this app's own face (ADR-0001, #12); between
+the two it has no caller at all, which is an app that is quiet rather than one
+that is broken. `wanted` is the whole of the way in, and it is a call on this
+loop.
+
+**The gesture names a tag and never a source.** The LAN is the trust boundary
+and carries no authentication on purpose (ADR-0042), so an ask that said where
+to fetch from would let anyone on the wifi have the station fetch and run an
+arbitrary binary. Where releases are read from is a flag on this app, and a tag
+can only choose among the builds already published there. `latest` is not a tag
+either: it names a different build depending on when it is read, and the point
+of the gesture is to be able to say afterwards what was written.
 
 **The order is the point.** The release is resolved, the binary fetched and
 its digest checked *before* the device is let go. A network failure then costs
@@ -31,12 +37,11 @@ keeps its failures off this process: it manipulates the port and exits on
 error, and this is the process every throttle, DecoderPro and the translator
 depend on being up.
 
-**There is no reply and no progress topic.** The flash is a desired half and
-what happened is read off the observed half: the link goes down while the
-station is written and comes back carrying the `build` it now reports, and
-every way this refuses goes on `tc49/layout/state/device/refused/<id>`, whose
-`addr` is optional for a refusal that named no address (ADR-0063). Nothing is
-log-only: broken hardware is reported, never worked around (ADR-0050).
+**There is no reply and no progress.** What happened is read off the station
+itself: the link goes down while it is written and comes back carrying the
+`build` it now reports. Every way this refuses is logged and goes nowhere
+else, because there is nowhere else for it to go until the face is there to
+carry it to whoever asked (ADR-0001).
 
 **A second gesture while a flash is in flight is refused, not queued.** A
 command is honoured now or ignored, which is what this app already does with
@@ -57,17 +62,6 @@ from typing import NamedTuple, Protocol, cast
 from urllib.parse import quote
 
 from dccex_usb.station import to_stderr
-from tc49.lib.bus import Bus, Payload
-from tc49.lib.inventory import device_topic
-
-FIRMWARE_WANTED = "tc49/layout/firmware_wanted"
-DEVICE_REFUSED = "tc49/layout/state/device/refused"
-
-ID = "dccex-usb"
-"""What this app calls itself on the row it refuses on where it is started
-with no other name: the package's, because a name has to come from somewhere.
-A value and not a contract — the id is whatever the publisher calls itself and
-appears in no drawing and no list of ours (ADR-0059)."""
 
 RELEASES = "https://api.github.com/repos/rails49/CommandStation-EX/releases"
 """Where releases are read from unless a box says otherwise: this
@@ -153,9 +147,10 @@ class Device(Protocol):
 def release_url(releases: str, tag: str) -> str:
     """Where the release API is asked about one tag.
 
-    The tag is **escaped whole**: it arrives off a bus with no authentication
-    on it (ADR-0042), and a tag that kept its slashes would name a path of the
-    caller's choosing under the host this app was configured with.
+    The tag is **escaped whole**: it arrives from a caller on a LAN with no
+    authentication on it (ADR-0042), and a tag that kept its slashes would name
+    a path of the caller's choosing under the host this app was configured
+    with.
     """
     return f"{releases.rstrip('/')}/tags/{quote(tag, safe='')}"
 
@@ -270,20 +265,6 @@ async def run(command: Sequence[str], timeout_s: float) -> Ran:
     return Ran(process.returncode, said.decode(errors="replace"))
 
 
-def wanted_tag(payload: object) -> str | None:
-    """The build a gesture asks for, or None where it asks for none.
-
-    A gesture that cannot be read is **dropped**, in silence and with no
-    refusal to publish: a refusal is addressed to nobody, the gesture carries
-    no id, and a frame nobody can read names no station to answer about
-    (BUS.md, rule 4, ADR-0034).
-    """
-    if not isinstance(payload, dict):
-        return None
-    tag = cast(dict[str, object], payload).get("tag")
-    return tag if isinstance(tag, str) and tag else None
-
-
 def said(output: str) -> str:
     """The last thing a tool said, for the row a person reads. Its whole
     output on a state row would be a screenful where a sentence is wanted, and
@@ -296,30 +277,27 @@ class Flasher:
     """The gesture answered: a released build written onto the command
     station by the app that owns its device.
 
-    Constructed on the bus and the mirror, and subscribing as it is built, as
-    every app's own class does. `run_wanted` is not a thing this reads and
-    neither is anything else about the railroad: whether it is safe to reset
-    the station lives in the client written to honour it, which is where the
-    guarantee about cutting track power lives too (ADR-0051, ADR-0062,
-    ADR-0065).
+    Constructed on the mirror, and reached by a call on this loop and by
+    nothing else: there is no subscription here and no second port, so until
+    the face is written the flash has no caller (ADR-0001, #12). Whether it is
+    safe to reset the station is not a thing this reads, and neither is
+    anything else about the railroad: that guarantee lives in the client
+    written to honour it, which is where the one about cutting track power
+    lives too (ADR-0051, ADR-0062, ADR-0065).
     """
 
     def __init__(
         self,
-        bus: Bus,
         device: Device,
         releases: str = RELEASES,
         *,
-        id: str = ID,
         fetch: Fetch = fetch,
         runner: Runner = run,
         timeout_s: float = TIMEOUT_S,
         log: Callable[[str], None] = to_stderr,
     ) -> None:
-        self._bus = bus
         self._device = device
         self._releases = releases
-        self._id = id
         self._fetch = fetch
         self._runner = runner
         self._timeout_s = timeout_s
@@ -328,7 +306,6 @@ class Flasher:
         # rather than queued, and so that the process ending can wait for the
         # one in flight rather than leaving a station half written.
         self._flashing: asyncio.Task[None] | None = None
-        bus.subscribe(FIRMWARE_WANTED, self._wanted)
 
     @property
     def flashing(self) -> bool:
@@ -346,7 +323,7 @@ class Flasher:
         if flashing is not None:
             await asyncio.shield(flashing)
 
-    def _wanted(self, topic: str, payload: Payload) -> None:
+    def wanted(self, tag: str) -> None:
         """A build asked for: refused here, or started as a task of its own.
 
         Started rather than awaited because this runs on the loop that is the
@@ -354,24 +331,26 @@ class Flasher:
         device is held through — and the port goes on being served for the
         whole of the flash after it, which is what lets a client that was
         disconnected by the outage come back to a mirror that is answering.
+
+        The one way in, and a call rather than a row: what will make it is the
+        face, on this loop and in this process (ADR-0001, #12).
         """
-        tag = wanted_tag(payload)
-        if tag is None:
-            return
         if tag == LATEST:
-            self._refuse(
-                f"'{LATEST}' is not a build: it names a different one depending"
-                " on when it is read, and what was written has to be sayable"
-                " afterwards"
+            self._log(
+                f"refused: '{LATEST}' is not a build: it names a different one"
+                " depending on when it is read, and what was written has to be"
+                " sayable afterwards"
             )
             return
         if self.flashing:
-            self._refuse(f"a flash is already under way, so '{tag}' was not started")
+            self._log(
+                f"refused: a flash is already under way, so '{tag}' was not started"
+            )
             return
         if not self._device.held:
-            self._refuse(
-                f"the command station is not there — '{tag}' was not written"
-                f" to {self._device.path}"
+            self._log(
+                f"refused: the command station is not there — '{tag}' was not"
+                f" written to {self._device.path}"
             )
             return
         self._flashing = asyncio.create_task(self._flash(tag))
@@ -380,12 +359,12 @@ class Flasher:
         """One flash, from the release to the station, and the refusal it came
         to where it came to one.
 
-        Every way out of it publishes or leaves the row alone, and the flag
-        falls whichever way it went: an app that refused a flash and then
-        refused every one after it because a failure left the flag standing
-        would be worse than the failure. Nothing waits after the flag falls,
-        so the gesture that is answered next is answered by an app that has
-        already said what became of this one.
+        Every way out of it says what became of the flash or says nothing,
+        and the flag falls whichever way it went: an app that refused a flash
+        and then refused every one after it because a failure left the flag
+        standing would be worse than the failure. Nothing waits after the flag
+        falls, so the gesture that is answered next is answered by an app that
+        has already said what became of this one.
         """
         self._log(f"flashing '{tag}' from {self._releases}")
         try:
@@ -397,7 +376,7 @@ class Flasher:
         if refusal is None:
             self._log(f"flashed '{tag}'")
             return
-        self._refuse(refusal)
+        self._log(f"refused: {refusal}")
 
     async def _written(self, tag: str) -> str | None:
         """The build written, or why it was not.
@@ -447,13 +426,3 @@ class Flasher:
                 f"writing '{tag}' failed: esptool exited {ran.code}. {said(ran.said)}"
             )
         return None
-
-    def _refuse(self, detail: str) -> None:
-        """This app's report on its own last exchange, keyed by what it calls
-        itself. No `addr`: a flash names no device address, which is the case
-        that row's schema already allows for (ADR-0063)."""
-        self._log(f"refused: {detail}")
-        self._bus.publish(
-            device_topic(DEVICE_REFUSED, self._id),
-            {"id": self._id, "detail": detail},
-        )

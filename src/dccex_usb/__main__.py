@@ -1,69 +1,54 @@
 """`python -m dccex_usb` — the command line the container runs.
 
 The device to open and the port to serve it on are the mirror's own two flags
-and the whole of what it was for a while (ADR-0043). What the rest are for is
+and the whole of what it was for a while (ADR-0043). What the third is for is
 the one thing this app does that is not mirroring: writing a released build
 onto the command station, which only the process holding the device can do
 (ADR-0065, `firmware.py`). There is still no bind address, because the server
 binds every interface and what limits its reach is the LAN (ADR-0042).
 
-- `--broker <host:port>`, where the gesture arrives and where a refusal goes.
+- `--device <path>`, the serial device to open.
+- `--port <n>`, the TCP port to mirror it on.
 - `--firmware-releases <url>`, where releases are read from, defaulting to
   this installation's fork. **Configuration and never payload**: the LAN
   carries no authentication on purpose, so a source on the wire would let
   anyone on the wifi run an arbitrary binary on the command station.
-- `--id`, the name its refusals are keyed by, defaulting to the package's.
 
-**The mirror does not wait for the broker**, where the five apps that publish
-opening rows do (`lib/startup.py`, step 2). It has no opening rows to publish,
-and the port it serves is what DecoderPro, JMRI and the hand-held throttles
-reach the command station through — a broker that is not there must not take
-the command station away with it, which is the promise this app exists for.
-The client connects in the background and its subscription goes again with
-every reconnect, so a flash asked for after the broker comes back is answered
-(`lib/mqtt.py`).
+**There is no broker and no identity.** Both went with the bus (ADR-0001):
+the flash was asked for on a bus in `control` and will be asked for on this
+app's own face, and a name to key a refusal row by is a name for a row that no
+longer exists. What is left is an app that dials nothing and answers nothing
+but its own port — which is what lets a command station be mirrored on a box
+with nothing else running.
 
-**No documents and no railroad**, for the translator's reasons one level down
-(ADR-0059, decisions 5 and 6): nothing here is looked up in a drawing, and
-a railroad loaded under it changes neither the cable nor the station on the
-end of it.
-
-**asyncio owns this process.** The mirror is a loop and the bus's network
-thread only fills a queue, so the drain beside the mirror is what hands a
-gesture to the loop — which is the thread that closes the device and runs
-esptool, the same thread that would otherwise be writing a client's bytes to
-it.
+**asyncio owns this process.** The mirror is a loop, the flash runs on it, and
+the loop here is what carries a mirror that ended out to the exit status.
 """
 
+import argparse
 import asyncio
 import contextlib
 import signal
-import sys
 import threading
 
-from dccex_usb.firmware import ID, RELEASES, Flasher
+from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import Station, to_stderr
-from tc49.lib.bus import Bus
-from tc49.lib.mqtt import MqttBus, address
-from tc49.lib.startup import PERIOD_S, command_line
 
-CLIENT_PREFIX = "tc49-"
-"""What this app calls itself to the broker, in front of its id, so the log
-names a mirror rather than a random string and two boxes with a command
-station each are two clients. Nothing in the contract reads it: a topic has
-one writing role and no payload says who published (BUS.md, rule 4)."""
+PERIOD_S = 0.5
+"""How often the loop looks at `stop`. It waits on the mirror the rest of the
+time, so this is the lag between a caller that is not a signal asking for the
+end and the process taking it — and the deployment's way out is a signal,
+which needs no turn of the loop at all."""
 
 
 def serve(
-    bus: Bus,
     device: str,
     port: int,
     stop: threading.Event,
-    id: str = ID,
     releases: str = RELEASES,
     period_s: float = PERIOD_S,
 ) -> None:
-    """The app: the mirror, the flasher on it, and the drain that feeds it.
+    """The app: the mirror, and the flasher on the device it holds.
 
     `stop` is how a caller that is not a signal ends the loop, which is the
     suite. The deployment sets it never: a signal raises where the process
@@ -72,24 +57,23 @@ def serve(
     staying up with nothing behind it (#526).
     """
     station = Station(device, port)
-    flasher = Flasher(bus, station, releases, id=id)
-    to_stderr(f"serving {device} on {port} as '{id}', flashing from {releases}")
-    asyncio.run(mirroring(station, flasher, bus, stop, period_s))
+    flasher = Flasher(station, releases)
+    to_stderr(f"serving {device} on {port}, flashing from {releases}")
+    asyncio.run(mirroring(station, flasher, stop, period_s))
 
 
 async def mirroring(
     station: Station,
     flasher: Flasher,
-    bus: Bus,
     stop: threading.Event,
     period_s: float,
 ) -> None:
-    """The mirror and the drain, on the one loop, until the process ends.
+    """The mirror on a task of its own, until the process ends.
 
-    **The mirror ending ends this**, which is why the drain waits on the task
-    rather than on the clock: a port already taken raises out of the mirror,
-    and a drain that went round anyway would leave a live process with no TCP
-    server, no device and nothing said (#526). The failure is what the
+    **The mirror ending ends this**, which is why the loop waits on the task
+    rather than on the clock alone: a port already taken raises out of the
+    mirror, and a loop that went round anyway would leave a live process with
+    no TCP server, no device and nothing said (#526). The failure is what the
     teardown's `await` carries out, so it reaches `main` and the exit status
     and `restart: unless-stopped` gets its turn — which is what a box whose
     2560 is busy for a moment during a deploy depends on.
@@ -103,7 +87,6 @@ async def mirroring(
     mirror = asyncio.create_task(station.run())
     try:
         while not stop.is_set() and not mirror.done():
-            bus.drain()
             await asyncio.wait((mirror,), timeout=period_s)
     finally:
         with contextlib.suppress(asyncio.CancelledError):
@@ -113,13 +96,12 @@ async def mirroring(
             await mirror
 
 
-def main() -> None:
-    parser = command_line(
+def command_line() -> argparse.ArgumentParser:
+    """The three flags, which are the whole of the configuration."""
+    parser = argparse.ArgumentParser(
         prog="python -m dccex_usb",
         description="Mirror the command station's serial device on a TCP port,"
         " and write a released firmware build onto it when asked.",
-        railroad=False,
-        store=False,
     )
     parser.add_argument("--device", required=True, help="the serial device to open")
     parser.add_argument("--port", type=int, required=True, help="the TCP port to serve")
@@ -130,35 +112,17 @@ def main() -> None:
         help="where releases are read from, this installation's fork by"
         " default; never taken from a payload",
     )
-    parser.add_argument(
-        "--id",
-        default=ID,
-        help=f"what this app calls itself on the row it refuses on,"
-        f" '{ID}' by default",
-    )
-    args = parser.parse_args()
-    try:
-        host, port = address(args.broker)
-    except ValueError as refused:
-        parser.error(str(refused))
+    return parser
+
+
+def main() -> None:
+    args = command_line().parse_args()
     # A signal is what ends this app, and SIGTERM is the one a container is
     # stopped with: given SIGINT's own handler it raises where the process
     # stands, and the mirror lets the device go on the way out either way.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
-    print(f"broker {host}:{port}", file=sys.stderr, flush=True)
-    bus = MqttBus(host, port, client_id=f"{CLIENT_PREFIX}{args.id}")
-    try:
-        with contextlib.suppress(KeyboardInterrupt):
-            serve(
-                bus,
-                args.device,
-                args.port,
-                threading.Event(),
-                args.id,
-                args.firmware_releases,
-            )
-    finally:
-        bus.close()
+    with contextlib.suppress(KeyboardInterrupt):
+        serve(args.device, args.port, threading.Event(), args.firmware_releases)
 
 
 if __name__ == "__main__":

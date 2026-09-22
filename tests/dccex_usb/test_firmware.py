@@ -9,6 +9,10 @@ ordering the railroad depends on, and every way a flash is refused.
 
 The device is a fake here; `tests/dccex_usb/test_station.py` holds the real
 one to the same handover against a pty.
+
+What went with the bus is the two cases that read a payload: a gesture is a
+call now, made by the face when there is one (ADR-0001, #12), and a refusal is
+a line in the log rather than a row. Everything else came across.
 """
 
 import asyncio
@@ -22,9 +26,6 @@ import pytest
 
 from dccex_usb.firmware import (
     ASSET,
-    DEVICE_REFUSED,
-    FIRMWARE_WANTED,
-    ID,
     Asset,
     Flasher,
     Ran,
@@ -32,11 +33,7 @@ from dccex_usb.firmware import (
     asset,
     matches,
     release_url,
-    wanted_tag,
 )
-from tc49.lib.bus import InProcessBus, Payload
-from tc49.lib.clock import Clock
-from tc49.lib.inventory import device_topic
 from tests.dccex_usb.test_station import Log, Pty, station
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
@@ -48,7 +45,14 @@ DOWNLOAD = "https://releases.example.invalid/firmware.bin"
 TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 
-REFUSED = device_topic(DEVICE_REFUSED, ID)
+REFUSED = "refused: "
+"""What the log says where a flash was turned down, and the whole of what a
+refusal is now: there is no row and nobody to publish one to (ADR-0001)."""
+
+
+def refusals(log: Log) -> list[str]:
+    """What the flasher refused, in its own words and in order."""
+    return [line[len(REFUSED) :] for line in log.lines if line.startswith(REFUSED)]
 
 
 def release(digest: object = DIGEST, name: str = ASSET) -> bytes:
@@ -148,7 +152,7 @@ class FakeRunner:
 
 
 class Flash:
-    """One flasher on one bus, and the gestures a test makes at it."""
+    """One flasher, and the gestures a test makes at it."""
 
     def __init__(
         self,
@@ -156,36 +160,30 @@ class Flash:
         fetch: FakeFetch | None = None,
         runner: FakeRunner | None = None,
     ) -> None:
-        self.bus = InProcessBus(Clock())
         self.device = device if device is not None else FakeDevice()
         self.fetch = fetch if fetch is not None else FakeFetch()
         self.runner = runner if runner is not None else FakeRunner()
-        self.refusals: list[str] = []
-        self.bus.subscribe(REFUSED, self._refused)
+        self.log = Log()
         self.flasher = Flasher(
-            self.bus,
             self.device,
             RELEASES,
             fetch=self.fetch,
             runner=self.runner,
             timeout_s=TIMEOUT_S,
-            log=lambda line: None,
+            log=self.log,
         )
 
-    def _refused(self, topic: str, payload: Payload) -> None:
-        self.refusals.append(str(payload.get("detail")))
+    @property
+    def refusals(self) -> list[str]:
+        return refusals(self.log)
 
-    def wants(self, payload: Payload | str = TAG) -> None:
-        """A gesture published and delivered, as a browser makes one."""
-        frame = {"tag": payload} if isinstance(payload, str) else payload
-        self.bus.publish(FIRMWARE_WANTED, frame)
-        self.bus.drain()
+    def wants(self, tag: str = TAG) -> None:
+        """A build asked for, the way the face will ask for one."""
+        self.flasher.wanted(tag)
 
     async def settled(self) -> None:
-        """Wait out the flash in flight, whichever way it ended, and deliver
-        what it published."""
+        """Wait out the flash in flight, whichever way it ended."""
         await asyncio.wait_for(self.flasher.settled(), SETTLE_S)
-        self.bus.drain()
 
 
 # -- the pure units ----------------------------------------------------------
@@ -200,8 +198,9 @@ def test_a_releases_url_with_a_trailing_slash_is_the_same_url() -> None:
 
 
 def test_a_tag_cannot_walk_out_of_the_releases_it_was_configured_with() -> None:
-    """A tag arrives off a bus with no authentication on it (ADR-0042), so it
-    is escaped whole: nothing in it names a path of its own choosing."""
+    """A tag arrives from a caller on a LAN with no authentication on it
+    (ADR-0042), so it is escaped whole: nothing in it names a path of its own
+    choosing."""
     asked = release_url(RELEASES, "../../../other/releases/tags/v1")
 
     assert asked.startswith(f"{RELEASES}/tags/")
@@ -267,13 +266,6 @@ def test_the_argv_esptool_is_given() -> None:
         "0x0",
         "/tmp/firmware.bin",
     ]
-
-
-@pytest.mark.parametrize(
-    "payload", ["a tag", {}, {"tag": 5}, {"tag": ""}, {"build": TAG}]
-)
-def test_a_gesture_that_names_no_build_asks_for_none(payload: object) -> None:
-    assert wanted_tag(payload) is None
 
 
 # -- the flash ---------------------------------------------------------------
@@ -463,26 +455,6 @@ def test_latest_is_not_a_build() -> None:
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("payload", [{}, {"tag": 5}, {"tag": ""}, {"build": TAG}])
-def test_a_gesture_that_cannot_be_read_is_dropped_without_raising(
-    payload: Payload,
-) -> None:
-    """BUS.md, rule 4: a gesture carries no id, so a refusal would be
-    addressed to nobody and there is no station to name in one either."""
-
-    async def scenario() -> None:
-        flash = Flash()
-
-        flash.wants(payload)
-        await flash.settled()
-
-        assert flash.refusals == []
-        assert flash.fetch.asked == []
-        assert not flash.flasher.flashing
-
-    asyncio.run(scenario())
-
-
 # -- the wiring --------------------------------------------------------------
 
 
@@ -499,36 +471,24 @@ def test_the_mirror_is_off_the_port_while_esptool_runs() -> None:
         log = Log()
         cable = Pty()
         app = station(cable.path, log)
-        bus = InProcessBus(Clock())
         held: list[bool] = []
 
         async def runner(command: Sequence[str], timeout_s: float) -> Ran:
             held.append(app.held)
             return FLASHED
 
-        refusals: list[Payload] = []
-        bus.subscribe(REFUSED, lambda topic, payload: refusals.append(payload))
-        flasher = Flasher(
-            bus,
-            app,
-            RELEASES,
-            fetch=FakeFetch(),
-            runner=runner,
-            log=lambda line: None,
-        )
+        flasher = Flasher(app, RELEASES, fetch=FakeFetch(), runner=runner, log=log)
         await app.start()
         try:
             await log.wait_for("serial open")
 
-            bus.publish(FIRMWARE_WANTED, {"tag": TAG})
-            bus.drain()
+            flasher.wanted(TAG)
             await asyncio.wait_for(flasher.settled(), SETTLE_S)
-            bus.drain()
 
             assert held == [False], "esptool ran with the mirror on the port"
             await log.wait_for_count("serial open", 2)
             assert app.held
-            assert refusals == []
+            assert refusals(log) == []
         finally:
             await app.close()
             cable.close()
