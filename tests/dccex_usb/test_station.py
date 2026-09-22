@@ -1023,3 +1023,76 @@ def test_a_write_parked_on_the_device_is_let_go_when_the_cable_goes(
             await shut_down(app)
 
     asyncio.run(scenario())
+
+
+class Watching(Station):
+    """A station that says whether a watcher is running, which a mirror does not.
+
+    Nobody outside asks — the watcher is how the device is kept open and no
+    caller has a question it answers — so the test reaches it from a subclass
+    here rather than having the class publish it.
+    """
+
+    @property
+    def watcher(self) -> asyncio.Task[None] | None:
+        return self._watcher
+
+
+def watched(device: str, log: Log) -> Watching:
+    """A station that would take the device back at once, if it took it back.
+
+    The backoff is the quick one and `_watch()` opens before it waits, so a
+    watcher this test says should not exist has said `serial open` again
+    within a settle if it does.
+    """
+    return Watching(
+        device,
+        0,
+        log=log,
+        first_backoff_s=QUICK_BACKOFF_S,
+        max_backoff_s=4 * QUICK_BACKOFF_S,
+    )
+
+
+def test_a_handover_that_ends_on_a_closed_station_takes_no_device_back(
+    pty: Pty,
+) -> None:
+    """A station closed while the device is let go does not take it back.
+
+    Reachable on SIGTERM mid-flash: a flash in flight is shielded, so the
+    supervising coroutine swallows the cancellation, cancels the mirror and
+    lets `close()` run while the flash is still inside the handover. The
+    handover's exit then started a fresh watcher, which reopens and holds the
+    serial device of a station nobody is using. Nothing said it should not:
+    the event loop's own task cleanup happened to cancel that watcher, which
+    made a held device a leak instead, and the next change to teardown was
+    free to turn it back.
+
+    So the station knows it has been closed, and a handover that ends on a
+    closed station leaves the device alone: no watcher, and the device not
+    opened a second time.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = watched(pty.path, log)
+        await app.start()
+        try:
+            await log.wait_for("serial open")
+
+            async with app.released():
+                assert not app.held, "the handover left the device open"
+                await shut_down(app)
+
+            assert app.watcher is None, "a closed station started a watcher"
+            # And it stays that way: a watcher started here would have the
+            # device back within a backoff, because opening is the first
+            # thing it does.
+            await asyncio.sleep(SETTLE_S)
+            assert app.watcher is None, "a closed station started a watcher"
+            assert not app.held, "the device was taken back by a closed station"
+            assert len(log.said("serial open")) == 1, "the device was reopened"
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())

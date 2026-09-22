@@ -153,6 +153,12 @@ class Station:
         self._grace: asyncio.Task[None] | None = None
         self._server: asyncio.Server | None = None
         self._watcher: asyncio.Task[None] | None = None
+        # Whether `close()` has run, which is the one thing a handover asks
+        # before it takes the device back. A field of its own rather than
+        # `self._server is None`, which is also true of a station that was
+        # never started: a field that means two things while reading as
+        # though it meant one is what this is here to rule out.
+        self._closed = False
         self._writing = asyncio.Lock()
         # What is parked on the device having room for more. The station
         # holds it because the station is what closes the descriptor, and
@@ -212,18 +218,34 @@ class Station:
         of its own. Taking it back is the watcher started again, so a station
         that is still rebooting is waited for on the ordinary backoff rather
         than specially.
+
+        **A handover that ends on a closed station takes nothing back.**
+        `close()` can run while the block is still going — a signal mid-flash
+        cancels the mirror, and the flash it is inside is shielded from that
+        cancellation — and a watcher started then reopens and holds the device
+        of a station nobody is using. What kept that from being a held device
+        was the event loop's own task cleanup cancelling the watcher on its
+        way out, which nothing states and no change to teardown has to keep.
         """
         await self._stop_watching()
         try:
             yield
         finally:
-            self._watcher = asyncio.create_task(self._watch())
+            if not self._closed:
+                self._watcher = asyncio.create_task(self._watch())
 
     async def serve_forever(self) -> None:
         await self._serving().serve_forever()
 
     async def close(self) -> None:
-        """Stop serving, drop the clients and let the device go."""
+        """Stop serving, drop the clients and let the device go, for good.
+
+        Closed is written down first and nothing here takes it back: this
+        returns across several awaits, and a handover that finishes inside
+        any of them has to find a station that is closed rather than one
+        that is halfway through closing.
+        """
+        self._closed = True
         server, self._server = self._server, None
         if server is not None:
             server.close()
