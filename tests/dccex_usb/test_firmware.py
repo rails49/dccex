@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from tc49.dccex_usb.firmware import (
+from dccex_usb.firmware import (
     ASSET,
     DEVICE_REFUSED,
     FIRMWARE_WANTED,

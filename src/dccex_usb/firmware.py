@@ -56,7 +56,7 @@ from pathlib import Path
 from typing import NamedTuple, Protocol, cast
 from urllib.parse import quote
 
-from tc49.dccex_usb.station import to_stderr
+from dccex_usb.station import to_stderr
 from tc49.lib.bus import Bus, Payload
 from tc49.lib.inventory import device_topic
 

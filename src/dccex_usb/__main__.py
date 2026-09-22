@@ -1,4 +1,4 @@
-"""`python -m tc49.dccex_usb` — the command line the container runs.
+"""`python -m dccex_usb` — the command line the container runs.
 
 The device to open and the port to serve it on are the mirror's own two flags
 and the whole of what it was for a while (ADR-0043). What the rest are for is
@@ -41,8 +41,8 @@ import signal
 import sys
 import threading
 
-from tc49.dccex_usb.firmware import ID, RELEASES, Flasher
-from tc49.dccex_usb.station import Station, to_stderr
+from dccex_usb.firmware import ID, RELEASES, Flasher
+from dccex_usb.station import Station, to_stderr
 from tc49.lib.bus import Bus
 from tc49.lib.mqtt import MqttBus, address
 from tc49.lib.startup import PERIOD_S, command_line
@@ -115,7 +115,7 @@ async def mirroring(
 
 def main() -> None:
     parser = command_line(
-        prog="python -m tc49.dccex_usb",
+        prog="python -m dccex_usb",
         description="Mirror the command station's serial device on a TCP port,"
         " and write a released firmware build onto it when asked.",
         railroad=False,
