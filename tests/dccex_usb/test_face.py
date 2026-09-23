@@ -282,6 +282,48 @@ def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
     assert isinstance(body, dict) and body["reason"]
 
 
+def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
+    """The caller is told, and so is whoever is reading the app's log: a
+    release API that is away is not the caller's doing, and the page that
+    asked may be nobody's at the moment (ADR-0050). What the face refuses a
+    caller for stays the caller's own to read."""
+    said: list[str] = []
+
+    async def asked() -> tuple[int, object]:
+        server = Server(
+            Face(RELEASES, fetch=Source(OSError("no route to host"))),
+            0,
+            log=said.append,
+        )
+        await server.start()
+        try:
+            return await ask(server.port)
+        finally:
+            await server.close()
+
+    status, _ = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.BAD_GATEWAY
+    assert [line for line in said if "no route to host" in line]
+
+
+def test_what_the_face_refuses_a_caller_for_is_not_said_on_the_box() -> None:
+    said: list[str] = []
+
+    async def asked() -> tuple[int, object]:
+        server = Server(Face(RELEASES, fetch=Source()), 0, log=said.append)
+        await server.start()
+        try:
+            return await ask(server.port, request(target="/layout"))
+        finally:
+            await server.close()
+
+    status, _ = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.NOT_FOUND
+    assert said == []
+
+
 # -- the wiring --------------------------------------------------------------
 
 
