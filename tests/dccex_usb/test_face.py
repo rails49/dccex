@@ -22,13 +22,14 @@ import asyncio
 import contextlib
 import json
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from http import HTTPStatus
 
 import pytest
 
 from dccex_usb.face import STATUS, Face, Server, Writes
 from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
+from dccex_usb.station import to_stderr
 from tests.dccex_usb.test_firmware import FakeFetch
 from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
 
@@ -459,12 +460,33 @@ async def ask(port: int, asked: bytes = request()) -> tuple[int, object]:
     return status, json.loads(body)
 
 
+def served(
+    asked: Face | None = None,
+    *,
+    log: Callable[[str], None] = to_stderr,
+    patience_s: float = PATIENCE_S,
+) -> Server:
+    """The face on a port the OS chooses, built in one place.
+
+    What a test names is what it is about — a face configured its own way, the
+    log it reads, the patience it runs out of — and everything else is what
+    the app is served with. The port is always the OS's: a suite that bound the
+    face's own would pass or fail on what else the machine is running.
+    """
+    return Server(
+        asked if asked is not None else face(),
+        0,
+        log=log,
+        patience_s=patience_s,
+    )
+
+
 def test_the_server_is_handed_back_unstarted() -> None:
     """Constructing one binds nothing: a test starts it, asks it the port the
     OS chose, and stops it, which is the split `Station` is driven by."""
 
     async def started_and_stopped() -> None:
-        server = Server(face(), 0)
+        server = served()
         with pytest.raises(RuntimeError):
             assert server.port
 
@@ -483,7 +505,7 @@ def test_the_server_is_handed_back_unstarted() -> None:
 
 def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
     async def asked() -> tuple[int, object]:
-        server = Server(face(), 0)
+        server = served()
         await server.start()
         try:
             return await ask(server.port)
@@ -528,7 +550,7 @@ def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
     connection closed under what it was still sending."""
 
     async def refused() -> tuple[int, object]:
-        server = Server(face(), 0)
+        server = served()
         await server.start()
         try:
             return await ask(server.port, asked)
@@ -547,7 +569,7 @@ def test_the_page_s_own_origin_arrives_on_the_head_and_is_answered() -> None:
     label is the caller the face is for."""
 
     async def asked() -> tuple[int, object]:
-        server = Server(face(), 0)
+        server = served()
         await server.start()
         try:
             return await ask(server.port, request(origin=PAGE))
@@ -587,7 +609,7 @@ def test_a_flash_is_answered_however_long_the_station_takes() -> None:
     nobody can say anything about afterwards."""
 
     async def asked() -> tuple[int, object]:
-        server = Server(face(flasher=Slow(WRITES_S)), 0, patience_s=IMPATIENT_S)
+        server = served(face(flasher=Slow(WRITES_S)), patience_s=IMPATIENT_S)
         await server.start()
         try:
             return await ask(
@@ -608,7 +630,7 @@ def test_a_caller_that_says_nothing_is_let_go_of() -> None:
     the command station does not wait on for as long as the railroad runs."""
 
     async def waited() -> bytes:
-        server = Server(face(), 0, patience_s=IMPATIENT_S)
+        server = served(patience_s=IMPATIENT_S)
         await server.start()
         try:
             reader, writer = await asyncio.open_connection("127.0.0.1", server.port)
@@ -632,11 +654,7 @@ def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
     said: list[str] = []
 
     async def asked() -> tuple[int, object]:
-        server = Server(
-            face(Source(OSError("no route to host"))),
-            0,
-            log=said.append,
-        )
+        server = served(face(Source(OSError("no route to host"))), log=said.append)
         await server.start()
         try:
             return await ask(server.port)
@@ -653,7 +671,7 @@ def test_what_the_face_refuses_a_caller_for_is_not_said_on_the_box() -> None:
     said: list[str] = []
 
     async def asked() -> tuple[int, object]:
-        server = Server(face(), 0, log=said.append)
+        server = served(log=said.append)
         await server.start()
         try:
             return await ask(server.port, request(target="/layout"))
@@ -691,14 +709,14 @@ def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() ->
             return Ran(0, "")
 
         flasher = Flasher(mirror, RELEASES, fetch=FakeFetch(), runner=runner, log=log)
-        served = Server(face(flasher=flasher), 0)
+        streamed = served(face(flasher=flasher))
         await mirror.start()
-        await served.start()
+        await streamed.start()
         try:
             await log.wait_for("serial open")
 
             status, body = await ask(
-                served.port, request(method="POST", target="/flash", body=asking())
+                streamed.port, request(method="POST", target="/flash", body=asking())
             )
 
             assert (status, body) == (HTTPStatus.OK, {"flashed": TAG})
@@ -706,7 +724,7 @@ def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() ->
             await log.wait_for_count("serial open", 2)
             assert mirror.held, "the mirror did not take the device back"
         finally:
-            await served.close()
+            await streamed.close()
             await mirror.close()
             cable.close()
 
@@ -727,14 +745,14 @@ def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() ->
         log = Log()
         cable = Pty()
         mirror = station(cable.path, log)
-        served = Server(face(), 0)
+        streamed = served()
         await mirror.start()
-        await served.start()
+        await streamed.start()
         try:
             await log.wait_for("serial open")
-            assert served.port != mirror.port
+            assert streamed.port != mirror.port
 
-            status, body = await ask(served.port)
+            status, body = await ask(streamed.port)
             assert (status, body) == (HTTPStatus.OK, {"tags": TAGS})
 
             reader, writer = await connect(mirror)
@@ -747,7 +765,7 @@ def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() ->
             writer.close()
             await writer.wait_closed()
         finally:
-            await served.close()
+            await streamed.close()
             await mirror.close()
             cable.close()
 
