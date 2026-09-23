@@ -50,6 +50,7 @@ def test_the_package_is_all_that_is_here() -> None:
     assert {module.name for module in PACKAGE.glob("*.py")} == {
         "__init__.py",
         "__main__.py",
+        "face.py",
         "firmware.py",
         "framing.py",
         "station.py",
