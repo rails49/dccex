@@ -265,8 +265,16 @@ def requested(head: bytes) -> Asked | None:
     said: dict[str, str] = {}
     for line in lines[1:]:
         name, found, value = line.partition(":")
-        if found:
-            said[name.strip().lower()] = value.strip()
+        if not found:
+            continue
+        field = name.strip().lower()
+        if field == LENGTH and field in said:
+            # Two lengths are two answers to how much body is coming, and a
+            # reader that took one of them would be choosing which of them it
+            # and whatever passed the request on agree about. It is not a
+            # request this face reads.
+            return None
+        said[field] = value.strip()
     length = 0
     if LENGTH in said:
         try:

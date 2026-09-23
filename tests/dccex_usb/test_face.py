@@ -345,6 +345,11 @@ def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
         ),
         pytest.param(b"hello?\r\n\r\n", HTTPStatus.BAD_REQUEST, id="not a request"),
         pytest.param(
+            b"GET /releases HTTP/1.1\r\nContent-Length: 0\r\nContent-Length: 7\r\n\r\n",
+            HTTPStatus.BAD_REQUEST,
+            id="two answers to how much body is coming",
+        ),
+        pytest.param(
             request(origin=ELSEWHERE_ORIGIN),
             HTTPStatus.FORBIDDEN,
             id="a page from another origin",
