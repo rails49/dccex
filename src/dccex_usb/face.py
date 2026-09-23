@@ -19,6 +19,14 @@ to run. The face is constructed with the source the app was started with, and
 a request cannot reach it: a query string is not read, and a body is not read
 for one either.
 
+**A browser reaches this through the door and never the LAN** (ADR-0004). The
+page is served at the box's `dccex` label and the face is the same label under
+a path prefix the door strips, so the two share one origin and one certificate
+and the routing below is asked for `/releases` rather than for the address a
+browser typed. What that buys is what is enforced here: a page from another
+origin is refused, because on one origin the browser names the page that asked
+and a face is private to its app.
+
 **A source that cannot be reached is an answer with a reason on it.** The
 release API is somebody else's service on somebody else's network, and the
 mirror's job is to mirror what it is doing rather than to fall over with it: a
@@ -56,13 +64,23 @@ be a buffer somebody else decides the size of (ADR-0042)."""
 CRLF = "\r\n"
 HEAD_END = b"\r\n\r\n"
 LENGTH = "content-length"
+ORIGIN = "origin"
+"""What a browser names the origin of the page that asked in. A caller that is
+not a browser names none, and is not a page from another origin."""
+
+ADDRESSED = "host"
+"""What a request names the origin it was sent to in, which the door passes on
+as the label it answered for. A page on the face's own origin named the same
+one."""
+
 JSON = "application/json"
 REASON = "reason"
 """What an answer the caller cannot use carries its sentence in."""
 
 RELEASES_PATH = "/releases"
-"""What the releases the source carries are asked for at. The answer is their
-tags, because a tag is the only thing a caller ever names (CONTEXT.md)."""
+"""What the releases the source carries are asked for at, with the door's
+prefix already off it (ADR-0004). The answer is their tags, because a tag is
+the only thing a caller ever names (CONTEXT.md)."""
 
 TAG = "tag_name"
 """What the release API calls a release's tag."""
@@ -102,6 +120,26 @@ def tags(document: object) -> list[str] | None:
     return named
 
 
+def elsewhere(origin: str, host: str) -> bool:
+    """Whether the page that asked is on some origin other than the one the
+    request was addressed to.
+
+    **The host and nothing else.** The door terminates TLS and the face is
+    behind it (ADR-0042, ADR-0004), so a page served over `https` asks a face
+    spoken to over plain HTTP: the scheme a browser names is never the scheme
+    this is reached on, and a port the door answered on is not the port this
+    binds. What the two can be held to is the name they share, which is the
+    box's `dccex` label.
+
+    **A request with no origin on it is not a page from another one.** An
+    origin is what a browser attaches, and holding a page to what its browser
+    says is the whole of what this is: `curl` on the box names none, and
+    neither does a browser reading the same origin it is on. What limits the
+    rest is the LAN (ADR-0042).
+    """
+    return bool(origin) and urlsplit(origin).netloc != host
+
+
 class Face:
     """What the mirror answers, and the configuration it answers out of.
 
@@ -119,19 +157,40 @@ class Face:
         self._releases = releases
         self._fetch = fetch
 
-    async def answer(self, method: str, path: str, body: bytes) -> Answered:
-        """One request answered: the method, the path as it arrived, and the
-        bytes that came with it.
+    async def answer(
+        self,
+        method: str,
+        path: str,
+        body: bytes,
+        *,
+        origin: str = "",
+        host: str = "",
+    ) -> Answered:
+        """One request answered: the method, the path as it arrived, the bytes
+        that came with it, and who it came from — the origin of the page that
+        asked, where a browser named one, and the origin it was addressed to.
 
         The path arrives whole, query string and all, and the query is split
         off and dropped here rather than somewhere a reader has to go and
         check: this is the function that would have to read a source out of a
-        request for one to redirect the face, and it does not.
+        request for one to redirect the face, and it does not. The door's
+        prefix is already off it: what the face answers is `/releases`, and a
+        prefix that arrived is a path this does not answer (ADR-0004).
+
+        **A page from another origin is refused before anything is routed**,
+        because what it asked for does not matter: a face is private to its
+        app and is not somewhere else to get at the command station.
 
         No route reads the body yet. It is here because it is half of what a
         route is asked with, and what will read one is the flash the UI asks
         for by tag (#13).
         """
+        if elsewhere(origin, host):
+            return refused(
+                HTTPStatus.FORBIDDEN,
+                f"the mirror's face is the page's at {host},"
+                f" and {origin} is somewhere else",
+            )
         asked = urlsplit(path).path
         if asked != RELEASES_PATH:
             return refused(
@@ -175,18 +234,25 @@ def refused(status: HTTPStatus, reason: str) -> Answered:
 
 class Asked(NamedTuple):
     """What a request says before its body: the method, the path it names as
-    it was written, and how many bytes of body it says are coming."""
+    it was written, how many bytes of body it says are coming, the origin of
+    the page that asked where a browser named one, and the origin it was
+    addressed to."""
 
     method: str
     path: str
     length: int
+    origin: str = ""
+    host: str = ""
 
 
 def requested(head: bytes) -> Asked | None:
     """What a request head asks for, or None where it is not a request.
 
-    The head is read and nothing else of HTTP is: the method, the target and
-    the length of the body. This is a face on a private origin behind the
+    The head is read and nothing else of HTTP is: the method, the target, the
+    length of the body, and the two fields that say who asked and where they
+    asked it — the origin a browser attaches to a page's request, and the
+    origin the request was addressed to, which the door passes on as the label
+    it answered for (ADR-0004). This is a face on a private origin behind the
     door, spoken to by one page (ADR-0002), so the parts of the protocol a
     general server owes the world — negotiation, encodings, a connection kept
     open for the next request — are parts this would carry without ever being
@@ -196,18 +262,22 @@ def requested(head: bytes) -> Asked | None:
     asked = lines[0].split(" ")
     if len(asked) != 3 or not asked[2].startswith("HTTP/"):
         return None
-    length = 0
+    said: dict[str, str] = {}
     for line in lines[1:]:
         name, found, value = line.partition(":")
-        if not found or name.strip().lower() != LENGTH:
-            continue
+        if found:
+            said[name.strip().lower()] = value.strip()
+    length = 0
+    if LENGTH in said:
         try:
-            length = int(value.strip())
+            length = int(said[LENGTH])
         except ValueError:
             return None
         if length < 0:
             return None
-    return Asked(asked[0], asked[1], length)
+    return Asked(
+        asked[0], asked[1], length, said.get(ORIGIN, ""), said.get(ADDRESSED, "")
+    )
 
 
 def response(answered: Answered) -> bytes:
@@ -351,7 +421,9 @@ class Server:
                 f" reads ({self._max_body_bytes})",
             )
         body = await reader.readexactly(asked.length) if asked.length else b""
-        return await self._face.answer(asked.method, asked.path, body)
+        return await self._face.answer(
+            asked.method, asked.path, body, origin=asked.origin, host=asked.host
+        )
 
     def _serving(self) -> asyncio.Server:
         if self._server is None:
