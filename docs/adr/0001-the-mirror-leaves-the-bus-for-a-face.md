@@ -113,6 +113,21 @@ their numbers.
 > client can see is unchanged, the two behaviours above stand as amended, and
 > the numbers are untouched a fourth time.
 
+> **Amended 2026-09-23 (#36, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
+> and a fifth, which changes nothing the mirror does and corrects what the
+> first of these says #23 did. That amendment names two places a connection
+> is aborted — shutting down, and when the grace ends an outage — and the
+> cut-off as the place it already was. There is a third it does not name: the
+> per-client handler's teardown, the path every client leaves by whichever of
+> the others sent it there, and which #23 changed along with those two. So
+> three sites changed and the cut-off was already aborting, and the four of
+> them together are every place a client is let go of. What the handler's
+> abort costs is the least of the four: a client that is reading has taken
+> what was fanned to it, so what goes with the abort is nothing, or the tail
+> of one fan-out it had not taken on its way out. Small, and written down
+> because a cost nobody has stated reads the same as a cost nobody has looked
+> for. The numbers are untouched a fifth time.
+
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
 [CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a
