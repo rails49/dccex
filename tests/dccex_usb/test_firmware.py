@@ -11,8 +11,13 @@ The device is a fake here; `tests/dccex_usb/test_station.py` holds the real
 one to the same handover against a pty.
 
 What went with the bus is the two cases that read a payload: a gesture is a
-call now, made by the face when there is one (ADR-0001, #12), and a refusal is
-a line in the log rather than a row. Everything else came across.
+call, made by the face (ADR-0001, #12, #13), and a refusal is a line in the log
+rather than a row. Everything else came across.
+
+What #13 added to that is the other half of a refusal: `wanted` answers what
+became of the flash, so every case below asserts the value whoever asked is
+given as well as the line the box is told. What a status those become is
+`test_face.py`'s.
 """
 
 import asyncio
@@ -29,6 +34,8 @@ from dccex_usb.firmware import (
     Asset,
     Flasher,
     Ran,
+    Refusal,
+    Wrote,
     argv,
     asset,
     matches,
@@ -46,8 +53,9 @@ TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 
 REFUSED = "refused: "
-"""What the log says where a flash was turned down, and the whole of what a
-refusal is now: there is no row and nobody to publish one to (ADR-0001)."""
+"""What the log says where a flash was turned down. There is no row and
+nobody to publish one to (ADR-0001); what there is besides the line is the
+answer to whoever asked (#13)."""
 
 
 def refusals(log: Log) -> list[str]:
@@ -177,9 +185,10 @@ class Flash:
     def refusals(self) -> list[str]:
         return refusals(self.log)
 
-    def wants(self, tag: str = TAG) -> None:
-        """A build asked for, the way the face will ask for one."""
-        self.flasher.wanted(tag)
+    async def wants(self, tag: str = TAG) -> Wrote:
+        """A build asked for the way the face asks for one, and what it came
+        to answered back to whoever asked (#13)."""
+        return await asyncio.wait_for(self.flasher.wanted(tag), SETTLE_S)
 
     async def settled(self) -> None:
         """Wait out the flash in flight, whichever way it ended."""
@@ -271,11 +280,28 @@ def test_the_argv_esptool_is_given() -> None:
 # -- the flash ---------------------------------------------------------------
 
 
+def test_what_a_flash_came_to_is_answered_to_whoever_asked() -> None:
+    """The gesture has a caller now (#13), so what became of it is a value and
+    not only a line on the box: the face turns it into a status and a reason
+    for whoever asked, and a refusal written to nobody is the thing the face
+    was for (ADR-0001, ADR-0050)."""
+
+    async def scenario() -> None:
+        flash = Flash()
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is None
+        assert TAG in wrote.said
+
+    asyncio.run(scenario())
+
+
 def test_the_release_is_written_to_the_station_and_nothing_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash()
 
-        flash.wants()
+        await flash.wants()
         await flash.settled()
 
         assert flash.refusals == []
@@ -299,7 +325,7 @@ def test_the_device_is_let_go_before_esptool_and_taken_back_after() -> None:
         assert isinstance(runner, FakeRunner)
         runner.order = device.order
 
-        flash.wants()
+        await flash.wants()
         await flash.settled()
 
         assert device.order == ["released", "ran", "resumed"]
@@ -315,13 +341,13 @@ def test_the_device_is_let_go_only_once_the_build_is_fetched_and_checked() -> No
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(binary=b"a different build"))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
         assert flash.device.order == []
         assert flash.runner.commands == []
-        assert len(flash.refusals) == 1
-        assert "not what the release reports" in flash.refusals[0]
+        assert wrote.refusal is Refusal.NOT_PUBLISHED
+        assert "not what the release reports" in wrote.said
+        assert flash.refusals == [wrote.said]
 
     asyncio.run(scenario())
 
@@ -330,11 +356,11 @@ def test_a_tag_with_no_such_release_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(document=OSError("HTTP Error 404: Not Found")))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert len(flash.refusals) == 1
-        assert f"no release '{TAG}'" in flash.refusals[0]
+        assert wrote.refusal is Refusal.NO_RELEASE
+        assert f"no release '{TAG}'" in wrote.said
+        assert flash.refusals == [wrote.said]
         assert flash.device.order == []
 
     asyncio.run(scenario())
@@ -344,10 +370,10 @@ def test_a_release_that_carries_no_firmware_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(document=release(name="other.bin")))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert flash.refusals == [f"release '{TAG}' carries no {ASSET}"]
+        assert wrote == Wrote(Refusal.NO_ASSET, f"release '{TAG}' carries no {ASSET}")
+        assert flash.refusals == [wrote.said]
 
     asyncio.run(scenario())
 
@@ -359,11 +385,11 @@ def test_a_release_the_api_reports_no_digest_for_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(document=release(digest=None)))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert len(flash.refusals) == 1
-        assert "reports no digest" in flash.refusals[0]
+        assert wrote.refusal is Refusal.NO_DIGEST
+        assert "reports no digest" in wrote.said
+        assert flash.refusals == [wrote.said]
         assert flash.device.order == []
 
     asyncio.run(scenario())
@@ -373,12 +399,12 @@ def test_esptool_exiting_non_zero_is_refused_in_its_own_words() -> None:
     async def scenario() -> None:
         flash = Flash(runner=FakeRunner(Ran(2, "A fatal error occurred: no serial")))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert len(flash.refusals) == 1
-        assert "esptool exited 2" in flash.refusals[0]
-        assert "A fatal error occurred: no serial" in flash.refusals[0]
+        assert wrote.refusal is Refusal.TOOL_FAILED
+        assert "esptool exited 2" in wrote.said
+        assert "A fatal error occurred: no serial" in wrote.said
+        assert flash.refusals == [wrote.said]
         assert flash.device.held, "the device is not taken back"
 
     asyncio.run(scenario())
@@ -388,11 +414,11 @@ def test_esptool_outliving_the_timeout_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash(runner=FakeRunner(Ran(None, "")))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert len(flash.refusals) == 1
-        assert "was killed" in flash.refusals[0]
+        assert wrote.refusal is Refusal.TOOL_KILLED
+        assert "was killed" in wrote.said
+        assert flash.refusals == [wrote.said]
         assert flash.device.held
 
     asyncio.run(scenario())
@@ -405,11 +431,11 @@ def test_a_flash_asked_for_while_the_station_is_away_is_refused() -> None:
     async def scenario() -> None:
         flash = Flash(device=FakeDevice(held=False))
 
-        flash.wants()
-        await flash.settled()
+        wrote = await flash.wants()
 
-        assert len(flash.refusals) == 1
-        assert "not there" in flash.refusals[0]
+        assert wrote.refusal is Refusal.NO_STATION
+        assert "not there" in wrote.said
+        assert flash.refusals == [wrote.said]
         assert flash.fetch.asked == []
 
     asyncio.run(scenario())
@@ -424,17 +450,48 @@ def test_a_second_gesture_while_a_flash_is_in_flight_is_refused_not_queued() -> 
         runner = FakeRunner(waits=True)
         flash = Flash(runner=runner)
 
-        flash.wants()
+        asking = asyncio.create_task(flash.wants())
         await asyncio.wait_for(runner.called.wait(), SETTLE_S)
-        flash.wants("v5.6.4-rails49.2")
 
-        assert len(flash.refusals) == 1
-        assert "already under way" in flash.refusals[0]
+        second = await flash.wants("v5.6.4-rails49.2")
+
+        assert second.refusal is Refusal.IN_FLIGHT
+        assert "already under way" in second.said
+        assert flash.refusals == [second.said]
+
+        runner.let_go()
+        assert (await asking).refusal is None
+        await flash.settled()
+
+        assert len(runner.commands) == 1
+
+    asyncio.run(scenario())
+
+
+def test_a_caller_that_goes_away_does_not_take_the_flash_with_it() -> None:
+    """By the time anyone can leave, the station is being written. A browser
+    that closed its tab, or a request that ran out of patience (face.py), must
+    not leave it half written — so the flash is a task and the ask is shielded
+    from whatever becomes of the caller. What is lost is the answer, which
+    nobody is there for."""
+
+    async def scenario() -> None:
+        runner = FakeRunner(waits=True)
+        flash = Flash(runner=runner)
+
+        asking = asyncio.create_task(flash.wants())
+        await asyncio.wait_for(runner.called.wait(), SETTLE_S)
+        asking.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await asking
 
         runner.let_go()
         await flash.settled()
 
-        assert len(runner.commands) == 1
+        assert flash.runner.wrote == [BINARY]
+        assert flash.device.order == ["released", "resumed"]
+        assert flash.refusals == []
+        assert flash.log.lines[-1] == f"flashed '{TAG}'"
 
     asyncio.run(scenario())
 
@@ -446,10 +503,10 @@ def test_latest_is_not_a_build() -> None:
     async def scenario() -> None:
         flash = Flash()
 
-        flash.wants("latest")
-        await flash.settled()
+        wrote = await flash.wants("latest")
 
-        assert len(flash.refusals) == 1
+        assert wrote.refusal is Refusal.LATEST
+        assert flash.refusals == [wrote.said]
         assert flash.fetch.asked == []
 
     asyncio.run(scenario())
@@ -482,8 +539,8 @@ def test_the_mirror_is_off_the_port_while_esptool_runs() -> None:
         try:
             await log.wait_for("serial open")
 
-            flasher.wanted(TAG)
-            await asyncio.wait_for(flasher.settled(), SETTLE_S)
+            wrote = await asyncio.wait_for(flasher.wanted(TAG), SETTLE_S)
+            assert wrote.refusal is None
 
             assert held == [False], "esptool ran with the mirror on the port"
             await log.wait_for_count("serial open", 2)
