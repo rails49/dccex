@@ -25,7 +25,9 @@ top of them.
   Not here yet.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into. Not here yet. The mirror's face is what it will
+  with a box to type into. Not here yet — what it is is written down
+  ([the page](docs/ui/README.md)), ahead of the tickets that build it. The
+  mirror's face is what it will
   talk to, on that same label under `/dccex-usb` and behind the same
   certificate ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
   that face carries the releases the configured source lists, writes one onto
@@ -46,7 +48,19 @@ One thing: `dccex-usb`'s own face, on the UI's origin, behind the same door.
 Not the bus and not the store — its subject is the command station rather than
 a railroad. So the page is the same on a box with a command station and no
 layout as it is on the layout box, which is the installation this repository
-exists for.
+exists for
+([ADR-0008](docs/adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)).
+
+Every reading about the station is made of what the station said, decoded on
+the page: the **build** is the `G-` field of the banner and is blank whenever
+the **link** is down, and a line the **decoder** does not know is shown raw
+with no gloss rather than guessed at
+([ADR-0009](docs/adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
+What asks an idle station to say any of it is the page, on its own schedule,
+as a throttle would — the mirror gains a face and a page and still originates
+nothing
+([ADR-0010](docs/adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
+Nothing on the page commands track power but the flash sequence's own step.
 
 One origin carries both: the page takes the label and the face is the same
 label under a path prefix the door strips, so the monitor's stream is `wss://`
