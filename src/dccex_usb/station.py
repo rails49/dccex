@@ -44,16 +44,19 @@ cannot tell an away device from a quiet one, and this port has no way to
 tell it: the socket closing is the whole signal, and it is the one that ends
 the translator's session and lowers `device/link` (ADR-0066). So a device
 still away two reopens in has every connected client disconnected. The
-connection is aborted rather than closed politely, here as at the cut-off and
-as when the app itself is shutting down: closing waits for what is
-outstanding to reach the client first, so for the client that has stopped
-reading the signal never arrives and the wait never ends. Inside
-the grace nothing changes — a blip the first reopen recovers costs no
-throttle a reconnect, which is what the grace is for. The grace is the
-outage's and not each client's: one that connects while an outage is being
-waited out leaves with the rest, however briefly it has been there, and one
-that connects after an outage has already taken its clients starts the next
-grace and gets all of it.
+connection is aborted rather than closed politely — here, at the cut-off,
+when the app itself is shutting down, and in the handler every client leaves
+by however it came to go, which are the four places one is let go of:
+closing waits for what is outstanding to reach the client first, so for the
+client that has stopped reading the signal never arrives and the wait never
+ends. The handler's is the abort a client that was reading meets, and it
+costs that client nothing, or the tail of one fan-out it had not taken on
+its way out. Inside the grace nothing changes — a blip the first reopen
+recovers costs no throttle a reconnect, which is what the grace is for. The
+grace is the outage's and not each client's: one that connects while an
+outage is being waited out leaves with the rest, however briefly it has been
+there, and one that connects after an outage has already taken its clients
+starts the next grace and gets all of it.
 
 There is no client limit beyond the OS's and no authentication: the LAN is
 the trust boundary (ADR-0042), and the port is published to it by the
