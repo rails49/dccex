@@ -12,7 +12,7 @@ railroad, and one of them is spoken about the opposite thing.
 
 These are concepts and not modules. `mirror` is what the app is; the class it
 is written as is `Station` and the file is `src/dccex_usb/station.py`, which is
-what `control` called them and what the copy keeps so it stays diffable
+what `control` called them, because that is where the code was written
 ([SOURCE.md](src/SOURCE.md)).
 
 ## station
