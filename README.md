@@ -26,8 +26,10 @@ top of them.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
   with a box to type into. Not here yet. The mirror's face is what it will
-  talk to: that face carries the releases the configured source lists already,
-  and asking for a flash is still to come.
+  talk to, on that same label under `/dccex-usb` and behind the same
+  certificate ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
+  that face carries the releases the configured source lists already, and
+  asking for a flash is still to come.
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware.
@@ -39,6 +41,13 @@ Not the bus and not the store — its subject is the command station rather than
 a railroad. So the page is the same on a box with a command station and no
 layout as it is on the layout box, which is the installation this repository
 exists for.
+
+One origin carries both: the page takes the label and the face is the same
+label under a path prefix the door strips, so the monitor's stream is `wss://`
+on the page's own origin and a page from anywhere else is refused. A browser
+reaches the face through the door and never the LAN, which is what
+[ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
+decides; 2560 goes on being published raw for JMRI and the throttles.
 
 ## Licence
 
