@@ -13,6 +13,12 @@ are held until its message is whole and then written in one write, so two
 clients never interleave a command (framing.py). A client that goes away
 mid-message takes its partial message with it.
 
+**It originates nothing.** Every byte the device is sent came from a client —
+not from opening the device, reopening it, shutting down, a client arriving, or
+a timer, because there is none (ADR-0010). The readings on a page are made of
+what the station said, and what asks the station to say it is the page, on its
+own schedule, as a throttle would.
+
 **A client that has stopped reading is cut off.** The fan-out is a write per
 client with nobody waiting on it, so a client that never takes its bytes — a
 sleeping laptop, a throttle whose Wi-Fi dropped — has them buffered for it

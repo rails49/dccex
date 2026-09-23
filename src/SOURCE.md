@@ -111,3 +111,13 @@ sorting the diff is told which side of it is ours:
   from the caller going away, so a browser that closed its tab cannot leave a
   station half written. The box still gets every line it got. The ordering,
   the timeout and the numbers are untouched.
+- **#1** — `station.py` and the tests for it, in the prose and the suite
+  alone: nothing said that the mirror originates nothing, so nothing held it
+  to it. The module docstring says it now, and one test runs the app's whole
+  life against a device that never goes away — the open, a client arriving,
+  the station talking and being fanned out, a client typing, clients leaving,
+  the shutdown — and asserts the only bytes that ever reached the device are
+  the one message a client sent. What asks the station anything is the page,
+  on its own schedule
+  ([ADR-0010](../docs/adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
+  No behaviour, and nothing in the file's code moved.

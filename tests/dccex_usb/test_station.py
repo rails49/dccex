@@ -433,6 +433,50 @@ def test_a_client_disconnecting_mid_message_leaves_the_device_untouched(
     asyncio.run(scenario())
 
 
+def test_the_mirror_sends_the_device_nothing_a_client_did_not(pty: Pty) -> None:
+    """Every byte the device is sent came from a client (ADR-0010).
+
+    The readings on a page are made of what the station said, and on a box
+    with no translator nothing asks the station to say anything — so the page
+    polls, as a throttle does, and the mirror goes on originating nothing.
+    The scenario is the app's whole life against a device that never goes
+    away: the open, a client arriving, the station talking and being fanned
+    out, a client typing, clients leaving, and the shutdown. The only bytes
+    that ever reach the device are the one message a client sent.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = station(pty.path, log)
+        await app.start()
+        try:
+            await log.wait_for("serial open")
+            assert await nothing_arriving(pty.master) == b""
+
+            reader, writer = await connect(app)
+            os.write(pty.master, b"<iDCC-EX V-5.4.16 / ESP32 G-9db8d0e>")
+            heard = await asyncio.wait_for(reader.readexactly(7), TIMEOUT_S)
+            assert heard == b"<iDCC-E"
+            assert await nothing_arriving(pty.master) == b""
+
+            polled = b"<s>"
+            await send(writer, polled)
+            assert await arriving(pty.master, len(polled)) == polled
+
+            writer.close()
+            await log.wait_for("client disconnected")
+            _, second = await connect(app)
+            second.close()
+            await log.wait_for_count("client disconnected", 2)
+            assert await nothing_arriving(pty.master) == b""
+        finally:
+            await app.close()
+
+        assert await nothing_arriving(pty.master) == b""
+
+    asyncio.run(scenario())
+
+
 def test_a_doubled_start_yields_one_message(pty: Pty) -> None:
     async def scenario() -> None:
         log = Log()
