@@ -1,0 +1,21 @@
+/*
+ * The page under the app: what shows while the module loads, and the ground
+ * everything else is laid on.
+ *
+ * It is a plain stylesheet rather than a component's, so it cannot ask a Lit
+ * sheet for anything; what it names are Shoelace's theme tokens, which is
+ * where the typeface and the work pane's colours come from (LOOK.md).
+ */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font: var(--sl-font-weight-normal) var(--sl-font-size-medium) /
+    var(--sl-line-height-normal) var(--sl-font-sans);
+  background: var(--sl-color-neutral-0);
+  color: var(--sl-color-neutral-900);
+}
