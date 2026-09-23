@@ -280,8 +280,9 @@ class Face:
         off and dropped here rather than somewhere a reader has to go and
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
-        prefix is already off it: what the face answers is `/releases`, and a
-        prefix that arrived is a path this does not answer (ADR-0004).
+        prefix is already off it: what the face answers is `/releases` and
+        `/flash`, and a prefix that arrived is a path this does not answer
+        (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
