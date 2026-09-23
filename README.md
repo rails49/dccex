@@ -62,6 +62,12 @@ recovered by hand
 the deploy that runs it are not here yet — they are #15's, built in that
 shape.
 
+The first time that happens on the layout box it is a **cutover** and not a
+deploy: 2560 is served there today by `control`'s copy of the mirror, and the
+evening the port changes hands is #16, which follows
+[the cutover page](docs/cutover.md) — the order, the abort signal, going back,
+and the checks, written down while the old mirror is still serving.
+
 ## Licence
 
 MIT. The Python moves in from `control` unchanged, and the firmware's GPLv3

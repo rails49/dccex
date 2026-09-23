@@ -372,6 +372,15 @@ holds is the shape they are built in, which is ADR-0005, and this page. The
 gate reaches no box and builds no image, so it is one command with one exit
 status as it was.
 
+**The first one is a cutover and not a deploy.** 2560 is served on the layout
+box today by `control`'s copy of this app, and the evening it changes hands is
+#16: `control`'s deploy goes first, because that is what removes the orphaned
+container and repoints the translator, and this stack's takes the port after
+it. What that evening follows is [the cutover page](../cutover.md), written
+beforehand and carrying the order, the abort signal, the checks, and a way back
+that is not the rollback above — it puts `control`'s mirror on 2560 again,
+named by a digest, because that image has no name that says what it is.
+
 ## Checking it against a real station
 
 Nothing in the test suite needs the hardware — the tests use a pty as the
@@ -395,3 +404,11 @@ board and the motor shield is the station answering through the mirror. Open
 a second `nc` alongside the first and send `<s>` from one: both see the reply,
 which is the fan-out. With DecoderPro connected as a third client, the same
 holds — that is the point of the app.
+
+A client that has **stopped** reading is `scripts/deaf_client.py`, because `nc`
+reads and an `nc` that has been suspended is a thing somebody has to remember
+how to do. It connects, sends `<s>` so there is something to fill with, reads
+nothing, and says when its receive buffer has stopped growing — which is the
+state the cut-off, the grace and the shutdown are all about, and the state the
+cutover takes this app's SIGTERM in. It is not in the gate: it wants a mirror on
+the other end of a socket, and the gate runs with nothing plugged in.
