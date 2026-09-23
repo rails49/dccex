@@ -289,6 +289,9 @@ def test_every_way_a_flash_is_refused_reaches_the_caller() -> None:
             Refusal.NO_STATION, HTTPStatus.SERVICE_UNAVAILABLE, id="no station"
         ),
         pytest.param(Refusal.NO_RELEASE, HTTPStatus.NOT_FOUND, id="no such release"),
+        pytest.param(
+            Refusal.SOURCE_AWAY, HTTPStatus.BAD_GATEWAY, id="the source is away"
+        ),
         pytest.param(Refusal.NO_ASSET, HTTPStatus.BAD_GATEWAY, id="no firmware"),
         pytest.param(Refusal.NO_DIGEST, HTTPStatus.BAD_GATEWAY, id="no digest"),
         pytest.param(
