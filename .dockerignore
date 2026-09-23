@@ -1,0 +1,15 @@
+# What the build context does not need, and what it must not carry.
+#
+# `node_modules` above all: the node stage runs `npm ci` for itself, and a
+# host's binaries copied into an alpine image are the wrong platform's. A
+# `dist` from somebody's laptop would be served instead of the one the image
+# built, which is the whole point of building it here.
+
+.git
+.github
+.venv
+**/node_modules
+**/dist
+**/__pycache__
+.pytest_cache
+.ruff_cache
