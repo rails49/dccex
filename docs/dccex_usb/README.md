@@ -22,9 +22,10 @@ the station's conversation to the page and back (#14). All three are the app's
 own business on the app's own interface, and none of them is a fact about a
 railroad.
 
-The code arrived as a copy of `control`'s at `deee7b6`, its file names kept so
-the two stay diffable; [SOURCE.md](../../src/SOURCE.md) says what came from
-where, and what has been fixed here since `control`'s copy was deleted
+The code arrived as a copy of `control`'s at `deee7b6`, its file names kept
+because that is where the code was written; [SOURCE.md](../../src/SOURCE.md)
+says what came from where, and what has been fixed here since `control`'s copy
+was deleted
 ([ADR-0003](../adr/0003-the-copy-has-no-original-left-and-is-fixed-here.md)).
 
 ## The command line
