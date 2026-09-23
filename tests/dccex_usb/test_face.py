@@ -1076,6 +1076,34 @@ def test_a_page_on_the_stream_is_one_more_client_of_the_mirror() -> None:
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
 
 
+def test_a_stream_asked_for_before_the_mirror_serves_is_refused_with_503() -> None:
+    """The window an app has on the way up and on the way down: the face is
+    answering and the mirror's port is not there. `Station.port` says so by
+    raising, and the caller is told the station is away — an answer it can
+    read — rather than having its connection closed on a traceback.
+
+    `mirroring` only notices a station that has stopped within its own period,
+    so this window is real on the way down and not only at startup.
+    """
+    log = Log()
+
+    async def asked() -> tuple[int, object]:
+        mirror = station(os.devnull, log)
+        # Never started: `port` raises, which is what a stream asked for in
+        # the window between the face serving and the mirror doing so meets.
+        server = served(joins=Loopback(mirror))
+        await server.start()
+        try:
+            return await ask(server.port, upgrade())
+        finally:
+            await server.close()
+
+    status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.SERVICE_UNAVAILABLE
+    assert isinstance(body, dict) and body["reason"]
+
+
 def test_a_page_that_stops_reading_is_cut_off_on_the_mirror_s_own_rule() -> None:
     """A monitor that has stopped reading is a client of 2560 that has stopped
     reading: nothing is buffered for it here, so what lets go of it is the
