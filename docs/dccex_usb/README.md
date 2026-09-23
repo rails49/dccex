@@ -81,7 +81,7 @@ for it for as long as the railroad runs, until the process is killed for
 memory and *every* client loses the command station because one of them
 walked out of range. Once more than a megabyte is outstanding to a client,
 about a minute and a half of everything the device has to say, its connection
-is closed and the log says it went too far behind rather than closing itself.
+is aborted and the log says it went too far behind rather than closing itself.
 It may reconnect and pick the live conversation up. Not a bounded buffer that
 discards instead: this direction is unframed, so dropping from the middle
 hands the client half a message it reads as garbage, and not silence either —
@@ -130,6 +130,20 @@ tty, a device that is gone again the moment it is open. None of them ends the
 retrying or holds a descriptor open, and a session that ends at once is
 waited out rather than reopened straight away. Each outage says once that
 what clients send is being dropped, and the next outage says it again.
+
+**However a client goes, its connection is aborted rather than closed.**
+There are four places it is: the handler that client arrived on, when its
+read ends; the cut-off, when it has fallen too far behind; the grace, when an
+outage has outlasted it; and the shutdown, when the app itself is going. The
+first is the path every client leaves by, whichever of the other three sent
+it there, and it is where the disconnect is logged. A polite close waits for
+what is still outstanding to reach the client before the socket goes, which
+for one that has stopped reading is never — a wait that hung the shutdown and
+held the device with it. What an abort costs is bytes that client was not
+taking: at the cut-off the megabyte it has not read, at the grace the tail of
+a conversation it is about to be told it has lost, and at the handler next to
+nothing, because a client that is reading has taken what was fanned to it and
+leaves with at most the tail of one fan-out behind it.
 
 It logs connects, disconnects — with the ones it made itself distinguishable
 from the ones a client made — the device opening and closing, the first
