@@ -24,7 +24,9 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import urllib.error
 from collections.abc import AsyncGenerator, Sequence
+from email.message import Message
 from pathlib import Path
 
 import pytest
@@ -61,6 +63,15 @@ answer to whoever asked (#13)."""
 def refusals(log: Log) -> list[str]:
     """What the flasher refused, in its own words and in order."""
     return [line[len(REFUSED) :] for line in log.lines if line.startswith(REFUSED)]
+
+
+def answered(code: int, reason: str = "") -> urllib.error.HTTPError:
+    """What the release API raises where it answered with a status: `404`
+    where it carries no release by that tag, anything else where it did not
+    answer the question that was asked (#46)."""
+    return urllib.error.HTTPError(
+        release_url(RELEASES, TAG), code, reason, Message(), None
+    )
 
 
 def release(digest: object = DIGEST, name: str = ASSET) -> bytes:
@@ -353,8 +364,11 @@ def test_the_device_is_let_go_only_once_the_build_is_fetched_and_checked() -> No
 
 
 def test_a_tag_with_no_such_release_is_refused() -> None:
+    """The source answered, and what it said is that it carries no release by
+    that tag. The tag is the thing to fix, and the sentence names it."""
+
     async def scenario() -> None:
-        flash = Flash(fetch=FakeFetch(document=OSError("HTTP Error 404: Not Found")))
+        flash = Flash(fetch=FakeFetch(document=answered(404)))
 
         wrote = await flash.wants()
 
@@ -362,6 +376,64 @@ def test_a_tag_with_no_such_release_is_refused() -> None:
         assert f"no release '{TAG}'" in wrote.said
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
+
+    asyncio.run(scenario())
+
+
+def test_a_source_that_cannot_be_reached_is_refused_as_the_source() -> None:
+    """Not the tag's doing: the source was never asked, so a caller told the
+    release does not exist would go off and retype a tag that is good. The
+    sentence names the source and what went wrong with it (#46)."""
+
+    async def scenario() -> None:
+        away = urllib.error.URLError(ConnectionRefusedError("Connection refused"))
+        flash = Flash(fetch=FakeFetch(document=away))
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is Refusal.SOURCE_AWAY
+        assert RELEASES in wrote.said
+        assert "Connection refused" in wrote.said
+        assert flash.refusals == [wrote.said]
+        assert flash.device.order == []
+        assert flash.device.held, "the device is not let go"
+
+    asyncio.run(scenario())
+
+
+def test_a_source_that_answers_something_that_is_not_json_is_refused() -> None:
+    """A login page, an error page, a proxy's own apology: the source did not
+    answer the question, so this is the source and not the tag (#46)."""
+
+    async def scenario() -> None:
+        flash = Flash(fetch=FakeFetch(document=b"<html>not a release</html>"))
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is Refusal.SOURCE_AWAY
+        assert RELEASES in wrote.said
+        assert flash.refusals == [wrote.said]
+        assert flash.device.order == []
+        assert flash.device.held, "the device is not let go"
+
+    asyncio.run(scenario())
+
+
+def test_a_source_that_answers_a_status_other_than_404_is_refused() -> None:
+    """Somebody else's service having a bad day — a 500, a 403, a gateway in
+    front of it — is not a tag that does not exist (#46)."""
+
+    async def scenario() -> None:
+        flash = Flash(fetch=FakeFetch(document=answered(500, "Internal Server Error")))
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is Refusal.SOURCE_AWAY
+        assert RELEASES in wrote.said
+        assert "500" in wrote.said
+        assert flash.refusals == [wrote.said]
+        assert flash.device.order == []
+        assert flash.device.held, "the device is not let go"
 
     asyncio.run(scenario())
 

@@ -177,6 +177,11 @@ STATUS: Mapping[Refusal, HTTPStatus] = {
     # The source carries no release by that name. The tags it does carry are
     # one GET away, which is what the other route is for.
     Refusal.NO_RELEASE: HTTPStatus.NOT_FOUND,
+    # The source was never asked: it did not answer, or what it answered is
+    # not a release. Nothing is wrong with the tag, so telling a page the
+    # release does not exist sends an operator off to retype a good one
+    # (#46). The status the releases route already gives the same outage.
+    Refusal.SOURCE_AWAY: HTTPStatus.BAD_GATEWAY,
     # Three statements about what somebody else's service published — a
     # release with no firmware on it, with no digest for it, or with bytes
     # that are not what it says they are. The same status the releases get

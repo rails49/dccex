@@ -109,6 +109,12 @@ go, so what this costs when it runs out is nothing but a refusal."""
 
 ACCEPT = "application/vnd.github+json"
 
+NO_SUCH = 404
+"""The one answer from the release API that says the source carries no release
+by that tag. Any other answer is the source failing to answer the question,
+which is a different refusal (#46). Not a status this app replies with — that
+is `face.py`'s — but the one it reads."""
+
 
 class Asset(NamedTuple):
     """The firmware a release carries: where to fetch it, and the digest the
@@ -147,7 +153,12 @@ class Refusal(enum.Enum):
     """The device is not there, so there is nothing to write to."""
 
     NO_RELEASE = enum.auto()
-    """The source has no release by that tag, or could not be asked about it."""
+    """The source has no release by that tag."""
+
+    SOURCE_AWAY = enum.auto()
+    """The source could not be asked about that tag: it did not answer, or
+    what it answered is not a release. Not the tag's doing, and not a reason
+    to go and type another one."""
 
     NO_ASSET = enum.auto()
     """The release carries no firmware to write, or none that could be
@@ -473,8 +484,18 @@ class Flasher:
         url = release_url(self._releases, tag)
         try:
             document = json.loads(await self._fetch(url))
-        except (OSError, urllib.error.URLError, ValueError) as away:
-            return Wrote(Refusal.NO_RELEASE, f"no release '{tag}' at {url}: {away}")
+        except urllib.error.HTTPError as replied:
+            # The source answered. A 404 is it saying it carries no such
+            # release, which is the tag's doing; anything else is it failing
+            # to answer, which is not. `HTTPError` is an `URLError` and so an
+            # `OSError`, so this has to be told apart before them (#46).
+            if replied.code != NO_SUCH:
+                return self._unreachable(tag, replied)
+            return Wrote(Refusal.NO_RELEASE, f"no release '{tag}' at {url}: {replied}")
+        except (OSError, ValueError) as away:
+            # Refused, timed out, no such host, or a body that is not JSON:
+            # the source was never asked, so the tag is not what is wrong.
+            return self._unreachable(tag, away)
         found = asset(document)
         if found is None:
             return Wrote(Refusal.NO_ASSET, f"release '{tag}' carries no {ASSET}")
@@ -497,6 +518,21 @@ class Flasher:
                 f" ({found.digest}), so it was not written",
             )
         return await self._runs(tag, binary)
+
+    def _unreachable(self, tag: str, away: Exception) -> Wrote:
+        """The source could not be asked, said the way the releases route
+        says it: the source named, and what went wrong with it (`face.py`).
+
+        Separate from `NO_RELEASE` because the two send a person to different
+        places — one to type a tag the source carries, the other to find out
+        why the source is away — and an outage told as a missing release sends
+        them to the wrong one (#46).
+        """
+        return Wrote(
+            Refusal.SOURCE_AWAY,
+            f"the releases at {self._releases} could not be read,"
+            f" so '{tag}' was not written: {away}",
+        )
 
     async def _runs(self, tag: str, binary: bytes) -> Wrote:
         """The device handed over, esptool run on it, and the device taken
