@@ -81,3 +81,14 @@ sorting the diff is told which side of it is ours:
   event loop's task cleanup happened to cancel it. The station records that it
   has been closed, and the handover asks before it takes the device back. One
   test holds it.
+- **#34** — `station.py` and the tests for it: #24's fix woke a parked write by
+  handing it an exception, and passed over one the selector had already woken.
+  That write resumed with nothing to tell it the device had gone, so it took
+  the closed number for its own — unregistering a writer from it and writing a
+  client's command bytes into whatever the OS had handed it to next, while
+  reporting the message sent. The open device is an object of its own now,
+  `Device`: it holds the descriptor, the write lock and whatever is parked, no
+  `os.read`, `os.write`, `os.close` or loop registration happens outside it,
+  and a write asks it whether the number is still the device's rather than
+  inferring that from how it was woken. `Station` lost three fields with it.
+  One test holds it, and it goes red against the shape #24 left.
