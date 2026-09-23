@@ -64,10 +64,14 @@ mirror's: 2560 is the station's own conversation, and what the door reaches is
 this one."""
 
 PATIENCE_S = 10.0
-"""How long one request is given, from its first byte to its answer being
-taken. The loop this is on is the mirror's, so a caller that says nothing, or
-that stops reading half way through its answer, is let go rather than waited
-on for as long as the railroad runs."""
+"""How long a caller is given to say what it is asking, and to take what it
+asked for. The loop this is on is the mirror's, so a caller that says nothing,
+or that stops reading half way through its answer, is let go rather than
+waited on for as long as the railroad runs.
+
+It does not bound the answering. A flash is minutes of esptool with a timeout
+of its own (firmware.py), and the caller that asked for one is waited on for
+the whole of it: what it asked is whether the station runs that build now."""
 
 MAX_BODY_BYTES = 1 << 16
 """How much body the face reads. What a page asks this app is a tag and a
@@ -501,6 +505,12 @@ class Server:
         # answer is a handler that waits on a client that is not there. The
         # app ends through here, so this wait has to be one that ends
         # (station.py, `close`).
+        #
+        # The one handler an abort does not end is one waiting out a flash it
+        # asked for, which is waiting on the station and not on the socket.
+        # That wait is the one the app makes next anyway — it does not end in
+        # the middle of a flash (`__main__.mirroring`) — and the port is given
+        # back above it either way.
         for writer in tuple(self._asking):
             writer.transport.abort()
         if server is not None:
@@ -511,14 +521,18 @@ class Server:
     ) -> None:
         """One request answered, and the connection ended either way.
 
-        Bounded by `patience_s`, because this loop is the mirror's: a caller
-        that opened a connection and said nothing, or that is not taking its
-        answer, is not something the process that holds the command station
-        waits on for ever.
+        **What `patience_s` bounds is the caller and not the answer.** A
+        caller that opened a connection and said nothing, or that is not
+        taking what it asked for, is not something the process that holds the
+        command station waits on for ever. How long the answering itself takes
+        is a different question with a different bound: a flash is minutes of
+        esptool with a timeout of its own (firmware.py), and a face that timed
+        its own answer out would leave the page that asked with a closed
+        socket and a station that was written anyway.
         """
         self._asking.add(writer)
         try:
-            await asyncio.wait_for(self._exchange(reader, writer), self._patience_s)
+            await self._exchange(reader, writer)
         except (TimeoutError, OSError, asyncio.IncompleteReadError):
             writer.transport.abort()
         finally:
@@ -535,6 +549,12 @@ class Server:
             # page that may be nobody's at the moment. What the face refuses a
             # caller for is the caller's own to read (ADR-0050).
             self._log(f"face: {answered.body.get(REASON, answered.status.phrase)}")
+        await asyncio.wait_for(self._taken(writer, answered), self._patience_s)
+
+    async def _taken(self, writer: asyncio.StreamWriter, answered: Answered) -> None:
+        """The answer written and the connection ended, for as long as the
+        caller's patience allows: one that has stopped reading is let go of
+        rather than waited on."""
         writer.write(response(answered))
         await writer.drain()
         writer.close()
@@ -543,12 +563,16 @@ class Server:
     async def _answered(self, reader: asyncio.StreamReader) -> Answered:
         """The request read off the connection, and routing's answer to it.
 
+        The reading is what the caller is given `patience_s` for; the routing
+        that follows it is given as long as it takes, because what it may be
+        doing is writing the command station.
+
         What a request is not is a status too: a head longer than this reads,
         a first line that is not a request, and a body larger than a face
         asked questions by a page has any use for.
         """
         try:
-            head = await reader.readuntil(HEAD_END)
+            head = await asyncio.wait_for(reader.readuntil(HEAD_END), self._patience_s)
         except asyncio.LimitOverrunError:
             return refused(
                 HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -565,7 +589,11 @@ class Server:
                 f"a body of {asked.length} bytes is more than the mirror's face"
                 f" reads ({self._max_body_bytes})",
             )
-        body = await reader.readexactly(asked.length) if asked.length else b""
+        body = (
+            await asyncio.wait_for(reader.readexactly(asked.length), self._patience_s)
+            if asked.length
+            else b""
+        )
         return await self._face.answer(
             asked.method, asked.path, body, origin=asked.origin, host=asked.host
         )
