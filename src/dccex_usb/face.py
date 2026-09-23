@@ -854,10 +854,17 @@ class Server:
         Nothing is wrong with the request when this fails: the mirror's port
         is this app's own, so a port that cannot be joined is an app that is
         going down, which is what the station being away already says.
+
+        **A station that is not serving says so by raising, not by refusing a
+        connection.** `Station.port` raises `RuntimeError` before `start()`
+        and after `close()`, and `mirroring` only notices a station that has
+        stopped within its own period — so on the way up and for that period
+        on the way down, the face is answering and there is no port to join.
+        That is the same "going down" and is answered the same way.
         """
         try:
             return await self._joins()
-        except OSError as away:
+        except (OSError, RuntimeError) as away:
             return refused(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 f"the mirror's port could not be joined: {away}",
