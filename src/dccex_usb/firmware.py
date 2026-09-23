@@ -10,10 +10,10 @@ container can stop a sibling without handing a process the Docker daemon's
 socket.
 
 **Nothing outside this process can make the gesture.** It arrived on a bus in
-`control` and it will arrive at this app's own face, which is there and has no
-route to this yet (ADR-0001, #13); between the two it has no caller at all,
-which is an app that is quiet rather than one that is broken. `wanted` is the
-whole of the way in, and it is a call on this loop.
+`control` and it arrives at this app's own face now (ADR-0001, #13), which is
+in this process and on this loop. `wanted` is the whole of the way in, and it
+is a call: there is no topic, no second port and no command-line option that
+reaches it.
 
 **The gesture names a tag and never a source.** The LAN is the trust boundary
 and carries no authentication on purpose (ADR-0042), so an ask that said where
@@ -37,11 +37,19 @@ keeps its failures off this process: it manipulates the port and exits on
 error, and this is the process every throttle, DecoderPro and the translator
 depend on being up.
 
-**There is no reply and no progress.** What happened is read off the station
-itself: the link goes down while it is written and comes back carrying the
-`build` it now reports. Every way this refuses is logged and goes nowhere
-else, because there is nowhere else for it to go until the face is there to
-carry it to whoever asked (ADR-0001).
+**What became of the gesture is answered, and there is still no progress.**
+`wanted` comes back with a `Wrote` — what it was refused for, or nothing where
+the build was written, and the sentence that says which — so whoever asked is
+told rather than sent to read a log on the box (ADR-0050). Every refusal is
+still said on the box as well, because the device is the railroad's and what
+was done to it is the box's record. What a flash is *doing* meanwhile is read
+off the station itself and not from here: the link goes down while it is
+written and comes back carrying the `build` it now reports.
+
+**The refusals are this file's terms and not a protocol's.** A `Refusal` says
+what went wrong with a station and a release; the status that carries it to a
+caller is a fact about the way that caller asked, and belongs to whatever
+answered them (`face.py`).
 
 **A second gesture while a flash is in flight is refused, not queued.** A
 command is honoured now or ignored, which is what this app already does with
@@ -50,6 +58,7 @@ reboots minutes after somebody asked.
 """
 
 import asyncio
+import enum
 import hashlib
 import json
 import tempfile
@@ -115,6 +124,63 @@ class Ran(NamedTuple):
     outlived the timeout and was killed, and what it said while doing so."""
 
     code: int | None
+    said: str
+
+
+class Refusal(enum.Enum):
+    """Why a build was not written, in this file's terms and not a caller's.
+
+    Every way a gesture is turned down is one of these, so that whoever
+    answered the caller can say which it was without reading a sentence
+    (`face.py`). The sentence is still what a person reads; this is what a
+    program branches on.
+    """
+
+    LATEST = enum.auto()
+    """`latest` was asked for, which names a different build depending on when
+    it is read."""
+
+    IN_FLIGHT = enum.auto()
+    """A flash is already under way. The second is refused, never queued."""
+
+    NO_STATION = enum.auto()
+    """The device is not there, so there is nothing to write to."""
+
+    NO_RELEASE = enum.auto()
+    """The source has no release by that tag, or could not be asked about it."""
+
+    NO_ASSET = enum.auto()
+    """The release carries no firmware to write, or none that could be
+    fetched — which is the same thing to a caller holding a tag."""
+
+    NO_DIGEST = enum.auto()
+    """The release reports no digest for its firmware, so what was fetched
+    cannot be checked, and unchecked is not written (ADR-0065)."""
+
+    NOT_PUBLISHED = enum.auto()
+    """What was fetched is not what the release says it published."""
+
+    TOOL_FAILED = enum.auto()
+    """esptool exited non-zero. The station may be half written."""
+
+    TOOL_KILLED = enum.auto()
+    """esptool outlived its timeout and was killed. So may the station be."""
+
+    RAISED = enum.auto()
+    """Something else went wrong while writing. Not a refusal anybody wrote
+    down, and an answer all the same: a caller that was told nothing is a page
+    waiting on a flash that ended minutes ago."""
+
+
+class Wrote(NamedTuple):
+    """What became of a gesture: what it was refused for, or None where the
+    build was written, and the sentence that says which.
+
+    One sentence, because what is on the other end is a person: it is the line
+    the box's log gets and the reason whoever asked is given (ADR-0050).
+    """
+
+    refusal: Refusal | None
     said: str
 
 
@@ -278,12 +344,12 @@ class Flasher:
     station by the app that owns its device.
 
     Constructed on the mirror, and reached by a call on this loop and by
-    nothing else: there is no subscription here and no route on the face that
-    reaches this, so the flash still has no caller (ADR-0001, #13). Whether it is
+    nothing else: there is no subscription here, and the one caller is the
+    route the face answers with (ADR-0001, #13). Whether it is
     safe to reset the station is not a thing this reads, and neither is
     anything else about the railroad: that guarantee lives in the client
     written to honour it, which is where the one about cutting track power
-    lives too (ADR-0051, ADR-0062, ADR-0065).
+    lives too (ADR-0051, ADR-0062, ADR-0065, ADR-0006).
     """
 
     def __init__(
@@ -305,7 +371,7 @@ class Flasher:
         # The one flash there may be, held so a second gesture is refused
         # rather than queued, and so that the process ending can wait for the
         # one in flight rather than leaving a station half written.
-        self._flashing: asyncio.Task[None] | None = None
+        self._flashing: asyncio.Task[Wrote] | None = None
 
     @property
     def flashing(self) -> bool:
@@ -323,62 +389,81 @@ class Flasher:
         if flashing is not None:
             await asyncio.shield(flashing)
 
-    def wanted(self, tag: str) -> None:
-        """A build asked for: refused here, or started as a task of its own.
+    async def wanted(self, tag: str) -> Wrote:
+        """A build asked for: refused here, or written and answered.
 
-        Started rather than awaited because this runs on the loop that is the
-        mirror: the fan-out goes on for the whole of a fetch — which the
+        **The flash is a task of its own and this waits on it**, because both
+        halves of that matter. It is a task because this runs on the loop that
+        is the mirror: the fan-out goes on for the whole of a fetch — which the
         device is held through — and the port goes on being served for the
         whole of the flash after it, which is what lets a client that was
-        disconnected by the outage come back to a mirror that is answering.
+        disconnected by the outage come back to a mirror that is answering. It
+        is waited on because whoever asked is owed what became of it, and
+        esptool exiting non-zero is not knowable before esptool has run.
 
-        The one way in, and a call rather than a row: what will make it is the
-        face, on this loop and in this process (ADR-0001, #13).
+        **A caller that goes away does not take the flash with it**, which is
+        what the shield is for. The station is being written by then; a browser
+        closing its tab, or the request's own patience running out, must not
+        leave it half written. What is lost is only the answer, which nobody is
+        there for.
+
+        The three refusals above the task are the ones that need nothing of the
+        network or the device, and they are answered before anything is
+        started. Checking `flashing` here rather than in the task is what makes
+        a second gesture a refusal and not a queue: nothing is awaited between
+        the check and the task being made, so two callers cannot both pass it.
         """
         if tag == LATEST:
-            self._log(
-                f"refused: '{LATEST}' is not a build: it names a different one"
+            return self._refused(
+                Refusal.LATEST,
+                f"'{LATEST}' is not a build: it names a different one"
                 " depending on when it is read, and what was written has to be"
-                " sayable afterwards"
+                " sayable afterwards",
             )
-            return
         if self.flashing:
-            self._log(
-                f"refused: a flash is already under way, so '{tag}' was not started"
+            return self._refused(
+                Refusal.IN_FLIGHT,
+                f"a flash is already under way, so '{tag}' was not started",
             )
-            return
         if not self._device.held:
-            self._log(
-                f"refused: the command station is not there — '{tag}' was not"
-                f" written to {self._device.path}"
+            return self._refused(
+                Refusal.NO_STATION,
+                f"the command station is not there — '{tag}' was not"
+                f" written to {self._device.path}",
             )
-            return
         self._flashing = asyncio.create_task(self._flash(tag))
+        return await asyncio.shield(self._flashing)
 
-    async def _flash(self, tag: str) -> None:
-        """One flash, from the release to the station, and the refusal it came
-        to where it came to one.
+    def _refused(self, refusal: Refusal, said: str) -> Wrote:
+        """Turned down before anything was started: said on the box, and
+        answered to whoever asked."""
+        self._log(f"refused: {said}")
+        return Wrote(refusal, said)
 
-        Every way out of it says what became of the flash or says nothing,
-        and the flag falls whichever way it went: an app that refused a flash
-        and then refused every one after it because a failure left the flag
-        standing would be worse than the failure. Nothing waits after the flag
-        falls, so the gesture that is answered next is answered by an app that
-        has already said what became of this one.
+    async def _flash(self, tag: str) -> Wrote:
+        """One flash, from the release to the station, and what it came to.
+
+        Every way out of it says what became of the flash, and the flag falls
+        whichever way it went: an app that refused a flash and then refused
+        every one after it because a failure left the flag standing would be
+        worse than the failure. Nothing waits after the flag falls, so the
+        gesture that is answered next is answered by an app that has already
+        said what became of this one.
         """
         self._log(f"flashing '{tag}' from {self._releases}")
         try:
-            refusal = await self._written(tag)
+            wrote = await self._written(tag)
         except Exception as raised:  # noqa: BLE001 — reported, never absorbed
-            refusal = f"writing '{tag}' to the command station failed: {raised}"
+            wrote = Wrote(
+                Refusal.RAISED,
+                f"writing '{tag}' to the command station failed: {raised}",
+            )
         finally:
             self._flashing = None
-        if refusal is None:
-            self._log(f"flashed '{tag}'")
-            return
-        self._log(f"refused: {refusal}")
+        self._log(wrote.said if wrote.refusal is None else f"refused: {wrote.said}")
+        return wrote
 
-    async def _written(self, tag: str) -> str | None:
+    async def _written(self, tag: str) -> Wrote:
         """The build written, or why it was not.
 
         The order is ADR-0065's and the whole of the care in this file: the
@@ -389,24 +474,31 @@ class Flasher:
         try:
             document = json.loads(await self._fetch(url))
         except (OSError, urllib.error.URLError, ValueError) as away:
-            return f"no release '{tag}' at {url}: {away}"
+            return Wrote(Refusal.NO_RELEASE, f"no release '{tag}' at {url}: {away}")
         found = asset(document)
         if found is None:
-            return f"release '{tag}' carries no {ASSET}"
+            return Wrote(Refusal.NO_ASSET, f"release '{tag}' carries no {ASSET}")
         if not found.digest:
-            return f"release '{tag}' reports no digest for {ASSET}, so it is unchecked"
+            return Wrote(
+                Refusal.NO_DIGEST,
+                f"release '{tag}' reports no digest for {ASSET}, so it is unchecked",
+            )
         try:
             binary = await self._fetch(found.url)
         except (OSError, urllib.error.URLError) as away:
-            return f"{ASSET} for '{tag}' could not be fetched from {found.url}: {away}"
+            return Wrote(
+                Refusal.NO_ASSET,
+                f"{ASSET} for '{tag}' could not be fetched from {found.url}: {away}",
+            )
         if not matches(binary, found.digest):
-            return (
+            return Wrote(
+                Refusal.NOT_PUBLISHED,
                 f"{ASSET} for '{tag}' is not what the release reports"
-                f" ({found.digest}), so it was not written"
+                f" ({found.digest}), so it was not written",
             )
         return await self._runs(tag, binary)
 
-    async def _runs(self, tag: str, binary: bytes) -> str | None:
+    async def _runs(self, tag: str, binary: bytes) -> Wrote:
         """The device handed over, esptool run on it, and the device taken
         back — the one ordering that can leave the railroad with a closed port
         and no firmware if it is got wrong."""
@@ -417,12 +509,14 @@ class Flasher:
             async with self._device.released():
                 ran = await self._runner(command, self._timeout_s)
         if ran.code is None:
-            return (
+            return Wrote(
+                Refusal.TOOL_KILLED,
                 f"writing '{tag}' outlived {self._timeout_s:.0f}s and was killed;"
-                f" the command station may be half written"
+                f" the command station may be half written",
             )
         if ran.code != 0:
-            return (
-                f"writing '{tag}' failed: esptool exited {ran.code}. {said(ran.said)}"
+            return Wrote(
+                Refusal.TOOL_FAILED,
+                f"writing '{tag}' failed: esptool exited {ran.code}. {said(ran.said)}",
             )
-        return None
+        return Wrote(None, f"flashed '{tag}'")

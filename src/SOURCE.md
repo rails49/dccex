@@ -103,3 +103,11 @@ sorting the diff is told which side of it is ours:
   answers what releases the source carries; what will ask for a flash is the
   route #13 adds to it, so they say that instead. No behaviour, no numbers,
   and nothing in the file's code moved.
+- **#13** — `firmware.py` and the tests for it: a refusal was a line in the
+  log and nothing else, which is a refusal addressed to nobody. `wanted` is
+  awaited now and answers a `Wrote` — a `Refusal` or nothing, and the sentence
+  that says which — so the face can turn it into a status and a reason for
+  whoever asked. The flash is still a task of its own and the ask is shielded
+  from the caller going away, so a browser that closed its tab cannot leave a
+  station half written. The box still gets every line it got. The ordering,
+  the timeout and the numbers are untouched.
