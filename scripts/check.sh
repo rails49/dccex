@@ -57,8 +57,9 @@ words() {
   echo "station, mirror, translator, face, build, release, tag; ADR-0001"
 }
 
-# The copy still says what it is a copy of. A package moved out of another
-# repository is only diffable against it while the commit is written down.
+# The code still says where it was written. `control` deleted its side, so
+# this is provenance and not a promise (ADR-0003) — but a commit nobody
+# wrote down is a provenance nobody can check.
 source_recorded() {
   local commit="deee7b6f54d0215f4e02c128e60f50322fd0978c"
   if ! grep -q "rails49/control" src/SOURCE.md 2>/dev/null; then
