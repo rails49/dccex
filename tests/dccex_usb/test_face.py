@@ -65,13 +65,20 @@ class Source:
         return self._answer
 
 
+def face(fetch: Source | None = None, releases: str = RELEASES) -> Face:
+    """The face a test asks something of, built in one place.
+
+    What it is configured with is the source of releases, and what fetches a
+    URL is a fake: nothing in the gate reaches the release API.
+    """
+    return Face(releases, fetch=fetch if fetch is not None else Source())
+
+
 def test_a_request_to_the_face_answers_the_tags_the_source_carries() -> None:
     """The whole of what the face is for here: a client asks what releases
     the configured source carries and gets the tags back, so nobody has to
     type one from memory."""
-    face = Face(RELEASES, fetch=Source())
-
-    answered = asyncio.run(face.answer("GET", "/releases", b""))
+    answered = asyncio.run(face().answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.OK
     assert answered.body == {"tags": TAGS}
@@ -80,7 +87,7 @@ def test_a_request_to_the_face_answers_the_tags_the_source_carries() -> None:
 def test_the_releases_are_read_from_the_source_the_face_was_configured_with() -> None:
     source = Source()
 
-    asyncio.run(Face(ELSEWHERE, fetch=source).answer("GET", "/releases", b""))
+    asyncio.run(face(source, ELSEWHERE).answer("GET", "/releases", b""))
 
     assert source.asked == [ELSEWHERE]
 
@@ -93,7 +100,7 @@ def test_no_request_can_redirect_the_source() -> None:
     source = Source()
 
     answered = asyncio.run(
-        Face(RELEASES, fetch=source).answer(
+        face(source).answer(
             "GET",
             f"/releases?releases={ELSEWHERE}&source={ELSEWHERE}",
             json.dumps({"releases": ELSEWHERE}).encode(),
@@ -108,9 +115,9 @@ def test_no_request_can_redirect_the_source() -> None:
 def test_a_source_that_cannot_be_reached_is_a_status_and_a_reason() -> None:
     """The release API is somebody else's service: the mirror mirrors what it
     is doing rather than falling over with it."""
-    face = Face(RELEASES, fetch=Source(OSError("no route to host")))
+    asked = face(Source(OSError("no route to host")))
 
-    answered = asyncio.run(face.answer("GET", "/releases", b""))
+    answered = asyncio.run(asked.answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.BAD_GATEWAY
     assert "no route to host" in str(answered.body["reason"])
@@ -130,9 +137,9 @@ def test_a_source_that_cannot_be_reached_is_a_status_and_a_reason() -> None:
 def test_a_source_that_answers_with_nothing_usable_is_a_status_and_a_reason(
     said: bytes,
 ) -> None:
-    face = Face(RELEASES, fetch=Source(said))
+    asked = face(Source(said))
 
-    answered = asyncio.run(face.answer("GET", "/releases", b""))
+    answered = asyncio.run(asked.answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.BAD_GATEWAY
     assert RELEASES in str(answered.body["reason"])
@@ -142,9 +149,9 @@ def test_a_source_that_carries_no_releases_yet_is_an_empty_answer() -> None:
     """Not a refusal: the source answered, and what it said is that nothing
     has been published there. A page that said the API was unreachable would
     send somebody looking at the network."""
-    face = Face(RELEASES, fetch=Source(listing([])))
+    asked = face(Source(listing([])))
 
-    answered = asyncio.run(face.answer("GET", "/releases", b""))
+    answered = asyncio.run(asked.answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.OK
     assert answered.body == {"tags": []}
@@ -155,7 +162,7 @@ def test_a_path_the_face_does_not_answer_is_a_refusal() -> None:
     railroad (CONTEXT.md): what it does not answer, it says it does not."""
     source = Source()
 
-    answered = asyncio.run(Face(RELEASES, fetch=source).answer("GET", "/layout", b""))
+    answered = asyncio.run(face(source).answer("GET", "/layout", b""))
 
     assert answered.status == HTTPStatus.NOT_FOUND
     assert source.asked == []
@@ -167,9 +174,7 @@ def test_the_releases_are_read_and_not_written() -> None:
     this path however it is asked for."""
     source = Source()
 
-    answered = asyncio.run(
-        Face(RELEASES, fetch=source).answer("POST", "/releases", b"")
-    )
+    answered = asyncio.run(face(source).answer("POST", "/releases", b""))
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert source.asked == []
@@ -191,10 +196,8 @@ ELSEWHERE_ORIGIN = "https://somebody-else.example.invalid"
 def test_a_page_on_the_face_s_own_origin_is_answered() -> None:
     """The page the face exists for: it is served at the label, it asks under
     the prefix, and its browser says so."""
-    face = Face(RELEASES, fetch=Source())
-
     answered = asyncio.run(
-        face.answer("GET", "/releases", b"", origin=PAGE, host=LABEL)
+        face().answer("GET", "/releases", b"", origin=PAGE, host=LABEL)
     )
 
     assert answered.status == HTTPStatus.OK
@@ -216,9 +219,7 @@ def test_a_page_from_another_origin_is_refused(origin: str) -> None:
     source = Source()
 
     answered = asyncio.run(
-        Face(RELEASES, fetch=source).answer(
-            "GET", "/releases", b"", origin=origin, host=LABEL
-        )
+        face(source).answer("GET", "/releases", b"", origin=origin, host=LABEL)
     )
 
     assert answered.status == HTTPStatus.FORBIDDEN
@@ -230,9 +231,7 @@ def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
     """`curl` on the box, and a page's own browser on a same-origin read: an
     origin is what a browser attaches, and holding a page to one is the whole
     of what this check is. What limits the rest is the LAN (ADR-0042)."""
-    face = Face(RELEASES, fetch=Source())
-
-    answered = asyncio.run(face.answer("GET", "/releases", b"", host=LABEL))
+    answered = asyncio.run(face().answer("GET", "/releases", b"", host=LABEL))
 
     assert answered.status == HTTPStatus.OK
 
@@ -244,9 +243,7 @@ def test_the_prefix_is_stripped_before_the_face_sees_it() -> None:
     is a door that did not strip it, which is a path this does not answer."""
     source = Source()
 
-    answered = asyncio.run(
-        Face(RELEASES, fetch=source).answer("GET", "/dccex-usb/releases", b"")
-    )
+    answered = asyncio.run(face(source).answer("GET", "/dccex-usb/releases", b""))
 
     assert answered.status == HTTPStatus.NOT_FOUND
     assert source.asked == []
@@ -300,7 +297,7 @@ def test_the_server_is_handed_back_unstarted() -> None:
     OS chose, and stops it, which is the split `Station` is driven by."""
 
     async def started_and_stopped() -> None:
-        server = Server(Face(RELEASES, fetch=Source()), 0)
+        server = Server(face(), 0)
         with pytest.raises(RuntimeError):
             assert server.port
 
@@ -319,7 +316,7 @@ def test_the_server_is_handed_back_unstarted() -> None:
 
 def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
     async def asked() -> tuple[int, object]:
-        server = Server(Face(RELEASES, fetch=Source()), 0)
+        server = Server(face(), 0)
         await server.start()
         try:
             return await ask(server.port)
@@ -364,7 +361,7 @@ def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
     connection closed under what it was still sending."""
 
     async def refused() -> tuple[int, object]:
-        server = Server(Face(RELEASES, fetch=Source()), 0)
+        server = Server(face(), 0)
         await server.start()
         try:
             return await ask(server.port, asked)
@@ -383,7 +380,7 @@ def test_the_page_s_own_origin_arrives_on_the_head_and_is_answered() -> None:
     label is the caller the face is for."""
 
     async def asked() -> tuple[int, object]:
-        server = Server(Face(RELEASES, fetch=Source()), 0)
+        server = Server(face(), 0)
         await server.start()
         try:
             return await ask(server.port, request(origin=PAGE))
@@ -405,7 +402,7 @@ def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
 
     async def asked() -> tuple[int, object]:
         server = Server(
-            Face(RELEASES, fetch=Source(OSError("no route to host"))),
+            face(Source(OSError("no route to host"))),
             0,
             log=said.append,
         )
@@ -425,7 +422,7 @@ def test_what_the_face_refuses_a_caller_for_is_not_said_on_the_box() -> None:
     said: list[str] = []
 
     async def asked() -> tuple[int, object]:
-        server = Server(Face(RELEASES, fetch=Source()), 0, log=said.append)
+        server = Server(face(), 0, log=said.append)
         await server.start()
         try:
             return await ask(server.port, request(target="/layout"))
@@ -455,7 +452,7 @@ def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() ->
         log = Log()
         cable = Pty()
         mirror = station(cable.path, log)
-        served = Server(Face(RELEASES, fetch=Source()), 0)
+        served = Server(face(), 0)
         await mirror.start()
         await served.start()
         try:
