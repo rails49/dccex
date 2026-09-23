@@ -81,8 +81,9 @@ A published firmware in our `CommandStation-EX`, digest and all, that can be
 written onto the station. A release exists whether or not any station is
 running it.
 
-**Not:** *version*, *update*, *download*, *image*, *the firmware* (the
-firmware is what is on the station, which is its build).
+**Not:** *version*, *update*, *download*, *image* (the image is what the
+apps here run as on the box), *the firmware* (the firmware is what is on the
+station, which is its build).
 
 ## tag
 
@@ -91,7 +92,12 @@ asks for one to be written. The mirror is configured with the source; a tag
 picks among what is already published there. Nothing names a URL, and `latest`
 is not a tag.
 
-**Not:** *version number*, *label*, *ref*, *latest*.
+Docker calls the part of an image's name after the colon a tag too. Here that
+part is a commit and is not called one (ADR-0005): a box is rolled back by
+naming a commit and a station is written by naming a tag, and the two
+sentences are one `docker` command apart on the same box.
+
+**Not:** *version number*, *label*, *ref*, *latest*, *image tag*.
 
 ## client
 
@@ -110,3 +116,17 @@ the station is being written to, and when it has stopped talking; the build
 goes with it.
 
 **Not:** *connected*, *online*, *the connection*, *up*.
+
+## image
+
+What the apps here run as on the box: one image, built from this repository's
+source at one commit and named by it — `dccex:<commit>`, and the name never
+moves ([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
+One for the repository and not one per app, so the mirror and, when it lands,
+the translator are the same image run twice. What a box is running is
+therefore a commit a person can read off it, and the deploy that replaced one
+wrote down which it replaced.
+
+**Not:** *version*, *build* (the build is the station's), *release* (a release
+is firmware, published elsewhere), *tag* (a tag names a release), *the
+container* (the container is one running of an image), *latest*.
