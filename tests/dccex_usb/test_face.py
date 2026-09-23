@@ -45,10 +45,12 @@ from dccex_usb.face import (
     response,
 )
 from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
+from dccex_usb.framing import MAX_MESSAGE
 from dccex_usb.station import READ_SIZE, to_stderr
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
 from tests.dccex_usb.test_firmware import FakeFetch
 from tests.dccex_usb.test_station import (
+    SHUTDOWN_S,
     Log,
     Pty,
     arriving,
@@ -1088,5 +1090,75 @@ def test_an_outage_disconnects_a_page_alongside_the_clients_on_2560(
         finally:
             await streamed.close()
             await mirror.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+def test_what_a_page_types_is_framed_by_the_mirror_s_rule_and_capped_by_it() -> None:
+    """The cap on a message is the mirror's and reaches the page through it.
+
+    A frame carries 64 KiB and a message the station answers to is a kilobyte,
+    so the two are not the same bound and only one of them is about `<…>`: a
+    page that types past `framing.MAX_MESSAGE` without its `>` has that
+    message discarded, and the bytes after it dropped until the next `<`,
+    exactly as a client on 2560 does. Nothing in the stream knows this rule.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        try:
+            await log.wait_for("serial open")
+            page = await Browser.opened(streamed.port)
+
+            await page.types(b"<" + b"t" * (MAX_MESSAGE + 1))
+            await page.types(b"><a 12 1>")
+
+            assert await arriving(cable.master, len(b"<a 12 1>")) == b"<a 12 1>"
+            page.close()
+        finally:
+            await streamed.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+def test_the_app_going_down_lets_go_of_a_page_on_the_stream() -> None:
+    """A stream is open for as long as somebody is watching the railroad, so
+    the app ending is what ends it. Closing the face aborts the connection the
+    way the mirror aborts a client's, both directions come back, and the
+    client this monitor had on the mirror's port goes with them — a shutdown
+    that waited on a page would hold the device it is trying to let go of
+    (`station.py`, `__main__.mirroring`)."""
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        try:
+            await log.wait_for("serial open")
+            page = await Browser.opened(streamed.port)
+            watching = asyncio.create_task(page.run())
+            await log.wait_for("client connected")
+
+            await asyncio.wait_for(streamed.close(), SHUTDOWN_S)
+
+            await asyncio.wait_for(watching, TIMEOUT_S)
+            # And the client it had on the mirror's port left with it, which
+            # the mirror says in the line every client leaves by.
+            await log.wait_for("client disconnected")
+            page.close()
+        finally:
+            await streamed.close()
+            await mirror.close()
+            cable.close()
 
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
