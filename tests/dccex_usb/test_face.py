@@ -23,26 +23,41 @@ import asyncio
 import contextlib
 import json
 import os
+import socket
+import time
 from collections.abc import Callable, Sequence
 from http import HTTPStatus
+from pathlib import Path
 
 import pytest
 
 from dccex_usb.face import (
+    CRLF,
+    HEAD_END,
     STATUS,
     Answered,
     Ends,
     Face,
     Joins,
+    Loopback,
     Server,
     Writes,
     response,
 )
 from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
-from dccex_usb.station import to_stderr
-from dccex_usb.stream import accepted
+from dccex_usb.station import READ_SIZE, to_stderr
+from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
 from tests.dccex_usb.test_firmware import FakeFetch
-from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
+from tests.dccex_usb.test_station import (
+    Log,
+    Pty,
+    arriving,
+    connect,
+    send,
+    station,
+    wedge,
+)
+from tests.dccex_usb.test_stream import masked
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
 ELSEWHERE = "https://api.example.invalid/repos/someone-else/CommandStation-EX/releases"
@@ -861,5 +876,217 @@ def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() ->
             await streamed.close()
             await mirror.close()
             cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+# -- the monitor's stream ----------------------------------------------------
+
+
+def upgrade(origin: str = "", target: str = "/stream", key: str = KEY) -> bytes:
+    """What a browser sends to open a stream: a request like any other, with
+    the key that says what it is opening and the origin of the page it is
+    opening from."""
+    head = (
+        f"GET {target} HTTP/1.1\r\n"
+        f"Host: {LABEL}\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        f"Sec-WebSocket-Key: {key}\r\n" + (f"Origin: {origin}\r\n" if origin else "")
+    ) + CRLF
+    return head.encode()
+
+
+class Browser:
+    """The monitor's end of a stream, as a browser speaks it.
+
+    Written out here rather than asking the app to frame for the test: what is
+    under test is the wire, and a harness that framed with the code it is
+    checking could not notice the two agreeing on something no browser does.
+    """
+
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self._reader = reader
+        self._writer = writer
+        self.heard = bytearray()
+        self.goodbye = b""
+
+    @classmethod
+    async def opened(
+        cls, port: int, origin: str = PAGE, deaf: bool = False
+    ) -> "Browser":
+        """A page on the face's own origin, with its stream open.
+
+        A deaf one cannot take much unread, the way `connect_deaf` makes one
+        on 2560: what the mirror sees is the same client either way — one that
+        stops taking bytes — reached in a fraction of the traffic.
+        """
+        sock = socket.socket()
+        if deaf:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 2048)
+        sock.setblocking(False)
+        await asyncio.get_running_loop().sock_connect(sock, ("127.0.0.1", port))
+        reader, writer = await asyncio.open_connection(sock=sock)
+        writer.write(upgrade(origin))
+        await writer.drain()
+        head = await reader.readuntil(HEAD_END)
+        assert b"101 Switching Protocols" in head, head
+        assert accepted(KEY).encode() in head, head
+        return cls(reader, writer)
+
+    async def types(self, message: bytes) -> None:
+        """One masked frame, as a page typing at the station sends it."""
+        self._writer.write(masked(message))
+        await self._writer.drain()
+
+    async def frame(self) -> tuple[int, bytes]:
+        """The next frame the face sent, and what kind it is."""
+        head = await self._reader.readexactly(2)
+        assert not head[1] & 0x80, "the face masked what it sent"
+        size = head[1] & 0x7F
+        if size == 126:
+            size = int.from_bytes(await self._reader.readexactly(2), "big")
+        return head[0] & 0x0F, await self._reader.readexactly(size)
+
+    async def run(self) -> None:
+        """Keep listening until the stream ends, and remember what was said."""
+        while True:
+            try:
+                opcode, payload = await self.frame()
+            except (asyncio.IncompleteReadError, ConnectionError):
+                return
+            if opcode == CLOSE:
+                self.goodbye = payload
+                return
+            self.heard += payload
+
+    async def hears(self, count: int, timeout: float = TIMEOUT_S) -> None:
+        deadline = time.monotonic() + timeout
+        while len(self.heard) < count:
+            if time.monotonic() > deadline:
+                raise AssertionError(f"heard {len(self.heard)} bytes, not {count}")
+            await asyncio.sleep(0.005)
+
+    def close(self) -> None:
+        self._writer.close()
+
+
+def test_a_page_on_the_stream_is_one_more_client_of_the_mirror() -> None:
+    """The whole of #14 through one port, with a pty for the command station.
+
+    A page opens the stream on the same port the face answers its other
+    requests on, and what it gets is a client of 2560: every byte the station
+    says, in step with a client that dialled the port itself, and what it
+    types reaching the device as a whole `<…>` message by the mirror's own
+    framing. The port it dialled goes on behaving exactly as it did, with the
+    page on the stream and without it.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        watching = None
+        try:
+            await log.wait_for("serial open")
+            reader, writer = await connect(mirror)
+            page = await Browser.opened(streamed.port)
+            watching = asyncio.create_task(page.run())
+            await log.wait_for_count("client connected", 2)
+
+            os.write(cable.master, b"<iDCC-EX V-5.4.16 G-9db8d0e>")
+
+            said = b"<iDCC-EX V-5.4.16 G-9db8d0e>"
+            assert await reader.readexactly(len(said)) == said
+            await page.hears(len(said))
+            assert bytes(page.heard) == said
+
+            # And what the page types reaches the device whole, across two
+            # frames, which is how a browser may split anything it sends.
+            await page.types(b"<t 3 ")
+            await page.types(b"50 1>")
+            assert await arriving(cable.master, len(b"<t 3 50 1>")) == b"<t 3 50 1>"
+
+            # The client that dialled 2560 is unaffected, both ways.
+            await send(writer, b"<s>")
+            assert await arriving(cable.master, len(b"<s>")) == b"<s>"
+
+            # And the face is still a face: one port carries the upgrade and
+            # the requests that are not one (ADR-0004 d.3).
+            assert await ask(streamed.port) == (HTTPStatus.OK, {"tags": TAGS})
+
+            page.close()
+            writer.close()
+        finally:
+            if watching is not None:
+                watching.cancel()
+            await streamed.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+def test_a_page_that_stops_reading_is_cut_off_on_the_mirror_s_own_rule() -> None:
+    """A monitor that has stopped reading is a client of 2560 that has stopped
+    reading: nothing is buffered for it here, so what lets go of it is the
+    mirror's own bound on how far behind a client may fall, and the mirror's
+    own line says so (`station.py`, ADR-0007)."""
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        try:
+            page = await Browser.opened(streamed.port, deaf=True)
+            await log.wait_for("serial open")
+            await wedge(cable)
+
+            assert "too far behind" in await log.wait_for("client disconnected")
+            page.close()
+        finally:
+            await streamed.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+def test_an_outage_disconnects_a_page_alongside_the_clients_on_2560(
+    tmp_path: Path,
+) -> None:
+    """The grace is the outage's and the stream is in it. A client cannot tell
+    an away device from a quiet one, and this stream has no way to tell it
+    either: the connection closing is the whole signal, and a page gets it as
+    a stream that closed and says why (control ADR-0066)."""
+
+    async def scenario() -> None:
+        log = Log()
+        mirror = station(str(tmp_path / "dccex"), log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        try:
+            dialled, writer = await connect(mirror)
+            page = await Browser.opened(streamed.port)
+            watching = asyncio.create_task(page.run())
+
+            assert await asyncio.wait_for(dialled.read(READ_SIZE), TIMEOUT_S) == b""
+            await asyncio.wait_for(watching, TIMEOUT_S)
+
+            assert page.goodbye[:2] == GOING_AWAY.to_bytes(2, "big")
+            assert "disconnecting" in await log.wait_for("device still away")
+            page.close()
+            writer.close()
+        finally:
+            await streamed.close()
+            await mirror.close()
 
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
