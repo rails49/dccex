@@ -4,11 +4,14 @@ The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
 label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
-**It is not built yet.** This page is written ahead of it, as
+**The page is here and nothing is on it.** `ui/` holds the band, the rail and
+an empty work pane, built and served the way this page says (#3) — which is the
+tracer bullet, and it is the installation everything below rests on. Everything
+in the work pane is still written ahead of itself, as
 [the cutover page](../cutover.md) was written ahead of its evening, because
 what it says was decided in rails49/dccex#1 and the tickets under that spec are
-each a part of it. What is already here is the other end: the **mirror**'s
-**face**, which is the one thing the page talks to
+each a part of it. What is already here besides is the other end: the
+**mirror**'s **face**, which is the one thing the page talks to
 ([the mirror's page](../dccex_usb/README.md)).
 
 ## What it talks to
@@ -146,26 +149,51 @@ grace ([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirr
 ## How it looks
 
 The look rules are the organisation's, in LOOK.md, and their values arrive here
-as a verbatim copy of `tokens.css` at a fixed path with the commit it was taken
-at recorded beside it — inert, read by nothing at runtime except as the
-stylesheet it is. This repository's own test asserts that what the page draws
-with equals that copy, so drift is caught in this gate rather than noticed
-later. `control`'s `ui/look/README.md` is the shape that follows.
+as a verbatim copy at a fixed path with the commit it was taken at recorded
+beside it: `ui/look/tokens.css`, pinned to c91e9be, with
+[`ui/look/README.md`](../../ui/look/README.md) saying where it came from —
+`control`'s `ui/look/README.md` is the shape that follows. The copy is inert:
+nothing imports it, no build reads it and the page does not link it.
+
+What the page draws with is `ui/src/look.css`, a `:root` block of this UI's
+own, and `tests/ui/test_look.py` asserts the two agree token for token — in
+both directions, so a value that drifted here and a token that arrived over
+there with nothing to spend it on both go red. It reads the copy and the files
+beside it and nothing outside this repository, which is what lets it run in
+this gate rather than somewhere that fetches
+([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)).
+`--rail-turns` is the one value a stylesheet cannot read for itself — a media
+query cannot take a custom property — so it reaches the two sheets that turn as
+one number in `ui/src/look.ts`, and the test holds those two to it.
 
 It takes the system's light or dark setting and offers no toggle, as the other
 rails49 UIs do, and it works at the width of a phone held at the layout.
 
 ## How it is built and served
 
-A multi-stage image: node to build the sources, nginx to serve what came out.
-The box needs Docker and nothing else — no node toolchain on a machine whose
-job is a command station. The compose project declares the server and its door
-route as labels on its own containers, and no image is published anywhere: the
-box clones and builds (#15,
-[ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
+A multi-stage image, `deploy/ui.Dockerfile`: node to build the sources, nginx
+to serve what came out. The box needs Docker and nothing else — no node
+toolchain on a machine whose job is a command station — and the node that
+builds the page is a container that lasts as long as the build. No image is
+published anywhere: the box clones and builds
+([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
+It is named by the commit it was built from like everything else here, as
+`dccex-ui:<commit>`; it is a second image rather than the mirror's, which shares
+a lock file and an esptool pin with the translator and neither with a page.
+
+`compose.yaml` at the root is the compose project: one service, the door route
+as labels on its own container, and nothing more. `docker compose up --build`
+from a clean clone serves the page. The stack a **box** runs — the mirror
+beside it, the shared network the door dials containers on, the deploy and the
+record it appends to — is #15's.
 
 **It serves with no `control` clone present.** That is the installation this
 repository exists for, and it is the first thing the first ticket proves.
+`tests/ui/test_page_serves.py` is where it is proved: it builds the image, runs
+it, and asks it for the page over HTTP, because a suite that reads the files
+cannot tell two programs of the same name apart — which is how
+`rails49/installation`'s `page/render.sh` ran green everywhere except the only
+place it ran for real. Where no Docker daemon answers it skips and says so.
 
 ## What is not on it
 
