@@ -16,9 +16,10 @@ the station**, which only the process holding the device can do
 That ask arrived on a topic and a refusal went back as a row. Neither is here:
 a command station is not a fact about a railroad, so the mirror answers to
 this app's own face instead ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md)).
-The face answers what releases the configured source carries (#12) and writes
-one of them onto the station when a caller names its tag (#13). Both are the
-app's own business on the app's own interface, and neither is a fact about a
+The face answers what releases the configured source carries (#12), writes
+one of them onto the station when a caller names its tag (#13), and carries
+the station's conversation to the page and back (#14). All three are the app's
+own business on the app's own interface, and none of them is a fact about a
 railroad.
 
 The code arrived as a copy of `control`'s at `deee7b6`, its file names kept so
@@ -149,10 +150,26 @@ a conversation it is about to be told it has lost, and at the handler next to
 nothing, because a client that is reading has taken what was fanned to it and
 leaves with at most the tail of one fan-out behind it.
 
+**And to a page, by the same rules and none of its own.** The UI's monitor
+cannot dial 2560 — a browser opens no TCP socket, and a page served over
+`https` opens no plain one — so it asks the face for a **stream** and gets
+exactly what is described above: every byte the station says, in step with the
+throttles, and what it types reaching the device as whole `<…>` messages under
+the same cap. It is **one more client of the port and not a second mirror**:
+the face joins 2560 on the box itself and carries the bytes, so the fan-out,
+the megabyte a client may fall behind by, the cut-off, the grace and the
+framing are the ones on this page and there is not a second set of them
+([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
+A page that has stopped reading is cut off for being too far behind, an outage
+past its grace disconnects it alongside the throttles, and the mirror cannot
+tell it from DecoderPro. Where the stream is and how a page opens one is
+[below](#the-monitors-stream).
+
 It logs connects, disconnects — with the ones it made itself distinguishable
 from the ones a client made — the device opening and closing, the first
 message dropped in each outage, the grace ending one, and what a flash came
-to, to stderr. Nothing else: a mirror that logged the traffic would log the
+to, to stderr. A page on the stream is a client connecting from loopback and
+is logged as one. Nothing else: a mirror that logged the traffic would log the
 whole railroad.
 
 ## The face
@@ -170,8 +187,9 @@ station's conversation while the face answers.
 At the box's `dccex` label, under a path prefix, on the page's own origin:
 
 ```
-https://dccex.$BOX_DOMAIN/            the page
-https://dccex.$BOX_DOMAIN/dccex-usb/  this face, which sees /… without it
+https://dccex.$BOX_DOMAIN/                     the page
+https://dccex.$BOX_DOMAIN/dccex-usb/           this face, which sees /… without it
+wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the monitor's stream, on that same router
 ```
 
 **One label, one certificate, two routers.** The page's router takes the host
@@ -197,7 +215,7 @@ code here:
   edited by hand, so that the box's page links the UI;
 - the labels themselves, which belong to the mirror's stack (#15).
 
-What it answers, which is two things:
+What it answers, which is three things — two questions and a conversation:
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -256,24 +274,68 @@ log on the box (control ADR-0050):
 - `403` — a page on another origin. The page and the face share one origin
   behind the door, so a browser says which page asked and this face holds it
   to that ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
+  It is the stream's own guard as much as the other routes': a browser asks
+  nobody before opening one.
+- `503` — also the mirror's port not being there when a page opens a stream.
+  Nothing is wrong with the request; the port is this app's own, so one that
+  cannot be joined is an app on its way down.
 
 Whoever asked is told, and the box's log is told only what is not the
 caller's doing: a source that could not be read is a line on stderr as well,
 and a path the face does not answer is the caller's own to read.
 
 Of HTTP it reads the request line, the length of the body, the origin the
-request was addressed to and the origin of the page that asked — nothing else
-— and it answers one request per connection. This is a private origin spoken to
-by one page, so negotiation and a connection kept open for the next request
-are protocol it would carry without ever being asked for it. One request is
-bounded in time, because the loop it is answered on is the one that holds the
-command station.
+request was addressed to, the origin of the page that asked and the key a
+browser names when it is opening a stream — nothing else — and it answers one
+request per connection. This is a private origin spoken to by one page, so
+negotiation and a connection kept open for the next request are protocol it
+would carry without ever being asked for it. One request is bounded in time,
+because the loop it is answered on is the one that holds the command station.
+A stream is not: it is open for as long as somebody is watching the railroad,
+and what lets go of one that has stopped reading is the mirror.
 
 Nothing in the gate reaches the release API. What fetches a URL is injected
 here exactly as it is for the flash, and the suite substitutes its own, so
 every question about what the face says is asked of its routing directly —
 a function of a method, a path and a body, answering with a status and a body,
 with no socket anywhere near it.
+
+### The monitor's stream
+
+The third thing the face carries is the station's conversation, both ways, on
+the same port and under the same prefix:
+
+```
+wss://dccex.$BOX_DOMAIN/dccex-usb/stream   the monitor's stream
+```
+
+A page opens it by upgrading — there is nothing at `/stream` to fetch, and a
+`GET` that names no key is a `400` — and the door's prefix is off it by the
+time the app sees it, exactly as for the other two. One router carries the
+stream and the requests beside it, which is what makes it `wss://` on the
+page's own origin with no second certificate anywhere (ADR-0004 d.3).
+
+What rides on it is the bytes and nothing else. The station's go out as
+**binary** frames, unchanged: a text frame has to carry valid UTF-8, a serial
+line promises none, and one garbled byte would end a stream whose whole
+contract is that every byte arrives as it was sent. What the page sends is read
+the other way round — text, binary or a continuation, all of it payload —
+because what ends a message is `>` and the mirror is what reads for it. There
+is no protocol of our own on the stream: no progress, no status, no link. What
+the link is doing is read off the conversation, as the translator reads it
+([control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
+
+Nothing is buffered between the page and the port. What the browser has not
+taken is waited on before more is read off the mirror, so a monitor that has
+stopped reading fills the mirror's socket and is cut off by the megabyte rule
+above — the mirror's own, in the mirror's own log line. A buffer here would
+hold what the mirror believes it has handed over, and that rule would never
+fire.
+
+A frame larger than 64 KiB is refused on its header and the stream ends saying
+so, as does one that breaks the framing rule — unmasked, reserved bits set, a
+control frame split or overlong. A message the station answers to is a
+kilobyte, so a frame that size is already not a command.
 
 ## Writing the firmware
 
