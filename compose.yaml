@@ -1,0 +1,62 @@
+# The UI's own compose project: the server that carries the page, and the
+# route the door reaches it by. Nothing else is here.
+#
+# From a clean clone, with no `control` clone on the box and no node toolchain
+# on it:
+#
+#   docker compose up --build
+#
+# and the page is on http://localhost:8080. That is the installation this
+# repository exists for (ADR-0008), and proving it is what this file is for.
+#
+# The stack a box runs — the mirror beside this, the box's declaration, the
+# shared network the door reaches containers on, the deploy and the record it
+# appends to — is #15's, built in ADR-0005's shape. What is settled here is
+# that there is a page to put in it.
+
+name: dccex
+
+services:
+  # The page. The image is this repository's `deploy/ui.Dockerfile`: node
+  # builds, nginx serves, and the box needs neither.
+  web:
+    build:
+      context: .
+      dockerfile: deploy/ui.Dockerfile
+    # Named by the commit it was built from, and the name never moves
+    # (ADR-0005 d.1). `dev` is what a clone that has not been told a commit
+    # builds under, so `up --build` works with nothing set; a box is given one
+    # by the deploy, which is #15's.
+    image: dccex-ui:${DCCEX_COMMIT:-dev}
+    restart: unless-stopped
+    # How the page is reached before there is a door in front of it — a clean
+    # clone, or a development machine. A box reaches it by the route below.
+    ports:
+      - "${DCCEX_UI_PORT:-8080}:80"
+    # The route, declared here and read by the door, which is the installation's
+    # and not in this file (ADR-0004, rails49/installation ADR-0001). Only a
+    # container a browser reaches carries these: the mirror goes on publishing
+    # 2560 raw with no router and no certificate over it (ADR-0004 d.5).
+    #
+    # The page takes the host rule and the lowest priority on the label, so the
+    # face's own router — `/dccex-usb`, at a higher one — claims its prefix and
+    # the page keeps everything else on the origin (ADR-0004 d.2).
+    #
+    # `traefik.docker.network` names the network the door dials this container
+    # on. **Joining it is #15's**: it is created by the installation under a
+    # fixed name, and a stack that declared it external here would refuse to
+    # come up on a clean clone, which is the one thing this file has to do.
+    #
+    # `BOX_DOMAIN` is the box's declaration of itself, one file every stack on
+    # the box is started against. It defaults here so that a clone with no box
+    # behind it still comes up; on a box, #15 starts this against
+    # `/etc/rails49/box.env` and a missing declaration is an error there.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=rails49
+      - traefik.http.services.dccex-ui.loadbalancer.server.port=80
+      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN:-localhost}`)
+      - traefik.http.routers.dccex-ui.priority=1
+      - traefik.http.routers.dccex-ui.entrypoints=websecure
+      - traefik.http.routers.dccex-ui.service=dccex-ui
+      - traefik.http.routers.dccex-ui.tls.certresolver=le
