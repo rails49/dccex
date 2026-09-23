@@ -290,7 +290,17 @@ def elsewhere(origin: str, host: str) -> bool:
     neither does a browser reading the same origin it is on. What limits the
     rest is the LAN (ADR-0042).
     """
-    return bool(origin) and urlsplit(origin).netloc != host
+    if not origin:
+        return False
+    try:
+        named = urlsplit(origin).netloc
+    except ValueError:
+        # An origin that cannot be read names no host, so it is not this one.
+        # Refusing is the direction that is safe when the check cannot be
+        # made, and it is the only one that keeps this from raising into the
+        # routing.
+        return True
+    return named != host
 
 
 class Face:
@@ -357,7 +367,16 @@ class Face:
                 f"the mirror's face is the page's at {host},"
                 f" and {origin} is somewhere else",
             )
-        asked = urlsplit(path).path
+        try:
+            asked = urlsplit(path).path
+        except ValueError:
+            # `urlsplit` raises on a target it cannot parse rather than
+            # returning something. Left to escape, that ends the connection
+            # with no answer on it and a traceback on the box, for a request
+            # the face can perfectly well call bad.
+            return refused(
+                HTTPStatus.BAD_REQUEST, f"{path} is not a target that can be read"
+            )
         if asked == RELEASES_PATH:
             if method != "GET":
                 return refused(

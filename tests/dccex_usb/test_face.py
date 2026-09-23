@@ -502,6 +502,49 @@ def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
     assert answered.status == HTTPStatus.OK
 
 
+UNREADABLE = "//[v"
+"""A request target that `urlsplit` cannot read: a host that opens an IPv6
+literal and never closes it. A browser does not send this; something pointed
+at the port by hand does."""
+
+
+@pytest.mark.parametrize(
+    "asked",
+    [
+        pytest.param(UNREADABLE, id="an unclosed IPv6 literal"),
+        pytest.param("http://[::1", id="a whole URL with one"),
+    ],
+)
+def test_a_target_that_cannot_be_read_is_refused_rather_than_dropped(
+    asked: str,
+) -> None:
+    """A malformed target is a bad request and is answered as one. Reading it
+    is `urlsplit`'s, which raises on a host it cannot parse rather than
+    returning something; left to escape, that ends the connection with no
+    answer on it at all and a traceback on the box."""
+    source = Source()
+
+    answered = asyncio.run(face(source).answer("GET", asked, b""))
+
+    assert answered.status == HTTPStatus.BAD_REQUEST
+    assert source.asked == []
+
+
+def test_an_origin_that_cannot_be_read_is_somewhere_else() -> None:
+    """An origin is held to the host it names, so one that cannot be read
+    names no host and is not this one. It is refused like any other page from
+    somewhere else — the direction that is safe when the check cannot be
+    made — rather than raising out of the routing."""
+    source = Source()
+
+    answered = asyncio.run(
+        face(source).answer("GET", "/releases", b"", origin="http://[::1", host=LABEL)
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert source.asked == []
+
+
 def test_the_prefix_is_stripped_before_the_face_sees_it() -> None:
     """The face's address is a path prefix on the page's origin, and the door
     takes it off on the way through (ADR-0004). So the face answers
