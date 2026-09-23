@@ -1,11 +1,12 @@
 """`python -m dccex_usb` — the command line the container runs.
 
 The device to open and the port to serve it on are the mirror's own two flags
-and the whole of what it was for a while (ADR-0043). What the third is for is
-the one thing this app does that is not mirroring: writing a released build
+and the whole of what it was for a while (ADR-0043). What the others are for
+is the one thing this app does that is not mirroring: writing a released build
 onto the command station, which only the process holding the device can do
-(ADR-0065, `firmware.py`). There is still no bind address, because the server
-binds every interface and what limits its reach is the LAN (ADR-0042).
+(ADR-0065, `firmware.py`), and the face that is asked about it (`face.py`).
+There is still no bind address, because both servers bind every interface and
+what limits their reach is the LAN (ADR-0042).
 
 - `--device <path>`, the serial device to open.
 - `--port <n>`, the TCP port to mirror it on.
@@ -13,13 +14,16 @@ binds every interface and what limits its reach is the LAN (ADR-0042).
   this installation's fork. **Configuration and never payload**: the LAN
   carries no authentication on purpose, so a source on the wire would let
   anyone on the wifi run an arbitrary binary on the command station.
+- `--face-port <n>`, the port this app's own face is served on. A port of its
+  own, because the mirror's carries the station's conversation and an HTTP
+  request arriving there would be bytes typed at the command station.
 
 **There is no broker and no identity.** Both went with the bus (ADR-0001):
-the flash was asked for on a bus in `control` and will be asked for on this
-app's own face, and a name to key a refusal row by is a name for a row that no
+the flash was asked for on a bus in `control` and is asked for on this app's
+own face, and a name to key a refusal row by is a name for a row that no
 longer exists. What is left is an app that dials nothing and answers nothing
-but its own port — which is what lets a command station be mirrored on a box
-with nothing else running.
+but its own two ports — which is what lets a command station be mirrored on a
+box with nothing else running.
 
 **asyncio owns this process.** The mirror is a loop, the flash runs on it, and
 the loop here is what carries a mirror that ended out to the exit status.
@@ -31,6 +35,8 @@ import contextlib
 import signal
 import threading
 
+from dccex_usb.face import PORT as FACE_PORT
+from dccex_usb.face import Face, Server
 from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import Station, to_stderr
 
@@ -46,29 +52,36 @@ def serve(
     port: int,
     stop: threading.Event,
     releases: str = RELEASES,
+    face_port: int = FACE_PORT,
     period_s: float = PERIOD_S,
 ) -> None:
-    """The app: the mirror, and the flasher on the device it holds.
+    """The app: the mirror, the flasher on the device it holds, and the face.
 
     `stop` is how a caller that is not a signal ends the loop, which is the
     suite. The deployment sets it never: a signal raises where the process
     happens to be, and `main` lets that out. So does a mirror that cannot
     serve — the port is taken, and this comes back raising rather than
-    staying up with nothing behind it (#526).
+    staying up with nothing behind it (#526) — and so does a face that
+    cannot, for the same reason on the other port.
     """
     station = Station(device, port)
     flasher = Flasher(station, releases)
-    to_stderr(f"serving {device} on {port}, flashing from {releases}")
-    asyncio.run(mirroring(station, flasher, stop, period_s))
+    face = Server(Face(releases), face_port)
+    to_stderr(
+        f"serving {device} on {port}, face on {face_port}, flashing from {releases}"
+    )
+    asyncio.run(mirroring(station, flasher, face, stop, period_s))
 
 
 async def mirroring(
     station: Station,
     flasher: Flasher,
+    face: Server,
     stop: threading.Event,
     period_s: float,
 ) -> None:
-    """The mirror on a task of its own, until the process ends.
+    """The mirror on a task of its own, and the face beside it, until the
+    process ends.
 
     **The mirror ending ends this**, which is why the loop waits on the task
     rather than on the clock alone: a port already taken raises out of the
@@ -78,6 +91,12 @@ async def mirroring(
     and `restart: unless-stopped` gets its turn — which is what a box whose
     2560 is busy for a moment during a deploy depends on.
 
+    **The face is up for as long as the app is.** It is started on this loop
+    and closed on the way out, so the port goes back when the process ends
+    rather than being left for the next start of it to trip over, and a face
+    that cannot be served ends this the way a mirror that cannot be served
+    does: the UI has no app at all if it cannot ask this one anything.
+
     A flash in flight is waited out where there is still a loop to wait on:
     the mirror gives the device back when the flash is done with it, and
     ending in the middle of one leaves the station half written. A signal
@@ -86,9 +105,16 @@ async def mirroring(
     """
     mirror = asyncio.create_task(station.run())
     try:
+        await face.start()
         while not stop.is_set() and not mirror.done():
             await asyncio.wait((mirror,), timeout=period_s)
     finally:
+        # The face is closed first and the flash is waited out after: nothing
+        # can ask this app for anything once the face is down, and a
+        # cancellation arriving in the close is not allowed to take the wait
+        # for a flash in flight with it.
+        with contextlib.suppress(asyncio.CancelledError):
+            await face.close()
         with contextlib.suppress(asyncio.CancelledError):
             await flasher.settled()
         mirror.cancel()
@@ -97,11 +123,12 @@ async def mirroring(
 
 
 def command_line() -> argparse.ArgumentParser:
-    """The three flags, which are the whole of the configuration."""
+    """The four flags, which are the whole of the configuration."""
     parser = argparse.ArgumentParser(
         prog="python -m dccex_usb",
         description="Mirror the command station's serial device on a TCP port,"
-        " and write a released firmware build onto it when asked.",
+        " answer for this app on its own face, and write a released firmware"
+        " build onto the station when asked.",
     )
     parser.add_argument("--device", required=True, help="the serial device to open")
     parser.add_argument("--port", type=int, required=True, help="the TCP port to serve")
@@ -111,6 +138,13 @@ def command_line() -> argparse.ArgumentParser:
         metavar="URL",
         help="where releases are read from, this installation's fork by"
         " default; never taken from a payload",
+    )
+    parser.add_argument(
+        "--face-port",
+        type=int,
+        default=FACE_PORT,
+        metavar="N",
+        help="the TCP port this app's own face is served on",
     )
     return parser
 
@@ -122,7 +156,13 @@ def main() -> None:
     # stands, and the mirror lets the device go on the way out either way.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
     with contextlib.suppress(KeyboardInterrupt):
-        serve(args.device, args.port, threading.Event(), args.firmware_releases)
+        serve(
+            args.device,
+            args.port,
+            threading.Event(),
+            args.firmware_releases,
+            args.face_port,
+        )
 
 
 if __name__ == "__main__":

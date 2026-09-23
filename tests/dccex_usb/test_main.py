@@ -33,6 +33,8 @@ import threading
 import pytest
 
 from dccex_usb.__main__ import command_line, mirroring
+from dccex_usb.face import PORT as FACE_PORT
+from dccex_usb.face import Face, Server
 from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import HOST, Station
 
@@ -75,6 +77,21 @@ def test_another_source_of_releases_can_be_named() -> None:
     args = command_line().parse_args([*STARTED, "--firmware-releases", ELSEWHERE])
 
     assert args.firmware_releases == ELSEWHERE
+
+
+def test_the_face_is_served_on_a_port_of_its_own_by_default() -> None:
+    """A port that is not the mirror's: 2560 carries the station's own
+    conversation, and the door reaches the face on this one."""
+    args = command_line().parse_args(STARTED)
+
+    assert args.face_port == FACE_PORT
+    assert args.face_port != args.port
+
+
+def test_another_port_for_the_face_can_be_named() -> None:
+    args = command_line().parse_args([*STARTED, "--face-port", str(FACE_PORT + 1)])
+
+    assert args.face_port == FACE_PORT + 1
 
 
 @pytest.mark.parametrize(
@@ -144,6 +161,29 @@ class Settling(Flasher):
         await self.let_go.wait()
 
 
+async def unreachable(url: str) -> bytes:
+    """What fetches a URL here, and never does: nothing in the gate reaches a
+    release API, and nothing in this file asks the face what a source
+    carries."""
+    raise AssertionError(f"the gate reached {url}")
+
+
+def served(port: int = 0) -> Server:
+    """The face on an OS-chosen port, which is what the loop is handed."""
+    return Server(Face(fetch=unreachable), port, log=lambda line: None)
+
+
+class Unserved(Server):
+    """A face that cannot serve: `start()` raises where binding a port that
+    something else already has raises."""
+
+    def __init__(self) -> None:
+        super().__init__(Face(fetch=unreachable), FACE_PORT, log=lambda line: None)
+
+    async def start(self) -> None:
+        raise OSError(errno.EADDRINUSE, "address already in use")
+
+
 def quiet(device: Station) -> Flasher:
     """The real flasher with nothing in flight, which is every moment but a
     flash: nothing can ask it for one until the face does (#12)."""
@@ -160,7 +200,7 @@ def test_a_mirror_that_cannot_serve_ends_the_loop() -> None:
         station = Failing()
         stop = threading.Event()  # the deployment sets it never, and nor does this
         looping = asyncio.create_task(
-            mirroring(station, quiet(station), stop, PERIOD_S)
+            mirroring(station, quiet(station), served(), stop, PERIOD_S)
         )
         # Waited on rather than cancelled after: a loop cancelled from outside
         # carries the failure out anyway, and what is asserted is that nothing
@@ -183,7 +223,7 @@ def test_a_mirror_that_serves_is_watched_until_stop() -> None:
         station = Endless()
         stop = threading.Event()
         looping = asyncio.create_task(
-            mirroring(station, quiet(station), stop, PERIOD_S)
+            mirroring(station, quiet(station), served(), stop, PERIOD_S)
         )
         await asyncio.sleep(TURNS * PERIOD_S)
         assert not looping.done(), "the loop ended with the mirror still serving"
@@ -204,7 +244,9 @@ def test_a_flash_in_flight_is_waited_out_before_the_mirror_is_cancelled() -> Non
         station = Endless()
         flasher = Settling(station)
         stop = threading.Event()
-        looping = asyncio.create_task(mirroring(station, flasher, stop, PERIOD_S))
+        looping = asyncio.create_task(
+            mirroring(station, flasher, served(), stop, PERIOD_S)
+        )
         await asyncio.sleep(TURNS * PERIOD_S)
         stop.set()
         await flasher.reached.wait()
@@ -255,3 +297,51 @@ def test_a_port_already_in_use_exits_non_zero() -> None:
 
     assert ran.returncode != 0
     assert "address already in use" in ran.stderr.lower()
+
+
+def test_the_face_is_served_while_the_mirror_is() -> None:
+    """The face is up for as long as the app is, and the port goes back when
+    the app ends: it is one more thing in the process that holds the device,
+    and a port left bound by an app that has stopped is what the next start
+    of it cannot get past (#526)."""
+
+    async def serving() -> int:
+        station = Endless()
+        face = served()
+        stop = threading.Event()
+        looping = asyncio.create_task(
+            mirroring(station, quiet(station), face, stop, PERIOD_S)
+        )
+        await asyncio.sleep(TURNS * PERIOD_S)
+        port = face.port
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.close()
+        await writer.wait_closed()
+        stop.set()
+        await looping
+        return port
+
+    port = asyncio.run(asyncio.wait_for(serving(), TIMEOUT_S))
+    with socket.socket() as free:
+        free.bind((HOST, port))  # nothing holds it, so the next start gets it
+
+
+def test_a_face_that_cannot_serve_ends_the_loop() -> None:
+    """The mirror's own rule, applied to the face: an app whose face nobody
+    can reach is not an app the UI has, so it ends rather than staying up
+    half served, and `restart: unless-stopped` gets its turn."""
+
+    async def refused() -> Endless:
+        station = Endless()
+        stop = threading.Event()
+        looping = asyncio.create_task(
+            mirroring(station, quiet(station), Unserved(), stop, PERIOD_S)
+        )
+        ended, _ = await asyncio.wait({looping}, timeout=TIMEOUT_S)
+        assert ended, "the loop went round with no face behind it"
+        await looping
+        return station
+
+    with pytest.raises(OSError) as carried:
+        asyncio.run(refused())
+    assert carried.value.errno == errno.EADDRINUSE
