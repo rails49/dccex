@@ -174,7 +174,8 @@ whole railroad.
 
 ## The face
 
-The UI talks to one thing and this is it: this app's own face, on the UI's
+The UI talks to one thing and this is it ([the page](../ui/README.md)): this
+app's own face, on the UI's
 origin and behind the same door, about the app rather than about a railroad
 ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md),
 [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
