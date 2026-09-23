@@ -853,6 +853,52 @@ def test_the_device_is_let_go_though_a_client_takes_nothing(pty: Pty) -> None:
     asyncio.run(scenario())
 
 
+def test_a_client_that_leaves_with_bytes_it_never_took_is_aborted_too(
+    pty: Pty,
+) -> None:
+    """The path every client leaves by, and the only one it walks itself.
+
+    Half a close: the client shuts its write side, which is the handler's
+    read returning nothing and the end of its loop, and it never takes the
+    bytes the app is still holding for it — a throttle whose window went
+    away with the station still talking at it. Closing its stream politely
+    is a wait for those bytes to drain, which this client is not there to
+    do, so the handler would never return, and a server that waits for
+    every handler would never close. It is aborted instead, as at the three
+    other places a client is dropped.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = station(pty.path, log, max_outstanding_bytes=UNREACHABLE_BYTES)
+        await app.start()
+        try:
+            _, deaf = await connect_deaf(app)
+            await log.wait_for("serial open")
+            await wedge(pty)
+            held = open_fds()
+
+            deaf.write_eof()
+
+            # It left by its own handler rather than by the cut-off, which
+            # the raised bound has put out of reach.
+            assert "too far behind" not in await log.wait_for("client disconnected")
+            # The station's end of the socket is back while the client's own
+            # is still open and still unread, so the bytes it was holding
+            # went with it — which a polite close would still be waiting to
+            # hand over.
+            assert await released(held - 1) == held - 1
+            # And the handler is not still running: the server does not
+            # return while one is, and this client is off the set `close()`
+            # aborts, so nothing after it would rescue a polite close here.
+            await shut_down(app)
+            deaf.close()
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())
+
+
 class Peeking(Station):
     """A station that hands out the device it holds, which a mirror does not.
 
