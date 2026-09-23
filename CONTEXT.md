@@ -54,8 +54,9 @@ mirror's port like any other.
 An app's own interface, served on the UI's origin and behind the same door,
 about that app rather than about a railroad (ADR-0002). The UI talks to one
 face and nothing else. A face is private to its app: it is not somewhere else
-to get at the railroad. The mirror's face is #12; until it lands, the flash
-has no caller at all.
+to get at the railroad. The mirror's face answers what releases the source
+carries (#12); until the flash is asked for there (#13), it has no caller at
+all.
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 

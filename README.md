@@ -16,7 +16,8 @@ top of them.
   hand-held throttles are all clients of the port and coexist. It is also the
   only thing that can write firmware onto the station, because writing flash
   means owning the port. **It is here** — `src/dccex_usb`, copied out of
-  `control` and off the bus ([the page](docs/dccex_usb/README.md),
+  `control`, off the bus and answering on its own face
+  ([the page](docs/dccex_usb/README.md),
   [ADR-0001](docs/adr/0001-the-mirror-leaves-the-bus-for-a-face.md),
   [SOURCE.md](src/SOURCE.md)).
 - **`dccex`**, the translator. It turns the layout interface's desired values
@@ -24,8 +25,9 @@ top of them.
   Not here yet.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into. Not here yet, and it is what the mirror's face is
-  for — until that lands, nothing can ask for a flash.
+  with a box to type into. Not here yet. The mirror's face is what it will
+  talk to: that face carries the releases the configured source lists already,
+  and asking for a flash is still to come.
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware.

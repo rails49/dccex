@@ -8,16 +8,18 @@ JMRI, a hand-held throttle — is a client of the port and they coexist
 DecoderPro keeps working with every app of ours down.
 
 It has no state of its own and, here, **nothing on either of its sides but its
-own port**. In `control` it was an app on the bus, because of the one thing it
-does that is not mirroring — **writing a released firmware build onto the
-station**, which only the process holding the device can do
+own two ports**: the one the cable is mirrored on, and the one this app's own
+face is answered on. In `control` it was an app on the bus, because of the one
+thing it does that is not mirroring — **writing a released firmware build onto
+the station**, which only the process holding the device can do
 ([control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)).
 That ask arrived on a topic and a refusal went back as a row. Neither is here:
 a command station is not a fact about a railroad, so the mirror answers to
 this app's own face instead ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md)).
-The face is #12, and until it lands **nothing can ask for a flash at all** —
-the path is there, it is covered, and it has no caller. That is the app being
-quiet, not the app being broken.
+The face is here (#12) and answers what releases the configured source
+carries. What it does not carry yet is the ask for a flash, which is #13, so
+**nothing can ask for one at all** — the path is there, it is covered, and it
+has no caller. That is the app being quiet, not the app being broken.
 
 The code arrived as a copy of `control`'s at `deee7b6`, its file names kept so
 the two stay diffable; [SOURCE.md](../../src/SOURCE.md) says what came from
@@ -30,30 +32,35 @@ where, and what has been fixed here since `control`'s copy was deleted
 python -m dccex_usb --device /dev/dccex --port 2560
 ```
 
-The device to open and the port to serve it on. One more is optional:
-`--firmware-releases <url>`, where releases are read from, this installation's
-fork by default. It is **configuration and never payload** — the LAN carries no
-authentication on purpose, so a source named by a caller would let anyone on
-the wifi run an arbitrary binary on the command station.
+The device to open and the port to serve it on. Two more are optional:
+
+- `--firmware-releases <url>`, where releases are read from, this
+  installation's fork by default. It is **configuration and never payload** —
+  the LAN carries no authentication on purpose, so a source named by a caller
+  would let anyone on the wifi run an arbitrary binary on the command station.
+- `--face-port <n>`, the port this app's own face is answered on, 8080 by
+  default. A port of its own, because 2560 carries the station's conversation.
 
 There is no broker argument and no identity argument. Both went with the bus:
 there is nothing to dial and no row to key by a name.
 
-There is no bind address either. The server binds every interface, because the
-container publishes the port and JMRI reaches it as `dccex-usb:2560`; what
-limits its reach is the LAN, which is the trust boundary
+There is no bind address either. Both servers bind every interface, because the
+container publishes the ports — JMRI reaches the mirror as `dccex-usb:2560`
+and the door reaches the face; what limits their reach is the LAN, which is
+the trust boundary
 ([control ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)).
 For the same reason there is no authentication and no limit on the number of
 clients beyond the OS's — though there is a limit on how far behind one may
 fall, which is a different question.
 
-**A mirror that cannot serve its port exits.** Something else on 2560 — a
-second copy of the app, a container that has not finished going away — is not
-a state this app can mirror out of, so it ends non-zero with the reason on
-stderr rather than staying up with no server behind it. `restart:
-unless-stopped` is what tries again, and a port that is busy for a moment
-during a deploy comes good on the retry. The device is a different matter: one
-that is not there yet is waited for, not exited on.
+**A mirror that cannot serve its port exits**, and so does a face that cannot.
+Something else on 2560 — a second copy of the app, a container that has not
+finished going away — is not a state this app can mirror out of, so it ends
+non-zero with the reason on stderr rather than staying up with no server
+behind it; and an app whose face nobody can reach is an app the UI does not
+have. `restart: unless-stopped` is what tries again, and a port that is busy
+for a moment during a deploy comes good on the retry. The device is a
+different matter: one that is not there yet is waited for, not exited on.
 
 The device is opened raw at 115200 8N1 — no echo, no line editing, no flow
 control — so what a client sends is what the station receives.
@@ -130,6 +137,60 @@ message dropped in each outage, the grace ending one, and what a flash came
 to, to stderr. Nothing else: a mirror that logged the traffic would log the
 whole railroad.
 
+## The face
+
+The UI talks to one thing and this is it: this app's own face, on the UI's
+origin and behind the same door, about the app rather than about a railroad
+([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md),
+[ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
+It is answered on `--face-port`, and **serving it takes nothing from the
+mirror**: the device is not reached from here, and 2560 goes on carrying the
+station's conversation while the face answers.
+
+What it answers, which is one thing so far:
+
+```
+$ curl http://dccex-usb:8080/releases
+{"tags": ["v5.6.4-rails49.1", "v5.6.3-rails49.2"]}
+```
+
+The **tags** of the **releases** the configured source carries, in the order
+the release API lists them, so nobody has to type one from memory. A tag is
+all a caller is given and all one will ever name: **where releases are read
+from is `--firmware-releases`, this app's configuration, and no request can
+redirect it.** The query string is dropped and the body is not read for a
+source, because the LAN carries no authentication on purpose (control
+ADR-0042) and a request that named a source would be a request that decides
+what the station is offered to run.
+
+**What it will not answer is a status and a sentence**, in a `reason` field,
+so whoever asked can say what happened rather than sending somebody to read a
+log on the box (control ADR-0050):
+
+- `404` — a path this face does not answer. A face is private to its app and
+  is not somewhere else to get at the railroad.
+- `405` — the releases are read, with `GET`.
+- `502` — the source could not be reached, or answered with something that is
+  not a list of releases. The release API is somebody else's service and the
+  mirror keeps mirroring what it is doing rather than falling over with it. A
+  source that has published nothing yet is not this: that is an answer, and
+  the tags are empty.
+- `400`, `413`, `431` — a request this face cannot read: not HTTP, or a head
+  or a body larger than a page asking a question has any use for.
+
+Of HTTP it reads the request line, the length of the body and nothing else,
+and it answers one request per connection. This is a private origin spoken to
+by one page, so negotiation and a connection kept open for the next request
+are protocol it would carry without ever being asked for it. One request is
+bounded in time, because the loop it is answered on is the one that holds the
+command station.
+
+Nothing in the gate reaches the release API. What fetches a URL is injected
+here exactly as it is for the flash, and the suite substitutes its own, so
+every question about what the face says is asked of its routing directly —
+a function of a method, a path and a body, answering with a status and a body,
+with no socket anywhere near it.
+
 ## Writing the firmware
 
 The station's firmware is built elsewhere, against the station's own source.
@@ -139,10 +200,10 @@ serial device open, esptool cannot share it, and no container can stop a
 sibling without the Docker daemon's socket, which is root on the box
 (control ADR-0065).
 
-**Who asks is the face, and there is no face yet** (ADR-0001, #12). `Flasher`
-takes a tag as a call on the mirror's own loop; there is no topic, no second
-port and no command-line option that reaches it. What is written here is what
-happens once something does ask.
+**Who asks is the face, and it does not carry this yet** (ADR-0001, #13).
+`Flasher` takes a tag as a call on the mirror's own loop; there is no topic,
+no command-line option and no route on the face that reaches it. What is
+written here is what happens once something does ask.
 
 On the ask, in this order, and the order is the point:
 
