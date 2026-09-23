@@ -1,0 +1,30 @@
+/*
+ * The values this page draws with, and the only place it holds them.
+ *
+ * They are the look rules' — four colours and two sizes that are one system
+ * across rails49's UIs — and `look/tokens.css` is the verbatim copy of what
+ * they are, pinned to the commit it was taken at (org ADR-0005). That copy is
+ * inert: nothing imports it and the page does not link it. This file is how
+ * this UI expresses the same values, which ADR-0003 leaves free, and
+ * `tests/ui/test_look.py` asserts the two agree token for token.
+ *
+ * Every rule that paints chrome asks for one of these rather than writing a
+ * colour out, so a value moves here and nowhere else. `--rail-turns` is the
+ * exception the rules themselves name: a media query cannot read a custom
+ * property, so the height is also a number in `look.ts` that the two sheets
+ * which turn are interpolated from.
+ *
+ * The chrome keeps these values in both themes — it is what says *this is the
+ * same project* as somebody moves between the project's apps — so there is no
+ * dark half of this file. The work pane follows the theme and takes its
+ * colours from Shoelace's (LOOK.md).
+ */
+
+:root {
+  --band: #1d4ed8;
+  --band-ink: #ffffff;
+  --rail: #064e3b;
+  --rail-group: #059669;
+  --rail-button: 44px;
+  --rail-turns: 640px;
+}
