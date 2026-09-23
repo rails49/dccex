@@ -1,7 +1,7 @@
 # ADR-0003 — the copy has no original left, and is fixed here
 
 - **Status:** accepted, 2026-09-22
-- **Ticket:** rails49/dccex#23
+- **Ticket:** rails49/dccex#23, #24, #26
 - **Supersedes:** [ADR-0002](0002-a-defect-in-copied-code-is-fixed-where-it-came-from.md)
   (a defect in copied code is fixed where it came from)
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (d.6,
