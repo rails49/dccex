@@ -178,6 +178,10 @@ log on the box (control ADR-0050):
 - `400`, `413`, `431` — a request this face cannot read: not HTTP, or a head
   or a body larger than a page asking a question has any use for.
 
+Whoever asked is told, and the box's log is told only what is not the
+caller's doing: a source that could not be read is a line on stderr as well,
+and a path the face does not answer is the caller's own to read.
+
 Of HTTP it reads the request line, the length of the body and nothing else,
 and it answers one request per connection. This is a private origin spoken to
 by one page, so negotiation and a connection kept open for the next request

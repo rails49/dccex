@@ -57,6 +57,8 @@ CRLF = "\r\n"
 HEAD_END = b"\r\n\r\n"
 LENGTH = "content-length"
 JSON = "application/json"
+REASON = "reason"
+"""What an answer the caller cannot use carries its sentence in."""
 
 RELEASES_PATH = "/releases"
 """What the releases the source carries are asked for at. The answer is their
@@ -168,7 +170,7 @@ def refused(status: HTTPStatus, reason: str) -> Answered:
     caller that cannot say what went wrong makes a person go and read a log on
     a box (ADR-0050).
     """
-    return Answered(status, {"reason": reason})
+    return Answered(status, {REASON: reason})
 
 
 class Asked(NamedTuple):
@@ -311,7 +313,14 @@ class Server:
     async def _exchange(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        writer.write(response(await self._answered(reader)))
+        answered = await self._answered(reader)
+        if answered.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
+            # The one answer worth a line on the box, and the reason it is:
+            # what went wrong is not the caller's doing, and the caller is a
+            # page that may be nobody's at the moment. What the face refuses a
+            # caller for is the caller's own to read (ADR-0050).
+            self._log(f"face: {answered.body.get(REASON, answered.status.phrase)}")
+        writer.write(response(answered))
         await writer.drain()
         writer.close()
         await writer.wait_closed()
