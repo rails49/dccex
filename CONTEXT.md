@@ -57,10 +57,11 @@ face and nothing else. A face is private to its app: it is not somewhere else
 to get at the railroad. Its address is a path prefix on the page's own origin,
 which the door strips before the app sees it, and a page from anywhere else is
 refused (ADR-0004). The mirror's face answers what releases the source
-carries (#12) and writes one of them onto the station when a caller names its
-tag (#13). It guards nothing while it does: a face is about its app, so
-whether a railroad can spare its command station for two minutes is the
-operator's question and not this app's (ADR-0006).
+carries (#12), writes one of them onto the station when a caller names its tag
+(#13), and carries the station's own conversation to the page and back (#14,
+the **stream** below). It guards nothing while it does: a face is about its
+app, so whether a railroad can spare its command station for two minutes is
+the operator's question and not this app's (ADR-0006).
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
@@ -109,6 +110,24 @@ does not know which of them is which, and does not keep one waiting for
 another.
 
 **Not:** *subscriber*, *listener*, *consumer*, *session*.
+
+## stream
+
+The station's conversation on the face: every byte the mirror hands a client,
+reaching a page, and what the page types reaching the device. It is **one more
+client of the mirror and not a second mirror** — the same fan-out, the same
+bound on how far behind a client may fall, the same outage — because the face
+joins the mirror's port for it and carries the bytes
+([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
+
+It is opened by upgrading a request on the page's own origin, which is what a
+browser can do where dialling 2560 is not, and it is served on the face's port
+beside the face's other requests (ADR-0004 d.3).
+
+**Not:** *websocket* (that is the transport it rides, and the word is the
+protocol's rather than a name for what is on it), *feed*, *channel*, *socket*
+(a socket is what a client of the mirror's port opens), *the monitor* (the
+monitor is the page that shows this; the stream is what it is shown).
 
 ## link
 

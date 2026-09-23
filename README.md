@@ -28,8 +28,11 @@ top of them.
   with a box to type into. Not here yet. The mirror's face is what it will
   talk to, on that same label under `/dccex-usb` and behind the same
   certificate ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
-  that face carries the releases the configured source lists and writes one
-  onto the station when the page names its tag. Whether the railroad can spare
+  that face carries the releases the configured source lists, writes one onto
+  the station when the page names its tag, and carries the station's
+  conversation both ways on a **stream** the page opens on its own origin —
+  one more client of the mirror's port and not a second mirror
+  ([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)). Whether the railroad can spare
   its station is the operator's to answer: the page sequences and confirms,
   and nothing in the app checks
   ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
@@ -50,7 +53,9 @@ label under a path prefix the door strips, so the monitor's stream is `wss://`
 on the page's own origin and a page from anywhere else is refused. A browser
 reaches the face through the door and never the LAN, which is what
 [ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
-decides; 2560 goes on being published raw for JMRI and the throttles.
+decides; 2560 goes on being published raw for JMRI and the throttles, and the
+page on the stream is one of its clients like they are
+([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
 
 ## How it gets on the box
 
