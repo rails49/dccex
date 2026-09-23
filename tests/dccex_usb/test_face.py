@@ -11,10 +11,15 @@ the device alone.
 
 Nothing in the gate reaches the release API (docs/dccex_usb/README.md), so the
 source here is a fake that answers from a dict, and the URLs are on a TLD that
-resolves nowhere in case that ever stops being true.
+resolves nowhere in case that ever stops being true. Nothing in it writes a
+command station either: what a flash does to a device is `test_firmware.py`'s,
+so the flasher here is usually a stand-in that says what became of a gesture
+and never touches a cable. The one test that wires the real one up gives it a
+pty and a fake esptool, as that file does.
 """
 
 import asyncio
+import contextlib
 import json
 import os
 from collections.abc import Sequence
@@ -22,8 +27,9 @@ from http import HTTPStatus
 
 import pytest
 
-from dccex_usb.face import STATUS, Face, Server
-from dccex_usb.firmware import Refusal, Wrote
+from dccex_usb.face import STATUS, Face, Server, Writes
+from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
+from tests.dccex_usb.test_firmware import FakeFetch
 from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
@@ -100,7 +106,7 @@ def asking(tag: str = TAG) -> bytes:
 def face(
     fetch: Source | None = None,
     releases: str = RELEASES,
-    flasher: Writing | None = None,
+    flasher: Writes | None = None,
 ) -> Face:
     """The face a test asks something of, built in one place.
 
@@ -554,6 +560,70 @@ def test_the_page_s_own_origin_arrives_on_the_head_and_is_answered() -> None:
     assert body == {"tags": TAGS}
 
 
+IMPATIENT_S = 0.05
+"""A patience small enough that a flash outlasts it here the way a real one
+outlasts ten seconds."""
+
+WRITES_S = IMPATIENT_S * 5
+
+
+class Slow:
+    """A flasher that takes longer than the caller's patience, which every
+    real one does: esptool is a minute or two."""
+
+    def __init__(self, takes_s: float) -> None:
+        self._takes_s = takes_s
+
+    async def wanted(self, tag: str) -> Wrote:
+        await asyncio.sleep(self._takes_s)
+        return Wrote(None, f"flashed '{tag}'")
+
+
+def test_a_flash_is_answered_however_long_the_station_takes() -> None:
+    """What a request is given is the caller's time and not the station's. A
+    flash is minutes of esptool with a timeout of its own (firmware.py), and a
+    face that timed its own answer out would leave the page that asked with a
+    closed socket and a station that was written anyway — the one outcome
+    nobody can say anything about afterwards."""
+
+    async def asked() -> tuple[int, object]:
+        server = Server(face(flasher=Slow(WRITES_S)), 0, patience_s=IMPATIENT_S)
+        await server.start()
+        try:
+            return await ask(
+                server.port, request(method="POST", target="/flash", body=asking())
+            )
+        finally:
+            await server.close()
+
+    status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.OK
+    assert body == {"flashed": TAG}
+
+
+def test_a_caller_that_says_nothing_is_let_go_of() -> None:
+    """The other half of that: what the patience is for is a caller that
+    opened a connection and never asked anything, which the process holding
+    the command station does not wait on for as long as the railroad runs."""
+
+    async def waited() -> bytes:
+        server = Server(face(), 0, patience_s=IMPATIENT_S)
+        await server.start()
+        try:
+            reader, writer = await asyncio.open_connection("127.0.0.1", server.port)
+            try:
+                return await reader.read()
+            finally:
+                writer.close()
+                with contextlib.suppress(ConnectionResetError):
+                    await writer.wait_closed()
+        finally:
+            await server.close()
+
+    assert asyncio.run(asyncio.wait_for(waited(), TIMEOUT_S)) == b""
+
+
 def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
     """The caller is told, and so is whoever is reading the app's log: a
     release API that is away is not the caller's doing, and the page that
@@ -597,6 +667,50 @@ def test_what_the_face_refuses_a_caller_for_is_not_said_on_the_box() -> None:
 
 
 # -- the wiring --------------------------------------------------------------
+
+
+def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() -> None:
+    """The whole of it through one socket, with a pty for the command station:
+    a page asks the face for a named release, the mirror lets the device go,
+    esptool is run on it, the mirror takes it back, and the caller is answered.
+
+    What runs is a fake, because esptool cannot write a pty and nothing in the
+    gate may need a command station — and it is what says the device was away
+    while it ran, which is the one ordering that can leave the railroad with a
+    closed port and no firmware (ADR-0065).
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        held: list[bool] = []
+
+        async def runner(command: Sequence[str], timeout_s: float) -> Ran:
+            held.append(mirror.held)
+            return Ran(0, "")
+
+        flasher = Flasher(mirror, RELEASES, fetch=FakeFetch(), runner=runner, log=log)
+        served = Server(face(flasher=flasher), 0)
+        await mirror.start()
+        await served.start()
+        try:
+            await log.wait_for("serial open")
+
+            status, body = await ask(
+                served.port, request(method="POST", target="/flash", body=asking())
+            )
+
+            assert (status, body) == (HTTPStatus.OK, {"flashed": TAG})
+            assert held == [False], "esptool ran with the mirror on the port"
+            await log.wait_for_count("serial open", 2)
+            assert mirror.held, "the mirror did not take the device back"
+        finally:
+            await served.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
 
 
 def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() -> None:
