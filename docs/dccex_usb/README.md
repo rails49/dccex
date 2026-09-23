@@ -248,19 +248,22 @@ and stopping halfway is the one thing nobody can recover from.
 so whoever asked can say what happened rather than sending somebody to read a
 log on the box (control ADR-0050):
 
-- `404` — a path this face does not answer, or a tag the source has no release
-  for. A face is private to its app and is not somewhere else to get at the
-  railroad.
+- `404` — a path this face does not answer, or a tag the source answered
+  about and carries no release for. The tag is the thing to fix, which is why
+  a source that was never asked is a `502` below and not this. A face is
+  private to its app and is not somewhere else to get at the railroad.
 - `405` — the releases are read, with `GET`; a flash is asked for, with
   `POST`. There is nothing at `/flash` to read, and a page that reloaded one
   would write the station again.
 - `502` — the source could not be reached, or answered with something that
-  cannot be used: not a list of releases, a release carrying no
-  `firmware.bin`, no digest for it, or bytes that are not what the digest
-  says. The release API is somebody else's service and the mirror keeps
-  mirroring what it is doing rather than falling over with it. A source that
-  has published nothing yet is not this: that is an answer, and the tags are
-  empty.
+  cannot be used: not a list of releases, not JSON at all, a status other than
+  the `404` above, a release carrying no `firmware.bin`, no digest for it, or
+  bytes that are not what the digest says. It is the same answer whether the
+  releases were being listed or a tag was being written, because it is the
+  same outage and the same question. The release API is somebody else's
+  service and the mirror keeps mirroring what it is doing rather than falling
+  over with it. A source that has published nothing yet is not this: that is
+  an answer, and the tags are empty.
 - `400`, `413`, `431` — a request this face cannot read: not HTTP, a head or a
   body larger than a page asking a question has any use for, a body that names
   no tag, or `latest`, which is not a name for a build.
@@ -398,10 +401,11 @@ link is down and the translator that lost it says so, and when the station
 answers again it reports the **build** it now runs.
 
 **What it refuses**, each of them a status and a reason to whoever asked and a
-line on the box besides: a tag with no such release (`404`), a release carrying
-no `firmware.bin` or no digest for it, and a digest that does not match
-(`502`), esptool exiting non-zero (`500`), esptool outliving the timeout
-(`504`), the device absent (`503`), and a second ask while a flash is in flight
+line on the box besides: a tag the source carries no release for (`404`), a
+source that could not be asked about it at all, a release carrying no
+`firmware.bin` or no digest for it, and a digest that does not match (`502`),
+esptool exiting non-zero (`500`), esptool outliving the timeout (`504`), the
+device absent (`503`), and a second ask while a flash is in flight
 (`409`) — refused, not queued, for the reason a client's bytes are dropped
 rather than queued. `latest` is refused too (`400`): it names a different build
 depending on when it is read, and what was written has to be sayable
