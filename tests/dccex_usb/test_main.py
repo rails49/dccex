@@ -2,25 +2,30 @@
 entrypoint does when the mirror ends.
 
 `mirroring` is the loop `python -m dccex_usb` runs — the mirror on a task of
-its own, watched for as long as the process is up — and what is asserted here
-is its side of that arrangement: a mirror that cannot serve ends the process
-rather than leaving it up with no TCP port and no device (#526). A box whose
-2560 is already taken, or whose command station is not enumerated yet, depends
-on the exit: `restart: unless-stopped` is what tries again.
+its own and the face beside it, both up for as long as the process is — and
+what is asserted here is its side of that arrangement: a mirror that cannot
+serve ends the process rather than leaving it up with no TCP port and no
+device (#526), a face that cannot serve ends it for the same reason on the
+other port, and both ports go back when it ends. A box whose 2560 is already
+taken, or whose command station is not enumerated yet, depends on the exit:
+`restart: unless-stopped` is what tries again.
 
 The parser is the part of `__main__.py` that arrived with no tests behind it:
 the rest of the package came across as a copy and brought `control`'s. What is
 asserted of it is the device and the port it is started with, the releases URL
-it falls back to, and the two arguments the bus took with it (ADR-0001 d.1).
+and the face's port it falls back to, and the two arguments the bus took with
+it (ADR-0001 d.1).
 Those two are absent only for as long as nobody adds them back, which is what
 the refusals are here to notice.
 
 The bus that was drained beside the mirror is gone with the rest of it
-(ADR-0001), so the loop's only business is the mirror and the flash in flight.
-There is no device here and no broker. The station is a stand-in whose `run()`
-the test writes, because what is under test is the entrypoint's observation of
-a mirror rather than the mirror — that is `test_station.py`'s — and the flash
-ordering the teardown owes a half-written station is `test_firmware.py`'s.
+(ADR-0001), so the loop's only business is the mirror, the face and the flash
+in flight. There is no device here and no broker. The station is a stand-in
+whose `run()` the test writes, because what is under test is the entrypoint's
+observation of a mirror rather than the mirror — that is `test_station.py`'s —
+and the flash ordering the teardown owes a half-written station is
+`test_firmware.py`'s. What the face answers is `test_face.py`'s; the face here
+is a real one on an OS-chosen port that nothing asks anything of.
 """
 
 import asyncio
@@ -288,6 +293,12 @@ def test_a_port_already_in_use_exits_non_zero() -> None:
                 DEVICE,
                 "--port",
                 str(port),
+                # The face on whatever the OS has going spare: what is under
+                # test is the mirror's port being taken, and a gate that bound
+                # the face's default would be a gate that fails, or passes, on
+                # what else the machine happens to be running.
+                "--face-port",
+                "0",
             ],
             capture_output=True,
             text=True,
