@@ -468,6 +468,51 @@ def test_a_second_gesture_while_a_flash_is_in_flight_is_refused_not_queued() -> 
     asyncio.run(scenario())
 
 
+def test_a_flash_that_failed_leaves_the_app_able_to_take_the_next_one() -> None:
+    """The flag falls whichever way a flash ended. An app that refused every
+    gesture after one failure, because the failure left the flag standing,
+    would be worse than the failure — and the second ask below would come back
+    as a flash in flight instead of being tried."""
+
+    async def scenario() -> None:
+        flash = Flash(runner=FakeRunner(Ran(2, "A fatal error occurred")))
+
+        failed = await flash.wants()
+        again = await flash.wants()
+
+        assert failed.refusal is Refusal.TOOL_FAILED
+        assert again.refusal is Refusal.TOOL_FAILED
+        assert len(flash.runner.commands) == 2, "the second ask was not tried"
+        assert not flash.flasher.flashing
+        assert flash.device.held
+
+    asyncio.run(scenario())
+
+
+def test_a_flash_that_went_wrong_in_no_written_down_way_is_still_answered() -> None:
+    """The tenth way out, which nobody designed: something raised. A caller
+    told nothing is a page waiting on a flash that ended minutes ago, so it is
+    an answer like the rest — and the app is askable afterwards."""
+
+    async def raising(command: Sequence[str], timeout_s: float) -> Ran:
+        raise RuntimeError("the workspace went away")
+
+    async def scenario() -> None:
+        log = Log()
+        device = FakeDevice()
+        flasher = Flasher(device, RELEASES, fetch=FakeFetch(), runner=raising, log=log)
+
+        wrote = await asyncio.wait_for(flasher.wanted(TAG), SETTLE_S)
+
+        assert wrote.refusal is Refusal.RAISED
+        assert "the workspace went away" in wrote.said
+        assert refusals(log) == [wrote.said]
+        assert device.held, "the device is not taken back"
+        assert not flasher.flashing
+
+    asyncio.run(scenario())
+
+
 def test_a_caller_that_goes_away_does_not_take_the_flash_with_it() -> None:
     """By the time anyone can leave, the station is being written. A browser
     that closed its tab, or a request that ran out of patience (face.py), must
