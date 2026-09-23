@@ -7,12 +7,22 @@ only thing it talks to: a command station is not a fact about a railroad, so
 there is no bus here to carry the question and no store to keep the answer
 (ADR-0001).
 
-**Two things are asked of it: what releases the source carries, and that one
-of them be written onto the station.** The second is what the face was wanted
-for. Writing means owning the serial port, so the app that holds the device is
-the only thing that can do it (ADR-0065, `firmware.py`); what this adds is
-that whoever asked is told what happened, where a refusal used to be a line in
-a log addressed to nobody (ADR-0001 d.2, ADR-0050).
+**Three things are asked of it: what releases the source carries, that one of
+them be written onto the station, and the station's own conversation, both
+ways.** The second is what the face was wanted for. Writing means owning the
+serial port, so the app that holds the device is the only thing that can do it
+(ADR-0065, `firmware.py`); what this adds is that whoever asked is told what
+happened, where a refusal used to be a line in a log addressed to nobody
+(ADR-0001 d.2, ADR-0050).
+
+**The third is the monitor's stream, and it is one more client of the mirror
+and not a second mirror** (ADR-0007, #14). A browser opens it by upgrading a
+request on the page's own origin, and what is on the other end of the upgrade
+is a client of 2560 like JMRI or a throttle: the bytes come off the same
+fan-out, a monitor that stops reading is cut off by the same rule, and an
+outage disconnects it with the rest. Nothing of the conversation is read here
+and nothing is decided about it — the mirror's framing is what makes what a
+page types a whole `<…>` message, exactly as it does for every other client.
 
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
@@ -23,7 +33,11 @@ moving train is the operator's, by way of the page that sequences it
 **Routing is a function of a method, a path and a body, and it answers with a
 status and a body.** Nothing in it touches a socket, which is what lets every
 question about what the face says be asked of it directly: what carries it
-over TCP is a way of reaching this function and has no answers of its own.
+over TCP is a way of reaching this function and has no answers of its own. The
+stream is the one route whose answer is not the end of the connection, and it
+is routed the same way: routing says whether the upgrade is allowed and what
+token answers it, and the socket that then carries the conversation is the
+server's (`Monitor`).
 
 **The source of releases is configuration and never payload.** The LAN carries
 no authentication on purpose (ADR-0042), so a request that could name where to
@@ -50,13 +64,25 @@ either way.
 
 import asyncio
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from http import HTTPStatus
 from typing import NamedTuple, Protocol, cast
 from urllib.parse import urlsplit
 
 from dccex_usb.firmware import RELEASES, Fetch, Refusal, Wrote, fetch
-from dccex_usb.station import HOST, to_stderr
+from dccex_usb.station import HOST, READ_SIZE, to_stderr
+from dccex_usb.stream import (
+    CLOSE,
+    DATA,
+    GOING_AWAY,
+    PING,
+    PONG,
+    Unreadable,
+    accepted,
+    framed,
+    goodbye,
+    unframed,
+)
 
 PORT = 8080
 """The port the face is served on unless a box says otherwise. Not the
@@ -71,7 +97,10 @@ waited on for as long as the railroad runs.
 
 It does not bound the answering. A flash is minutes of esptool with a timeout
 of its own (firmware.py), and the caller that asked for one is waited on for
-the whole of it: what it asked is whether the station runs that build now."""
+the whole of it: what it asked is whether the station runs that build now. It
+does not bound a stream either: a monitor is open for as long as somebody is
+watching the railroad, and what lets go of one that has stopped reading is the
+mirror's own rule (`Monitor`)."""
 
 MAX_BODY_BYTES = 1 << 16
 """How much body the face reads. What a page asks this app is a tag and a
@@ -89,6 +118,18 @@ ADDRESSED = "host"
 """What a request names the origin it was sent to in, which the door passes on
 as the label it answered for. A page on the face's own origin named the same
 one."""
+
+KEY = "sec-websocket-key"
+"""What a browser opening a stream names, and the whole of the upgrade that is
+read. A request for the stream that carries none is not a browser opening one,
+and the rest of the negotiation — the version, the subprotocols, the
+extensions — is protocol this would carry without ever being asked for it, on
+a private origin spoken to by one page (ADR-0002)."""
+
+LOOPBACK = "127.0.0.1"
+"""Where the mirror's port is joined for a monitor: the box itself and never
+the network. The face and the mirror are one process, so the stream's other
+end is one hop that does not leave the container (ADR-0007)."""
 
 JSON = "application/json"
 REASON = "reason"
@@ -116,6 +157,12 @@ just the same, because nothing here looks for one."""
 FLASHED = "flashed"
 """What an answer says a build was written under. The tag goes back with it,
 so the page can say which one it was rather than which one it asked for."""
+
+STREAM_PATH = "/stream"
+"""What the station's conversation is asked for at, with the door's prefix
+already off it (ADR-0004). Opened by upgrading and read no other way: there is
+nothing here to fetch, because what it carries is what the station is saying
+now."""
 
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
@@ -167,10 +214,17 @@ class Writes(Protocol):
 
 
 class Answered(NamedTuple):
-    """What routing comes to: a status, and a body to be rendered as JSON."""
+    """What routing comes to: a status, a body to be rendered as JSON, and the
+    token that answers a browser's key where what was asked for is the stream.
+
+    The token is the whole of what routing says about a stream, and it is the
+    one answer that does not end the connection: what the caller does next is
+    talk, which is the server's to carry (`Monitor`).
+    """
 
     status: HTTPStatus
     body: dict[str, object]
+    upgrade: str = ""
 
 
 def tags(document: object) -> list[str] | None:
@@ -271,22 +325,28 @@ class Face:
         *,
         origin: str = "",
         host: str = "",
+        key: str = "",
     ) -> Answered:
         """One request answered: the method, the path as it arrived, the bytes
-        that came with it, and who it came from — the origin of the page that
-        asked, where a browser named one, and the origin it was addressed to.
+        that came with it, who it came from — the origin of the page that
+        asked, where a browser named one, and the origin it was addressed to —
+        and the key, where what is being asked for is the stream.
 
         The path arrives whole, query string and all, and the query is split
         off and dropped here rather than somewhere a reader has to go and
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
-        prefix is already off it: what the face answers is `/releases` and
-        `/flash`, and a prefix that arrived is a path this does not answer
-        (ADR-0004).
+        prefix is already off it: what the face answers is `/releases`,
+        `/flash` and `/stream`, and a prefix that arrived is a path this does
+        not answer (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
-        app and is not somewhere else to get at the command station.
+        app and is not somewhere else to get at the command station. The
+        stream is the route that most needs it: a browser does not ask
+        permission before opening one, so the origin it names is the whole of
+        what holds a page somewhere else off the command station (ADR-0004
+        d.4).
 
         The body is read by one route, which is the flash: it names the tag to
         write and nothing else (#13).
@@ -312,6 +372,19 @@ class Face:
                     f"{asked} is asked for with POST, and this was {method}",
                 )
             return await self._writes(body)
+        if asked == STREAM_PATH:
+            if method != "GET":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is opened with GET, and this was {method}",
+                )
+            if not key:
+                return refused(
+                    HTTPStatus.BAD_REQUEST,
+                    f"{asked} is opened by upgrading, and this named no {KEY}:"
+                    " there is nothing here to fetch",
+                )
+            return Answered(HTTPStatus.SWITCHING_PROTOCOLS, {}, accepted(key))
         return refused(
             HTTPStatus.NOT_FOUND, f"the mirror's face does not answer {asked}"
         )
@@ -377,24 +450,26 @@ def refused(status: HTTPStatus, reason: str) -> Answered:
 class Asked(NamedTuple):
     """What a request says before its body: the method, the path it names as
     it was written, how many bytes of body it says are coming, the origin of
-    the page that asked where a browser named one, and the origin it was
-    addressed to."""
+    the page that asked where a browser named one, the origin it was addressed
+    to, and the key where the request is a browser opening a stream."""
 
     method: str
     path: str
     length: int
     origin: str = ""
     host: str = ""
+    key: str = ""
 
 
 def requested(head: bytes) -> Asked | None:
     """What a request head asks for, or None where it is not a request.
 
     The head is read and nothing else of HTTP is: the method, the target, the
-    length of the body, and the two fields that say who asked and where they
+    length of the body, the two fields that say who asked and where they
     asked it — the origin a browser attaches to a page's request, and the
     origin the request was addressed to, which the door passes on as the label
-    it answered for (ADR-0004). This is a face on a private origin behind the
+    it answered for (ADR-0004) — and the key a browser names when what it is
+    doing is opening a stream. This is a face on a private origin behind the
     door, spoken to by one page (ADR-0002), so the parts of the protocol a
     general server owes the world — negotiation, encodings, a connection kept
     open for the next request — are parts this would carry without ever being
@@ -426,7 +501,12 @@ def requested(head: bytes) -> Asked | None:
         if length < 0:
             return None
     return Asked(
-        asked[0], asked[1], length, said.get(ORIGIN, ""), said.get(ADDRESSED, "")
+        asked[0],
+        asked[1],
+        length,
+        said.get(ORIGIN, ""),
+        said.get(ADDRESSED, ""),
+        said.get(KEY, ""),
     )
 
 
@@ -438,7 +518,17 @@ def response(answered: Answered) -> bytes:
     one. Keeping it would make this a server that has to track a request
     boundary it has no other reason to know, for a page that asks a question
     at a time.
+
+    An upgrade is the one answer that ends neither: it hands the connection
+    over, and what is on it after this is frames (`stream.py`).
     """
+    if answered.upgrade:
+        return (
+            f"HTTP/1.1 {int(answered.status)} {answered.status.phrase}{CRLF}"
+            f"Upgrade: websocket{CRLF}"
+            f"Connection: Upgrade{CRLF}"
+            f"Sec-WebSocket-Accept: {answered.upgrade}{CRLF}{CRLF}"
+        ).encode()
     body = json.dumps(answered.body).encode()
     head = (
         f"HTTP/1.1 {int(answered.status)} {answered.status.phrase}{CRLF}"
@@ -447,6 +537,163 @@ def response(answered: Answered) -> bytes:
         f"Connection: close{CRLF}{CRLF}"
     )
     return head.encode() + body
+
+
+Ends = tuple[asyncio.StreamReader, asyncio.StreamWriter]
+"""Both ends of one connection, which is what `asyncio.open_connection` hands
+back and what a handler is given."""
+
+Joins = Callable[[], Awaitable[Ends]]
+"""How a monitor becomes one more client of the mirror's port, injected so
+that a test can join a mirror on a port the OS chose — and so that this is the
+one way the face reaches the cable at all. There is no device here and no
+fan-out: what is on the other end of it is 2560 (ADR-0007)."""
+
+
+class Serving(Protocol):
+    """What joining the mirror needs of it: the port it is serving.
+
+    `Station` satisfies it by having the member. Narrow on purpose, and
+    narrower than what a flash needs: a monitor is a client of the port like
+    JMRI, so the whole of what it asks the mirror is where to knock.
+    """
+
+    @property
+    def port(self) -> int: ...
+
+
+class Loopback:
+    """The mirror's own port, joined from inside the process that serves it.
+
+    The face and the mirror are one process, and this still goes out through
+    the port: it is what makes a monitor a client like any other rather than a
+    second fan-out written beside the first (ADR-0007). What it costs is one
+    hop on the loopback interface, which does not leave the container; what it
+    buys is that the cut-off, the framing, the grace and the shutdown are the
+    mirror's own and are read in one place (`station.py`).
+
+    The port is asked for at the moment of joining rather than kept, because a
+    mirror asked for port 0 has one only once it is started.
+    """
+
+    def __init__(self, mirror: Serving) -> None:
+        self._mirror = mirror
+
+    async def __call__(self) -> Ends:
+        return await asyncio.open_connection(LOOPBACK, self._mirror.port)
+
+
+class Monitor:
+    """One monitor's stream: a browser at one end, and at the other a client
+    of the mirror's port like any other (ADR-0007, #14).
+
+    **Nothing is buffered here.** What the browser has not taken is waited on
+    before more is read off the mirror, so a monitor that has stopped reading
+    is a client of 2560 that has stopped reading, and what ends it is the
+    mirror's own rule — more than `MAX_OUTSTANDING_BYTES` outstanding, and the
+    connection is cut off (`station.py`). A buffer of this stream's own would
+    be a second rule about a slow client, and the first one would never fire.
+
+    **What the mirror does is what the browser sees.** An outage past its
+    grace, a cut-off, the app shutting down: each of them is the mirror
+    closing this client's connection, and each of them ends the stream with a
+    goodbye that says so. Nothing is inferred about the device from here — the
+    socket closing is the whole signal, as it is for every other client
+    (control ADR-0066).
+
+    **What the browser sends is bytes on their way to the mirror's framing.**
+    A frame's payload is written to the port as it arrives, and what makes it
+    a whole `<…>` message under the same size cap is `framing.py`, reached the
+    same way every other client reaches it.
+    """
+
+    def __init__(self, browser: Ends, mirror: Ends) -> None:
+        self._browser = browser
+        self._mirror = mirror
+        # One writer at a time on the browser's socket: the station's bytes go
+        # out on one task and a pong or a goodbye on the other, and two
+        # coroutines draining one stream at once is not something asyncio
+        # allows.
+        self._saying = asyncio.Lock()
+
+    async def ridden(self) -> None:
+        """Both directions, until either end goes.
+
+        Either direction ending ends the other, because there is nothing left
+        for it to do: a browser that has gone has nobody to hand the station's
+        bytes to, and a mirror that has let this client go has nothing to take
+        what the browser types.
+        """
+        both = (
+            asyncio.create_task(self._to_browser()),
+            asyncio.create_task(self._to_station()),
+        )
+        try:
+            await asyncio.wait(both, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for direction in both:
+                direction.cancel()
+            await asyncio.gather(*both, return_exceptions=True)
+            # Aborted rather than closed, as every client of the mirror's port
+            # is let go of: a close waits for what is outstanding to reach the
+            # peer, and this connection is being given up precisely because
+            # something on it is not moving (`station.py`).
+            self._mirror[1].transport.abort()
+
+    async def _to_browser(self) -> None:
+        """Every byte the mirror hands this client, framed and handed on.
+
+        The mirror lets a client go by aborting it — at the cut-off, at the
+        end of a grace, and when the app itself is going (`station.py`) — so
+        the read here ends with a reset as often as with nothing, and both are
+        the same news: this client's connection is over. It is said rather
+        than absorbed (control ADR-0050), and what the page reads it as is a
+        stream that closed, which is what a client on 2560 reads it as too.
+        """
+        while True:
+            try:
+                arrived = await self._mirror[0].read(READ_SIZE)
+            except ConnectionError:
+                arrived = b""
+            if not arrived:
+                await self._say(goodbye(GOING_AWAY, "the mirror let this client go"))
+                return
+            await self._say(framed(arrived))
+
+    async def _to_station(self) -> None:
+        """What the browser types, unframed and written to the port."""
+        partial = b""
+        while True:
+            arrived = await self._browser[0].read(READ_SIZE)
+            if not arrived:
+                return
+            try:
+                partial, frames = unframed(partial, arrived)
+            except Unreadable as broke:
+                await self._say(goodbye(broke.code, broke.reason))
+                return
+            for frame in frames:
+                if frame.opcode in DATA:
+                    self._mirror[1].write(frame.payload)
+                    await self._mirror[1].drain()
+                elif frame.opcode == PING:
+                    await self._say(framed(frame.payload, PONG))
+                elif frame.opcode == CLOSE:
+                    await self._say(goodbye())
+                    return
+
+    async def _say(self, said: bytes) -> None:
+        """One frame to the browser, waiting for it to be taken.
+
+        The wait is the point and not politeness: it is what stops this from
+        reading the mirror faster than the browser is reading it, and so what
+        makes a monitor that has stopped reading a client of 2560 that has
+        stopped reading — cut off by the mirror's own rule, in the mirror's
+        own log line, rather than by a second rule written here.
+        """
+        async with self._saying:
+            self._browser[1].write(said)
+            await self._browser[1].drain()
 
 
 class Server:
@@ -460,7 +707,13 @@ class Server:
     It is a port of its own and not the mirror's: 2560 is a serial
     conversation that JMRI and the throttles are in the middle of, and an
     HTTP request arriving on it would be bytes typed at the command station.
-    The device is not reached from here at all.
+    The device is not reached from here at all — a monitor's stream is joined
+    to 2560 like any other client's, and `joins` is the whole of the way
+    there (ADR-0007).
+
+    `joins` has no default, for the reason the flasher has none: a face served
+    with no way to reach the mirror would tell a page its stream was open and
+    then have nothing to put on it.
     """
 
     def __init__(
@@ -468,12 +721,14 @@ class Server:
         face: Face,
         port: int = PORT,
         *,
+        joins: Joins,
         log: Callable[[str], None] = to_stderr,
         patience_s: float = PATIENCE_S,
         max_body_bytes: int = MAX_BODY_BYTES,
     ) -> None:
         self._face = face
         self._port = port
+        self._joins = joins
         self._log = log
         self._patience_s = patience_s
         self._max_body_bytes = max_body_bytes
@@ -506,6 +761,11 @@ class Server:
         # answer is a handler that waits on a client that is not there. The
         # app ends through here, so this wait has to be one that ends
         # (station.py, `close`).
+        #
+        # A monitor's stream ends here too, and by the same abort: its browser
+        # goes quiet, the direction reading it comes back with nothing, and
+        # the other direction and the client on the mirror's port go with it
+        # (`Monitor.ridden`).
         #
         # The one handler an abort does not end is one waiting out a flash it
         # asked for, which is waiting on the station and not on the socket.
@@ -543,14 +803,52 @@ class Server:
     async def _exchange(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        """One request answered, or one stream taken up.
+
+        A stream is joined to the mirror **before** the upgrade is written: a
+        caller told its stream was open and then handed a closed socket has
+        been told something untrue, and the one thing that fails here is the
+        mirror's port not being there, which is an app on its way down.
+        """
         answered = await self._answered(reader)
+        joined = await self._joined() if answered.upgrade else None
+        if isinstance(joined, Answered):
+            answered, joined = joined, None
         if answered.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
             # The one answer worth a line on the box, and the reason it is:
             # what went wrong is not the caller's doing, and the caller is a
             # page that may be nobody's at the moment. What the face refuses a
             # caller for is the caller's own to read (ADR-0050).
             self._log(f"face: {answered.body.get(REASON, answered.status.phrase)}")
-        await asyncio.wait_for(self._taken(writer, answered), self._patience_s)
+        if joined is None:
+            await asyncio.wait_for(self._taken(writer, answered), self._patience_s)
+            return
+        await asyncio.wait_for(self._handed(writer, answered), self._patience_s)
+        # For as long as the station is talked to and no longer: the patience
+        # is a caller's to say what it wants and to take an answer, and a
+        # stream is neither. What ends this one is the browser or the mirror.
+        await Monitor((reader, writer), joined).ridden()
+
+    async def _joined(self) -> Ends | Answered:
+        """A client's place on the mirror's port, or why there is none.
+
+        Nothing is wrong with the request when this fails: the mirror's port
+        is this app's own, so a port that cannot be joined is an app that is
+        going down, which is what the station being away already says.
+        """
+        try:
+            return await self._joins()
+        except OSError as away:
+            return refused(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                f"the mirror's port could not be joined: {away}",
+            )
+
+    async def _handed(self, writer: asyncio.StreamWriter, answered: Answered) -> None:
+        """The upgrade written, and the connection left open on purpose: what
+        is on it after this is the station's conversation."""
+        writer.write(response(answered))
+        await writer.drain()
 
     async def _taken(self, writer: asyncio.StreamWriter, answered: Answered) -> None:
         """The answer written and the connection ended, for as long as the
@@ -596,7 +894,12 @@ class Server:
             else b""
         )
         return await self._face.answer(
-            asked.method, asked.path, body, origin=asked.origin, host=asked.host
+            asked.method,
+            asked.path,
+            body,
+            origin=asked.origin,
+            host=asked.host,
+            key=asked.key,
         )
 
     def _serving(self) -> asyncio.Server:

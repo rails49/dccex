@@ -14,9 +14,11 @@ what limits their reach is the LAN (ADR-0042).
   this installation's fork. **Configuration and never payload**: the LAN
   carries no authentication on purpose, so a source on the wire would let
   anyone on the wifi run an arbitrary binary on the command station.
-- `--face-port <n>`, the port this app's own face is served on. A port of its
-  own, because the mirror's carries the station's conversation and an HTTP
-  request arriving there would be bytes typed at the command station.
+- `--face-port <n>`, the port this app's own face is served on, the monitor's
+  stream included. A port of its own, because the mirror's carries the
+  station's conversation and an HTTP request arriving there would be bytes
+  typed at the command station — and the stream on it is joined back to
+  `--port` as one more client of the mirror (ADR-0007).
 
 **There is no broker and no identity.** Both went with the bus (ADR-0001):
 the flash was asked for on a bus in `control` and is asked for on this app's
@@ -36,7 +38,7 @@ import signal
 import threading
 
 from dccex_usb.face import PORT as FACE_PORT
-from dccex_usb.face import Face, Server
+from dccex_usb.face import Face, Loopback, Server
 from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import Station, to_stderr
 
@@ -55,7 +57,8 @@ def serve(
     face_port: int = FACE_PORT,
     period_s: float = PERIOD_S,
 ) -> None:
-    """The app: the mirror, the flasher on the device it holds, and the face.
+    """The app: the mirror, the flasher on the device it holds, and the face
+    that answers for both and carries the station's conversation to a page.
 
     `stop` is how a caller that is not a signal ends the loop, which is the
     suite. The deployment sets it never: a signal raises where the process
@@ -69,7 +72,12 @@ def serve(
     # One flasher, handed to the face that asks for a flash and to the loop
     # that waits one out on the way down. There is one device, so there is one
     # thing that may write it, and a second would refuse nothing (#13).
-    face = Server(Face(releases, flasher=flasher), face_port)
+    #
+    # The mirror is handed to the face a second time and differently: a
+    # monitor's stream is joined to `port` from inside this process, so the
+    # page watching the station is a client of the same port JMRI is on and
+    # not a second fan-out (ADR-0007, #14).
+    face = Server(Face(releases, flasher=flasher), face_port, joins=Loopback(station))
     to_stderr(
         f"serving {device} on {port}, face on {face_port}, flashing from {releases}"
     )
@@ -147,7 +155,8 @@ def command_line() -> argparse.ArgumentParser:
         type=int,
         default=FACE_PORT,
         metavar="N",
-        help="the TCP port this app's own face is served on",
+        help="the TCP port this app's own face, and the monitor's stream,"
+        " are served on",
     )
     return parser
 

@@ -39,7 +39,7 @@ import pytest
 
 from dccex_usb.__main__ import command_line, mirroring
 from dccex_usb.face import PORT as FACE_PORT
-from dccex_usb.face import Face, Server
+from dccex_usb.face import Ends, Face, Server
 from dccex_usb.firmware import RELEASES, Flasher, Wrote
 from dccex_usb.station import HOST, Station
 
@@ -183,10 +183,22 @@ class Unasked:
         raise AssertionError(f"the gate asked for '{tag}' to be written")
 
 
+class Unjoined:
+    """What joins the mirror's port here, and never does: nothing in this file
+    opens a monitor's stream. What one carries is `test_face.py`'s, where the
+    pty is."""
+
+    async def __call__(self) -> Ends:
+        raise AssertionError("the gate joined the mirror's port")
+
+
 def served(port: int = 0) -> Server:
     """The face on an OS-chosen port, which is what the loop is handed."""
     return Server(
-        Face(fetch=unreachable, flasher=Unasked()), port, log=lambda line: None
+        Face(fetch=unreachable, flasher=Unasked()),
+        port,
+        joins=Unjoined(),
+        log=lambda line: None,
     )
 
 
@@ -198,6 +210,7 @@ class Unserved(Server):
         super().__init__(
             Face(fetch=unreachable, flasher=Unasked()),
             FACE_PORT,
+            joins=Unjoined(),
             log=lambda line: None,
         )
 

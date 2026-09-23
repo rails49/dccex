@@ -6,8 +6,9 @@ so every question about what the face says is asked of `Face.answer` directly,
 with what fetches a URL injected, and none of those tests opens a socket or
 reaches a network. **The server** is the port that carries it, and what is
 asserted of it is that it is handed back unstarted, that a request on it gets
-the answer routing gave, and that serving it leaves the mirror's own port and
-the device alone.
+the answer routing gave, that serving it leaves the mirror's own port and the
+device alone, and — for the one route whose answer is not the end of the
+connection — that the station's bytes ride it both ways (#14).
 
 Nothing in the gate reaches the release API (docs/dccex_usb/README.md), so the
 source here is a fake that answers from a dict, and the URLs are on a TLD that
@@ -27,9 +28,19 @@ from http import HTTPStatus
 
 import pytest
 
-from dccex_usb.face import STATUS, Face, Server, Writes
+from dccex_usb.face import (
+    STATUS,
+    Answered,
+    Ends,
+    Face,
+    Joins,
+    Server,
+    Writes,
+    response,
+)
 from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
 from dccex_usb.station import to_stderr
+from dccex_usb.stream import accepted
 from tests.dccex_usb.test_firmware import FakeFetch
 from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
 
@@ -348,6 +359,61 @@ def test_no_request_can_redirect_the_source_a_flash_is_written_from() -> None:
     assert answered.status == HTTPStatus.OK
 
 
+# -- the stream --------------------------------------------------------------
+
+KEY = "dGhlIHNhbXBsZSBub25jZQ=="
+"""What a browser names when it opens a stream. RFC 6455's own example, so the
+token that answers it is the standard's and not this suite's."""
+
+
+def test_a_page_opening_the_stream_is_answered_with_the_token_it_asked_for() -> None:
+    """The gesture #14 adds: the page asks for the station's conversation and
+    the face says it may have it. What rides on it afterwards is not routing's
+    — this answer is the last thing about the connection that is a request."""
+    answered = asyncio.run(face().answer("GET", "/stream", b"", key=KEY))
+
+    assert answered.status == HTTPStatus.SWITCHING_PROTOCOLS
+    assert answered.upgrade == accepted(KEY)
+
+
+def test_the_stream_is_opened_by_upgrading_and_fetched_no_other_way() -> None:
+    """There is nothing at this path to read: what it carries is what the
+    station is saying now, and a caller that asked for it as a page asked for
+    a thing that does not exist."""
+    answered = asyncio.run(face().answer("GET", "/stream", b""))
+
+    assert answered.status == HTTPStatus.BAD_REQUEST
+    assert answered.body["reason"]
+    assert not answered.upgrade
+
+
+@pytest.mark.parametrize(
+    "method", [pytest.param("POST", id="posted"), pytest.param("PUT", id="put")]
+)
+def test_the_stream_is_opened_and_not_written_to(method: str) -> None:
+    """What a page types reaches the station on the stream it already has, and
+    not as a request: the mirror's port is what a message is written to, and a
+    request that carried one would be a second way in (ADR-0007)."""
+    answered = asyncio.run(face().answer(method, "/stream", b"<t 3 50 1>", key=KEY))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+    assert not answered.upgrade
+
+
+def test_an_answer_that_is_not_an_upgrade_says_so_on_the_wire() -> None:
+    """The two shapes an answer has: a status with a JSON body, or the upgrade
+    that hands the connection over. A caller reading one as the other is a page
+    holding a socket nobody is going to talk on."""
+    fetched = response(Answered(HTTPStatus.OK, {"tags": TAGS}))
+    opened = response(Answered(HTTPStatus.SWITCHING_PROTOCOLS, {}, accepted(KEY)))
+
+    assert b"Content-Type: application/json" in fetched
+    assert b"Connection: close" in fetched
+    assert b"101 Switching Protocols" in opened
+    assert accepted(KEY).encode() in opened
+    assert b"Content-Length" not in opened
+
+
 # -- the door's side ---------------------------------------------------------
 
 LABEL = "dccex.example.invalid"
@@ -393,6 +459,21 @@ def test_a_page_from_another_origin_is_refused(origin: str) -> None:
     assert answered.status == HTTPStatus.FORBIDDEN
     assert LABEL in str(answered.body["reason"])
     assert source.asked == []
+
+
+def test_a_page_from_another_origin_may_not_open_the_stream() -> None:
+    """The route the origin check matters most on. A browser does not ask
+    before opening a stream — there is no preflight on one — so the origin it
+    names is the whole of what keeps a page somewhere else off the command
+    station's conversation (ADR-0004 d.4)."""
+    answered = asyncio.run(
+        face().answer(
+            "GET", "/stream", b"", origin=ELSEWHERE_ORIGIN, host=LABEL, key=KEY
+        )
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert not answered.upgrade
 
 
 def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
@@ -460,22 +541,34 @@ async def ask(port: int, asked: bytes = request()) -> tuple[int, object]:
     return status, json.loads(body)
 
 
+class Unjoined:
+    """What joins the mirror's port here, and never does. A test that wants a
+    stream says how the mirror is reached, and every other one is about a face
+    that is asked a question and answers it."""
+
+    async def __call__(self) -> Ends:
+        raise AssertionError("the mirror's port was joined")
+
+
 def served(
     asked: Face | None = None,
     *,
+    joins: Joins | None = None,
     log: Callable[[str], None] = to_stderr,
     patience_s: float = PATIENCE_S,
 ) -> Server:
     """The face on a port the OS chooses, built in one place.
 
-    What a test names is what it is about — a face configured its own way, the
-    log it reads, the patience it runs out of — and everything else is what
-    the app is served with. The port is always the OS's: a suite that bound the
-    face's own would pass or fail on what else the machine is running.
+    What a test names is what it is about — a face configured its own way, how
+    the mirror is joined for a monitor, the log it reads, the patience it runs
+    out of — and everything else is what the app is served with. The port is
+    always the OS's: a suite that bound the face's own would pass or fail on
+    what else the machine is running.
     """
     return Server(
         asked if asked is not None else face(),
         0,
+        joins=joins if joins is not None else Unjoined(),
         log=log,
         patience_s=patience_s,
     )
