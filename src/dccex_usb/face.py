@@ -833,6 +833,10 @@ class Server:
         caller told its stream was open and then handed a closed socket has
         been told something untrue, and the one thing that fails here is the
         mirror's port not being there, which is an app on its way down.
+
+        The write is the step that can fail, so the client joined for a
+        stream is let go of on the one path out of here that does not reach
+        the monitor (#51).
         """
         answered = await self._answered(reader)
         joined = await self._joined() if answered.upgrade else None
@@ -847,7 +851,26 @@ class Server:
         if joined is None:
             await asyncio.wait_for(self._taken(writer, answered), self._patience_s)
             return
-        await asyncio.wait_for(self._handed(writer, answered), self._patience_s)
+        try:
+            await asyncio.wait_for(self._handed(writer, answered), self._patience_s)
+        except (TimeoutError, OSError):
+            # The one step between joining the mirror and riding the stream
+            # that can fail, and the window nothing else covers: before it
+            # there is no client on the mirror's port, and after it the
+            # monitor's own exit is what lets go of one (`Monitor.ridden`).
+            # A browser that went away and a write that does not come back
+            # both leave through here.
+            #
+            # Aborted rather than closed, for the reason the monitor's exit
+            # aborts: a close waits for what is outstanding to reach the
+            # peer, and this connection is being given up precisely because
+            # something on it is not moving (`station.py`).
+            #
+            # The browser's side is not touched here. This raises on, and the
+            # handler that catches it aborts that side exactly as it does for
+            # every other way an exchange ends badly (`_asked`).
+            joined[1].transport.abort()
+            raise
         # For as long as the station is talked to and no longer: the patience
         # is a caller's to say what it wants and to take an answer, and a
         # stream is neither. What ends this one is the browser or the mirror.

@@ -21,11 +21,14 @@ pty and a fake esptool, as that file does.
 
 import asyncio
 import contextlib
+import gc
 import json
 import os
 import socket
+import struct
 import time
-from collections.abc import Callable, Sequence
+import warnings
+from collections.abc import Awaitable, Callable, Generator, Sequence
 from http import HTTPStatus
 from pathlib import Path
 
@@ -1354,3 +1357,238 @@ def test_a_stream_that_ends_with_bytes_the_mirror_never_took_is_aborted_too() ->
             mirror.close()
 
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+RESET_S = 0.05
+"""How long the loop is given to see a connection the browser reset.
+
+The browser goes in the middle of the one `await` the face spends joining the
+mirror, and what makes the write after it fail is the reset having been read
+off the socket by then rather than the socket having been closed. A hand-back
+to the loop and a moment on a loopback connection is that, with room to spare.
+"""
+
+WRITING_S = 0.1
+"""The patience an upgrade that is never written runs out of. Short, because
+the test waits it out; longer than a machine under load needs to get from
+joining to writing, because what is under test is the write and not the clock.
+"""
+
+FOREVER_S = 60.0
+"""A write that does not come back inside any patience here, and inside the
+timeout the scenario runs under either way."""
+
+
+class Joined:
+    """The mirror's port with the client the face joined for a stream on it.
+
+    A stand-in and not a `Station`, for the reason `Unread` is one: what a
+    test asks of the far end here is whether that client is still there, and
+    a mirror says so only in its own time and its own count of clients.
+
+    Joining is also the one moment a test is inside the window these tests are
+    about — the face joins the mirror, and writes the upgrade after it — so
+    what a browser does in the middle of that window is done from here.
+    """
+
+    def __init__(self) -> None:
+        self._listening = socket.socket()
+        self._listening.bind(("127.0.0.1", 0))
+        self._listening.listen(1)
+        self._listening.setblocking(False)
+        self._taken: socket.socket | None = None
+        self.while_joining: Callable[[], Awaitable[None]] | None = None
+
+    async def __call__(self) -> Ends:
+        loop = asyncio.get_running_loop()
+        joining = asyncio.ensure_future(loop.sock_accept(self._listening))
+        joining_to = socket.socket()
+        joining_to.setblocking(False)
+        await loop.sock_connect(joining_to, self._listening.getsockname())
+        taken, _ = await joining
+        taken.setblocking(False)
+        self._taken = taken
+        ends = await asyncio.open_connection(sock=joining_to)
+        if self.while_joining is not None:
+            await self.while_joining()
+        return ends
+
+    async def let_go(self, timeout: float = RELEASED_S) -> None:
+        """Wait for the face's end of that client to go.
+
+        Reading the mirror's end is the whole question. A connection the face
+        has let go of ends here — nothing was ever written on it, so its end
+        arrives as a close as readily as a reset, and the descriptor behind it
+        is back either way — and one left behind is a read that never comes
+        back, which is what this waits `timeout` to say.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = time.monotonic() + timeout
+        while self._taken is None and time.monotonic() < deadline:
+            await asyncio.sleep(0.005)
+        assert self._taken is not None, "the mirror's port was never joined"
+        try:
+            left = await asyncio.wait_for(loop.sock_recv(self._taken, 1), timeout)
+        except ConnectionResetError:
+            return
+        except TimeoutError:
+            raise AssertionError(
+                "the client joined for the stream is still on the mirror's port"
+            ) from None
+        assert left == b"", f"the mirror's client is still talking: {left!r}"
+
+    def close(self) -> None:
+        """Let go of what the test is holding."""
+        if self._taken is not None:
+            self._taken.close()
+        self._listening.close()
+
+
+class Unwritten(Server):
+    """A face whose upgrade is never written.
+
+    The stand-in is the write and not a socket, because a write that does not
+    come back is not something a browser can be made to do: an upgrade is a
+    hundred-odd bytes, and a peer that has stopped reading holds them in its
+    kernel without the face ever waiting on them. Everything either side of
+    the write is the app's own — the client on the mirror's port, the patience
+    the write is given, and the handler a timeout leaves through.
+    """
+
+    async def _handed(self, writer: asyncio.StreamWriter, answered: Answered) -> None:
+        await asyncio.sleep(FOREVER_S)
+
+
+async def dialled(port: int) -> socket.socket:
+    """A browser with the face's port open and nothing asked of it yet.
+
+    A socket of the test's own rather than a `Browser`, which reads the
+    upgrade back and asserts it arrived: here there is no upgrade to read,
+    and what the browser is for is to have asked and to be let go of.
+    """
+    browser = socket.socket()
+    browser.setblocking(False)
+    await asyncio.get_running_loop().sock_connect(browser, ("127.0.0.1", port))
+    return browser
+
+
+async def asks_for_the_stream(browser: socket.socket) -> None:
+    """The upgrade sent, which is what sets the face joining the mirror."""
+    await asyncio.get_running_loop().sock_sendall(browser, upgrade())
+
+
+LINGER_OFF = struct.pack("ii", 1, 0)
+"""`SO_LINGER` with no time on it: the close sends a reset rather than a
+goodbye, which is a browser that went away rather than one that said so."""
+
+
+def resetting(browser: socket.socket) -> Callable[[], Awaitable[None]]:
+    """The browser going, the way one that has crashed or been closed goes:
+    a reset rather than a goodbye, which is what makes the write after it
+    fail rather than disappear."""
+
+    async def gone() -> None:
+        browser.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, LINGER_OFF)
+        browser.close()
+        await asyncio.sleep(RESET_S)
+
+    return gone
+
+
+@contextlib.contextmanager
+def forgotten() -> Generator[list[str]]:
+    """What asyncio said, while this ran, about connections nobody closed.
+
+    A connection an app has let go of is closed by the app. One it has left
+    behind is closed by the collector instead, which says so on the way past
+    — so a collection forced at the end and nothing said is the difference
+    between a connection given up and a connection forgotten, and it is what
+    stops a leak from passing for a fix on a machine whose collector is
+    prompt enough to close the socket before a test can look at it.
+    """
+    said: list[str] = []
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        yield said
+        gc.collect()
+        said += [
+            str(warned.message)
+            for warned in caught
+            if "unclosed" in str(warned.message)
+        ]
+
+
+def test_an_upgrade_that_cannot_be_written_lets_go_of_the_client_it_joined() -> None:
+    """The window between joining the mirror and handing the upgrade over.
+
+    The stream is joined first and the upgrade written second, on purpose: a
+    caller told its stream is open and then handed a closed socket has been
+    told something untrue. But the write is the step that can fail, and the
+    monitor's exit — the one thing that lets go of a client on the mirror's
+    port — is past it. A browser that reset and a write that does not come
+    back leave through the handler's own `except`, which aborts the browser's
+    side and knows nothing of the mirror's.
+
+    Two things are asserted and both are needed: the mirror's end of that
+    client ending, which is the client not being left on the port, and
+    nothing said about a connection nobody closed — because a connection left
+    behind is closed by the collector soon enough to look like one that was
+    let go of (#51).
+    """
+
+    async def scenario() -> None:
+        mirror = Joined()
+        streamed = served(joins=mirror)
+        await streamed.start()
+        browser = None
+        try:
+            browser = await dialled(streamed.port)
+            # Set before anything is asked: the face joins the mirror as soon
+            # as it has read the request, and this is what is waiting there.
+            mirror.while_joining = resetting(browser)
+            await asks_for_the_stream(browser)
+            await mirror.let_go()
+        finally:
+            if browser is not None:
+                browser.close()
+            await streamed.close()
+            mirror.close()
+
+    with forgotten() as left:
+        asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+    assert left == [], left
+
+
+def test_an_upgrade_that_is_never_written_lets_go_of_the_client_it_joined() -> None:
+    """The same window, run out of rather than reset.
+
+    The write is given the caller's patience and no more, and a browser that
+    is not taking what it asked for is let go of rather than waited on. The
+    mirror's client goes with it, and the browser's side is aborted by the
+    handler exactly as it is for every other way an exchange ends badly.
+    """
+
+    async def scenario() -> None:
+        mirror = Joined()
+        streamed = Unwritten(face(), 0, joins=mirror, patience_s=WRITING_S)
+        await streamed.start()
+        browser = None
+        try:
+            browser = await dialled(streamed.port)
+            await asks_for_the_stream(browser)
+            await mirror.let_go()
+            # The browser is let go of too, and by the handler: what it reads
+            # is its connection ending with no upgrade ever written on it.
+            loop = asyncio.get_running_loop()
+            assert await asyncio.wait_for(loop.sock_recv(browser, 1), RELEASED_S) == b""
+        finally:
+            if browser is not None:
+                browser.close()
+            await streamed.close()
+            mirror.close()
+
+    with forgotten() as left:
+        asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+    assert left == [], left
