@@ -57,8 +57,10 @@ face and nothing else. A face is private to its app: it is not somewhere else
 to get at the railroad. Its address is a path prefix on the page's own origin,
 which the door strips before the app sees it, and a page from anywhere else is
 refused (ADR-0004). The mirror's face answers what releases the source
-carries (#12); until the flash is asked for there (#13), it has no caller at
-all.
+carries (#12) and writes one of them onto the station when a caller names its
+tag (#13). It guards nothing while it does: a face is about its app, so
+whether a railroad can spare its command station for two minutes is the
+operator's question and not this app's (ADR-0006).
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
