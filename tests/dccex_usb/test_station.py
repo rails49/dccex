@@ -1136,12 +1136,19 @@ def test_a_write_woken_as_the_device_goes_does_not_write_into_the_number(
         device = Woken.open(pty.path)
         fd = device.number
         message = b"<" + b"t" * 998 + b">"
-        writing = asyncio.create_task(device.write(message * 8))
 
+        # Filled until one write parks, rather than in one write of a size
+        # chosen here: how much a pty holds unread is the system's business
+        # and a Linux one holds several times what a macOS one does. Nothing
+        # reads the device side, so what goes in stays in and each write
+        # brings the next closer to parking. They queue on the write lock,
+        # so the one that parks is the only one on the device.
+        writes: list[asyncio.Task[None]] = []
         deadline = time.monotonic() + TIMEOUT_S
         while not device.parked:
             if time.monotonic() > deadline:
                 raise AssertionError("no write parked on the device")
+            writes.append(asyncio.create_task(device.write(message * 4)))
             await asyncio.sleep(0.005)
 
         # The device has found room and the write is woken. Its turn has not
@@ -1149,8 +1156,10 @@ def test_a_write_woken_as_the_device_goes_does_not_write_into_the_number(
         device.wake_parked()
         device.let_go()
 
-        with pytest.raises(DeviceGone):
-            await writing
+        ended = await asyncio.gather(*writes, return_exceptions=True)
+        refused = [end for end in ended if isinstance(end, BaseException)]
+        assert refused, "nothing was refused, so nothing was parked"
+        assert all(isinstance(end, DeviceGone) for end in refused), refused
         assert device.gone
         assert not device.busy, "the woken write was left holding the device"
         assert nothing_registered(fd), "a writer was left on the descriptor"
