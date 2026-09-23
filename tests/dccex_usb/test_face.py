@@ -55,6 +55,8 @@ from tests.dccex_usb.test_station import (
     Pty,
     arriving,
     connect,
+    open_fds,
+    released,
     send,
     station,
     wedge,
@@ -988,6 +990,12 @@ class Browser:
         self._writer.write(masked(message))
         await self._writer.drain()
 
+    async def goes(self) -> None:
+        """The close a page sends when it is done with the stream, which is
+        how a browser ends one it is not being disconnected from."""
+        self._writer.write(masked(b"", CLOSE))
+        await self._writer.drain()
+
     async def frame(self) -> tuple[int, bytes]:
         """The next frame the face sent, and what kind it is."""
         head = await self._reader.readexactly(2)
@@ -1234,5 +1242,115 @@ def test_the_app_going_down_lets_go_of_a_page_on_the_stream() -> None:
             await streamed.close()
             await mirror.close()
             cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+UNREAD_BYTES = 2048
+"""What the kernels either side of a mirror-side connection are allowed to
+hold in the test below.
+
+Set small before the connection is made, the way `connect_deaf` sets it on a
+client of 2560: what is under test is a connection with something on it that
+is not moving, and a loopback socket left to size itself up would want
+megabytes typed at it before there was anything left over to be outstanding.
+"""
+
+UNTAKEN_BYTES = 32 * 1024
+"""What a page types at a mirror that is taking none of it.
+
+More than those kernels hold, so the rest is left in this app's own buffer for
+the connection — and well under the 64 KiB a writer is paused at, so the write
+comes back and the page is still the thing that ends the stream rather than a
+drain that never returns. Bulk and not `<…>` messages: nothing frames on the
+far end here, and the mirror's framing is `test_station.py`'s.
+"""
+
+RELEASED_S = 2.0
+"""How long the descriptors have to come back before a test says they did not:
+long enough not to call a loaded machine a hang, and inside the timeout the
+scenario runs under, so what goes red is this assertion and not the clock."""
+
+
+class Unread:
+    """The mirror's port with nobody taking what is sent to it.
+
+    A stand-in and not a `Station`, because what is wanted of the far end is
+    the one thing a working mirror will not do: take a client's bytes and then
+    stop, and stay stopped. It accepts the client the face joins for a stream
+    and reads nothing off it ever after, and the buffers either side are
+    `UNREAD_BYTES` so that a page reaches that state in a frame rather than in
+    megabytes.
+
+    It is loopback and nothing further, as every other socket in this file is.
+    """
+
+    def __init__(self) -> None:
+        self._listening = socket.socket()
+        self._listening.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, UNREAD_BYTES)
+        self._listening.bind(("127.0.0.1", 0))
+        self._listening.listen(1)
+        self._listening.setblocking(False)
+        self._taken: list[socket.socket] = []
+
+    async def __call__(self) -> Ends:
+        loop = asyncio.get_running_loop()
+        joining = asyncio.ensure_future(loop.sock_accept(self._listening))
+        joining_to = socket.socket()
+        joining_to.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, UNREAD_BYTES)
+        joining_to.setblocking(False)
+        await loop.sock_connect(joining_to, self._listening.getsockname())
+        taken, _ = await joining
+        self._taken.append(taken)
+        return await asyncio.open_connection(sock=joining_to)
+
+    def close(self) -> None:
+        """Let go of what the test is holding, which it never read."""
+        for taken in self._taken:
+            taken.close()
+        self._listening.close()
+
+
+def test_a_stream_that_ends_with_bytes_the_mirror_never_took_is_aborted_too() -> None:
+    """The fifth place a client of the mirror's port is let go of, and the
+    rule is the four others' (`station.py`).
+
+    The page here has typed more at the station than this connection has
+    carried, so what is left is outstanding in the app's own buffer for a
+    connection that is not moving, and then the page goes. Closing that
+    connection politely is a wait for those bytes to reach a peer that is not
+    taking them — which is the very buffer being given up — so the descriptor
+    would never come back and neither would a shutdown that waited on it. It
+    is aborted instead, as at the cut-off, at the end of a grace, in the
+    handler every client leaves by, and when the app itself is going.
+
+    What this holds is the stream's exit specifically (`Monitor.ridden`),
+    which is where the connection is let go of today.
+    """
+
+    async def scenario() -> None:
+        mirror = Unread()
+        streamed = served(joins=mirror)
+        await streamed.start()
+        try:
+            page = await Browser.opened(streamed.port)
+            watching = asyncio.create_task(page.run())
+
+            await page.types(b"t" * UNTAKEN_BYTES)
+            held = open_fds()
+
+            await page.goes()
+            await asyncio.wait_for(watching, TIMEOUT_S)
+
+            # The two the face was holding for this stream: its end of the
+            # browser's socket, and its client on the mirror's port. The
+            # bytes the page typed went with the second, which a polite close
+            # would still be waiting to hand over — the mirror's end of it is
+            # the test's here and has read none of them.
+            assert await released(held - 2, RELEASED_S) == held - 2
+            page.close()
+        finally:
+            await streamed.close()
+            mirror.close()
 
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
