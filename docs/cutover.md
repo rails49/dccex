@@ -172,9 +172,12 @@ acceptance is about.
    (ADR-0004 d.6). A face that does not answer is not a reason to go back on
    2560: the port is the railroad and the face is a page.
 6. **A client that has stopped reading does not hold the app up.** After the
-   swap, never before, because it stops and starts this stack's container:
+   swap, never before, because it stops and starts this stack's container. The
+   container's log is opened first and left open beside the other two, because
+   the mirror's own cut-off is read off it and nowhere else:
 
    ```
+   docker logs -f <this stack's mirror container>            # from the box, left open
    python3 scripts/deaf_client.py --host <box> --port 2560   # says when it is full
    docker stop <this stack's mirror container>               # from the box
    ```
@@ -184,9 +187,33 @@ acceptance is about.
    forever; `137` is that wait being killed. Then bring it back up, and
    check 2 and 3 again.
 
+   **There is time, and there is a bound.** The mirror cuts a client off
+   itself once more than a megabyte is outstanding to it, which is about a
+   minute and a half of the device talking flat out at 115200 8N1
+   ([the mirror's page](dccex_usb/README.md#what-it-does-with-the-bytes)).
+   That minute and a half is a floor: what fills the deaf client's buffer is
+   the station's replies to its own `<s>`, which is a trickle beside flat out,
+   so the window between starting the deaf client and the `docker stop` is far
+   longer than it. Read the step through and then run it — it is not a race.
+
+   **If the cut-off comes first, the check proved nothing.** The mirror writes
+   this line when it drops such a client, the pair in it being the laptop's
+   address and the port it dialled from, as the mirror prints them:
+
+   ```
+   client disconnected ('192.168.1.47', 51274) too far behind
+   ```
+
+   After that line there is no deaf client left to hold the shutdown up, and a
+   `docker stop` exits `0` for a reason that has nothing to do with what this
+   check is here to prove. Restart `scripts/deaf_client.py` and do the step
+   again from the top.
+
 The deaf client says nothing when the mirror goes, and that is expected: the
-close is behind bytes it is not taking, so it never arrives. What is watched
-is the container, on the box.
+close is behind bytes it is not taking, so it never arrives. It says nothing
+when it is cut off either, and for the same reason — which is why the cut-off
+is read off the log above and not off the laptop. What is watched is the
+container, on the box.
 
 ## The pointer in `control`
 
