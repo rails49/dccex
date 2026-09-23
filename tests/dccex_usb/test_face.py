@@ -175,16 +175,101 @@ def test_the_releases_are_read_and_not_written() -> None:
     assert source.asked == []
 
 
+# -- the door's side ---------------------------------------------------------
+
+LABEL = "dccex.example.invalid"
+"""The box's `dccex` label: the one origin the page and the face share."""
+
+PAGE = f"https://{LABEL}"
+"""What a browser sends as the origin of a page served at that label. It is
+`https` where the face is spoken to over plain HTTP, because the door
+terminates TLS and the face is behind it (ADR-0004)."""
+
+ELSEWHERE_ORIGIN = "https://somebody-else.example.invalid"
+
+
+def test_a_page_on_the_face_s_own_origin_is_answered() -> None:
+    """The page the face exists for: it is served at the label, it asks under
+    the prefix, and its browser says so."""
+    face = Face(RELEASES, fetch=Source())
+
+    answered = asyncio.run(
+        face.answer("GET", "/releases", b"", origin=PAGE, host=LABEL)
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"tags": TAGS}
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        pytest.param(ELSEWHERE_ORIGIN, id="another label"),
+        pytest.param("http://" + LABEL + ".example.invalid", id="a longer name"),
+        pytest.param("null", id="no origin a browser will name"),
+    ],
+)
+def test_a_page_from_another_origin_is_refused(origin: str) -> None:
+    """A face is private to its app and is on the page's origin (ADR-0004).
+    A page somewhere else asking this app about the command station is
+    refused before it is routed, so what it asks for does not matter."""
+    source = Source()
+
+    answered = asyncio.run(
+        Face(RELEASES, fetch=source).answer(
+            "GET", "/releases", b"", origin=origin, host=LABEL
+        )
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert LABEL in str(answered.body["reason"])
+    assert source.asked == []
+
+
+def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
+    """`curl` on the box, and a page's own browser on a same-origin read: an
+    origin is what a browser attaches, and holding a page to one is the whole
+    of what this check is. What limits the rest is the LAN (ADR-0042)."""
+    face = Face(RELEASES, fetch=Source())
+
+    answered = asyncio.run(face.answer("GET", "/releases", b"", host=LABEL))
+
+    assert answered.status == HTTPStatus.OK
+
+
+def test_the_prefix_is_stripped_before_the_face_sees_it() -> None:
+    """The face's address is a path prefix on the page's origin, and the door
+    takes it off on the way through (ADR-0004). So the face answers
+    `/releases` and not the address a browser types: a prefix arriving here
+    is a door that did not strip it, which is a path this does not answer."""
+    source = Source()
+
+    answered = asyncio.run(
+        Face(RELEASES, fetch=source).answer("GET", "/dccex-usb/releases", b"")
+    )
+
+    assert answered.status == HTTPStatus.NOT_FOUND
+    assert source.asked == []
+
+
 PATIENCE_S = 2.0
 TIMEOUT_S = 5.0
 
 
-def request(method: str = "GET", target: str = "/releases", body: bytes = b"") -> bytes:
-    """One HTTP request, as the UI's page makes it."""
+def request(
+    method: str = "GET",
+    target: str = "/releases",
+    body: bytes = b"",
+    origin: str = "",
+) -> bytes:
+    """One HTTP request, as the UI's page makes it and as the door passes it
+    on: the label it was addressed to, and the origin of the page that asked
+    where a browser attached one."""
     head = (
         f"{method} {target} HTTP/1.1\r\n"
-        "Host: dccex.example.invalid\r\n"
-        f"Content-Length: {len(body)}\r\n"
+        f"Host: {LABEL}\r\n"
+        + (f"Origin: {origin}\r\n" if origin else "")
+        + f"Content-Length: {len(body)}\r\n"
         "\r\n"
     )
     return head.encode() + body
@@ -259,6 +344,11 @@ def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
             id="a method with a body",
         ),
         pytest.param(b"hello?\r\n\r\n", HTTPStatus.BAD_REQUEST, id="not a request"),
+        pytest.param(
+            request(origin=ELSEWHERE_ORIGIN),
+            HTTPStatus.FORBIDDEN,
+            id="a page from another origin",
+        ),
     ],
 )
 def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
@@ -280,6 +370,25 @@ def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
 
     assert got == status
     assert isinstance(body, dict) and body["reason"]
+
+
+def test_the_page_s_own_origin_arrives_on_the_head_and_is_answered() -> None:
+    """The other half of the refusal above: what the door passes on is the
+    label it answered on and the origin the browser named, and a page on that
+    label is the caller the face is for."""
+
+    async def asked() -> tuple[int, object]:
+        server = Server(Face(RELEASES, fetch=Source()), 0)
+        await server.start()
+        try:
+            return await ask(server.port, request(origin=PAGE))
+        finally:
+            await server.close()
+
+    status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.OK
+    assert body == {"tags": TAGS}
 
 
 def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
