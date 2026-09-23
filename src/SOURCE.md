@@ -65,8 +65,14 @@ sorting the diff is told which side of it is ours:
 
 - **#23** — `station.py` and the tests for it: client streams were closed
   where the write buffer may never drain, which hung `Station.close()` and
-  held the device with it. They are aborted at all three sites now, as the
-  cut-off already did, and three tests hold that shut.
+  held the device with it. The three sites that closed one abort it now —
+  shutting down, the per-client handler's teardown, and the grace ending an
+  outage — which is what the cut-off, the fourth place a client is let go of,
+  already did. What the handler's abort costs is the least of the four: a
+  client that is reading has taken what was fanned to it, so what goes is
+  nothing, or the tail of one fan-out it had not taken on its way out. Three
+  tests hold two of the three shut; the handler's teardown was held later, by
+  #35.
 - **#24** — `station.py` and the tests for it: a client's message being
   written when the device was let go — the flash handover, or a cable pulled
   — was parked on a descriptor closed underneath it and never woken, so it
