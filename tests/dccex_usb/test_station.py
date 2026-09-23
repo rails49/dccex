@@ -1156,3 +1156,33 @@ def test_a_write_woken_as_the_device_goes_does_not_write_into_the_number(
         assert nothing_registered(fd), "a writer was left on the descriptor"
 
     asyncio.run(scenario())
+
+
+def test_letting_the_device_go_ends_the_read_side_too(pty: Pty) -> None:
+    """Nothing survives `let_go`, the session's own wait included.
+
+    The read side waits for the device to stop sending, and what notices that
+    is the callback `let_go` has just taken off the loop. So the one wait
+    nothing else can end is the one the device itself is holding: woken here,
+    or parked for as long as the process lives.
+
+    The mirror does not reach it — its watcher lets the device go only after
+    the session has returned — which is the reason to hold it shut here. What
+    the class says about `let_go` is that it is total, and a caller reading
+    that is owed it on the path the mirror does not happen to take.
+    """
+
+    async def scenario() -> None:
+        device = Device.open(pty.path)
+        reading = asyncio.create_task(device.until_gone(lambda arrived: None))
+        await asyncio.sleep(SETTLE_S)
+        assert not reading.done(), "the session ended before the device went"
+
+        device.let_go()
+
+        spoke = await asyncio.wait_for(reading, TIMEOUT_S)
+        assert not spoke, "the device was never read from"
+        assert device.gone
+        assert not device.busy
+
+    asyncio.run(scenario())

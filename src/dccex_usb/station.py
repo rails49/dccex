@@ -34,10 +34,10 @@ goes is dropped the same way and at once: whatever is parked on the descriptor
 is woken before it is closed, and a write that wakes asks the device whether
 the number is still the device's rather than reading an answer into how it was
 woken — so none is left parked for ever, and none writes into a number the OS
-has handed to somebody else. Every way the
-device can fail to be there is the same outage — a path that is not there, one
-that will not take the line discipline, one that is gone again the moment it
-is open — and the watcher outlives all of them.
+has handed to somebody else. Every way the device can fail to be there is the
+same outage — a path that is not there, one that will not take the line
+discipline, one that is gone again the moment it is open — and the watcher
+outlives all of them.
 
 **An outage that outlasts the grace takes the clients with it.** A client
 cannot tell an away device from a quiet one, and this port has no way to
@@ -168,6 +168,9 @@ class Device:
         # because letting the descriptor go is what they have to be woken
         # for, and this is what lets it go.
         self._waiters: set[asyncio.Future[None]] = set()
+        # And the read side's wait, for the same reason: it ends when the
+        # device stops sending, and being let go is one of the ways.
+        self._gone: asyncio.Future[None] | None = None
 
     @classmethod
     def open(cls, path: str) -> Self:
@@ -180,10 +183,13 @@ class Device:
         fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         try:
             configure(fd)
-        except DEVICE_AWAY:
+            # Constructing is inside too: it asks for the running loop, which
+            # off one raises, and a descriptor nothing came back holding is a
+            # descriptor nothing can close.
+            return cls(path, fd)
+        except BaseException:
             os.close(fd)
             raise
-        return cls(path, fd)
 
     @property
     def gone(self) -> bool:
@@ -209,10 +215,10 @@ class Device:
     def busy(self) -> bool:
         """Whether a message is on its way to the device or parked on it.
 
-        What `let_go` promises is that this is false once it returns: a
-        message parked on a device that is never coming back is a client's
-        handler waiting for ever and every other client's message queued
-        behind it.
+        What `let_go` leaves is nothing parked, which is the thing that can
+        wait for ever. The write itself gives the lock back as it unwinds, a
+        turn of the loop later, so this is still true the moment `let_go`
+        returns and false once the write has had its turn.
         """
         return self._writing.locked() or bool(self._waiters)
 
@@ -248,6 +254,7 @@ class Device:
         if fd is None:
             raise self._was_let_go()
         gone: asyncio.Future[None] = self._loop.create_future()
+        self._gone = gone
         spoke = False
 
         def readable() -> None:
@@ -269,6 +276,7 @@ class Device:
         try:
             await gone
         finally:
+            self._gone = None
             if self._fd is not None:
                 self._loop.remove_reader(fd)
         return spoke
@@ -278,9 +286,11 @@ class Device:
 
         Ours stops being true first and the rest follows from it: the
         registrations come off while the number is still this device's, then
-        whatever is parked is woken, then it is closed. After this returns
-        nothing of this app's is on that descriptor and nothing is waiting on
-        it, which is what `busy` and `gone` say.
+        everything parked on it is woken — the writes, and the read side's
+        wait for the device to stop sending — then it is closed. After this
+        returns nothing of this app's is on that descriptor and nothing is
+        parked on it. What was woken unwinds a turn later, which is when
+        `busy` goes false.
 
         What is woken is not told anything. It reads `gone` for itself, which
         is the one answer and the one place that gives it: waking a waiter
@@ -298,6 +308,11 @@ class Device:
         for ready in waiters:
             if not ready.done():
                 ready.set_result(None)
+        # The read side too. Its wait ends when the device stops sending,
+        # which the callback that has just come off the loop is what notices:
+        # nothing would notice this one, and the session would never end.
+        if self._gone is not None and not self._gone.done():
+            self._gone.set_result(None)
         os.close(fd)
 
     async def _writable(self, fd: int) -> None:
