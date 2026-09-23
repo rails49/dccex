@@ -22,7 +22,8 @@ from http import HTTPStatus
 
 import pytest
 
-from dccex_usb.face import Face, Server
+from dccex_usb.face import STATUS, Face, Server
+from dccex_usb.firmware import Refusal, Wrote
 from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
@@ -65,13 +66,54 @@ class Source:
         return self._answer
 
 
-def face(fetch: Source | None = None, releases: str = RELEASES) -> Face:
+TAG = TAGS[0]
+"""The tag a caller names when it asks for a build to be written."""
+
+
+class Writing:
+    """The flasher, faked: the tags it was asked to write, and what it says
+    became of them.
+
+    It is the whole of what the face needs of the thing that holds the device
+    (`Writes`), which is why a test can stand in for it: what a flash does to
+    a station is `test_firmware.py`'s, and what a caller is told about it is
+    this file's.
+    """
+
+    def __init__(self, wrote: Wrote | None = None) -> None:
+        self._wrote = wrote
+        self.asked: list[str] = []
+
+    async def wanted(self, tag: str) -> Wrote:
+        self.asked.append(tag)
+        if self._wrote is not None:
+            return self._wrote
+        return Wrote(None, f"flashed '{tag}'")
+
+
+def asking(tag: str = TAG) -> bytes:
+    """A flash asked for, as the page's body says it: a tag and nothing else,
+    because a tag is the only thing a caller names (CONTEXT.md)."""
+    return json.dumps({"tag": tag}).encode()
+
+
+def face(
+    fetch: Source | None = None,
+    releases: str = RELEASES,
+    flasher: Writing | None = None,
+) -> Face:
     """The face a test asks something of, built in one place.
 
-    What it is configured with is the source of releases, and what fetches a
-    URL is a fake: nothing in the gate reaches the release API.
+    What it is configured with is the source of releases, what fetches a URL —
+    a fake, because nothing in the gate reaches the release API — and what
+    writes a release onto the station, which is a fake for the same reason:
+    the gate has no command station and runs no esptool.
     """
-    return Face(releases, fetch=fetch if fetch is not None else Source())
+    return Face(
+        releases,
+        fetch=fetch if fetch is not None else Source(),
+        flasher=flasher if flasher is not None else Writing(),
+    )
 
 
 def test_a_request_to_the_face_answers_the_tags_the_source_carries() -> None:
@@ -178,6 +220,125 @@ def test_the_releases_are_read_and_not_written() -> None:
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert source.asked == []
+
+
+# -- the flash ---------------------------------------------------------------
+
+
+def test_a_named_tag_is_written_onto_the_station_and_the_caller_is_answered() -> None:
+    """The gesture the face was written for (#13): the page names a release,
+    the app that holds the device writes it, and whoever asked is told what
+    happened rather than sent to read a log on the box (ADR-0050)."""
+    writing = Writing()
+
+    answered = asyncio.run(face(flasher=writing).answer("POST", "/flash", asking()))
+
+    assert writing.asked == [TAG]
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"flashed": TAG}
+
+
+def test_every_way_a_flash_is_refused_reaches_the_caller() -> None:
+    """Nothing the flasher can turn a gesture down for is missing a status of
+    its own: a refusal that fell through to one would tell a page the mirror
+    had broken when what happened is that a tag names no release."""
+    assert set(STATUS) == set(Refusal)
+
+
+@pytest.mark.parametrize(
+    "refusal, status",
+    [
+        pytest.param(Refusal.LATEST, HTTPStatus.BAD_REQUEST, id="latest"),
+        pytest.param(Refusal.IN_FLIGHT, HTTPStatus.CONFLICT, id="one in flight"),
+        pytest.param(
+            Refusal.NO_STATION, HTTPStatus.SERVICE_UNAVAILABLE, id="no station"
+        ),
+        pytest.param(Refusal.NO_RELEASE, HTTPStatus.NOT_FOUND, id="no such release"),
+        pytest.param(Refusal.NO_ASSET, HTTPStatus.BAD_GATEWAY, id="no firmware"),
+        pytest.param(Refusal.NO_DIGEST, HTTPStatus.BAD_GATEWAY, id="no digest"),
+        pytest.param(
+            Refusal.NOT_PUBLISHED, HTTPStatus.BAD_GATEWAY, id="not what was published"
+        ),
+        pytest.param(
+            Refusal.TOOL_FAILED, HTTPStatus.INTERNAL_SERVER_ERROR, id="esptool failed"
+        ),
+        pytest.param(
+            Refusal.TOOL_KILLED, HTTPStatus.GATEWAY_TIMEOUT, id="esptool was killed"
+        ),
+        pytest.param(
+            Refusal.RAISED, HTTPStatus.INTERNAL_SERVER_ERROR, id="something raised"
+        ),
+    ],
+)
+def test_what_a_flash_was_refused_for_is_a_status_and_a_reason(
+    refusal: Refusal, status: HTTPStatus
+) -> None:
+    """Each of them a status the caller can act on: what it may ask again
+    (409), what is the station's doing (503), what is the source's (502), and
+    what is a page's own (400). The sentence is the flasher's, whole."""
+    said = "the flasher's own sentence"
+
+    answered = asyncio.run(
+        face(flasher=Writing(Wrote(refusal, said))).answer("POST", "/flash", asking())
+    )
+
+    assert answered.status == status
+    assert answered.body == {"reason": said}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(b"", id="nothing"),
+        pytest.param(b"v5.6.4-rails49.1", id="not json"),
+        pytest.param(b'["v5.6.4-rails49.1"]', id="not an object"),
+        pytest.param(b'{"release": "v5.6.4-rails49.1"}', id="names no tag"),
+        pytest.param(b'{"tag": ""}', id="an empty tag"),
+        pytest.param(b'{"tag": 5}', id="a tag that is not a name"),
+    ],
+)
+def test_a_body_that_names_no_tag_is_refused_before_the_device(body: bytes) -> None:
+    """A tag is the one thing a flash is asked with, and it is read the way a
+    payload is read — one field, and every shape it is not is a refusal —
+    because it arrives from a LAN with no authentication on it (ADR-0042)."""
+    writing = Writing()
+
+    answered = asyncio.run(face(flasher=writing).answer("POST", "/flash", body))
+
+    assert answered.status == HTTPStatus.BAD_REQUEST
+    assert answered.body["reason"]
+    assert writing.asked == []
+
+
+def test_a_flash_is_asked_for_and_not_read() -> None:
+    """The station is written by asking, so `GET /flash` is not a way to see
+    what is being written: there is nothing to read here, and a page that
+    reloaded one would write the station again."""
+    writing = Writing()
+
+    answered = asyncio.run(face(flasher=writing).answer("GET", "/flash", asking()))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+    assert writing.asked == []
+
+
+def test_no_request_can_redirect_the_source_a_flash_is_written_from() -> None:
+    """The same rule as the releases, on the path where it costs the most: a
+    body that names a source is written out of the configured one, because
+    nothing reads one. A source on the wire would let anyone on the wifi have
+    the station run an arbitrary binary (ADR-0042, firmware.py)."""
+    writing = Writing()
+
+    answered = asyncio.run(
+        face(flasher=writing).answer(
+            "POST",
+            f"/flash?releases={ELSEWHERE}",
+            json.dumps({"tag": TAG, "releases": ELSEWHERE}).encode(),
+        )
+    )
+
+    assert writing.asked == [TAG]
+    assert answered.status == HTTPStatus.OK
 
 
 # -- the door's side ---------------------------------------------------------
