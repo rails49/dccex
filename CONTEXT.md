@@ -138,6 +138,74 @@ goes with it.
 
 **Not:** *connected*, *online*, *the connection*, *up*.
 
+## monitor
+
+The page the **stream** is shown on and typed into: the station's conversation
+as it arrives, each line stamped with the time it arrived, the ones the
+**decoder** knows carrying a **gloss**, and a box at the foot that sends one
+whole `<…>` message. It is the UI's and not the mirror's — the mirror carries
+the stream and reads nothing on it.
+
+The word is the page's rather than the port's. A throttle watching the same
+conversation on 2560 is a **client**, and so is the face carrying this one
+(ADR-0007); what makes this a monitor is that a person is reading it.
+
+**Not:** *console*, *terminal*, *serial monitor*, *log* (the log is what the
+apps say on stderr), *the stream* (the stream is what a monitor is shown),
+*the UI* (the UI is the whole page, and the monitor is the part of it the
+conversation is on).
+
+## decoder
+
+The pure function the page reads the conversation with: one line of the
+station's `<…>` in, one **gloss** out or nothing. No socket, no state and no
+clock, so what it makes of a line is asserted as that line and that sentence
+on a machine with nothing plugged in
+([ADR-0009](docs/adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
+
+It is the UI's own, and it runs the opposite way from the **translator**,
+which turns a layout's desired values into `<…>`. Neither of the apps here
+decodes anything: the mirror reads `<` and `>` and no further, and the
+translator's reading is its bus contract rather than a page's.
+
+**Not:** *parser*, *interpreter*, *translator* (the translator is `dccex`),
+*protocol handler*, *renderer*, *formatter*.
+
+## gloss
+
+The plain sentence the monitor shows beside a line the **decoder** knows, so
+that `<H 12 1>` is something a person reads rather than remembers. A line the
+decoder does not know is shown raw and gets none: a guess standing where a
+reading goes is an observation the page did not make (ADR-0009,
+[control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+
+**Not:** *description*, *explanation*, *translation*, *tooltip*,
+*annotation*, *comment*, *label*.
+
+## band
+
+The chrome across the top of every rails49 UI, carrying what is true of the
+whole system. Here that is two readings — the **link**, and whether the rails
+are hot — and it presses nothing: `control`'s band commands track power
+because `layout` checks the railroad is drained before the wire carries
+anything, and this page is on no bus for anything to check
+([ADR-0008](docs/adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)).
+The **rail** down the side is its counterpart, and both are LOOK.md's rather
+than this repository's.
+
+**Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
+*status bar*.
+
+## tile
+
+One reading of the station's particulars on the page's work pane. There are
+four — the **build**, the current on the track, how many **clients** are on
+the mirror's port, and how long ago the station last said anything — and three
+of them blank together when the **link** goes down, because three of them are
+the station talking.
+
+**Not:** *card*, *widget*, *panel*, *badge*, *stat*, *metric*, *gauge*.
+
 ## image
 
 What the apps here run as on the box: one image, built from this repository's
