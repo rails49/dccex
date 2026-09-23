@@ -49,6 +49,19 @@ reaches the face through the door and never the LAN, which is what
 [ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
 decides; 2560 goes on being published raw for JMRI and the throttles.
 
+## How it gets on the box
+
+One **image**, built from this repository's source at one commit and named by
+it, which the mirror runs as and the translator will. The name never moves, so
+what a box is running is a commit anybody can read off it; a deploy writes
+down what it replaced, where a person on the box can `tail` it; and going back
+to the one before is a command naming that commit rather than a digest
+recovered by hand
+([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md),
+[the mirror's page](docs/dccex_usb/README.md)). The stack that builds it and
+the deploy that runs it are not here yet — they are #15's, built in that
+shape.
+
 ## Licence
 
 MIT. The Python moves in from `control` unchanged, and the firmware's GPLv3
