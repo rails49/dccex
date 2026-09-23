@@ -16,12 +16,14 @@ resolves nowhere in case that ever stops being true.
 
 import asyncio
 import json
+import os
 from collections.abc import Sequence
 from http import HTTPStatus
 
 import pytest
 
-from dccex_usb.face import Face
+from dccex_usb.face import Face, Server
+from tests.dccex_usb.test_station import Log, Pty, arriving, connect, send, station
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
 ELSEWHERE = "https://api.example.invalid/repos/someone-else/CommandStation-EX/releases"
@@ -171,3 +173,154 @@ def test_the_releases_are_read_and_not_written() -> None:
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert source.asked == []
+
+
+PATIENCE_S = 2.0
+TIMEOUT_S = 5.0
+
+
+def request(method: str = "GET", target: str = "/releases", body: bytes = b"") -> bytes:
+    """One HTTP request, as the UI's page makes it."""
+    head = (
+        f"{method} {target} HTTP/1.1\r\n"
+        "Host: dccex.example.invalid\r\n"
+        f"Content-Length: {len(body)}\r\n"
+        "\r\n"
+    )
+    return head.encode() + body
+
+
+async def ask(port: int, asked: bytes = request()) -> tuple[int, object]:
+    """Ask the face over TCP and read the whole answer back.
+
+    Read to end-of-file rather than by the length it reports: what is asserted
+    is what the face said, and a reader that trusted the header could not
+    notice a body that disagreed with it.
+    """
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(asked)
+        await writer.drain()
+        answered = await reader.read()
+    finally:
+        writer.close()
+        await writer.wait_closed()
+    head, _, body = answered.partition(b"\r\n\r\n")
+    status = int(head.split(b" ")[1])
+    return status, json.loads(body)
+
+
+def test_the_server_is_handed_back_unstarted() -> None:
+    """Constructing one binds nothing: a test starts it, asks it the port the
+    OS chose, and stops it, which is the split `Station` is driven by."""
+
+    async def started_and_stopped() -> None:
+        server = Server(Face(RELEASES, fetch=Source()), 0)
+        with pytest.raises(RuntimeError):
+            assert server.port
+
+        await server.start()
+        port = server.port
+        assert port > 0
+        status, _ = await ask(port)
+        assert status == HTTPStatus.OK
+
+        await server.close()
+        with pytest.raises(OSError):
+            await asyncio.open_connection("127.0.0.1", port)
+
+    asyncio.run(asyncio.wait_for(started_and_stopped(), TIMEOUT_S))
+
+
+def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
+    async def asked() -> tuple[int, object]:
+        server = Server(Face(RELEASES, fetch=Source()), 0)
+        await server.start()
+        try:
+            return await ask(server.port)
+        finally:
+            await server.close()
+
+    status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.OK
+    assert body == {"tags": TAGS}
+
+
+@pytest.mark.parametrize(
+    "asked, status",
+    [
+        pytest.param(
+            request(target="/layout"), HTTPStatus.NOT_FOUND, id="no such path"
+        ),
+        pytest.param(
+            request(method="POST", body=b'{"tag": "v5.6.4-rails49.1"}'),
+            HTTPStatus.METHOD_NOT_ALLOWED,
+            id="a method with a body",
+        ),
+        pytest.param(b"hello?\r\n\r\n", HTTPStatus.BAD_REQUEST, id="not a request"),
+    ],
+)
+def test_what_the_face_will_not_answer_comes_back_as_a_status_and_a_reason(
+    asked: bytes, status: int
+) -> None:
+    """Including the request with a body: it is read off the connection
+    before the answer goes back, so a caller gets its status rather than a
+    connection closed under what it was still sending."""
+
+    async def refused() -> tuple[int, object]:
+        server = Server(Face(RELEASES, fetch=Source()), 0)
+        await server.start()
+        try:
+            return await ask(server.port, asked)
+        finally:
+            await server.close()
+
+    got, body = asyncio.run(asyncio.wait_for(refused(), TIMEOUT_S))
+
+    assert got == status
+    assert isinstance(body, dict) and body["reason"]
+
+
+# -- the wiring --------------------------------------------------------------
+
+
+def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() -> None:
+    """The face beside the real mirror, with a pty for the command station.
+
+    A face is one more thing in the process that holds the railroad's one
+    serial device, so what is asserted here is everything it does not do: it
+    is a port of its own, the station's conversation goes on through the
+    mirror's port both ways while the face is answering, and the device is
+    still held afterwards.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        served = Server(Face(RELEASES, fetch=Source()), 0)
+        await mirror.start()
+        await served.start()
+        try:
+            await log.wait_for("serial open")
+            assert served.port != mirror.port
+
+            status, body = await ask(served.port)
+            assert (status, body) == (HTTPStatus.OK, {"tags": TAGS})
+
+            reader, writer = await connect(mirror)
+            await send(writer, b"<s>")
+            assert await arriving(cable.master, len(b"<s>")) == b"<s>"
+            os.write(cable.master, b"<iDCC-EX>")
+            assert await reader.readexactly(len(b"<iDCC-EX>")) == b"<iDCC-EX>"
+            assert mirror.held, "the face took the device from the mirror"
+
+            writer.close()
+            await writer.wait_closed()
+        finally:
+            await served.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
