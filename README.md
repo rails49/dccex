@@ -28,8 +28,11 @@ top of them.
   with a box to type into. Not here yet. The mirror's face is what it will
   talk to, on that same label under `/dccex-usb` and behind the same
   certificate ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
-  that face carries the releases the configured source lists already, and
-  asking for a flash is still to come.
+  that face carries the releases the configured source lists and writes one
+  onto the station when the page names its tag. Whether the railroad can spare
+  its station is the operator's to answer: the page sequences and confirms,
+  and nothing in the app checks
+  ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware.

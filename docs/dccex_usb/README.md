@@ -16,10 +16,10 @@ the station**, which only the process holding the device can do
 That ask arrived on a topic and a refusal went back as a row. Neither is here:
 a command station is not a fact about a railroad, so the mirror answers to
 this app's own face instead ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md)).
-The face is here (#12) and answers what releases the configured source
-carries. What it does not carry yet is the ask for a flash, which is #13, so
-**nothing can ask for one at all** — the path is there, it is covered, and it
-has no caller. That is the app being quiet, not the app being broken.
+The face answers what releases the configured source carries (#12) and writes
+one of them onto the station when a caller names its tag (#13). Both are the
+app's own business on the app's own interface, and neither is a fact about a
+railroad.
 
 The code arrived as a copy of `control`'s at `deee7b6`, its file names kept so
 the two stay diffable; [SOURCE.md](../../src/SOURCE.md) says what came from
@@ -197,11 +197,14 @@ code here:
   edited by hand, so that the box's page links the UI;
 - the labels themselves, which belong to the mirror's stack (#15).
 
-What it answers, which is one thing so far:
+What it answers, which is two things:
 
 ```
 $ curl http://dccex-usb:8080/releases
 {"tags": ["v5.6.4-rails49.1", "v5.6.3-rails49.2"]}
+
+$ curl -X POST http://dccex-usb:8080/flash -d '{"tag": "v5.6.4-rails49.1"}'
+{"flashed": "v5.6.4-rails49.1"}
 ```
 
 The **tags** of the **releases** the configured source carries, in the order
@@ -213,20 +216,43 @@ source, because the LAN carries no authentication on purpose (control
 ADR-0042) and a request that named a source would be a request that decides
 what the station is offered to run.
 
+The second is [the flash](#writing-the-firmware), and the answer comes back
+when it is over: a minute or two, because that is how long writing four
+megabytes at 460800 baud takes. A caller is waited on for the whole of it —
+what it asked is whether the station runs that build now, and esptool exiting
+non-zero is not knowable before esptool has run. What bounds a request is the
+caller: the head, the body and the answer being taken. A caller that goes away
+mid-flash loses only the answer, because the station is being written by then
+and stopping halfway is the one thing nobody can recover from.
+
 **What it will not answer is a status and a sentence**, in a `reason` field,
 so whoever asked can say what happened rather than sending somebody to read a
 log on the box (control ADR-0050):
 
-- `404` — a path this face does not answer. A face is private to its app and
-  is not somewhere else to get at the railroad.
-- `405` — the releases are read, with `GET`.
-- `502` — the source could not be reached, or answered with something that is
-  not a list of releases. The release API is somebody else's service and the
-  mirror keeps mirroring what it is doing rather than falling over with it. A
-  source that has published nothing yet is not this: that is an answer, and
-  the tags are empty.
-- `400`, `413`, `431` — a request this face cannot read: not HTTP, or a head
-  or a body larger than a page asking a question has any use for.
+- `404` — a path this face does not answer, or a tag the source has no release
+  for. A face is private to its app and is not somewhere else to get at the
+  railroad.
+- `405` — the releases are read, with `GET`; a flash is asked for, with
+  `POST`. There is nothing at `/flash` to read, and a page that reloaded one
+  would write the station again.
+- `502` — the source could not be reached, or answered with something that
+  cannot be used: not a list of releases, a release carrying no
+  `firmware.bin`, no digest for it, or bytes that are not what the digest
+  says. The release API is somebody else's service and the mirror keeps
+  mirroring what it is doing rather than falling over with it. A source that
+  has published nothing yet is not this: that is an answer, and the tags are
+  empty.
+- `400`, `413`, `431` — a request this face cannot read: not HTTP, a head or a
+  body larger than a page asking a question has any use for, a body that names
+  no tag, or `latest`, which is not a name for a build.
+- `409` — a flash is already in flight. Refused and not queued, for the reason
+  a client's bytes are dropped while the device is away: a queued flash is a
+  station that reboots minutes after somebody asked.
+- `503` — the command station is not there. Nothing is wrong with the request;
+  the cable is out or the board is off, and it is fixed at the hardware.
+- `500`, `504` — esptool exited non-zero, or outlived its timeout and was
+  killed. The station may be half written; both are on the box's log as well,
+  because neither is the caller's doing.
 - `403` — a page on another origin. The page and the face share one origin
   behind the door, so a browser says which page asked and this face holds it
   to that ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
@@ -258,10 +284,10 @@ serial device open, esptool cannot share it, and no container can stop a
 sibling without the Docker daemon's socket, which is root on the box
 (control ADR-0065).
 
-**Who asks is the face, and it does not carry this yet** (ADR-0001, #13).
-`Flasher` takes a tag as a call on the mirror's own loop; there is no topic,
-no command-line option and no route on the face that reaches it. What is
-written here is what happens once something does ask.
+**Who asks is the face** (ADR-0001, #13): `POST /flash` with the tag in its
+body, answered when the writing is over. `Flasher` takes that tag as a call on
+the mirror's own loop, and that call is the whole of the way in — there is no
+topic, no second port and no command-line option that reaches it.
 
 On the ask, in this order, and the order is the point:
 
@@ -304,25 +330,35 @@ closed once the grace passes, because for that minute or two the device
 genuinely is away and a flash outlasts any grace. The railroad going dark for
 the length of a flash is the correct outcome: nobody expects trains to run
 while the station is being written, and the guard against a flash under a
-moving train is the caller's, below. Progress needs nothing of its own: the
+moving train is the operator's, below. Progress needs nothing of its own: the
 link is down and the translator that lost it says so, and when the station
 answers again it reports the **build** it now runs.
 
-**What it refuses**, each of them logged and nothing more until the face can
-carry it back to whoever asked: a tag with no such release, a release carrying
-no `firmware.bin` or no digest for it, a digest that does not match, esptool
-exiting non-zero, esptool outliving the timeout, the device absent, and a
-second ask while a flash is in flight — refused, not queued, for the reason a
-client's bytes are dropped rather than queued. `latest` is refused too: it
-names a different build depending on when it is read, and what was written has
-to be sayable afterwards.
+**What it refuses**, each of them a status and a reason to whoever asked and a
+line on the box besides: a tag with no such release (`404`), a release carrying
+no `firmware.bin` or no digest for it, and a digest that does not match
+(`502`), esptool exiting non-zero (`500`), esptool outliving the timeout
+(`504`), the device absent (`503`), and a second ask while a flash is in flight
+(`409`) — refused, not queued, for the reason a client's bytes are dropped
+rather than queued. `latest` is refused too (`400`): it names a different build
+depending on when it is read, and what was written has to be sayable
+afterwards. The statuses are listed with the rest of the face's
+[above](#the-face). A refusal leaves the app able to take the next ask: the
+flag falls whichever way a flash ended, and an app that refused everything
+after one failure would be worse than the failure.
 
-**Whether it is safe to reset the station is the caller's**, not this app's.
-Flashing drops the rails and disconnects every throttle, and the guarantee
-that this is not done under a moving train lives in whatever is written to
-honour it, exactly as it does for cutting track power (control ADR-0051,
-ADR-0062). Reading the dispatcher's state is the coupling this app has never
-had and the reason it is trustworthy.
+**Whether it is safe to reset the station is the operator's**, not this app's,
+and that is where the obligation sits now that a page can ask
+([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
+Flashing drops the rails and disconnects every throttle, and nothing between
+the person and the station checks that a train is not moving: this app is not
+on the bus, so it cannot read a run state or a track row, and the face is about
+this app rather than about a railroad. The page sequences what it can and
+confirms; what it cannot do is prevent, and none of the refusals above is a
+safety mechanism — they are about tags, sources, digests and devices. It is the
+rule cutting track power already has, on the other thing that stops a railroad
+(control ADR-0051, ADR-0062). Reading the dispatcher's state is the coupling
+this app has never had and the reason it is trustworthy.
 
 ## Deploying it, and going back
 
