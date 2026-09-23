@@ -66,7 +66,10 @@ def serve(
     """
     station = Station(device, port)
     flasher = Flasher(station, releases)
-    face = Server(Face(releases), face_port)
+    # One flasher, handed to the face that asks for a flash and to the loop
+    # that waits one out on the way down. There is one device, so there is one
+    # thing that may write it, and a second would refuse nothing (#13).
+    face = Server(Face(releases, flasher=flasher), face_port)
     to_stderr(
         f"serving {device} on {port}, face on {face_port}, flashing from {releases}"
     )

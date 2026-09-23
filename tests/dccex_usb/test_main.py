@@ -40,7 +40,7 @@ import pytest
 from dccex_usb.__main__ import command_line, mirroring
 from dccex_usb.face import PORT as FACE_PORT
 from dccex_usb.face import Face, Server
-from dccex_usb.firmware import RELEASES, Flasher
+from dccex_usb.firmware import RELEASES, Flasher, Wrote
 from dccex_usb.station import HOST, Station
 
 DEVICE = "/dev/dccex-that-is-not-there"
@@ -173,9 +173,21 @@ async def unreachable(url: str) -> bytes:
     raise AssertionError(f"the gate reached {url}")
 
 
+class Unasked:
+    """What writes a release onto the station here, and never does: nothing in
+    this file asks the face for a flash. What the face does with one is
+    `test_face.py`'s, and what a flash does to a device is
+    `test_firmware.py`'s."""
+
+    async def wanted(self, tag: str) -> Wrote:
+        raise AssertionError(f"the gate asked for '{tag}' to be written")
+
+
 def served(port: int = 0) -> Server:
     """The face on an OS-chosen port, which is what the loop is handed."""
-    return Server(Face(fetch=unreachable), port, log=lambda line: None)
+    return Server(
+        Face(fetch=unreachable, flasher=Unasked()), port, log=lambda line: None
+    )
 
 
 class Unserved(Server):
@@ -183,7 +195,11 @@ class Unserved(Server):
     something else already has raises."""
 
     def __init__(self) -> None:
-        super().__init__(Face(fetch=unreachable), FACE_PORT, log=lambda line: None)
+        super().__init__(
+            Face(fetch=unreachable, flasher=Unasked()),
+            FACE_PORT,
+            log=lambda line: None,
+        )
 
     async def start(self) -> None:
         raise OSError(errno.EADDRINUSE, "address already in use")
@@ -191,7 +207,8 @@ class Unserved(Server):
 
 def quiet(device: Station) -> Flasher:
     """The real flasher with nothing in flight, which is every moment but a
-    flash: nothing can ask it for one until the face does (#12)."""
+    flash. The face is what asks it for one (#13), and the face here is asked
+    nothing."""
     return Flasher(device, log=lambda line: None)
 
 

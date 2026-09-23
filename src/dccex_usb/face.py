@@ -7,6 +7,19 @@ only thing it talks to: a command station is not a fact about a railroad, so
 there is no bus here to carry the question and no store to keep the answer
 (ADR-0001).
 
+**Two things are asked of it: what releases the source carries, and that one
+of them be written onto the station.** The second is what the face was wanted
+for. Writing means owning the serial port, so the app that holds the device is
+the only thing that can do it (ADR-0065, `firmware.py`); what this adds is
+that whoever asked is told what happened, where a refusal used to be a line in
+a log addressed to nobody (ADR-0001 d.2, ADR-0050).
+
+**Nothing here guards the railroad.** This face cannot read a run state or a
+track row — the mirror is not on the bus and a command station is not a fact
+about a railroad — so the guarantee that a station is not written under a
+moving train is the operator's, by way of the page that sequences it
+(ADR-0006). The mirror checks nothing, as it never has.
+
 **Routing is a function of a method, a path and a body, and it answers with a
 status and a body.** Nothing in it touches a socket, which is what lets every
 question about what the face says be asked of it directly: what carries it
@@ -37,12 +50,12 @@ either way.
 
 import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from http import HTTPStatus
-from typing import NamedTuple, cast
+from typing import NamedTuple, Protocol, cast
 from urllib.parse import urlsplit
 
-from dccex_usb.firmware import RELEASES, Fetch, fetch
+from dccex_usb.firmware import RELEASES, Fetch, Refusal, Wrote, fetch
 from dccex_usb.station import HOST, to_stderr
 
 PORT = 8080
@@ -85,6 +98,69 @@ the only thing a caller ever names (CONTEXT.md)."""
 TAG = "tag_name"
 """What the release API calls a release's tag."""
 
+FLASH_PATH = "/flash"
+"""What a build is asked to be written at, with the door's prefix already off
+it (ADR-0004). Asked for and not read: there is nothing at this path to see,
+and a page that reloaded one would write the station twice."""
+
+ASKED_TAG = "tag"
+"""What the body of a flash names the release to write. A tag and nothing
+else — the source is this app's configuration and no request can reach it
+(ADR-0042), so a body that named one is written out of the configured source
+just the same, because nothing here looks for one."""
+
+FLASHED = "flashed"
+"""What an answer says a build was written under. The tag goes back with it,
+so the page can say which one it was rather than which one it asked for."""
+
+STATUS: Mapping[Refusal, HTTPStatus] = {
+    # The caller's own to fix, and the two that are: `latest` is not a name
+    # for a build (CONTEXT.md), and a body that names no tag asks nothing.
+    Refusal.LATEST: HTTPStatus.BAD_REQUEST,
+    # Somebody is writing the station already. What to do about it is to ask
+    # again when it is over, which is what this says and 400 does not.
+    Refusal.IN_FLIGHT: HTTPStatus.CONFLICT,
+    # Nothing is wrong with the request: the cable is out or the station is
+    # off, and it is fixed at the hardware (ADR-0050).
+    Refusal.NO_STATION: HTTPStatus.SERVICE_UNAVAILABLE,
+    # The source carries no release by that name. The tags it does carry are
+    # one GET away, which is what the other route is for.
+    Refusal.NO_RELEASE: HTTPStatus.NOT_FOUND,
+    # Three statements about what somebody else's service published — a
+    # release with no firmware on it, with no digest for it, or with bytes
+    # that are not what it says they are. The same status the releases get
+    # when that service cannot be read, and for the same reason: the mirror
+    # reports what the source is doing rather than falling over with it.
+    Refusal.NO_ASSET: HTTPStatus.BAD_GATEWAY,
+    Refusal.NO_DIGEST: HTTPStatus.BAD_GATEWAY,
+    Refusal.NOT_PUBLISHED: HTTPStatus.BAD_GATEWAY,
+    # esptool ran, so the station may be half written. Not the caller's doing
+    # and the one kind of answer that is worth a line on the box as well,
+    # which is what a status of 500 or more gets it (`Server`).
+    Refusal.TOOL_FAILED: HTTPStatus.INTERNAL_SERVER_ERROR,
+    Refusal.TOOL_KILLED: HTTPStatus.GATEWAY_TIMEOUT,
+    Refusal.RAISED: HTTPStatus.INTERNAL_SERVER_ERROR,
+}
+"""What each way of refusing a flash is answered with.
+
+Every `Refusal` is here and a test holds that shut, because a refusal with no
+status of its own would fall to a 500 and tell a page the mirror had broken
+when what happened is that somebody typed a tag that does not exist.
+"""
+
+
+class Writes(Protocol):
+    """What the face needs of the thing that writes a release onto the
+    command station: a tag asked for, and what became of it.
+
+    `Flasher` satisfies it by having the member. Narrow on purpose — the face
+    is routing, and the whole of what it may do to the railroad's one live
+    port is ask for a named release to be written on it, so a test stands in
+    for all of that with an object that answers one call.
+    """
+
+    async def wanted(self, tag: str) -> Wrote: ...
+
 
 class Answered(NamedTuple):
     """What routing comes to: a status, and a body to be rendered as JSON."""
@@ -120,6 +196,25 @@ def tags(document: object) -> list[str] | None:
     return named
 
 
+def named(body: bytes) -> str | None:
+    """The tag a flash is asked for in `body`, or None where it names none.
+
+    Read the way a document from somewhere else is read — one field, and every
+    shape it is not is None rather than an exception — because this arrives
+    from a LAN with no authentication on it (ADR-0042). One field is also the
+    whole of what is read: a body that also named where to fetch from is
+    written out of the configured source, because nothing here goes looking.
+    """
+    try:
+        document = json.loads(body)
+    except ValueError:
+        return None
+    if not isinstance(document, dict):
+        return None
+    tag = cast(dict[str, object], document).get(ASKED_TAG)
+    return tag if isinstance(tag, str) and tag else None
+
+
 def elsewhere(origin: str, host: str) -> bool:
     """Whether the page that asked is on some origin other than the one the
     request was addressed to.
@@ -143,9 +238,14 @@ def elsewhere(origin: str, host: str) -> bool:
 class Face:
     """What the mirror answers, and the configuration it answers out of.
 
-    Constructed with the source of releases the app was started with and with
+    Constructed with the source of releases the app was started with, with
     what fetches a URL, which the suite substitutes so that nothing in the
-    gate reaches the release API.
+    gate reaches the release API, and with what writes a release onto the
+    station, which is the app that holds the device.
+
+    The flasher has no default, because there is no sensible one: a face
+    served without the thing that holds the cable would answer a page that
+    everything was fine and write nothing.
     """
 
     def __init__(
@@ -153,9 +253,11 @@ class Face:
         releases: str = RELEASES,
         *,
         fetch: Fetch = fetch,
+        flasher: Writes,
     ) -> None:
         self._releases = releases
         self._fetch = fetch
+        self._flasher = flasher
 
     async def answer(
         self,
@@ -181,9 +283,8 @@ class Face:
         because what it asked for does not matter: a face is private to its
         app and is not somewhere else to get at the command station.
 
-        No route reads the body yet. It is here because it is half of what a
-        route is asked with, and what will read one is the flash the UI asks
-        for by tag (#13).
+        The body is read by one route, which is the flash: it names the tag to
+        write and nothing else (#13).
         """
         if elsewhere(origin, host):
             return refused(
@@ -192,16 +293,23 @@ class Face:
                 f" and {origin} is somewhere else",
             )
         asked = urlsplit(path).path
-        if asked != RELEASES_PATH:
-            return refused(
-                HTTPStatus.NOT_FOUND, f"the mirror's face does not answer {asked}"
-            )
-        if method != "GET":
-            return refused(
-                HTTPStatus.METHOD_NOT_ALLOWED,
-                f"{asked} is read with GET, and this was {method}",
-            )
-        return await self._carried()
+        if asked == RELEASES_PATH:
+            if method != "GET":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET, and this was {method}",
+                )
+            return await self._carried()
+        if asked == FLASH_PATH:
+            if method != "POST":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is asked for with POST, and this was {method}",
+                )
+            return await self._writes(body)
+        return refused(
+            HTTPStatus.NOT_FOUND, f"the mirror's face does not answer {asked}"
+        )
 
     async def _carried(self) -> Answered:
         """The tags the configured source carries, or why they could not be
@@ -220,6 +328,35 @@ class Face:
                 f"the releases at {self._releases} are not a list of releases",
             )
         return Answered(HTTPStatus.OK, {"tags": carried})
+
+    async def _writes(self, body: bytes) -> Answered:
+        """A named release written onto the command station, and the caller
+        told what happened.
+
+        **This waits for the flash**, which is minutes of esptool with a
+        timeout of its own: what a caller asked is whether the station now
+        runs that build, and esptool exiting non-zero is not knowable before
+        esptool has run. The mirror goes on mirroring throughout — the flash
+        is a task on this loop and the fan-out is another — and what the
+        clients on 2560 see is the device being away, which is what they
+        already get when the cable is out (station.py).
+
+        **Nothing here guards the railroad.** This face cannot read the run
+        state or the track row; whether it is safe to reset the station under
+        a moving train is the operator's, by way of the page that sequences
+        it (ADR-0006). The mirror checks nothing, as it never has.
+        """
+        tag = named(body)
+        if tag is None:
+            return refused(
+                HTTPStatus.BAD_REQUEST,
+                f'a flash names the release to write as {{"{ASKED_TAG}": "…"}},'
+                " and this named none",
+            )
+        wrote = await self._flasher.wanted(tag)
+        if wrote.refusal is None:
+            return Answered(HTTPStatus.OK, {FLASHED: tag})
+        return refused(STATUS[wrote.refusal], wrote.said)
 
 
 def refused(status: HTTPStatus, reason: str) -> Answered:
