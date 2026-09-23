@@ -25,7 +25,10 @@ top of them.
   Not here yet.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into. Not here yet — what it is is written down
+  with a box to type into. **The page is here and nothing is on it** (#3):
+  `ui/` holds the band, the rail and an empty work pane, built by node inside
+  its own image and served by nginx out of it, drawing in the look rules from
+  its first commit. What goes in the work pane is written down
   ([the page](docs/ui/README.md)), ahead of the tickets that build it. The
   mirror's face is what it will
   talk to, on that same label under `/dccex-usb` and behind the same
@@ -80,9 +83,13 @@ down what it replaced, where a person on the box can `tail` it; and going back
 to the one before is a command naming that commit rather than a digest
 recovered by hand
 ([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md),
-[the mirror's page](docs/dccex_usb/README.md)). The stack that builds it and
-the deploy that runs it are not here yet — they are #15's, built in that
-shape.
+[the mirror's page](docs/dccex_usb/README.md)). The UI is a second image and
+not that one — `deploy/ui.Dockerfile`, node to build and nginx to serve, under
+the same naming rule — because a page shares neither the lock file nor the
+esptool pin the Python apps do, and the box that serves it has Docker and no
+node. `compose.yaml` carries that one server and its door route and nothing
+else; the stack a box runs and the deploy that runs it are still #15's, built
+in that shape.
 
 The first time that happens on the layout box it is a **cutover** and not a
 deploy: 2560 is served there today by `control`'s copy of the mirror, and the
