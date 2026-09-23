@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from dccex_usb.station import READ_SIZE, Station
+from dccex_usb.station import READ_SIZE, Device, DeviceGone, Station
 
 SETTLE_S = 0.2
 TIMEOUT_S = 5.0
@@ -499,7 +499,7 @@ class Flapping(Station):
     again. The watcher's pacing is what is under test, not the mirror.
     """
 
-    async def _mirror(self, fd: int) -> bool:
+    async def _mirror(self, device: Device) -> bool:
         await asyncio.sleep(0)
         return False
 
@@ -854,28 +854,20 @@ def test_the_device_is_let_go_though_a_client_takes_nothing(pty: Pty) -> None:
 
 
 class Peeking(Station):
-    """A station that says what a stranded write is about, which a mirror does not.
+    """A station that hands out the device it holds, which a mirror does not.
 
-    Whether a client's message is holding the write lock, whether anything is
-    parked waiting for the device to take more, and the descriptor number
-    itself — which a test needs in order to ask the loop whether anything is
-    still registered on it once the device has gone. None of the three is any
-    caller's business, so they are reached from a subclass here rather than
-    published.
+    A test needs the device itself and not only the station's view of it:
+    what it asks about a stranded write it has to go on asking after the
+    handover has taken the device off the station, and `Station.held` says
+    only that there is no device now. So the object is captured while it is
+    open and questioned afterwards, which is also the only way to ask about
+    the descriptor it let go.
     """
 
     @property
-    def writing(self) -> bool:
-        return self._writing.locked()
-
-    @property
-    def waiting(self) -> int:
-        return len(self._waiters)
-
-    @property
-    def fd(self) -> int:
-        assert self._fd is not None, "the device is not open"
-        return self._fd
+    def device(self) -> Device:
+        assert self._open is not None, "the device is not open"
+        return self._open
 
 
 def parking(device: str, log: Log) -> Peeking:
@@ -889,7 +881,7 @@ def parking(device: str, log: Log) -> Peeking:
     )
 
 
-async def park_a_write(app: Peeking, writer: asyncio.StreamWriter) -> None:
+async def park_a_write(device: Device, writer: asyncio.StreamWriter) -> None:
     """Send whole messages until one of them is parked on the device.
 
     Ordinary messages and a handful of them, not one large one: a pty holds
@@ -900,15 +892,15 @@ async def park_a_write(app: Peeking, writer: asyncio.StreamWriter) -> None:
     """
     message = b"<" + b"t" * 998 + b">"
     deadline = time.monotonic() + TIMEOUT_S
-    while not app.writing:
+    while not device.busy:
         if time.monotonic() > deadline:
             raise AssertionError("no write parked on the device")
         await send(writer, message * 4)
         await asyncio.sleep(0.005)
-    # Held, and still held a moment later: a lock caught between two messages
-    # is not a write waiting on a device that will never take more.
+    # Busy, and still busy a moment later: a lock caught between two
+    # messages is not a write waiting on a device that will never take more.
     await asyncio.sleep(SETTLE_S)
-    assert app.writing, "the write went through rather than parking"
+    assert device.busy, "the write went through rather than parking"
 
 
 async def drained(fd: int) -> None:
@@ -948,16 +940,17 @@ def test_a_write_parked_on_the_device_is_let_go_with_it(pty: Pty) -> None:
         try:
             _, writer = await connect(app)
             await log.wait_for("serial open")
-            await park_a_write(app, writer)
-            device = app.fd
+            device = app.device
+            fd = device.number
+            await park_a_write(device, writer)
 
             async with app.released():
-                assert not app.writing, "the handover left the write lock held"
-                assert not app.waiting, "a write is still parked on the device"
+                assert not device.busy, "the handover stranded the write"
+                assert device.gone, "the handover left the device open"
                 # And nothing of the mirror's is registered on the descriptor
                 # it no longer owns: the number is the OS's to hand out
                 # again, and a callback left on it is another owner's to lose.
-                assert nothing_registered(device)
+                assert nothing_registered(fd)
 
             await log.wait_for_count("serial open", 2)
             await drained(pty.master)
@@ -999,16 +992,17 @@ def test_a_write_parked_on_the_device_is_let_go_when_the_cable_goes(
         try:
             _, writer = await connect(app)
             await log.wait_for("serial open")
-            await park_a_write(app, writer)
-            device = app.fd
+            device = app.device
+            fd = device.number
+            await park_a_write(device, writer)
 
             cable.unlink()
             pty.close()
             await log.wait_for("device away")
 
-            assert not app.writing, "the outage left the write lock held"
-            assert not app.waiting, "a write is still parked on the device"
-            assert nothing_registered(device)
+            assert not device.busy, "the outage stranded the write"
+            assert device.gone, "the outage left the device open"
+            assert nothing_registered(fd)
 
             cable.symlink_to(back.path)
             await log.wait_for_count("serial open", 2)
@@ -1094,5 +1088,71 @@ def test_a_handover_that_ends_on_a_closed_station_takes_no_device_back(
             assert len(log.said("serial open")) == 1, "the device was reopened"
         finally:
             await shut_down(app)
+
+    asyncio.run(scenario())
+
+
+class Woken(Device):
+    """A device whose parked write can be woken the way the selector wakes it.
+
+    Waking is `set_result` on the future the write is parked on, and it is
+    all the selector does: the write does not resume until the loop gets to
+    it, which is a turn later. A test that wants the moment in between has to
+    make it, because the real selector only obliges when the device happens
+    to find room in the same turn the device goes.
+    """
+
+    @property
+    def parked(self) -> bool:
+        return bool(self._waiters)
+
+    def wake_parked(self) -> None:
+        for ready in tuple(self._waiters):
+            if not ready.done():
+                ready.set_result(None)
+
+
+def test_a_write_woken_as_the_device_goes_does_not_write_into_the_number(
+    pty: Pty,
+) -> None:
+    """Being woken is not being owed the descriptor.
+
+    A write parked on a full device is woken by the selector the moment the
+    device has room. It does not resume there and then — that is a turn of
+    the loop away — so a handover starting in between found a write already
+    woken, and the teardown that asked `done()` before speaking to a waiter
+    passed it over and closed the descriptor under it. What the write then
+    saw was an ordinary wake: no exception had arrived, so it took the number
+    for its own, unregistered a writer from it and wrote a client's command
+    bytes into whatever the OS had handed it to next, while reporting the
+    message sent.
+
+    So what it was woken by decides nothing. It asks the device whether the
+    descriptor is still the device's, and a device that has been let go says
+    no however the wake arrived.
+    """
+
+    async def scenario() -> None:
+        device = Woken.open(pty.path)
+        fd = device.number
+        message = b"<" + b"t" * 998 + b">"
+        writing = asyncio.create_task(device.write(message * 8))
+
+        deadline = time.monotonic() + TIMEOUT_S
+        while not device.parked:
+            if time.monotonic() > deadline:
+                raise AssertionError("no write parked on the device")
+            await asyncio.sleep(0.005)
+
+        # The device has found room and the write is woken. Its turn has not
+        # come, and the device goes before it does.
+        device.wake_parked()
+        device.let_go()
+
+        with pytest.raises(DeviceGone):
+            await writing
+        assert device.gone
+        assert not device.busy, "the woken write was left holding the device"
+        assert nothing_registered(fd), "a writer was left on the descriptor"
 
     asyncio.run(scenario())

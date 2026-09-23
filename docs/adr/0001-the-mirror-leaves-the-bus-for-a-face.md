@@ -101,6 +101,18 @@ their numbers.
 > now, and the handover asks. Nothing a client can see changes, and the numbers
 > are untouched once more.
 
+> **Amended 2026-09-22 (#34, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
+> and a fourth, which is the #24 amendment above being held to what it claimed.
+> It said nothing is written to or unregistered from a number the OS may have
+> handed on. That was true of a write woken by the teardown and not of one the
+> selector had already woken: waking does not resume a write, so a device found
+> with room moments before it was let go left a write that took the number for
+> its own. It is decided by the device now and not by the wake — the open
+> device is an object that holds the descriptor, and what is parked on it asks
+> whether the number is still the device's, however it came to be woken. What a
+> client can see is unchanged, the two behaviours above stand as amended, and
+> the numbers are untouched a fourth time.
+
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
 [CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a
