@@ -10,10 +10,10 @@ container can stop a sibling without handing a process the Docker daemon's
 socket.
 
 **Nothing outside this process can make the gesture.** It arrived on a bus in
-`control` and it will arrive at this app's own face (ADR-0001, #12); between
-the two it has no caller at all, which is an app that is quiet rather than one
-that is broken. `wanted` is the whole of the way in, and it is a call on this
-loop.
+`control` and it will arrive at this app's own face, which is there and has no
+route to this yet (ADR-0001, #13); between the two it has no caller at all,
+which is an app that is quiet rather than one that is broken. `wanted` is the
+whole of the way in, and it is a call on this loop.
 
 **The gesture names a tag and never a source.** The LAN is the trust boundary
 and carries no authentication on purpose (ADR-0042), so an ask that said where
@@ -278,8 +278,8 @@ class Flasher:
     station by the app that owns its device.
 
     Constructed on the mirror, and reached by a call on this loop and by
-    nothing else: there is no subscription here and no second port, so until
-    the face is written the flash has no caller (ADR-0001, #12). Whether it is
+    nothing else: there is no subscription here and no route on the face that
+    reaches this, so the flash still has no caller (ADR-0001, #13). Whether it is
     safe to reset the station is not a thing this reads, and neither is
     anything else about the railroad: that guarantee lives in the client
     written to honour it, which is where the one about cutting track power
@@ -333,7 +333,7 @@ class Flasher:
         disconnected by the outage come back to a mirror that is answering.
 
         The one way in, and a call rather than a row: what will make it is the
-        face, on this loop and in this process (ADR-0001, #12).
+        face, on this loop and in this process (ADR-0001, #13).
         """
         if tag == LATEST:
             self._log(

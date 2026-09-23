@@ -92,3 +92,8 @@ sorting the diff is told which side of it is ours:
   and a write asks it whether the number is still the device's rather than
   inferring that from how it was woken. `Station` lost three fields with it.
   One test holds it, and it goes red against the shape #24 left.
+- **#12** — `firmware.py`, in its prose alone: three sentences said the flash
+  would have a caller once the face was written. The face is written and
+  answers what releases the source carries; what will ask for a flash is the
+  route #13 adds to it, so they say that instead. No behaviour, no numbers,
+  and nothing in the file's code moved.
