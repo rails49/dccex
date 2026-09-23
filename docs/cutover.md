@@ -188,6 +188,42 @@ The deaf client says nothing when the mirror goes, and that is expected: the
 close is behind bytes it is not taking, so it never arrives. What is watched
 is the container, on the box.
 
+## The pointer in `control`
+
+`control`'s box procedures are where somebody looks first on the evening of the
+window, and the mirror is not `control`'s any more. One line there pointing at
+this page is all that is wanted — the procedure is not copied, because a
+procedure that exists twice is a procedure with a stale half.
+
+That edit is in another repository. It is a ticket there and **this repository
+does not wait on it**: a pointer that has not landed costs a person one search,
+and nothing on this page depends on it. To file, verbatim:
+
+```
+title: the box procedures point at dccex's cutover page for 2560
+
+The mirror that serves the command station on 2560 moved to rails49/dccex and
+this repository's copy is deleted (control#567). On the evening of
+rails49/dccex#16 the port changes hands: `control`'s deploy goes first, because
+it is what removes the orphaned mirror container (control#299) and applies the
+translator's repoint, and the stack that takes the port is rails49/dccex's.
+
+The procedure for that evening — the order, the abort signal, going back, and
+the checks — is rails49/dccex `docs/cutover.md`. What is missing is a line in
+this repository's box procedures saying so, for the person who opens them that
+evening and finds nothing about a port that is no longer served from here.
+
+Acceptance:
+
+- [ ] The box procedures carry a line pointing at rails49/dccex
+      `docs/cutover.md` for the cutover of 2560, and at that repository for the
+      mirror generally.
+- [ ] Nothing of the mirror's own operation is copied into it. A link, not a
+      duplicate.
+```
+
+When it is filed, its number goes here.
+
 ## Not on this page
 
 - The window itself — the deploys above being run, the acceptance, and the
@@ -195,6 +231,5 @@ is the container, on the box.
   follows.
 - The stack, the compose file and the deploy: #15's, and this page names them
   rather than containing them.
-- `control`'s side of it: its box procedures are where somebody looks first
-  on that evening, and the pointer from them to this page is a ticket in that
-  repository rather than an edit from here.
+- `control`'s side of it: the pointer from its box procedures is
+  [a ticket there](#the-pointer-in-control) rather than an edit from here.
