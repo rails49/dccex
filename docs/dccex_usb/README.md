@@ -44,14 +44,18 @@ The device to open and the port to serve it on. Two more are optional:
 There is no broker argument and no identity argument. Both went with the bus:
 there is nothing to dial and no row to key by a name.
 
-There is no bind address either. Both servers bind every interface, because the
-container publishes the ports — JMRI reaches the mirror as `dccex-usb:2560`
-and the door reaches the face; what limits their reach is the LAN, which is
-the trust boundary
+There is no bind address either. Both servers bind every interface, and what
+each of them can be reached from is what the stack publishes. **2560 is
+published raw**: JMRI, a throttle and the translator reach the mirror as
+`dccex-usb:2560`, and what limits their reach is the LAN, which is the trust
+boundary
 ([control ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)).
-For the same reason there is no authentication and no limit on the number of
-clients beyond the OS's — though there is a limit on how far behind one may
-fall, which is a different question.
+For the same reason there is no authentication on that port and no limit on
+the number of clients beyond the OS's — though there is a limit on how far
+behind one may fall, which is a different question. **The face's port is not
+published to the LAN at all**: the door reaches it on the box's own network,
+and a browser reaches it through the door and never the LAN
+([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
 
 **A mirror that cannot serve its port exits**, and so does a face that cannot.
 Something else on 2560 — a second copy of the app, a container that has not
@@ -161,6 +165,38 @@ It is answered on `--face-port`, and **serving it takes nothing from the
 mirror**: the device is not reached from here, and 2560 goes on carrying the
 station's conversation while the face answers.
 
+### Where it is
+
+At the box's `dccex` label, under a path prefix, on the page's own origin:
+
+```
+https://dccex.$BOX_DOMAIN/            the page
+https://dccex.$BOX_DOMAIN/dccex-usb/  this face, which sees /… without it
+```
+
+**One label, one certificate, two routers.** The page's router takes the host
+and the origin is the page's; the face's is the same host under `/dccex-usb`,
+and it claims nothing on the origin but that. **The door strips the prefix
+before the mirror sees it**, so the face answers `/releases` and never the
+address a browser typed — a prefix arriving here is a door that did not strip
+it, and a path this face does not answer. The monitor's stream rides the same
+router, which is what makes it `wss://` on the page's own origin with no
+second certificate anywhere.
+
+**A browser reaches this through the door and never the LAN**
+([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
+Only the containers a browser reaches carry door labels — the page's and this
+one — and the mirror goes on publishing 2560 raw beside them.
+
+Three of the steps are the box's rather than this app's, and none of them is
+code here:
+
+- an `A` record for the `dccex` label, because the door issues a certificate
+  per router through ACME DNS-01 and holds no wildcard;
+- `dccex` in `BOX_UIS` in `/etc/rails49/box.env`, which is root-owned and
+  edited by hand, so that the box's page links the UI;
+- the labels themselves, which belong to the mirror's stack (#15).
+
 What it answers, which is one thing so far:
 
 ```
@@ -191,13 +227,17 @@ log on the box (control ADR-0050):
   the tags are empty.
 - `400`, `413`, `431` — a request this face cannot read: not HTTP, or a head
   or a body larger than a page asking a question has any use for.
+- `403` — a page on another origin. The page and the face share one origin
+  behind the door, so a browser says which page asked and this face holds it
+  to that ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
 
 Whoever asked is told, and the box's log is told only what is not the
 caller's doing: a source that could not be read is a line on stderr as well,
 and a path the face does not answer is the caller's own to read.
 
-Of HTTP it reads the request line, the length of the body and nothing else,
-and it answers one request per connection. This is a private origin spoken to
+Of HTTP it reads the request line, the length of the body, the origin the
+request was addressed to and the origin of the page that asked — nothing else
+— and it answers one request per connection. This is a private origin spoken to
 by one page, so negotiation and a connection kept open for the next request
 are protocol it would carry without ever being asked for it. One request is
 bounded in time, because the loop it is answered on is the one that holds the
