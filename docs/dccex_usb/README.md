@@ -324,6 +324,54 @@ honour it, exactly as it does for cutting track power (control ADR-0051,
 ADR-0062). Reading the dispatcher's state is the coupling this app has never
 had and the reason it is trustworthy.
 
+## Deploying it, and going back
+
+The mirror runs on the box as a container of this repository's one **image**,
+built from its source at one commit and named by it
+([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
+The name never moves: nothing runs `latest` and nothing runs `main`, because a
+name that means a different commit next week is a name nothing can be gone
+back to. The commit is on the image as `org.opencontainers.image.revision`
+too, so `docker inspect` still answers the question for one somebody renamed.
+**A tag is not what this is called** — a tag names a firmware release, which
+is the thing that gets written onto the station, and the two sentences are one
+`docker` command apart on the same box ([CONTEXT.md](../../CONTEXT.md)).
+
+**A deploy writes down what it replaced**, at
+`/var/lib/rails49/deploys/dccex`: one line per deploy, newest last, appended
+and never rewritten, plain text for somebody who has just been handed the box
+and has nothing else on it. The commits are written in full; they are
+abbreviated here to fit the page.
+
+```
+$ tail -2 /var/lib/rails49/deploys/dccex
+2026-09-22T18:40:55Z  none            ->  dccex:8f2c1d4…
+2026-09-23T09:14:02Z  dccex:8f2c1d4…  ->  dccex:acb08f5…
+```
+
+**Going back is one command naming the commit on the line before.** A deploy
+keeps the image it replaced, so it is already on the box: nothing is rebuilt,
+nothing is pulled, and no digest is recovered by hand.
+
+```
+$ cd /etc/rails49/dccex
+$ echo DCCEX_IMAGE=dccex:8f2c1d4… > .env && docker compose up -d
+```
+
+The stack's `.env` holds that one name, because the image's name is the one
+thing that differs between two deploys of this repository, and writing it
+there is what makes `restart: unless-stopped` bring back what was rolled back
+*to*. Nothing about a rollback moves `main`: the box is behind the repository
+until somebody commits the fix and deploys it, and the record above is where
+that is visible. One step back is what is kept; older images are the box's to
+prune, and what pruning them costs is a second step.
+
+None of this is code here. The image is built by the stack, the stack carries
+the deploy and the door's labels, and both are #15's — what this repository
+holds is the shape they are built in, which is ADR-0005, and this page. The
+gate reaches no box and builds no image, so it is one command with one exit
+status as it was.
+
 ## Checking it against a real station
 
 Nothing in the test suite needs the hardware — the tests use a pty as the
