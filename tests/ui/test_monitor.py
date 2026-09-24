@@ -16,11 +16,7 @@ that way is the shape the follow rule has to have, not that a view followed.
 What the stream carries and where it is opened is held over there.
 """
 
-import json
-import os
 import re
-import shutil
-import subprocess
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -28,6 +24,7 @@ from typing import Any
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import UI
 
 #: The page the station's conversation is drawn on.
@@ -102,18 +99,7 @@ def run(asks: list[dict[str, Any]], zone: str = "UTC") -> list[dict[str, Any]]:
     that ran in whatever zone the machine happened to be set to could not tell
     those two apart on a box in London.
     """
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the page's rules with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(asks),
-        capture_output=True,
-        text=True,
-        check=False,
-        env={**os.environ, "TZ": zone},
-    )
-    assert ran.returncode == 0, f"the rules did not run: {ran.stderr.strip()}"
-    answered: list[dict[str, Any]] = json.loads(ran.stdout)
+    answered: list[dict[str, Any]] = ran(RUNNER, asks, "the page's rules", zone=zone)
     return answered
 
 

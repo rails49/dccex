@@ -35,16 +35,14 @@ needs is: a check that skips itself leaves a required gate green while proving
 nothing.
 """
 
-import json
 import re
-import shutil
 import string
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import UI
 
 #: The pure function, and the module it is the whole of.
@@ -123,17 +121,7 @@ def run(lines: tuple[str, ...]) -> tuple[dict[str, object] | None, ...]:
     A reading apiece, or nothing: the sentence under `say` and whatever fact
     the line carried beside it.
     """
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the decoder with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(list(lines)),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 0, f"the decoder did not run: {ran.stderr.strip()}"
-    read: list[dict[str, object] | None] = json.loads(ran.stdout)
+    read: list[dict[str, object] | None] = ran(RUNNER, list(lines), "the decoder")
     return tuple(read)
 
 
