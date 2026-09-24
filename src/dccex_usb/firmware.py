@@ -156,9 +156,10 @@ class Refusal(enum.Enum):
     """The source has no release by that tag."""
 
     SOURCE_AWAY = enum.auto()
-    """The source could not be asked about that tag: it did not answer, or
-    what it answered is not a release. Not the tag's doing, and not a reason
-    to go and type another one."""
+    """The tag was never answered: the source did not answer at all, or what
+    it answered is not a release — not JSON, or a document this app cannot
+    read as one. Not the tag's doing, and not a reason to go and type another
+    one (#66)."""
 
     NO_ASSET = enum.auto()
     """The release carries no firmware to write, or none that could be
@@ -232,9 +233,29 @@ def release_url(releases: str, tag: str) -> str:
     return f"{releases.rstrip('/')}/tags/{quote(tag, safe='')}"
 
 
+def reads_as_release(document: object) -> bool:
+    """Whether a document reads as a release at all.
+
+    What tells `SOURCE_AWAY` from `NO_ASSET`: `asset()` answers None both for
+    a release whose assets carry no firmware and for something that is not a
+    release, and the two send a person to different places — one to type a tag
+    the source carries, the other to find out what the source is answering
+    with (#46, #66). A release carrying nothing reads as one: the source
+    answered the question that was asked.
+
+    Read the way `asset()` reads the same document, and a predicate rather
+    than a raise for the same reason: this is a document from a service, and
+    what it is today is not a promise about tomorrow.
+    """
+    if not isinstance(document, dict):
+        return False
+    return isinstance(cast(dict[str, object], document).get("assets"), list)
+
+
 def asset(document: object, name: str = ASSET) -> Asset | None:
     """The firmware asset a release document names, or None where it names
-    none.
+    none — and None, too, for a document that is no release, which
+    `reads_as_release` is what tells apart.
 
     Read the way a payload is read (BUS.md, rule 4) and for the same
     reason one level out: this is a document from a service, and a build that
@@ -496,6 +517,8 @@ class Flasher:
             # Refused, timed out, no such host, or a body that is not JSON:
             # the source was never asked, so the tag is not what is wrong.
             return self._unreachable(tag, away)
+        if not reads_as_release(document):
+            return self._unreadable(tag)
         found = asset(document)
         if found is None:
             return Wrote(Refusal.NO_ASSET, f"release '{tag}' carries no {ASSET}")
@@ -532,6 +555,21 @@ class Flasher:
             Refusal.SOURCE_AWAY,
             f"the releases at {self._releases} could not be read,"
             f" so '{tag}' was not written: {away}",
+        )
+
+    def _unreadable(self, tag: str) -> Wrote:
+        """The source answered, and what it answered is not a release.
+
+        `SOURCE_AWAY` and not `NO_ASSET`, because "release 'x' carries no
+        firmware.bin" points the operator at a release nobody was shown and at
+        a tag that is not at fault. The sentence names the source, as
+        `_unreachable`'s does: the tag is there to say which gesture was
+        turned down and not as the thing to go and retype (#66).
+        """
+        return Wrote(
+            Refusal.SOURCE_AWAY,
+            f"the releases at {self._releases} answered with something that is"
+            f" not a release, so '{tag}' was not written",
         )
 
     async def _runs(self, tag: str, binary: bytes) -> Wrote:
