@@ -234,6 +234,23 @@ marker, and the workflow runs it in a job of its own that a pull request
 requires, where a missing daemon is a failure (#54, #56). Run by hand where no
 daemon answers it skips and says so.
 
+**And it comes up as a project and not only as an image.** The sentence above —
+`docker compose up --build` from a clean clone serves the page — is
+`compose.yaml`'s own, and `tests/ui/test_compose_serves.py` is what runs it
+rather than reading it (#53): `docker compose up -d --build` against this
+repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
+page fetched over HTTP on the port `docker compose port web 80` says it got,
+the image name and the eight route labels read back off the running container —
+which is where a door reads them from — and `docker compose down` with its
+volumes, its network and the image it built, in a `finally`, so a red assertion
+leaves nothing behind either. It carries the same `docker` marker and the same
+no-daemon rule as the check above it. Two things it does not hold: what a route
+*does*, which wants a door and is #40's, and the shared network, which is #15's
+and is deliberately not declared external here so that `up` works on a clean
+clone at all. A project already up under the name the file pins — `name: dccex`
+— fails the check with a sentence saying so, because taking down a project it
+did not start is not its to do.
+
 ## What is not on it
 
 - **Anything about a railroad.** No turnout names, no roster, no run state —

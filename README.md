@@ -43,7 +43,12 @@ top of them.
   ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
-`./scripts/check.sh`, one command, and it needs no hardware.
+`./scripts/check.sh`, one command, and it needs no hardware and no Docker
+daemon. The two checks that do need one — the image built and served, and the
+compose project brought up, served and taken down — carry the `docker` marker,
+which the gate does not collect; `uv run pytest -m docker` is how they are run,
+and the workflow runs them in a job of its own that a pull request requires,
+where a missing daemon is a failure rather than a skip (#53, #54, #56).
 
 ## What the UI talks to
 
