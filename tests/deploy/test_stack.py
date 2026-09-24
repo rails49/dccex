@@ -8,6 +8,12 @@ marker and the gate does not collect them; this file is in the gate, because
 the claims below are about what is written down and a machine with no daemon
 can still be held to them.
 
+The deploy is run as well as read, and that is `test_deploy_runs.py`'s: what a
+failed `up` leaves in `.env` is a sequence rather than a line, so the program
+the heredoc is goes through `bash` here against a clone the suite makes (#83).
+It needs no daemon either, so it is in the gate beside this. What
+`scripts/deploy.sh` says is still this file's.
+
 The claims are the ones a box would otherwise discover: that the project is
 pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
