@@ -393,23 +393,20 @@ def test_a_list_that_carries_no_readable_release_reads_as_nothing_said() -> None
     one would say the source has published nothing — the distinction #66 was
     filed to draw, undrawn at this end of the wire until now.
 
-    Read off the source rather than run. `face.ts` is TypeScript and the node
-    the gate has is a bare one that cannot load it, which is why the modules
-    whose words an operator reads are JavaScript with their types in JSDoc
-    (`ui/tsconfig.json`) — the limit this file's own header already names for
-    Lit. What is run, on the same three documents, is the app's half of the
-    rule (`tests/dccex_usb/test_face.py`).
+    Read off the source rather than run. What the page makes of a release
+    document is `releases.js`'s and the node can load it; this reads the
+    module all the same until the scenarios below run it.
     """
-    asking = code(FACE.read_text())
-    fetching = asking[asking.index("export async function releases(") :]
+    reading = code(RELEASES.read_text())
+    reader = reading[reading.index("export function carried(") :]
     kept = "const found = listed.flatMap("
     rule = "if (listed.length > 0 && found.length === 0) {"
 
-    assert kept in fetching, "the page drops the entries it could read"
-    assert rule in fetching, "a list of unreadable entries reads as no releases yet"
-    assert fetching.index(kept) < fetching.index(rule)
-    assert "return found;" in fetching, "an empty list reads as something other than []"
-    assert fetching.index(rule) < fetching.index("return found;")
+    assert kept in reader, "the page drops the entries it could read"
+    assert rule in reader, "a list of unreadable entries reads as no releases yet"
+    assert reader.index(kept) < reader.index(rule)
+    assert "return found;" in reader, "an empty list reads as something other than []"
+    assert reader.index(rule) < reader.index("return found;")
 
 
 def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
@@ -417,6 +414,11 @@ def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
     must not differ is the rule (#95). The page's half names whose other half
     it is, so that whoever changes one finds the other, and the app's half is
     still the one line it names."""
+    asking = code(FACE.read_text())
+    fetching = asking[asking.index("export async function releases(") :]
+    assert (
+        "carried((said as Record<string, unknown>)[RELEASES])" in fetching
+    ), "the page asks for the releases and reads them some other way"
     assert "`face.py`'s `carried()`" in FACE.read_text(), "the page names no other half"
     assert "if listed and not found:" in APP_FACE.read_text(), "the app drew no line"
 

@@ -9,6 +9,13 @@
  * asks the face and hands the answer down, as it does with everything else it
  * knows (`face.ts`, `dccex-app.ts`).
  *
+ * **Reading the answer is here too, and for the same reason.** `carried()`
+ * below is what the page makes of a `releases` document — the rule `face.py`
+ * draws on the same shape at the other end of the wire — and it sits beside
+ * the listing rather than beside the `fetch` because neither has anything of
+ * a browser in it, and what a bare node can run is asserted by running it
+ * (#95, `tests/ui/test_releases.py`).
+ *
  * **The source is the app's configuration and is nowhere on this page.** There
  * is no host, no repository and no URL in this module or in the one that
  * fetches for it: a page that could name where releases are read from would be
@@ -99,6 +106,78 @@ export const UNREADABLE = "the releases could not be read";
  *  answer and not an outage, and saying it the other way would send somebody
  *  to look at the network (`face.py`). */
 export const NONE = "the source has published no releases yet";
+
+/** The three fields a listed release carries, as the face names them. */
+const TAG = "tag";
+const PUBLISHED = "published";
+const FLASHABLE = "flashable";
+
+/**
+ * The releases in `document`, as the page reads what the face answered, or
+ * `null` where it is not a list of releases at all.
+ *
+ * **This is `face.py`'s `carried()` at the other end of the wire.** Both read
+ * the same shape and the duplication stays: the app reads a release API and
+ * the page reads a network response, and each reads defensively because
+ * neither is holding the other's memory. What must not differ is the rule, so
+ * this is written as that one is — the same two names in the same order — and
+ * whoever changes either should find the other.
+ *
+ * The rule is the line #66 was filed to draw. A source that lists nothing
+ * carries no releases yet, which is an answer and comes back as an empty
+ * list; a source that lists entries and names none of them is not answering
+ * about releases, which is not, and comes back as `null`. The page has a
+ * sentence for each and they are not the same sentence: `NONE` says the
+ * source has published nothing, `UNREADABLE` says the releases could not be
+ * read, and drawing the first for a document nobody could read would send
+ * somebody to a release API that is perfectly well (ADR-0009 d.2).
+ *
+ * Read one field at a time, as the app reads the release API: a page that
+ * reached into an answer would be a page taken down by whatever the app on
+ * the other end of its own origin returned the day it returned something
+ * else. An entry that names no tag is not a release, and the rest of a
+ * release is left where it is rather than guessed at — no date reads as no
+ * date, and no `flashable` reads as nothing to write, which is the direction
+ * that does not send an operator at a tag the mirror would refuse.
+ *
+ * It is here rather than beside the `fetch` that gets the document because
+ * this is the part with nothing of a browser in it, and a bare node can run
+ * it: what the page makes of a release document is asserted by running it on
+ * one rather than by reading the module that would (`tests/ui/test_releases.py`,
+ * ADR-0009 d.3). What is left in `face.ts` is the asking.
+ *
+ * @param {unknown} document what the face answered under `releases`
+ * @returns {Carried[] | null} the releases, or nothing said
+ */
+export function carried(document) {
+  if (!Array.isArray(document)) {
+    return null;
+  }
+  /** @type {unknown[]} */
+  const listed = document;
+  const found = listed.flatMap((entry) => {
+    if (typeof entry !== "object" || entry === null) {
+      return [];
+    }
+    const fields = /** @type {Record<string, unknown>} */ (entry);
+    const tag = fields[TAG];
+    if (typeof tag !== "string" || tag === "") {
+      return [];
+    }
+    const published = fields[PUBLISHED];
+    return [
+      {
+        tag,
+        published: typeof published === "string" ? published : "",
+        flashable: fields[FLASHABLE] === true,
+      },
+    ];
+  });
+  if (listed.length > 0 && found.length === 0) {
+    return null;
+  }
+  return found;
+}
 
 /** The day out of a moment, as the source stamped it. */
 const DAY = /^(\d{4}-\d{2}-\d{2})/;
