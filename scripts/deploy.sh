@@ -117,11 +117,21 @@ if [ ! -d "\$(dirname "\$record")" ]; then
 fi
 touch "\$record"
 
-# What is running now, read off the project's own .env — the one line that
-# differs between two deploys of this repository (ADR-0005 d.7). It names the
-# mirror's image and the page's both, because the two are two images of one
-# commit.
-was=\$(sed -n 's/^DCCEX_COMMIT=//p' .env 2>/dev/null | tail -1)
+# What the project's own .env says, and whether there is one at all. It is read
+# once and kept, because both things this deploy wants of it come out of the one
+# text: what is running, and what to put back if the \`up\` fails (#83).
+# \`--env-file .env\` is how compose is told which commit, so the new one is
+# written before the \`up\` and cannot be written after it — and an \`up\` that
+# failed would otherwise leave the file naming a commit that was never brought
+# up. A box being deployed onto for the first time has no file, which is the
+# line of the record that replaced nothing, and a failed \`up\` must leave it
+# with none.
+if [ -e .env ]; then had=yes; kept=\$(cat .env); else had=no; kept=; fi
+
+# What is running now, out of that text — the one line that differs between two
+# deploys of this repository (ADR-0005 d.7). It names the mirror's image and the
+# page's both, because the two are two images of one commit.
+was=\$(printf '%s\n' "\$kept" | sed -n 's/^DCCEX_COMMIT=//p' | tail -1)
 if [ -n "\$was" ]; then went=dccex:\$was; else went=none; fi
 
 printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
@@ -131,9 +141,26 @@ printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
 # is what takes \`control\`'s mirror off 2560 if it is ever brought up by this
 # project's name. Nothing is pruned: the image this replaces stays, and it is
 # the one step back ADR-0005 d.6 keeps.
-docker compose -f compose.yaml -f compose.box.yaml \
+#
+# A failure here is a deploy that did not happen rather than one that half did:
+# .env goes back to what it said, nothing is appended to the record — nothing
+# was replaced — and the box is left on the commit it was already running. The
+# containers are not rolled back, which is ADR-0005 d.7 and a person's command.
+if ! docker compose -f compose.yaml -f compose.box.yaml \
   --env-file "\$box_env" --env-file .env \
   up -d --build --remove-orphans
+then
+  if [ "\$had" = yes ]; then printf '%s\n' "\$kept" > .env; else rm -f .env; fi
+  echo >&2
+  echo "docker compose up failed, and dccex:\$commit is not running." >&2
+  if [ "\$had" = yes ]; then
+    echo "Put .env back to \$went, which is what this box is on." >&2
+  else
+    echo "Removed .env again: there was none before this run." >&2
+  fi
+  echo "Nothing was appended to \$record, because nothing was replaced." >&2
+  exit 1
+fi
 
 # Appended and never rewritten, newest last, plain text for somebody who has
 # just been handed the box and has nothing else on it (ADR-0005 d.5).
