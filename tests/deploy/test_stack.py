@@ -18,7 +18,8 @@ The claims are the ones a box would otherwise discover: that the project is
 pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
-face's port is on nothing, that neither image's bases can move underneath a
+face's port is on nothing, that the door is handed the page and the face on
+one host with the face's prefix stripped and 2560 routed by nobody, that neither image's bases can move underneath a
 name that never moves, that the mirror is given a flash to be waited out and
 the cutover's stop is bounded by something else, that the repository a box
 pulls from is written down rather than taken from whoever ran the deploy, and
@@ -80,6 +81,16 @@ GATE = ROOT / "scripts" / "check.sh"
 #: The box's declaration of itself. Root-owned, edited by hand, and named in
 #: every sentence that refuses to come up without it.
 DECLARATION = "/etc/rails49/box.env"
+
+#: The prefix the face answers under on the page's origin, which the door
+#: strips (ADR-0004 d.2). The page spells it once, in `FACE_TS`, and the
+#: overlay spells it in its route; a test holds the two together.
+PREFIX = "/dccex-usb"
+
+FACE_TS = ROOT / "ui" / "src" / "face.ts"
+
+#: The one host both routers answer for, as the overlay writes it.
+HOST = "Host(`dccex.${BOX_DOMAIN}`)"
 
 #: What a box has run, one line per deploy (ADR-0005 d.5).
 RECORD = "/var/lib/rails49/deploys/dccex"
@@ -211,10 +222,18 @@ def test_the_page_joins_the_network_the_door_dials_it_on() -> None:
 def test_a_missing_box_declaration_stops_the_stack_by_name() -> None:
     """Compose's `:?`, on the one value a box must declare. Without the
     declaration the stack does not come up on a default that is wrong for a
-    box — it stops, and the sentence names the file to go and look at."""
-    guard = re.search(r"\$\{BOX_DOMAIN:\?([^}]*)\}", BOX.read_text())
-    assert guard is not None, "BOX_DOMAIN has no `:?` guard on it"
-    assert DECLARATION in guard.group(1)
+    box — it stops, and the sentence names the file to go and look at.
+
+    It is a top-level line of its own and not a default inside a label (#40),
+    so a route can be rewritten without taking the guard with it."""
+    guards = [
+        line
+        for line in uncommented(BOX.read_text())
+        if re.search(r"\$\{BOX_DOMAIN:\?", line)
+    ]
+    assert len(guards) == 1, guards
+    assert guards[0].startswith("x-require-box-domain: ${BOX_DOMAIN:?")
+    assert DECLARATION in guards[0]
 
 
 def test_the_deploy_refuses_a_box_with_no_declaration_before_it_pulls() -> None:
@@ -285,15 +304,81 @@ def test_the_cutovers_stop_is_bounded_by_a_clock_and_not_by_the_grace() -> None:
     assert "330" in said, "check 6 does not say what the configured grace is"
 
 
-def test_no_container_in_this_project_carries_a_door_label_but_the_page() -> None:
-    """Only a container a browser reaches carries a route (ADR-0004 d.5)."""
+def labels(compose: Path, service: str) -> dict[str, str]:
+    """One service's door labels in one file, as a key and what it is set to."""
+    return dict(
+        label.split("=", 1)
+        for label in entries(services(compose)[service], "labels")
+        if label.startswith("traefik.")
+    )
+
+
+def test_only_the_page_and_the_mirror_carry_door_labels() -> None:
+    """Only a container a browser reaches carries a route (ADR-0004 d.5). The
+    face is in the mirror's container, so the mirror is one of them."""
     carrying = {
         name
         for compose in (BASE, BOX)
         for name, block in services(compose).items()
         if "traefik." in block
     }
-    assert carrying == {"web"}
+    assert carrying == {"web", "mirror"}
+
+
+def test_the_mirrors_route_dials_the_face_and_nothing_routes_2560() -> None:
+    """The mirror's one service is the face's port, taken from the package
+    rather than written again, and 2560 is named by no label (d.5)."""
+    face = labels(BOX, "mirror")
+    ports = {v for k, v in face.items() if k.endswith(".loadbalancer.server.port")}
+    assert ports == {str(FACE_PORT)}
+    assert not [v for v in face.values() if "2560" in v]
+
+
+def test_the_page_yields_the_prefix_to_the_face() -> None:
+    """Two routers on one host. The page's is the catch-all at priority 1 and
+    the face's claims `/dccex-usb` at 2; in Traefik the higher one wins, so the
+    page keeps everything the face does not claim (ADR-0004 d.2)."""
+    page = labels(BOX, "web") | {
+        k: v for k, v in labels(BASE, "web").items() if not k.endswith(".rule")
+    }
+    face = labels(BOX, "mirror")
+    assert page["traefik.http.routers.dccex-ui.rule"] == HOST
+    assert page["traefik.http.routers.dccex-ui.priority"] == "1"
+    assert face["traefik.http.routers.dccex-usb.rule"] == (
+        f"{HOST} && PathPrefix(`{PREFIX}`)"
+    )
+    assert face["traefik.http.routers.dccex-usb.priority"] == "2"
+
+
+def test_the_prefix_is_stripped_as_the_page_spells_it() -> None:
+    """The face answers `/releases`, not `/dccex-usb/releases`, and the prefix
+    the door strips is the one the page builds every address from."""
+    face = labels(BOX, "mirror")
+    middleware = face["traefik.http.routers.dccex-usb.middlewares"]
+    assert face[f"traefik.http.middlewares.{middleware}.stripprefix.prefixes"] == (
+        PREFIX
+    )
+    assert f'export const FACE = "{PREFIX}";' in FACE_TS.read_text()
+
+
+def test_the_face_joins_the_network_the_door_dials_it_on() -> None:
+    """The mirror joins `rails49` for its face, and the label names it."""
+    assert entries(services(BOX)["mirror"], "networks") == ["default", "rails49"]
+    assert labels(BOX, "mirror")["traefik.docker.network"] == "rails49"
+
+
+def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:
+    """No `-foreign` router and no middleware that answers for the face: the
+    face refuses with a status and a sentence (`face.py`, ADR-0004 d.4), and
+    nothing on the route rewrites the `Host` that refusal compares against."""
+    face = labels(BOX, "mirror")
+    routers = {k.split(".")[3] for k in face if k.startswith("traefik.http.routers.")}
+    assert routers == {"dccex-usb"}
+    middlewares = {
+        k.split(".")[3] for k in face if k.startswith("traefik.http.middlewares.")
+    }
+    assert middlewares == {"dccex-usb-strip"}
+    assert not [k for k in face if "headers" in k or "passhostheader" in k.lower()]
 
 
 def test_both_images_are_named_by_the_commit_they_were_built_from() -> None:

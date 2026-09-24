@@ -47,11 +47,13 @@ services:
       - "${DCCEX_UI_PORT:-8080}:80"
     # The route, declared here and read by the door, which is the installation's
     # and not in this file (ADR-0004, rails49/installation ADR-0001). Only a
-    # container a browser reaches carries these: the mirror goes on publishing
-    # 2560 raw with no router and no certificate over it (ADR-0004 d.5).
+    # container a browser reaches carries these. The mirror carries the face's
+    # router in `compose.box.yaml`, since the face is in its container, and
+    # goes on publishing 2560 raw with no router and no certificate over it
+    # (ADR-0004 d.5).
     #
     # The page takes the host rule and the lowest priority on the label, so the
-    # face's own router — `/dccex-usb`, at a higher one — claims its prefix and
+    # face's own router — `/dccex-usb`, at priority 2 — claims its prefix and
     # the page keeps everything else on the origin (ADR-0004 d.2).
     #
     # `traefik.docker.network` names the network the door dials this container
