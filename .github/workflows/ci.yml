@@ -14,14 +14,6 @@ jobs:
         if: hashFiles('pyproject.toml') != ''
       - run: uv sync
         if: hashFiles('pyproject.toml') != ''
-      - uses: pnpm/action-setup@v4
-        if: hashFiles('pnpm-lock.yaml') != ''
-      - uses: actions/setup-node@v4
-        if: hashFiles('package.json') != ''
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-        if: hashFiles('pnpm-lock.yaml') != ''
       - name: gate
         run: |
           cmd=$(sed -n 's/^ci:[[:space:]]*//p' CLAUDE.md 2>/dev/null | head -1)
@@ -31,3 +23,21 @@ jobs:
           [ -n "$cmd" ] || { echo "no ci:/gate: line in CLAUDE.md, no scripts/check.sh, no make check"; exit 1; }
           echo "+ $cmd"
           bash -c "$cmd"
+
+  # The checks that need a Docker daemon, which the gate does not collect
+  # (#54, #56). They live here so that the gate stays seconds long and
+  # runnable on a machine with no daemon, while the one check that proves the
+  # page is built and served still cannot go missing from a pull request
+  # without turning it red. This job is required on the default branch beside
+  # `ci`, and `CI` being set is what makes a missing daemon a failure inside
+  # it rather than a skip.
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: the image, built and served
+        run: uv run --frozen pytest -q -m docker

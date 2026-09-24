@@ -198,7 +198,10 @@ repository exists for, and it is the first thing the first ticket proves.
 it, and asks it for the page over HTTP, because a suite that reads the files
 cannot tell two programs of the same name apart — which is how
 `rails49/installation`'s `page/render.sh` ran green everywhere except the only
-place it ran for real. Where no Docker daemon answers it skips and says so.
+place it ran for real. It is not part of the gate: it carries the `docker`
+marker, and the workflow runs it in a job of its own that a pull request
+requires, where a missing daemon is a failure (#54, #56). Run by hand where no
+daemon answers it skips and says so.
 
 ## What is not on it
 

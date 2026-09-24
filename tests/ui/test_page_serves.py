@@ -17,15 +17,18 @@ the page is built and served is inside it, and this is the check that goes
 there. It is also where the page's TypeScript is type-checked at all, the
 build running `tsc --noEmit` before `vite`.
 
-**It skips where no Docker daemon answers**, and says why. A machine without
-one cannot run this and cannot be made to by going red; what it can still run
-is the rest of the gate, including `test_look.py`, which holds the one thing
-that drifts silently. Where a daemon does answer — a box, a development
-machine, the workflow — this runs for real, and it is the only check here that
-does.
+**This is not part of the gate.** It carries the `docker` marker, which
+`scripts/check.sh` does not collect, and the workflow runs it in a job of its
+own that the pull request requires (#54, #56). Where it runs, a missing daemon
+is a **failure**: the check that proves the page is built and served cannot be
+allowed to disappear from a required gate without turning it red, which is
+what it did in every run recorded before that split. Run by hand on a machine
+with no daemon it still skips and says why, because a laptop without Docker
+cannot be made to run this by going red.
 """
 
 import http.client
+import os
 import re
 import shutil
 import subprocess
@@ -36,6 +39,8 @@ from collections.abc import Iterator
 import pytest
 
 from tests.ui.test_look import COPY, ROOT, declarations
+
+pytestmark = pytest.mark.docker
 
 DOCKERFILE = "deploy/ui.Dockerfile"
 
@@ -123,6 +128,11 @@ def serving() -> Iterator[int]:
     """
     why = no_daemon()
     if why is not None:
+        # Where this is required — the workflow's docker job — the daemon is
+        # part of what was promised, so its absence is the check failing and
+        # not the check excusing itself (#54).
+        if os.environ.get("CI"):
+            pytest.fail(f"this job requires a Docker daemon: {why}")
         pytest.skip(f"the page cannot be served here: {why}")
 
     tag = f"dccex-ui:check-{uuid.uuid4().hex[:8]}"

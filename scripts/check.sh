@@ -11,6 +11,16 @@
 # hardware. A test that does need the cable, a local service or a secret must
 # skip itself when CI is set; that is the whole contract between this script
 # and the workflow.
+#
+# Nothing here needs a Docker daemon either, and that is a rule with a
+# mechanism rather than a habit: a test that needs one carries the `docker`
+# marker and this script does not collect it (`-m "not docker"` below). The
+# workflow runs those in a job of its own, required on the pull request, where
+# a missing daemon is a failure and not a skip (#54, #56). Two reasons for the
+# split. This gate is seconds and a daemonless machine — the agent sandbox is
+# one — must still be able to run all of it. And a check that may skip itself
+# is a check that can leave a required gate green while proving nothing, which
+# is what `tests/ui/test_page_serves.py` did in every run recorded before this.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -83,7 +93,7 @@ check source source_recorded
 check ruff tool ruff check .
 check black tool black --check .
 check pyright tool pyright
-check tests "${PY[@]}" -m pytest -q
+check tests "${PY[@]}" -m pytest -q -m "not docker"
 
 if [ -n "$red" ]; then
   printf 'red:%s\n' "$red"
