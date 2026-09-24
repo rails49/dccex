@@ -18,11 +18,15 @@
  * traffic from the railroad's. Everything the station understands is typed
  * here, `<0>` included — that is what a raw monitor is, and none of it is a
  * named control on the page (ADR-0008 d.5). What is sent for what was typed is
- * `message.js`'s, and writing it is the stream's; this component holds the box
- * and draws what went.
+ * `message.js`'s, writing it is the stream's, and holding the conversation is
+ * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
- * The pause, the clear and the polling that keeps the readings live are the
- * page's under their own tickets (ADR-0010 d.1).
+ * **The lines are handed to it and the sending is handed to it**, because what
+ * is made of the conversation is the whole page and not this pane: the band
+ * and the tiles read the same bytes (ADR-0008 d.2), and a monitor that owned
+ * the stream would be the one pane of the page the rest had to ask.
+ *
+ * The pause and the clear are the page's under their own tickets.
  *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
@@ -33,19 +37,8 @@
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { gloss } from "../decoder.js";
-import { Stream, type Said } from "../stream.js";
+import { type Said } from "../stream.js";
 import { monitorStyles } from "./dccex-monitor.styles.js";
-
-/** How many lines the monitor keeps.
- *
- * A page left open on a busy railroad is handed every byte of an evening, and
- * a monitor is what the station is saying now: the oldest lines are dropped
- * rather than held until the browser cannot draw the page. Nothing was lost by
- * the mirror doing it — it keeps no history either (ADR-0010) — and this is the
- * page saying how much of the conversation it can show, which is its own
- * business.
- */
-export const KEPT = 2000;
 
 /** How close to the bottom still counts as being at it, in CSS pixels. A
  *  scroller that is one rounded sub-pixel from the end is a reader who has not
@@ -94,28 +87,24 @@ export class DccexMonitor extends LitElement {
   static override readonly styles = monitorStyles;
 
   static override readonly properties = {
-    said: { state: true },
+    said: { attribute: false },
+    sends: { attribute: false },
   };
 
-  /** What the station has said, oldest first. */
+  /** The conversation to draw, oldest first, as the page hands it down. */
   said: Said[] = [];
 
-  readonly #stream = new Stream((said: Said[]) => {
-    this.#keep(said);
-  });
+  /** What sends a typed command, as the page hands it down: the message that
+   *  went back, or `null` where nothing did.
+   *
+   *  A monitor nobody handed one to sends nothing, rather than reaching for a
+   *  stream of its own. The box still takes typing — it is a raw monitor and
+   *  the typing is not this component's to refuse — and nothing leaves the
+   *  page, which is what a line drawn for it would have claimed. */
+  sends: (typed: string) => string | null = () => null;
 
   /** Whether the reader was at the bottom when the lines last changed. */
   #following = true;
-
-  override connectedCallback(): void {
-    super.connectedCallback();
-    this.#stream.open();
-  }
-
-  override disconnectedCallback(): void {
-    super.disconnectedCallback();
-    this.#stream.close();
-  }
 
   override render(): TemplateResult {
     return html`
@@ -175,13 +164,14 @@ export class DccexMonitor extends LitElement {
     }
   }
 
-  /** Send what is in the box, and show what went.
+  /** Send what is in the box, and clear it once something went.
    *
-   * What is drawn is what `send` handed back, which is what left the page: a
-   * command that was not sent — nothing typed, or no stream open to send it on
-   * — draws no line and leaves the typing where it is, because a line claiming
-   * the station was asked something it was never asked is the observation
-   * nobody made (ADR-0009 d.2).
+   * The box is emptied for what `sends` handed back, which is what left the
+   * page: a command that was not sent — nothing typed, or no stream open to
+   * send it on — leaves the typing where it is and draws no line, because a
+   * line claiming the station was asked something it was never asked is the
+   * observation nobody made (ADR-0009 d.2). The line for what did go is the
+   * page's to keep, and it comes back down as one of `said`.
    */
   #send(sending: Event): void {
     sending.preventDefault();
@@ -189,17 +179,11 @@ export class DccexMonitor extends LitElement {
     if (box === null) {
       return;
     }
-    const sent = this.#stream.send(box.value);
+    const sent = this.sends(box.value);
     if (sent === null) {
       return;
     }
-    this.#keep([{ at: new Date(), line: sent, sent: true }]);
     box.value = "";
-  }
-
-  #keep(said: Said[]): void {
-    const kept = [...this.said, ...said];
-    this.said = kept.length > KEPT ? kept.slice(kept.length - KEPT) : kept;
   }
 
   #scroller(): HTMLElement | null {
