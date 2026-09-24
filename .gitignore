@@ -6,3 +6,9 @@ __pycache__/
 
 # pnpm writes a store here when it is run outside the image (`--lockfile-only`).
 .pnpm-store/
+
+# The stack's one line: `DCCEX_COMMIT=<commit>`, written by the deploy and
+# rewritten by a rollback (ADR-0005 d.7). It says what one box is running, so
+# it is never this repository's — and a deploy refuses a clone that is not
+# clean, which the deploy's own file would make it on the very next run.
+.env
