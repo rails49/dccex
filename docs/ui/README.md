@@ -330,7 +330,9 @@ here read its sources, because the gate is Python and there is no browser in
 it. These cannot: a sentence an operator is shown is worth nothing asserted
 against the source that would produce it — and so is a rule about what goes
 down a cable to a command station, and so is what the band says about the
-railroad's power — and ADR-0009 d.3 asks for the pairs themselves. So
+railroad's power, and so is the order the releases an operator picks from come
+out in, and so is the order a flash does things to a railroad in before it
+writes — and ADR-0009 d.3 asks for the pairs themselves. So
 `tests/ui/test_decoder.py` puts every line the page glosses and every near miss
 through the real function under `node`, by way of `tests/ui/gloss.mjs`,
 `tests/ui/test_message.py` puts every spelling an operator may type through the
@@ -346,13 +348,13 @@ and a conversation arriving on the socket through the rules that answer where
 the stream is and where a line ends (`tests/ui/framing.mjs`), and
 `tests/ui/test_monitor.py` puts a scroller and a time through the rules that
 answer whether the reader is at the bottom and what the stamp beside a line
-reads (`tests/ui/monitor.mjs`). The last two were read off their sources for as
-long as there was no node here to run them with: a framing that kept its
-delimiter, a scheme picked the wrong way round and a stamp an hour out all
-leave a module saying every right word, which is what reading one can be held
-to (#78). What that asks of a machine is a node and nothing
-else — no packages, no bundler, nothing fetched, no DOM — and it is not asked of
-every machine the gate runs on: these checks carry the `node` marker,
+reads (`tests/ui/monitor.mjs`). The last two cannot either, and were read off
+their sources only for as long as there was no node here to run them with: a
+framing that kept its delimiter, a scheme picked the wrong way round and a
+stamp an hour out all leave a module saying every right word, which is what
+reading one can be held to (#78). What that asks of a machine is a node and
+nothing else — no packages, no bundler, nothing fetched, no DOM — and it is not
+asked of every machine the gate runs on: these checks carry the `node` marker,
 `scripts/check.sh` does not collect them, and the workflow runs them in a job a
 pull request requires (#101). Where they do run, a node that is not there is red
 rather than skipped, as everything else a gate needs is. It is why
