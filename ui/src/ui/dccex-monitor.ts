@@ -6,12 +6,15 @@
  * reads nothing on it (CONTEXT.md) — and what makes it a monitor rather than
  * another client of the port is that a person is reading it (ADR-0007).
  *
- * **This is its downward half** (#4). Nothing is glossed: a line the decoder
- * knows carries one plain sentence beside it and that decoder is a pure
- * function landing under its own ticket (ADR-0009). Nothing is sent: the box at
- * the foot that types a whole `<…>` message, the pause, the clear and the
- * polling that keeps the readings live are all the page's under theirs
- * (ADR-0010 d.1). What is here is the reading.
+ * **A line the decoder knows carries its gloss** (#5): one plain sentence
+ * beside the bytes, drawn quieter and smaller than them, and nothing at all
+ * beside a line it does not know. The reading is the decoder's — a pure
+ * function this component asks and holds no part of (ADR-0009 d.1) — and the
+ * drawing is this component's.
+ *
+ * Nothing is sent: the box at the foot that types a whole `<…>` message, the
+ * pause, the clear and the polling that keeps the readings live are all the
+ * page's under their own tickets (ADR-0010 d.1). What is here is the reading.
  *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
@@ -19,8 +22,9 @@
  * afterwards every view is at the bottom of what it was.
  */
 
-import { LitElement, html, type TemplateResult } from "lit";
+import { LitElement, html, nothing, type TemplateResult } from "lit";
 
+import { gloss } from "../decoder.js";
 import { Stream, type Said } from "../stream.js";
 import { monitorStyles } from "./dccex-monitor.styles.js";
 
@@ -99,14 +103,18 @@ export class DccexMonitor extends LitElement {
       <div class="lines">
         ${this.said.length === 0
           ? html`<div class="quiet">nothing said yet</div>`
-          : this.said.map(
-              (said: Said) => html`
+          : this.said.map((said: Said) => {
+              const read = gloss(said.line);
+              return html`
                 <div class="line">
                   <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
                   <span class="said">${said.line}</span>
+                  ${read === null
+                    ? nothing
+                    : html`<span class="gloss">${read}</span>`}
                 </div>
-              `,
-            )}
+              `;
+            })}
       </div>
     `;
   }

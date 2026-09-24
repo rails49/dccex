@@ -8,6 +8,11 @@ import { css } from "lit";
  * `theme.ts`). The chrome's four values are `look.css`'s and none of them
  * belongs on a pane.
  *
+ * A **gloss** is beside the line and never instead of it: the bytes stay
+ * monospaced and dark and the sentence is smaller, quieter and in the page's
+ * own face, so that what is being read is what the station said and the page's
+ * reading of it is what is offered (ADR-0009).
+ *
  * The lines are monospaced and the stamps are tabular, because a column of
  * times that jitters is a column nobody can read down. Nothing wraps off the
  * side: a `<…>` message is short, and a long one is wrapped rather than cut,
@@ -41,6 +46,7 @@ export const monitorStyles = css`
 
   .line {
     display: flex;
+    align-items: baseline;
     gap: 0.75rem;
   }
 
@@ -56,6 +62,17 @@ export const monitorStyles = css`
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--sl-color-neutral-900);
+  }
+
+  /* The page's reading of the line, where it has one. It takes what is left
+     of the width and wraps in it, so a sentence never pushes the bytes it is
+     about off the side. */
+  .gloss {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--sl-color-neutral-500);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-x-small);
   }
 
   /* Before the station has said anything. It is not an error and not a
