@@ -105,6 +105,16 @@ const FLASHABLE = "flashable";
  * a release is left where it is rather than guessed at — no date reads as no
  * date, and no `flashable` reads as nothing to write, which is the direction
  * that does not send an operator at a tag the mirror would refuse.
+ *
+ * **A list that yields no release is not an answer about releases.** A source
+ * that lists nothing carries no releases yet, which is an answer and is the
+ * face's `[]`; a list that carries entries and names none of them is a
+ * document this page could not read, and the empty list drawn for it would
+ * say the source has published nothing (#66, `releases.js`). The rule is
+ * `face.py`'s `carried()`, which draws the same line on the same document at
+ * the app's end of the wire, and the check below is written as that one is —
+ * the same two names, in the same order — so that whoever changes one finds
+ * the other.
  */
 export async function releases(): Promise<Carried[] | null> {
   try {
@@ -120,7 +130,7 @@ export async function releases(): Promise<Carried[] | null> {
     if (!Array.isArray(listed)) {
       return null;
     }
-    return listed.flatMap((entry: unknown) => {
+    const found = listed.flatMap((entry: unknown) => {
       if (typeof entry !== "object" || entry === null) {
         return [];
       }
@@ -138,6 +148,10 @@ export async function releases(): Promise<Carried[] | null> {
         },
       ];
     });
+    if (listed.length > 0 && found.length === 0) {
+      return null;
+    }
+    return found;
   } catch {
     return null;
   }
