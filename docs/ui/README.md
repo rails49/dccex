@@ -410,6 +410,19 @@ open like any other. The schedule is untouched and is started once, where the
 page joins the document, so a stream that drops and comes back leaves one
 poller and not two.
 
+**The count that reaches the tile is the newest ask's** (#88). The station is
+asked up the stream and the face is asked about itself in the same breath, and
+the second of those is a request whose answer can arrive after a later one —
+the one place on this page a reading could go backwards, since a line that
+arrived has arrived and the clock only goes forward. During a flash it does: the
+face sits inside esptool for the length of a write, the asks stack up, and an
+answer from the first one arriving last would put a count from a minute ago on
+the tile and leave it there until another happened to arrive in order. So the
+asks are numbered and an answer that is not the newest ask's is dropped where it
+arrives. Nothing is cancelled by that — a face that is answering slowly is not a
+request to abort — and the count the newest ask answers with is read whenever it
+comes.
+
 **Nothing typed is held for it.** A message an operator typed while the stream
 was down is a command to a command station, and one arriving seconds later,
 after the page has moved on, is worse than one that never went: `send` returns
