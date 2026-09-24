@@ -355,8 +355,10 @@ through the real function under `node`, by way of `tests/ui/gloss.mjs`,
 real function the same way (`tests/ui/message.mjs`), and
 `tests/ui/test_readings.py` puts whole conversations through the readings and
 reads the band and the tiles back (`tests/ui/readings.mjs`), and
-`tests/ui/test_releases.py` puts what the face answered through the listing and
-reads the release rows back (`tests/ui/releases.mjs`), and
+`tests/ui/test_releases.py` puts a `releases` document through the reader that
+answers whether the page could read it at all and what the face answered
+through the listing, and reads the release rows back (`tests/ui/releases.mjs`),
+and
 `tests/ui/test_flash.py` puts a flash through the sequence and reads back what
 went down the cable, in what order, and what the page said while it did
 (`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
@@ -380,11 +382,15 @@ rather than skipped, as everything else a gate needs is. It is why
 with their types in JSDoc: `tsc` checks them as strictly as the rest
 (`ui/tsconfig.json`), and a bare node can still run them.
 
-What is left in the two modules those last two came out of is what needs a
-browser — the socket, its timer and `window.location` in `ui/src/stream.ts`,
-and the rows, the box at the foot and the rectangles a held row is measured
-with in `ui/src/ui/dccex-monitor.ts` — and that is still read rather than run,
-for the reason the next paragraph gives.
+What is left in the modules those came out of is what needs a browser — the
+socket, its timer and `window.location` in `ui/src/stream.ts`, the rows, the
+box at the foot and the rectangles a held row is measured with in
+`ui/src/ui/dccex-monitor.ts`, and the `fetch`, the status and the envelope in
+`ui/src/face.ts` — and that is still read rather than run, for the reason the
+next paragraph gives. Reading a `releases` document is not part of it and came
+out to `ui/src/releases.js` for that reason: which of two sentences an answer
+gets is a rule, and a rule is worth nothing asserted against the module that
+would apply it (#95).
 
 **What no check here reaches is Lit.** A bare node with no packages cannot
 mount a component, so what the band, the tiles and the release rows *draw* is
