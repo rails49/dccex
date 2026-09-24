@@ -18,7 +18,7 @@ The claims are the ones a box would otherwise discover: that the project is
 pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
-face's port is on nothing, that the page's two bases cannot move underneath a
+face's port is on nothing, that neither image's bases can move underneath a
 name that never moves, and that the deploy names the image after the commit
 and writes down what it replaced.
 """
@@ -45,8 +45,8 @@ DOCKERFILE = ROOT / "deploy" / "Dockerfile"
 #: amended) and is built by the clean clone's half above.
 UI_DOCKERFILE = ROOT / "deploy" / "ui.Dockerfile"
 
-#: A base image as the page's build names one: the readable tag, and beside it
-#: the one build that tag pointed at when the pin was made.
+#: A base image as either build names one: the readable tag, and beside it the
+#: one build that tag pointed at when the pin was made.
 PINNED = re.compile(r"FROM (\S+:\S+)@sha256:[0-9a-f]{64}(?: AS \w+)?")
 
 DEPLOY = ROOT / "scripts" / "deploy.sh"
@@ -290,6 +290,66 @@ def test_the_page_says_how_a_pin_is_moved_and_that_moving_it_is_a_commit() -> No
     assert (
         "a commit of this repository" in prose
     ), "the pins do not say that moving one is a commit like any other"
+
+
+def test_the_mirrors_bases_are_pinned_by_digest_with_the_tag_kept_beside_it() -> None:
+    """The same claim as the page's above, about the other image (#96). This
+    one was written where no registry was reachable, so it carried two tags
+    that move underneath a name ADR-0005 d.1 says never moves, and the file
+    said so and called pinning them a ticket of its own. This is that ticket
+    done: the digests were read on a machine that could reach both registries
+    and written down.
+
+    Shape and not values here too. What the pinned image then does is
+    `tests/deploy/test_mirror_serves.py`'s, which builds it and dials 2560.
+    """
+    froms = [
+        line for line in uncommented(DOCKERFILE.read_text()) if line.startswith("FROM ")
+    ]
+    floating = [line for line in froms if PINNED.fullmatch(line) is None]
+    assert floating == [], f"a base that can move under the build: {floating}"
+    pinned = [match.group(1) for line in froms if (match := PINNED.fullmatch(line))]
+    assert pinned == [
+        "ghcr.io/astral-sh/uv:python3.12-bookworm-slim",
+        "python:3.12-slim-bookworm",
+    ], (
+        "the image is not built by uv and run on python:3.12 any more, or the"
+        " tag a reader reads the pin by is gone"
+    )
+
+
+def test_the_mirror_says_how_a_pin_is_moved_and_when_the_digests_were_read() -> None:
+    """A pin nobody knows how to move is a base that never takes a security
+    update again, so the procedure is beside the lines it is about here as it
+    is beside the page's: the command that resolves a tag to a digest on a
+    machine that can reach a registry, and that what comes back is committed
+    here rather than resolved during a build (#96).
+
+    And the day they were read, because a pin says nothing about how old it is
+    and somebody has to decide whether to move it. The date is held as a date
+    and not as a value: moving a pin moves it.
+
+    The argument itself is `ui.Dockerfile`'s and this file points at it rather
+    than repeating it, so that is asserted too. The prose only — the pins
+    themselves are the check above.
+    """
+    prose = "\n".join(
+        line
+        for line in DOCKERFILE.read_text().splitlines()
+        if line.lstrip().startswith("#")
+    )
+    assert (
+        "docker buildx imagetools inspect" in prose
+    ), "the pins do not say what resolves a tag to a digest"
+    assert (
+        "a commit of this repository" in prose
+    ), "the pins do not say that moving one is a commit like any other"
+    assert re.search(
+        r"\b\d{4}-\d{2}-\d{2}\b", prose
+    ), "the pins do not say when the digests were read"
+    assert (
+        "ui.Dockerfile" in prose
+    ), "the pins do not point at where the argument for them is written"
 
 
 def test_the_image_is_built_from_the_lock_file_and_not_from_the_index() -> None:
