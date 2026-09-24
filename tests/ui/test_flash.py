@@ -150,14 +150,41 @@ def test_a_step_that_did_not_leave_the_page_stops_the_sequence() -> None:
 
 
 @pytest.mark.node
-def test_a_sequence_that_stopped_says_so_and_was_not_written() -> None:
+def test_a_stop_that_did_not_go_says_nothing_was_done_and_nothing_written() -> None:
     """What an operator is told is that nothing was stopped and nothing was
     written, because a page that said nothing would leave them reading a list
-    that had not changed (ADR-0009 d.2)."""
+    that had not changed (ADR-0009 d.2). Nothing left the page, so nothing was
+    done to the railroad either."""
     happened = flashed(tag=TAG, sends=0)
+    said = says()["UNSTOPPED"]
 
-    assert happened["wrote"] == {"flashed": False, "says": says()["UNSTOPPED"]}
-    assert "not" in says()["UNSTOPPED"] and "written" in says()["UNSTOPPED"]
+    assert happened["wrote"] == {"flashed": False, "says": said}
+    assert "the locomotives were not stopped" in said
+    assert "nothing was written" in said
+
+
+@pytest.mark.node
+def test_a_cut_that_did_not_go_says_the_locomotives_are_stopped_and_the_power_on() -> (
+    None
+):
+    """The stop went and the cut did not, which is the state of the railroad
+    this page must not be wrong about (#93): the locomotives are stopped and
+    the rails are still hot.
+
+    ADR-0006 makes the operator the only guard on a flash, so what the page
+    says about the railroad is the whole of what the guard has to go on — and a
+    sentence saying the locomotives were not stopped, said while they are,
+    sends that person to a railroad they think is untouched.
+    """
+    happened = flashed(tag=TAG, sends=1)
+    said = says()["UNCUT"]
+
+    assert happened["wrote"] == {"flashed": False, "says": said}
+    assert said != says()["UNSTOPPED"], "both steps are said the same way"
+    assert "the locomotives are stopped" in said
+    assert "not stopped" not in said, "the step that went is denied"
+    assert "the power is still on" in said, "the rails read as dropped"
+    assert "nothing was written" in said
 
 
 @pytest.mark.node
