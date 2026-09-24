@@ -96,6 +96,14 @@ services:
     # 300 seconds before it kills it, and a container killed in the middle of
     # a write leaves the command station half written; the app closes its face
     # first and waits the flash out after, and this is the room to do it in.
+    #
+    # **It is not what a stop takes.** With nothing being written this app
+    # goes in about a second, and `docs/cutover.md`'s check 6 bounds it at
+    # five seconds by the clock — the step that stops this container with a
+    # client on 2560 that has stopped reading. Read as what a shutdown should
+    # take, this number turns that check into a five-and-a-half-minute wait
+    # that ends cleanly whether the app hung or not (#103). The two measure
+    # different things, and the one that moves for a flash is this one.
     stop_grace_period: 330s
     # **No door labels.** Only a container a browser reaches carries a route,
     # and nothing reaches this one but programs on the wifi. The face's router
