@@ -37,7 +37,8 @@ COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./
 # image is the versions this repository was checked at, and a lock file that
 # has drifted from `package.json` stops the build instead of being rewritten
 # inside it where nobody would see it. This is also the only place that
-# drift is caught — the gate runs no node (`scripts/check.sh`).
+# drift is caught: the gate runs a node — to put the decoder's lines through
+# the real function (`tests/ui/test_decoder.py`) — but it installs nothing.
 RUN pnpm install --frozen-lockfile
 
 COPY ui/ ./
