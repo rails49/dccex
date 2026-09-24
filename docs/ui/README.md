@@ -4,14 +4,17 @@ The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
 label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
-**The page is here and the monitor is a full client of the mirror.** `ui/`
-holds the band, the rail and the work pane, built and served the way this page
-says (#3) — which is the tracer bullet, and it is the installation everything
-below rests on. What is in the work pane is the **monitor**, both halves of it:
-the station's conversation as it arrives, every line stamped with the time it
+**The page is here, the monitor is a full client of the mirror, and the page
+says what the station is doing.** `ui/` holds the band, the rail and the work
+pane, built and served the way this page says (#3) — which is the tracer
+bullet, and it is the installation everything below rests on. What is in the
+work pane is the **tile**s and the **monitor**, both halves of the monitor: the
+station's conversation as it arrives, every line stamped with the time it
 arrived, newest at the bottom (#4), and a box at the foot that types a whole
-`<…>` message back (#6). The rest of the work pane is still written ahead of
-itself, as
+`<…>` message back (#6). The band carries its two readings and the tiles carry
+the particulars, all of them made of what the station said and kept live by the
+page's own polling (#7). The rest of the work pane — the releases — is still
+written ahead of itself, as
 [the cutover page](../cutover.md) was written ahead of its evening, because
 what it says was decided in rails49/dccex#1 and the tickets under that spec are
 each a part of it. What is already here besides is the other end: the
@@ -28,6 +31,7 @@ door ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-nev
 https://dccex.$BOX_DOMAIN/                     this page
 https://dccex.$BOX_DOMAIN/dccex-usb/releases   what the configured source carries
 https://dccex.$BOX_DOMAIN/dccex-usb/flash      write one of them onto the station
+https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 ```
 
@@ -50,8 +54,14 @@ them. The band and the rail are LOOK.md's and do not vary between rails49 UIs.
 
 ### The band
 
-Two readings, and no controls. Whether the station is answering — the **link**
-— and whether the rails are hot.
+Two readings, and no controls (#7). Whether the station is answering — the
+**link** — and whether the rails are hot: `link answering` and `rails hot`, or
+`link not answering` and `rails unknown`, in the band's own ink. **The link
+says so when the station stops answering**, rather than leaving the page
+looking merely idle, which is the difference between a dead station and a quiet
+one and the reason any of this exists. The rails go to `unknown` with it: what
+the station last said about power is not a reading once it has stopped
+talking.
 
 **Nothing on this page commands track power.** `control`'s band presses ON,
 STOP and OFF because `layout` checks the railroad is drained before anything
@@ -64,11 +74,15 @@ monitor is.
 No emergency stop is drawn on the chrome, so the red token LOOK.md reserves for
 the first UI to draw one stays unclaimed.
 
-Below 560px the band drops the track reading and keeps the link.
+Below 560px the band drops the track reading and keeps the link. A station
+that is not answering makes the other reading meaningless, and a band that kept
+the rails instead would show a power state nothing has confirmed since the link
+went. 560px is this page's own number rather than a look rule, written in
+`dccex-band.styles.ts` beside the rule it is about.
 
 ### The tiles
 
-Four readings of the station's particulars, at the top of the work pane:
+Four readings of the station's particulars, at the top of the work pane (#7):
 
 | Tile | What it reads | While the link is down |
 | --- | --- | --- |
@@ -81,7 +95,14 @@ Three of the four blank together, which is correct rather than a gap: three of
 them are the station talking and the station is not talking. The **build**
 clears with the link and fills again by itself when the station comes back and
 says which one it is running, so a build from before a flash is never reported
-as the one on the board (ADR-0008 d.3).
+as the one on the board (ADR-0008 d.3). A blank tile keeps its height — three
+of them blanking at once is exactly when somebody is looking, and a row that
+collapsed as it happened would move the monitor under their thumb.
+
+The count of clients is the one reading that is not the station talking, and a
+face that could not be asked says nothing rather than nobody: `0` is what the
+face answers when the port is empty, and a page drawing `0` for an app it could
+not reach would be reporting an empty port nobody saw.
 
 ### The releases
 
@@ -203,20 +224,30 @@ the mirror reads for the `>`, exactly as it does for JMRI and a throttle
 
 **The pairs are run rather than read.** Every other check of the page here
 reads its sources, because the gate is Python and there is no browser in it.
-Two of them cannot: a sentence an operator is shown is worth nothing asserted
+Three of them cannot: a sentence an operator is shown is worth nothing asserted
 against the source that would produce it — and so is a rule about what goes
-down a cable to a command station — and ADR-0009 d.3 asks for the pairs
-themselves. So `tests/ui/test_decoder.py` puts every line the page glosses and
-every near miss through the real function under `node`, by way of
-`tests/ui/gloss.mjs`, and `tests/ui/test_message.py` puts every spelling an
-operator may type through the real function the same way
-(`tests/ui/message.mjs`). What that asks of the machine the gate runs on is a
-node and nothing else — no packages, no bundler, nothing fetched, no DOM — and
-a node that is not there is red rather than skipped, as everything else the
-gate needs is. It is why `ui/src/decoder.js` and `ui/src/message.js` are the
-two modules of the page written as JavaScript with their types in JSDoc: `tsc`
+down a cable to a command station, and so is what the band says about the
+railroad's power — and ADR-0009 d.3 asks for the pairs themselves. So
+`tests/ui/test_decoder.py` puts every line the page glosses and every near miss
+through the real function under `node`, by way of `tests/ui/gloss.mjs`,
+`tests/ui/test_message.py` puts every spelling an operator may type through the
+real function the same way (`tests/ui/message.mjs`), and
+`tests/ui/test_readings.py` puts whole conversations through the readings and
+reads the band and the tiles back (`tests/ui/readings.mjs`). What that asks of
+the machine the gate runs on is a node and nothing else — no packages, no
+bundler, nothing fetched, no DOM — and a node that is not there is red rather
+than skipped, as everything else the gate needs is. It is why
+`ui/src/decoder.js`, `ui/src/message.js` and `ui/src/readings.js` are the three
+modules of the page written as JavaScript with their types in JSDoc: `tsc`
 checks them as strictly as the rest (`ui/tsconfig.json`), and a bare node can
 still run them.
+
+**What no check here reaches is Lit.** A bare node with no packages cannot
+mount a component, so what the band and the tiles *draw* is asserted as the
+words the readings produce and the drawing is held against the components'
+sources (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`). That is the same
+cost the look values check names: the page is checked in a Python gate, and
+that gate has no browser in it.
 
 **Sending is held at the other end too.** What a page types is one more
 client's bytes on the mirror's port, so two monitors typing at once is the
@@ -224,14 +255,21 @@ interleaving rule `tests/dccex_usb/test_face.py` runs against a pty — two whol
 messages at the device, in one order or the other, on a machine with no command
 station attached.
 
-The pause, the clear and the polling are the rest of the monitor and land under
-their own tickets.
+The pause and the clear are the rest of the monitor and land under their own
+tickets.
 
-**The page is what polls.** The station volunteers a banner and a `<p…>`, and
-an idle one says nothing; on a box with no **translator** running, nothing else
-asks. So the page asks on its own schedule, up the stream, as a throttle would
-— and the mirror goes on originating nothing
+**The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
+and an idle one says nothing; on a box with no **translator** running, nothing
+else asks. So the page asks on its own schedule — `<s>` every five seconds, up
+the stream, through the same send an operator's typing goes through, so the
+polls are marked as this page's in the monitor — and the mirror goes on
+originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
+Fifteen seconds without a word, which is three polls, and the **link** is down.
+The readings are worked out again on a one-second tick as well, because the
+link going down is the absence of a line rather than the arrival of one; and a
+page that has left stops asking, because a conversation that is quiet when
+nobody is watching is the correct conversation (ADR-0010 d.4).
 
 The page is one more client of the mirror's port and is subject to every rule
 that port has, including being cut off once it falls too far behind and being
@@ -359,7 +397,10 @@ did not start is not its to do.
 - **Anything about a railroad.** No turnout names, no roster, no run state —
   none of them is a thing a command station says. Somebody wanting them wants
   `control`'s UI, which is next door on the layout box.
-- **Commanding track power**, beyond the flash sequence's own step.
+- **Commanding track power**, beyond the flash sequence's own step. The band
+  presses nothing — there is no button on it, nothing listening for a press and
+  no form — and no emergency stop is drawn on the chrome, so the red the look
+  rules reserve for the first UI to draw one stays unclaimed.
 - **Station configuration.** There is none at runtime: the fork sets
   `DISABLE_EEPROM` so the station persists nothing, the translator drives
   points with raw accessory packets so the station holds no definitions, and
@@ -377,9 +418,10 @@ Two things the prototype left open and the tickets settle while building:
 - whether the release list stays a collapsed row once it grows past four
   entries;
 - narrow widths were never confirmed in a browser. The rules are written — the
-  band drops the track reading below 560px, the release rows wrap, and the
-  command box is thumb-sized with a field that shrinks rather than pushing the
-  send button off the side — and nobody has held a phone up to them.
+  band drops the track reading below 560px, the tiles wrap onto a second row,
+  the release rows wrap, and the command box is thumb-sized with a field that
+  shrinks rather than pushing the send button off the side — and nobody has
+  held a phone up to them.
 
 What each tile reads while the link is down was the third and is settled above,
 by ADR-0008 d.3.

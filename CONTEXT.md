@@ -59,10 +59,12 @@ not somewhere else to get at the railroad. Its address is a path prefix on the
 page's own origin, which the door strips before the app sees it, and a page
 from anywhere else is refused (ADR-0004). The mirror's face answers what
 releases the source carries (#12), writes one of them onto the station when a
-caller names its tag (#13), and carries the station's own conversation to the
-page and back (#14, the **stream** below). It guards nothing while it does: a
-face is about its app, so whether a railroad can spare its command station for
-two minutes is the operator's question and not this app's (ADR-0006).
+caller names its tag (#13), carries the station's own conversation to the page
+and back (#14, the **stream** below), and says how many **client**s are on the
+mirror's port (#7) — which is the one reading on the page the **station**
+cannot make about itself. It guards nothing while it does: a face is about its
+app, so whether a railroad can spare its command station for two minutes is the
+operator's question and not this app's (ADR-0006).
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
@@ -159,9 +161,11 @@ conversation is on).
 ## decoder
 
 The pure function the page reads the conversation with: one line of the
-station's `<…>` in, one **gloss** out or nothing. No socket, no state and no
-clock, so what it makes of a line is asserted as that line and that sentence
-on a machine with nothing plugged in
+station's `<…>` in, one reading out or nothing — the **gloss** the monitor
+draws beside the bytes, and the fact the **band** and the **tile**s are made of
+where the line carries one. No socket, no state and no clock, so what it makes
+of a line is asserted as that line and that reading on a machine with nothing
+plugged in
 ([ADR-0009](docs/adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
 
 It is the UI's own, and it runs the opposite way from the **translator**,
