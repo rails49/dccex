@@ -77,17 +77,35 @@ const CHARACTERS = new TextDecoder("latin1");
  * got.** Those bytes arrived, the newline that would have finished them never
  * will, and dropping them would be this page quietly losing what the station
  * said.
+ *
+ * **It says when a socket of its own is open, and that is the second thing
+ * it hands up.** A socket that is still connecting cannot be written to, so
+ * anything sent at one is refused and says so — which is what happened to the
+ * page's first poll, sent in the line after `open()` and dropped, leaving a
+ * healthy station reading as absent until the interval came round (#82). The
+ * open is a signal of the same kind as a line arriving, and every socket this
+ * dials gives it, the reopen timer's included.
+ *
+ * **Nothing is held to be sent when one does.** A message an operator typed
+ * while the stream was down is a command to a command station, and sending it
+ * seconds later, when the page has moved on, is worse than not sending it
+ * (#6): `send` returns `null` and the box at the foot says so. What is asked
+ * again is asked again by whoever wanted it — the page's poll is stateless and
+ * safe to repeat, and it is the page that repeats it (`dccex-app.ts`,
+ * ADR-0010 d.1).
  */
 export class Stream {
   readonly #said: (said: Said[]) => void;
+  readonly #opened: () => void;
   #socket: WebSocket | null = null;
   #reopening: ReturnType<typeof setTimeout> | null = null;
   #wanted = false;
   #partial = "";
   #partialAt = new Date();
 
-  constructor(said: (said: Said[]) => void) {
+  constructor(said: (said: Said[]) => void, opened: () => void) {
     this.#said = said;
+    this.#opened = opened;
   }
 
   /** Open the stream, and keep one open until `close()`. */
@@ -150,6 +168,17 @@ export class Stream {
     this.#partial = "";
     const socket = new WebSocket(streamAt(window.location, STREAM_PATH));
     socket.binaryType = "arraybuffer";
+    // Open, so what goes up it now goes. Whoever asked for the stream is told,
+    // because until this moment `send` had nothing it could write to and said
+    // so — and the one thing worth asking again on it is the page's poll,
+    // which the page sends itself (#82). The socket is checked because a
+    // stream let go while this one was still connecting is a stream nobody is
+    // reading the answers of.
+    socket.addEventListener("open", () => {
+      if (socket === this.#socket) {
+        this.#opened();
+      }
+    });
     socket.addEventListener("message", (said: MessageEvent<unknown>) => {
       this.#arrived(said.data);
     });
