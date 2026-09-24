@@ -174,6 +174,21 @@ The mirror's image defaults that argument to `dev` (`deploy/Dockerfile`, #15),
 which this leaves standing. The two images disagree about what an unnamed build
 claims to have been built from, and settling that is a ticket of its own.
 
+*Amended for [#97](https://github.com/rails49/dccex/issues/97), 2026-09-24:*
+
+**The ticket of its own above is settled, and the empty revision is both
+images'.** The mirror's image defaults the argument to nothing too
+(`deploy/Dockerfile`), and `compose.box.yaml`, which is where its build is
+declared, passes it `${DCCEX_COMMIT:-}` — the same variable the name is built
+from, as `compose.yaml` does for the page. The reasoning is the amendment
+above's and is not a second decision: `dev` in a field that means the commit
+this was built from is a commit reference that is none, whichever image
+carries it, and the two images could not go on answering a `docker inspect`
+differently about the same clean clone. Nothing of the names moves — both are
+still `dev` where nobody named a commit, which is where `dev` is true — and
+what a built image carries is now run rather than read for both of them
+(`tests/deploy/test_mirror_serves.py`, `tests/ui/test_page_serves.py`).
+
 ## Consequences
 
 - #15 has a shape to build rather than `control`'s to inherit, and #16 cuts
