@@ -13,9 +13,9 @@ import { css } from "lit";
  * narrow screen costs a line and never a reading (docs/ui/README.md).
  *
  * **What is on the station is marked twice over.** A word and a weight, not a
- * colour alone: whether the box is up to date is the question the list exists
- * to answer, and a reader who does not see the colour is owed the answer all
- * the same — the same rule the monitor marks the page's own lines by.
+ * colour alone: whether the station is up to date is the question the list
+ * exists to answer, and a reader who does not see the colour is owed the answer
+ * all the same — the same rule the monitor marks the page's own lines by.
  *
  * **The controls are sized for a thumb.** `--rail-button` is the look rules'
  * minimum for one and it is a size rather than a colour — the chrome's four

@@ -69,8 +69,8 @@
  */
 
 /** What is said of the release the station is running now. It is the point of
- *  the list: whether the box is up to date is a thing to see rather than to
- *  work out by reading a **build** and a **tag** against each other
+ *  the list: whether the station is up to date is a thing to see rather than
+ *  to work out by reading a **build** and a **tag** against each other
  *  (docs/ui/README.md). */
 export const ON_STATION = "on the station now";
 

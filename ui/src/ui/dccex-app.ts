@@ -9,7 +9,7 @@
  * second client of the mirror's port for one page.
  *
  * The work pane is the **tile**s, the **release**s under them and the
- * **monitor** under those: the station's particulars, what the box could be
+ * **monitor** under those: the station's particulars, what the station could be
  * written with, and its conversation as it arrives (#4, #6, #7, #8). What the
  * page around them proves is the installation the rest of the UI rests on: it
  * is built by node inside the image, served by nginx out of it, and draws in
