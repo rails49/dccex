@@ -28,6 +28,7 @@ cannot be made to run this by going red.
 """
 
 import http.client
+import json
 import os
 import re
 import shutil
@@ -36,6 +37,7 @@ import time
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import cast
 
 import pytest
 
@@ -51,6 +53,10 @@ BUILD_SECONDS = 900
 
 #: How long nginx gets to answer once its container is running.
 START_SECONDS = 30
+
+#: Where the commit is written on the image itself, which is the place
+#: ADR-0005 d.4 asks for so that the name is not the only copy of it.
+REVISION = "org.opencontainers.image.revision"
 
 
 def no_daemon() -> str | None:
@@ -165,6 +171,19 @@ def serving() -> Iterator[Serving]:
         )
 
 
+def carried(image: str) -> dict[str, str]:
+    """Every label on the built image, as `docker inspect` gives them.
+
+    The whole map rather than one value: a label that is not there and a label
+    that is empty are the same string through `{{index .Config.Labels …}}`,
+    and the difference between them is the claim below.
+    """
+    return cast(
+        dict[str, str],
+        json.loads(docker("inspect", "--format", "{{json .Config.Labels}}", image)),
+    )
+
+
 def named(page: str, pattern: str) -> str:
     """The path of one built file the served page names."""
     match = re.search(pattern, page)
@@ -214,3 +233,23 @@ def test_a_path_the_page_owns_is_the_page(serving: Serving) -> None:
     status, page = served(serving.port, "/anything")
     assert status == 200
     assert "<dccex-app></dccex-app>" in page
+
+
+def test_a_build_given_no_commit_claims_none(serving: Serving) -> None:
+    """The clean clone's build: `docker build` with nothing passed, which is
+    what `up --build` does where `DCCEX_COMMIT` is unset.
+
+    The label is there and it is empty. An image nobody named a commit for
+    says so in the place ADR-0005 d.4 asks the commit to be said, and it says
+    nothing else: a `dev`, an `unknown` or a `local` there would read like a
+    commit reference and be none, where an empty revision cannot be read as
+    anything but nobody having named one (#57). `dev` is still said — in the
+    name, where it is true, and `tests/ui/test_compose_serves.py` is what
+    holds it.
+    """
+    on_it = carried(serving.tag)
+    assert REVISION in on_it, f"the image carries no revision at all: {on_it}"
+    assert on_it[REVISION] == "", (
+        f"a build that was given no commit claims {on_it[REVISION]!r} as the one"
+        " it was built from"
+    )

@@ -25,6 +25,15 @@ services:
     build:
       context: .
       dockerfile: deploy/ui.Dockerfile
+      args:
+        # The commit, to the build and not only to the name: the image carries
+        # it as `org.opencontainers.image.revision`, so a `docker inspect` on
+        # the box answers what a container was built from even for an image
+        # somebody renamed (ADR-0005 d.4). One variable for both, so the two
+        # can never disagree — with no fallback here, because `dev` belongs in
+        # the name and a revision that reads like a commit and is not one is
+        # worse than an empty one (#57, `deploy/ui.Dockerfile`).
+        DCCEX_COMMIT: ${DCCEX_COMMIT:-}
     # Named by the commit it was built from, and the name never moves
     # (ADR-0005 d.1). `dev` is what a clone that has not been told a commit
     # builds under, so `up --build` works with nothing set; a box is given one
