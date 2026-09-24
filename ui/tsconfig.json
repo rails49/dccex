@@ -6,6 +6,13 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "strict": true,
+
+    // The decoder is JavaScript with its types in JSDoc, because the gate runs
+    // it under a bare node to assert what it makes of a line
+    // (`tests/ui/test_decoder.py`, ADR-0009 d.3). It is checked here under the
+    // same strictness as everything else rather than taken on trust.
+    "allowJs": true,
+    "checkJs": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitOverride": true,
