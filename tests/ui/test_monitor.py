@@ -1,12 +1,32 @@
-"""The page the conversation is shown on, read off its own sources.
+"""The page the conversation is shown on.
 
-The same reading rather than running that `tests/ui/test_stream.py` explains,
-and the same limit: there is no browser here to scroll, so what is held is the
-shape the follow rule has to have, not that a view followed. What the stream
-carries and where it is opened is held over there.
+**Two of what it works out are run.** Whether the reader is at the bottom and
+the time a line arrived are `ui/src/monitor.js`'s — three numbers off a
+scroller, and a `Date` — and each is a pure function of what it is handed, so
+the pairs that matter go through the real rules under `node`, by way of
+`tests/ui/monitor.mjs` (#78). The `node` marker is what asks for one: the gate
+does not collect these and the workflow runs them, where a node that is not
+there is red rather than skipped (`scripts/check.sh`, #101). Both were read off
+their source for as long as there was no node to run them with, and reading is
+what a stamp an hour out would have walked past.
+
+**The rest is read off its own sources**, as `tests/ui/test_stream.py` explains
+and with the same limit: there is no browser here to scroll, so what is held
+that way is the shape the follow rule has to have, not that a view followed.
+What the stream carries and where it is opened is held over there.
 """
 
+import json
+import os
 import re
+import shutil
+import subprocess
+from datetime import UTC, datetime
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+import pytest
 
 from tests.ui.test_look import UI
 
@@ -18,6 +38,185 @@ STYLES = UI / "src" / "ui" / "dccex-monitor.styles.ts"
 
 #: The page the monitor is one pane of.
 APP = UI / "src" / "ui" / "dccex-app.ts"
+
+#: The two rules that are not drawing, which a bare node runs rather than
+#: reads.
+RULES = UI / "src" / "monitor.js"
+
+#: What puts them through themselves.
+RUNNER = Path(__file__).resolve().parent / "monitor.mjs"
+
+#: A scroller as the three numbers being at the bottom of one is a question
+#: about — how tall what is in it is, how far down it has been scrolled, and
+#: how much of it a reader can see — and whether that is a reader the newest
+#: line should be scrolled to.
+SCROLLED: dict[str, tuple[tuple[float, float, float], bool]] = {
+    "at the bottom": ((1000, 800, 200), True),
+    # A scroller a rounded sub-pixel from the end is a reader who has not
+    # scrolled up, which is the whole of what the slack is for: the numbers a
+    # browser gives back do not add up exactly, and a monitor that asked for
+    # zero would stop following the tail on its own.
+    "a fraction off the bottom": ((1000.5, 800.25, 200), True),
+    "one pixel off the bottom": ((1000, 799, 200), True),
+    "the whole of the slack off the bottom": ((1000, 796, 200), True),
+    "a pixel past the slack": ((1000, 795, 200), False),
+    "a line or two up": ((1000, 700, 200), False),
+    "at the top of a long conversation": ((10000, 0, 200), False),
+    # Less in it than it can show: there is nowhere to have scrolled up to, and
+    # a reader looking at three lines is following the tail.
+    "shorter than its viewport": ((120, 0, 200), True),
+    "nothing said yet": ((0, 0, 200), True),
+}
+
+#: What a clock in the operator's own zone reads when a line arrives, and the
+#: stamp the monitor draws beside it. To the millisecond, because a burst of
+#: `<…>` messages arrives inside one second, and padded, because a column of
+#: stamps a person is reading down is a column.
+STAMPED: dict[tuple[int, int, int, int], str] = {
+    (13, 4, 5, 7): "13:04:05.007",
+    (0, 0, 0, 0): "00:00:00.000",
+    (23, 59, 59, 999): "23:59:59.999",
+    (9, 30, 0, 50): "09:30:00.050",
+    (7, 8, 9, 100): "07:08:09.100",
+}
+
+#: One instant on the stream, in milliseconds since the epoch.
+INSTANT = int(datetime(2026, 1, 1, 13, 4, 5, 7000, tzinfo=UTC).timestamp() * 1000)
+
+#: What that instant is stamped as, by where the machine reading it is. Zones
+#: with no summer time in them, so the pair holds in January and in July alike.
+ZONED: dict[str, str] = {
+    "UTC": "13:04:05.007",
+    "Pacific/Honolulu": "03:04:05.007",
+}
+
+#: A stamp: a time on a clock, to the millisecond, and no date on it.
+CLOCK = re.compile(r"^\d{2}:\d{2}:\d{2}\.\d{3}$")
+
+
+def run(asks: list[dict[str, Any]], zone: str = "UTC") -> list[dict[str, Any]]:
+    """What the two rules answer for `asks`, in one running of them.
+
+    In a zone of this module's choosing, because one of the two is about the
+    machine's own: a stamp is the operator's clock rather than UTC, and a check
+    that ran in whatever zone the machine happened to be set to could not tell
+    those two apart on a box in London.
+    """
+    node = shutil.which("node")
+    assert node is not None, "no node on this machine to run the page's rules with"
+    ran = subprocess.run(
+        [node, str(RUNNER)],
+        input=json.dumps(asks),
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "TZ": zone},
+    )
+    assert ran.returncode == 0, f"the rules did not run: {ran.stderr.strip()}"
+    answered: list[dict[str, Any]] = json.loads(ran.stdout)
+    return answered
+
+
+@lru_cache(maxsize=1)
+def bottom() -> dict[str, bool]:
+    """Every scroller the suite has, put through the rule once."""
+    asks: list[dict[str, Any]] = [
+        {
+            "scroller": {
+                "scrollHeight": height,
+                "scrollTop": top,
+                "clientHeight": seen,
+            }
+        }
+        for (height, top, seen), _bottom in SCROLLED.values()
+    ]
+    return dict(zip(SCROLLED, (answer["bottom"] for answer in run(asks)), strict=True))
+
+
+@lru_cache(maxsize=1)
+def stamps() -> dict[tuple[int, int, int, int], str]:
+    """Every arrival the suite has, put through the stamp once."""
+    asks: list[dict[str, Any]] = [{"clock": list(clock)} for clock in STAMPED]
+    return dict(zip(STAMPED, (answer["stamp"] for answer in run(asks)), strict=True))
+
+
+@pytest.mark.node
+@pytest.mark.parametrize("scrolled", SCROLLED)
+def test_whether_the_reader_is_at_the_bottom_of_the_conversation(
+    scrolled: str,
+) -> None:
+    _where, at = SCROLLED[scrolled]
+    assert bottom()[scrolled] is at
+
+
+@pytest.mark.node
+def test_the_slack_is_a_rounded_sub_pixel_and_not_a_line() -> None:
+    """The criterion in one line (#78).
+
+    What the slack is for is the arithmetic: a browser's three numbers do not
+    always add up to zero at the end of a scroller. What it is not for is
+    forgiving a reader who has scrolled up — a line of the conversation is
+    taller than it, so scrolling back by one line is a reader the tail stops
+    being followed for.
+    """
+    assert bottom()["the whole of the slack off the bottom"] is True
+    assert bottom()["a pixel past the slack"] is False
+
+
+@pytest.mark.node
+def test_a_scroller_with_less_in_it_than_it_shows_is_at_its_own_bottom() -> None:
+    """There is nowhere to have scrolled up to, so a reader watching the first
+    three lines of an evening is following the tail — and the conversation
+    nothing has been said in yet is the same reader."""
+    assert bottom()["shorter than its viewport"] is True
+    assert bottom()["nothing said yet"] is True
+
+
+@pytest.mark.node
+@pytest.mark.parametrize("clock", STAMPED)
+def test_a_line_is_stamped_to_the_millisecond(clock: tuple[int, int, int, int]) -> None:
+    assert stamps()[clock] == STAMPED[clock]
+
+
+@pytest.mark.node
+def test_the_stamp_is_the_clock_of_the_machine_reading_it() -> None:
+    """Local time, because the person reading is at the layout correlating what
+    they saw with what the station said (#78).
+
+    One instant, two machines, two stamps ten hours apart — which is the thing
+    a module saying `getHours` reads exactly like whether it is right or an
+    hour out. What is not lost to it is the instant itself: that rides on the
+    element's `datetime`, which is read below.
+    """
+    for zone, drawn in ZONED.items():
+        answered = run([{"at": INSTANT}], zone)
+        assert answered[0]["stamp"] == drawn, f"a clock in {zone} reads it otherwise"
+
+
+@pytest.mark.node
+def test_a_stamp_is_a_time_and_carries_no_date() -> None:
+    """A conversation a person is reading as it arrives is today's, and a date
+    on every row would be a column of the same eleven characters between the
+    reader and the bytes."""
+    for clock, drawn in stamps().items():
+        assert CLOCK.match(drawn) is not None, f"{clock} is stamped {drawn!r}"
+
+
+def test_the_two_rules_hold_nothing() -> None:
+    """No state, no clock of their own and no DOM.
+
+    Held against the source because it is the import that would bring one in.
+    A stamp is of the moment a line arrived, which the page took at the read
+    that carried it (`stream.ts`), and a module that could reach a clock could
+    stamp a line with when it was drawn instead. Whether the reader is at the
+    bottom is three numbers somebody else read off an element, for the same
+    reason: a rule that went looking for the element would be a rule only a
+    browser could be asked.
+    """
+    source = RULES.read_text()
+    assert "import " not in source, "the rules import something"
+    for held in ("new Date(", "Math.random", "window", "document", "querySelector"):
+        assert held not in source, f"the rules reach {held}"
 
 
 def test_every_line_the_monitor_draws_carries_the_time_it_arrived() -> None:
