@@ -18,7 +18,10 @@ side `tests/dccex_usb/test_face.py`.
 readings are (`tests/ui/test_decoder.py`, `tests/ui/test_readings.py`): a list
 an operator reads is worth nothing asserted against the source that would
 produce it. The scenarios go through the real function under `node`, by way of
-`tests/ui/releases.mjs`.
+`tests/ui/releases.mjs`. So is what the page makes of the answer the rows come
+out of: a rule about which of two sentences a document gets is worth no more
+asserted against the module that would apply it, so the documents go through
+the reader the same way (#95).
 
 What cannot be run here is Lit. The gate is Python and the node beside it is a
 bare one with no packages, so nothing in either can mount a component and read
@@ -108,6 +111,12 @@ def rows(**scenario: Any) -> list[dict[str, Any]]:
     """The release rows a page would be drawing, newest first."""
     listing: list[dict[str, Any]] = listed(**scenario)["rows"]
     return listing
+
+
+def read(document: Any) -> list[dict[str, Any]] | None:
+    """What the page's reader makes of one `releases` document."""
+    made: list[dict[str, Any]] | None = run(({"document": document},))[0]["read"]
+    return made
 
 
 def says() -> dict[str, str]:
@@ -382,38 +391,83 @@ def test_a_face_that_did_not_answer_reads_as_nothing_said() -> None:
     assert fetching.count("return null;") >= 2
 
 
-def test_a_list_that_carries_no_readable_release_reads_as_nothing_said() -> None:
-    """The three answers a `releases` document can get out of the page's
-    reader, and the middle one is the defect this was written for (#95).
+@pytest.mark.node
+def test_a_source_that_lists_nothing_reads_as_a_list_of_no_releases() -> None:
+    """The first of the three answers a `releases` document gets out of the
+    page's reader: the source was asked and carries nothing, which is an
+    answer. It reads as a list of no releases, and the page says the source
+    has published none yet rather than that it could not be read."""
+    assert read([]) == []
+    assert listed(carried=read([]))["says"] == says()["NONE"]
 
-    An empty list is the source carrying nothing yet, which is an answer and
-    reads as an empty list; a list of entries none of which is a release is a
-    document the page could not read, and reads as `null`; a list with
-    releases on it reads as those releases. An empty list drawn for the middle
-    one would say the source has published nothing — the distinction #66 was
-    filed to draw, undrawn at this end of the wire until now.
 
-    Read off the source rather than run. What the page makes of a release
-    document is `releases.js`'s and the node can load it; this reads the
-    module all the same until the scenarios below run it.
+@pytest.mark.node
+def test_a_list_that_names_no_release_among_its_entries_reads_as_nothing_said() -> None:
+    """The middle one, and the defect this was written for (#95). A list that
+    carries entries and yields no release out of any of them is a document the
+    page could not read, not a source with nothing on it: it reads as nothing
+    said, and the page says the releases could not be read.
+
+    Before this change it read as a list of no releases, which says the source
+    has published nothing and sends somebody looking at a release API that is
+    perfectly well — the distinction #66 was filed to draw, undrawn at this
+    end of the wire (ADR-0009 d.2, `face.py`).
     """
-    reading = code(RELEASES.read_text())
-    reader = reading[reading.index("export function carried(") :]
-    kept = "const found = listed.flatMap("
-    rule = "if (listed.length > 0 && found.length === 0) {"
+    for document in (
+        [{"message": "Not Found"}],
+        [{"published": "2025-09-14T10:32:07Z", "flashable": True}],
+        [{"tag": ""}],
+        ["v5.6.4-rails49.1"],
+        [None],
+        [{"message": "Not Found"}, {"message": "Not Found"}],
+    ):
+        assert read(document) is None, f"{document} reads as a source carrying nothing"
 
-    assert kept in reader, "the page drops the entries it could read"
-    assert rule in reader, "a list of unreadable entries reads as no releases yet"
-    assert reader.index(kept) < reader.index(rule)
-    assert "return found;" in reader, "an empty list reads as something other than []"
-    assert reader.index(rule) < reader.index("return found;")
+    unreadable = read([{"message": "Not Found"}])
+    assert listed(carried=unreadable)["says"] == says()["UNREADABLE"]
+
+
+@pytest.mark.node
+def test_a_list_with_releases_on_it_reads_as_the_releases_it_carries() -> None:
+    """The third: what the page can read, it keeps. An entry it cannot read is
+    dropped and the rest of the list stands — what the source carries is what
+    the page is shown, and a list quietly shorter than the source's would be
+    this page deciding what a person may see (`face.py`)."""
+    assert read([NEWEST, MIDDLE, OLDEST]) == [NEWEST, MIDDLE, OLDEST]
+    assert read([NEWEST, {"message": "Not Found"}]) == [NEWEST]
+    assert listed(carried=read(CARRIED))["says"] == ""
+
+
+@pytest.mark.node
+def test_an_answer_that_is_not_a_list_at_all_reads_as_nothing_said() -> None:
+    """Under `releases`, anything but a list is a document about something
+    else — a refusal from a service that is not the face, a field that moved,
+    nothing at all — and none of it is a source that has published nothing."""
+    for document in ({"message": "Not Found"}, "v5.6.4-rails49.1", 7, None, True):
+        assert read(document) is None, f"{document!r} reads as an answer about releases"
+
+
+@pytest.mark.node
+def test_a_release_the_source_left_a_field_off_is_read_with_that_field_empty() -> None:
+    """One field at a time, as the app reads the release API: the rest of a
+    release is left where it is rather than guessed at. No date reads as no
+    date, and no `flashable` reads as nothing to write, which is the direction
+    that does not send an operator at a tag the mirror would refuse."""
+    assert read([{"tag": "v5.6.5-rails49.1"}]) == [
+        {"tag": "v5.6.5-rails49.1", "published": "", "flashable": False}
+    ]
+    assert read([{**NEWEST, "published": 1757845927}]) == [{**NEWEST, "published": ""}]
 
 
 def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
     """Two ends of a wire read defensively and the duplication stays; what
-    must not differ is the rule (#95). The page's half names whose other half
-    it is, so that whoever changes one finds the other, and the app's half is
-    still the one line it names."""
+    must not differ is the rule (#95).
+
+    What the reader answers is run above. What cannot be run is that the two
+    halves are one rule, so it is read: the page's half names whose other half
+    it is, the app's still draws the line in the one line it draws it in, and
+    the two are written with the same two names in the same order.
+    """
     asking = code(FACE.read_text())
     fetching = asking[asking.index("export async function releases(") :]
     assert (
@@ -421,6 +475,9 @@ def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
     ), "the page asks for the releases and reads them some other way"
     assert "`face.py`'s `carried()`" in FACE.read_text(), "the page names no other half"
     assert "if listed and not found:" in APP_FACE.read_text(), "the app drew no line"
+    assert (
+        "if (listed.length > 0 && found.length === 0) {" in RELEASES.read_text()
+    ), "the page's half is no longer written as the app's is"
 
 
 def test_the_releases_are_asked_for_once_and_not_on_the_poll() -> None:
