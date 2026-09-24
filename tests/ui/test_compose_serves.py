@@ -71,7 +71,7 @@ DOWN_SECONDS = 180
 #: every command below runs in, so a machine that has any of them set — a
 #: development box, a shell left over from a deploy — runs the same check as a
 #: clean clone does.
-SUBSTITUTED = ("DCCEX_COMMIT", "DCCEX_UI_PORT", "BOX_DOMAIN")
+DROPPED = ("DCCEX_COMMIT", "DCCEX_UI_PORT", "BOX_DOMAIN")
 
 #: The route, as the door reads it off the container: written out here rather
 #: than parsed out of `compose.yaml`, because a check that read the values from
@@ -93,9 +93,7 @@ ROUTE = {
 
 def environment(**set_here: str) -> dict[str, str]:
     """The environment a `docker compose` command is run in."""
-    clean = {
-        name: value for name, value in os.environ.items() if name not in SUBSTITUTED
-    }
+    clean = {name: value for name, value in os.environ.items() if name not in DROPPED}
     clean.update(set_here)
     return clean
 
