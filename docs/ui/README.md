@@ -522,8 +522,8 @@ inspect <tag>` on a machine that can reach a registry, and the digest it prints
 goes into the file — a commit here like any other change to what the image is.
 The gate has no registry and resolves nothing, so `tests/deploy/test_stack.py`
 holds the shape rather than the values: neither line may name something that
-can move. The mirror's image is still on tags and says so
-(`deploy/Dockerfile`).
+can move. The mirror's image is pinned the same way and points here for the
+argument rather than repeating it (`deploy/Dockerfile`, #96).
 
 **And it carries that commit as well as being named by it.** The build takes it
 as an argument and writes it on the image as
