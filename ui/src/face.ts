@@ -74,9 +74,9 @@ export async function clients(): Promise<number | null> {
 
 /** Where the **release**s the configured source carries are asked for. The
  *  page asks its own app's face and never the release API: a UI talks to the
- *  bus, the store and its own app's face and nothing else (ADR-0002), and
- *  where releases are read from is a flag on that app rather than anything a
- *  browser can name (ADR-0042, `face.py`). */
+ *  bus, the store and its own app's face and nothing else (the organisation's
+ *  ADR-0002), and where releases are read from is a flag on that app rather
+ *  than anything a browser can name (ADR-0042, `face.py`). */
 export const RELEASES_PATH = `${FACE}/releases`;
 
 /** What the list comes back under. */

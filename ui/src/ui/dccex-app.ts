@@ -22,7 +22,7 @@
  * same `#sends` the monitor is handed, so the stop and the cut go up the stream
  * as anything typed does and are marked as this page's in the monitor, and the
  * face's own `flash`, because a pane holding a counterparty of its own would be
- * a second answer to what the page talks to (ADR-0002).
+ * a second answer to what the page talks to (the organisation's ADR-0002).
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on

@@ -42,7 +42,7 @@
  * down, as it does with the conversation, and what sends a message up the
  * **stream** and what asks the face to write are handed down the same way: a
  * pane of the page holding its own counterparty would be a second answer to
- * what the page knows (ADR-0002, `dccex-app.ts`).
+ * what the page knows (the organisation's ADR-0002, `dccex-app.ts`).
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
