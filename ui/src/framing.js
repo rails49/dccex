@@ -39,9 +39,9 @@ const RETURN = /\r+$/;
  * As much of a page's address as the stream's is built from: what the page was
  * served over, and the address itself.
  *
- * A `Location` is one, and so is a plain object with the two fields — which is
- * what lets the rule below be run under a bare node. Nothing here touches a
- * browser value; it reads two strings off one.
+ * A `Location` is one, and so is a plain object with the two fields — which
+ * is what lets the rule below be run under a bare node. Nothing here touches
+ * a browser value; it reads two strings off one.
  *
  * @typedef {{
  *   readonly href: string,
@@ -54,11 +54,11 @@ const RETURN = /\r+$/;
  *
  * `at` is when it arrived: the page's clock at the read that carried it, or at
  * the write that sent it. Two lines in one read carry the same stamp, which is
- * what happened. `line` is the line as the station said it, with the newline it
- * ended off — or the whole message this page sent, as it went. `sent` is which
- * end of the conversation it is: `true` where this page sent it, `false` where
- * the station said it, and the monitor draws the two differently so a reader
- * can tell their own traffic from the railroad's.
+ * what happened. `line` is the line as the station said it, with the newline
+ * it ended off — or the whole message this page sent, as it went. `sent` is
+ * which end of the conversation it is: `true` where this page sent it, `false`
+ * where the station said it, and the monitor draws the two differently so a
+ * reader can tell their own traffic from the railroad's.
  *
  * Every field is read-only. A line is what arrived, and nothing downstream of
  * the framing edits the conversation it is showing.
@@ -82,9 +82,9 @@ const RETURN = /\r+$/;
  *
  * The path is handed in rather than read here. The door's prefix is spelled
  * once, in the module that says where the face is (`face.ts`), and that module
- * is TypeScript — which a bare node cannot import, and this rule is one a bare
- * node runs. So the one spelling stays where it is and the caller passes what
- * it built from it (`STREAM_PATH`, `stream.ts`).
+ * is TypeScript — which is not something a bare node can load, and this rule
+ * is one a bare node runs. So the one spelling stays where it is and the
+ * caller passes what it built from it (`STREAM_PATH`, `stream.ts`).
  *
  * @param {Where} where the page's own address
  * @param {string} path where the face answers the stream, on that origin
