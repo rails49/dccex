@@ -44,11 +44,13 @@ top of them.
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware and no Docker
-daemon. The two checks that do need one — the image built and served, and the
-compose project brought up, served and taken down — carry the `docker` marker,
-which the gate does not collect; `uv run pytest -m docker` is how they are run,
-and the workflow runs them in a job of its own that a pull request requires,
-where a missing daemon is a failure rather than a skip (#53, #54, #56).
+daemon. The three checks that do need one — the page's image built and served,
+the compose project brought up, served and taken down, and the mirror's image
+run with a pty for a device and 2560 dialled against it — carry the `docker`
+marker, which the gate does not collect; `uv run pytest -m docker` is how they
+are run, and the workflow runs them in a job of its own that a pull request
+requires, where a missing daemon is a failure rather than a skip (#53, #54,
+#56, #15).
 
 ## What the UI talks to
 
@@ -93,8 +95,15 @@ not that one — `deploy/ui.Dockerfile`, node to build and nginx to serve, under
 the same naming rule — because a page shares neither the lock file nor the
 esptool pin the Python apps do, and the box that serves it has Docker and no
 node. `compose.yaml` carries that one server and its door route and nothing
-else; the stack a box runs and the deploy that runs it are still #15's, built
-in that shape.
+else, because the one thing it has to do is come up from a clean clone. The
+stack a **box** runs is that file and `compose.box.yaml` together: the mirror
+beside the page, the command station's device mapped in, 2560 published raw,
+the shared network the door dials containers on declared external, and the
+box's own declaration required rather than defaulted, so a box the
+installation has not been run on stops with a sentence naming
+`/etc/rails49/box.env`. `scripts/deploy.sh` is what brings the two up there —
+one ssh, a pull, a clean tree, the image built under the commit, and a line
+appended to the record.
 
 The first time that happens on the layout box it is a **cutover** and not a
 deploy: 2560 is served there today by `control`'s copy of the mirror, and the

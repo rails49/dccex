@@ -21,7 +21,7 @@
 # before and skips the build:
 #
 #   ssh ttmetro@gleis49.org
-#   cd ~/iot/dccex
+#   cd ~/dccex
 #   tail -2 /var/lib/rails49/deploys/dccex
 #   echo DCCEX_COMMIT=<commit> > .env
 #   docker compose -f compose.yaml -f compose.box.yaml \
@@ -33,7 +33,7 @@ set -euo pipefail
 # is overridable, and every one of them has the answer for the box this
 # repository is deployed to.
 BOX=${DCCEX_BOX:-ttmetro@gleis49.org}
-STACK=${DCCEX_STACK:-iot/dccex}
+STACK=${DCCEX_STACK:-dccex}
 ORIGIN=${DCCEX_ORIGIN:-https://github.com/rails49/dccex.git}
 BRANCH=${DCCEX_BRANCH:-main}
 
