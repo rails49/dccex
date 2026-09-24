@@ -2,7 +2,10 @@
 //
 // `tests/ui/test_decoder.py` holds the pairs and this is what puts a line
 // through the real function: a JSON array of lines on stdin, a JSON array of
-// glosses — a sentence or `null` — on stdout, in the order they came.
+// readings — a `say` with whatever fact went with it, or `null` — on stdout,
+// in the order they came. Both halves, because both are what the page shows:
+// the sentence beside the bytes and the fact the band and the tiles are made
+// of come off the same line (#7).
 //
 // It is here rather than in the UI's own toolchain because the gate is Python
 // (`scripts/check.sh`). What it needs is a node and nothing else: no packages,
@@ -10,9 +13,9 @@
 // JavaScript (`ui/src/decoder.js`), as the box's own rule is
 // (`ui/src/message.js`, `tests/ui/message.mjs`).
 
-import { gloss } from "../../ui/src/decoder.js";
+import { read } from "../../ui/src/decoder.js";
 
-const read = async () => {
+const asked = async () => {
   const chunks = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk);
@@ -20,5 +23,5 @@ const read = async () => {
   return Buffer.concat(chunks).toString("utf8");
 };
 
-const lines = JSON.parse(await read());
-process.stdout.write(JSON.stringify(lines.map((line) => gloss(line) ?? null)));
+const lines = JSON.parse(await asked());
+process.stdout.write(JSON.stringify(lines.map((line) => read(line) ?? null)));
