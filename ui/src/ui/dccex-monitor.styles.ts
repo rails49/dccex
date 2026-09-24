@@ -17,6 +17,18 @@ import { css } from "lit";
  * times that jitters is a column nobody can read down. Nothing wraps off the
  * side: a `<…>` message is short, and a long one is wrapped rather than cut,
  * so what the station said is on the page whole.
+ *
+ * **What this page sent is marked and coloured**, in a column the station's
+ * lines leave empty. Two channels rather than one, because which lines this
+ * page put on the railroad is the thing it must never be ambiguous about, and
+ * a colour alone is nothing to a reader who does not see it.
+ *
+ * **The box at the foot is sized for a thumb.** `--rail-button` is the look
+ * rules' minimum for one and it is a size rather than a colour — the chrome's
+ * four colours stay on the chrome — so it is the value a box meant to be typed
+ * at on a phone held at the layout asks for. The field takes what is left of
+ * the width and may shrink to nothing, so a long command never pushes the send
+ * off the side.
  */
 export const monitorStyles = css`
   :host {
@@ -56,6 +68,15 @@ export const monitorStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
+  /* Which end of the conversation a line is. It keeps its width whether there
+     is a mark in it or not, so the lines stay in one column and what this page
+     sent is something to see rather than to work out. */
+  .mark {
+    flex: none;
+    width: 1ch;
+    color: var(--sl-color-primary-700);
+  }
+
   /* The line as the station said it: its own spacing kept, and wrapped where
      it is too long for the width rather than run off the side. */
   .said {
@@ -75,10 +96,60 @@ export const monitorStyles = css`
     font-size: var(--sl-font-size-x-small);
   }
 
+  /* The line as this page sent it. Drawn in the page's own accent beside the
+     mark, so the two channels agree. */
+  .sent .said {
+    color: var(--sl-color-primary-700);
+  }
+
   /* Before the station has said anything. It is not an error and not a
      reading — an idle station says nothing until something asks it, and
      nothing does yet (ADR-0010). */
   .quiet {
     color: var(--sl-color-neutral-500);
+  }
+
+  /* The box at the foot: the monitor's upward half. */
+  .box {
+    display: flex;
+    flex: none;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  /* What is typed. It takes what is left of the width and may shrink to
+     nothing, which is what keeps the send button on the page at the width of
+     a phone; the typing is monospaced because a message is. The size is the
+     medium one rather than the lines' small, because a field below that is a
+     field a phone zooms the page into. */
+  .typed {
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    min-height: var(--rail-button);
+    padding: 0 0.5rem;
+    border: 1px solid var(--sl-color-neutral-300);
+    border-radius: var(--sl-border-radius-medium);
+    background: var(--sl-color-neutral-0);
+    color: var(--sl-color-neutral-900);
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-font-size-medium);
+  }
+
+  /* Sent. It keeps its size whatever the width, because it is the one thing
+     on this pane a thumb has to hit. */
+  button {
+    flex: none;
+    box-sizing: border-box;
+    min-width: var(--rail-button);
+    min-height: var(--rail-button);
+    padding: 0 1rem;
+    border: none;
+    border-radius: var(--sl-border-radius-medium);
+    background: var(--sl-color-primary-600);
+    color: var(--sl-color-neutral-0);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-medium);
+    cursor: pointer;
   }
 `;
