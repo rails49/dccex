@@ -14,7 +14,7 @@ the machine the gate runs on is a node and nothing else. A node that is not
 there is red rather than skipped (`scripts/check.sh`).
 
 It is why this and the decoder are written as JavaScript with their types in
-JSDoc: they are two of the four the gate runs, because they are what decides
+JSDoc: they are two of the five the gate runs, because they are what decides
 what a person reads and what reaches the station. `tsc` checks them as
 strictly as the rest (`ui/tsconfig.json`).
 

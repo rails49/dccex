@@ -13,7 +13,7 @@
  * socket, no clock and no DOM: the page hands in its own clock, which is what
  * lets the whole of it be asserted — including what the page shows fifteen
  * seconds from now — on a machine with nothing plugged in
- * (`tests/ui/test_readings.py`). It is one of the four modules of the page
+ * (`tests/ui/test_readings.py`). It is one of the five modules of the page
  * written as JavaScript with its types in JSDoc, for the reason the decoder
  * and the box's own rule are: the gate is Python with a bare node in it, and
  * what a page shows an operator asserted against the source that would produce
