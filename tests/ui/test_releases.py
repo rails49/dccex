@@ -20,24 +20,41 @@ an operator reads is worth nothing asserted against the source that would
 produce it. The scenarios go through the real function under `node`, by way of
 `tests/ui/releases.mjs`.
 
-What the page draws these rows as is not here: the row under the tiles is its
-own step, and what can be held of a Lit component in a Python gate is held
-against its source when it lands.
+What cannot be run here is Lit. The gate is Python with a bare node in it and
+no packages, so nothing in it can mount a component and read the DOM back: the
+words are asserted here and the drawing of them is held against the
+component's source below, which is the cost `tests/ui/test_look.py` already
+names.
 """
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from tests.ui.test_look import UI
+from tests.ui.test_look import HEX, UI
+from tests.ui.test_monitor import rule
+from tests.ui.test_stream import NAMED, code, quoted
 
 #: The listing, and the module it is the whole of.
 RELEASES = UI / "src" / "releases.js"
 
 #: What puts a scenario through it.
 RUNNER = Path(__file__).resolve().parent / "releases.mjs"
+
+#: The row under the tiles.
+LIST = UI / "src" / "ui" / "dccex-releases.ts"
+
+#: What it is drawn with.
+STYLES = UI / "src" / "ui" / "dccex-releases.styles.ts"
+
+#: The page that hands it the releases and the build.
+APP = UI / "src" / "ui" / "dccex-app.ts"
+
+#: Where the page asks the mirror about the mirror.
+FACE = UI / "src" / "face.ts"
 
 NEWEST = {
     "tag": "v5.6.4-rails49.1",
@@ -207,3 +224,149 @@ def test_a_list_with_releases_on_it_says_nothing_instead() -> None:
     """The sentence is what stands in for the rows and not a caption over
     them."""
     assert listed(carried=CARRIED)["says"] == ""
+
+
+# -- what the page draws ------------------------------------------------------
+
+
+def test_the_row_draws_the_listing_the_page_hands_it() -> None:
+    """The ordering, the dates and the mark are the module's — a pure function
+    of what the face answered and what the station said — and the drawing is
+    this component's, as the tiles' is (`tests/ui/test_tiles.py`)."""
+    drawn = LIST.read_text()
+    assert 'from "../releases.js"' in drawn, "the row works the listing out itself"
+    assert "listing(this.carried, this.build)" in drawn
+    app = APP.read_text()
+    assert "<dccex-releases" in app
+    assert ".carried=${this.carried}" in app
+    assert ".build=${this.readings.build}" in app
+
+
+def test_the_row_says_which_release_is_on_the_station_in_the_module_s_words() -> None:
+    """The two sentences a row can carry are the listing module's, so that
+    what an operator reads is asserted by running it rather than by reading
+    the component (`tests/ui/test_readings.py`)."""
+    drawn = code(LIST.read_text())
+    assert "ON_STATION" in drawn and "NO_FIRMWARE" in drawn
+    for sentence in says().values():
+        assert sentence not in drawn, f"the row writes {sentence!r} out a second time"
+
+
+def test_the_row_is_under_the_tiles_and_over_the_monitor() -> None:
+    """Under the **build** it is compared against and over the conversation it
+    is not part of (docs/ui/README.md)."""
+    app = APP.read_text()
+    assert 'import "./dccex-releases.js";' in app
+    assert app.index("<dccex-tiles") < app.index("<dccex-releases")
+    assert app.index("<dccex-releases") < app.index("<dccex-monitor")
+    assert 'customElements.define("dccex-releases"' in LIST.read_text()
+
+
+def test_the_list_is_collapsed_under_the_tiles() -> None:
+    """A row that opens, so that the station's particulars and its
+    conversation are what the page is when nobody has asked about firmware
+    (docs/ui/README.md)."""
+    drawn = LIST.read_text()
+    assert "<details" in drawn and "<summary" in drawn
+
+
+def test_the_row_flashes_nothing_and_commands_nothing() -> None:
+    """Nothing is flashed yet (#8). Choosing a release runs a sequence the
+    operator is asked through first, and that is its own ticket's; what may
+    not exist before it is a control on this row that writes a station
+    (ADR-0006)."""
+    drawn = code(LIST.read_text())
+    for pressed in ("<button", "@click", "<form", "@submit", "<input"):
+        assert pressed not in drawn, f"the row carries a {pressed}"
+    for asked in ("/flash", "POST", "face.js"):
+        assert asked not in drawn, f"the row asks the face to {asked}"
+
+
+def test_the_row_works_no_reading_out_of_its_own() -> None:
+    """No clock, no socket and no protocol in a component that has a DOM in
+    reach: what it shows is a pure function of what the page knows, which is
+    what lets every row of it be asserted as a pair (ADR-0009 d.1)."""
+    drawn = code(LIST.read_text())
+    for held in ("Date", "setInterval", "fetch(", "WebSocket", "decoder.js"):
+        assert held not in drawn, f"the row reaches {held}"
+
+
+def test_the_rows_wrap_at_the_width_of_a_phone() -> None:
+    """The phone at the layout is where this is read, and a tag is long: the
+    date and what is said of a release go under the tag rather than off the
+    side of the screen (docs/ui/README.md)."""
+    release = rule(STYLES.read_text(), ".release")
+    assert "flex-wrap: wrap;" in release, "a release row runs off the side"
+
+
+def test_the_row_is_the_work_pane_s_and_not_the_chrome_s() -> None:
+    """The chrome's four values say *this is the same project* across rails49's
+    UIs and stay on the chrome; a pane follows the system's theme, which is
+    Shoelace's tokens (LOOK.md)."""
+    styles = STYLES.read_text()
+    assert not HEX.findall(styles), "the row writes a colour out"
+    asked = set(re.findall(r"var\((--[a-z0-9-]+)\)", styles))
+    borrowed = {token for token in asked if not token.startswith("--sl-")}
+    assert borrowed == set(), f"the row takes the chrome's {borrowed}"
+
+
+# -- what the browser asks ----------------------------------------------------
+
+
+def test_the_page_asks_its_own_face_and_no_release_api() -> None:
+    """A UI talks to the bus, the store and its own app's face, and nothing
+    else (ADR-0002). The releases are read by the app from its configured
+    source and handed on; the browser reaches the release API on no path
+    (#8)."""
+    asking = FACE.read_text()
+    assert "RELEASES_PATH = `${FACE}/releases`" in asking
+    assert "releases()" in APP.read_text(), "the page never asks the face"
+    for name, module in {
+        RELEASES.name: RELEASES.read_text(),
+        FACE.name: asking,
+        LIST.name: LIST.read_text(),
+    }.items():
+        for literal in quoted(module):
+            assert not NAMED.search(literal), f"{name} names {literal}"
+
+
+def test_the_source_cannot_be_named_by_the_page() -> None:
+    """Where releases are read from is a flag on the app (ADR-0042,
+    `firmware.py`). The page asks one path with nothing on it: a query the
+    face would drop is still a page that thought it could choose, and this
+    holds that nothing here ever grows one."""
+    asking = FACE.read_text()
+    fetching = code(asking)[code(asking).index("export async function releases(") :]
+    assert "fetch(RELEASES_PATH)" in fetching, "the page builds the address it asks"
+    for literal in quoted(asking):
+        assert "?" not in literal, f"the page asks with a query: {literal}"
+    for named in ("source", "repo", "github"):
+        assert named not in code(asking).lower(), f"the page names a {named}"
+
+
+def test_a_face_that_did_not_answer_reads_as_nothing_said() -> None:
+    """A face that is away, a status that is not a 200, an answer that is not
+    a list of releases: `null`, and the row says the releases could not be
+    read rather than that there are none (ADR-0009 d.2)."""
+    asking = code(FACE.read_text())
+    fetching = asking[asking.index("export async function releases(") :]
+    assert "Promise<Carried[] | null>" in asking, "a face that is away raises"
+    assert "} catch {" in fetching, "a face that is away takes the page with it"
+    assert fetching.count("return null;") >= 2
+
+
+def test_the_releases_are_asked_for_once_and_not_on_the_poll() -> None:
+    """The station is polled every few seconds because its readings change
+    under the eye; the source is somebody else's service and what it carries
+    changes when somebody publishes. A page that asked it on the poll would
+    spend a rate limit on an answer that is the same all evening, and what
+    does change — which release is on the station — arrives on the banner
+    (ADR-0010 d.1, ADR-0008 d.3).
+    """
+    page = code(APP.read_text())
+    asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
+    assert "releases()" not in asking, "the page asks the source on every poll"
+    opening = page[
+        page.index("override connectedCallback(") : page.index("#ask(): void")
+    ]
+    assert "#list()" in opening, "the page never asks for the releases"

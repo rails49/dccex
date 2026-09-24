@@ -102,11 +102,21 @@ def test_a_face_that_did_not_answer_says_nothing_rather_than_nobody() -> None:
     """A face that is away, a status that is not a 200, an answer that is not
     a count: `null`, and the tile blanks. Drawing `0` for an app the page
     could not ask would be reporting an empty port nobody saw (ADR-0009
-    d.2)."""
+    d.2).
+
+    Read over the count alone. The other thing asked of the face answers the
+    same way for the same reason and is held where it is drawn
+    (`tests/ui/test_releases.py`).
+    """
     asking = FACE.read_text()
+    counting = asking[
+        asking.index("export async function clients(") : asking.index(
+            "export const RELEASES_PATH"
+        )
+    ]
     assert "Promise<number | null>" in asking
-    assert asking.count("return null;") == 3, "a way of not knowing reads as a count"
-    assert "} catch {" in asking, "a face that is away takes the page with it"
+    assert counting.count("return null;") == 3, "a way of not knowing reads as a count"
+    assert "} catch {" in counting, "a face that is away takes the page with it"
 
 
 def test_nothing_on_the_page_commands_track_power() -> None:
