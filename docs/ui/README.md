@@ -274,6 +274,24 @@ It is named by the commit it was built from like everything else here, as
 `dccex-ui:<commit>`; it is a second image rather than the mirror's, which shares
 a lock file and an esptool pin with the translator and neither with a page.
 
+**Both bases are pinned by digest, and the tag is kept in front of it.** A tag
+is republished, so `node:22-alpine` and `nginx:alpine` are whatever was pushed
+under those names this morning: two builds of one commit a month apart are two
+different images, and
+[ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)
+d.7's rebuild of an older commit would not reproduce what shipped (#59). Each
+`FROM` carries a digest with its tag in front of it, so what a commit was built
+against is recorded in this repository at that commit and a rebuild resolves
+the same two images. What a pin costs is that a base takes no security update
+of its own until somebody moves it, and `deploy/ui.Dockerfile` is where the
+procedure is written, beside the pins it is about: `docker buildx imagetools
+inspect <tag>` on a machine that can reach a registry, and the digest it prints
+goes into the file — a commit here like any other change to what the image is.
+The gate has no registry and resolves nothing, so `tests/deploy/test_stack.py`
+holds the shape rather than the values: neither line may name something that
+can move. The mirror's image is still on tags and says so
+(`deploy/Dockerfile`).
+
 **And it carries that commit as well as being named by it.** The build takes it
 as an argument and writes it on the image as
 `org.opencontainers.image.revision`, so a `docker inspect` on the box says what
