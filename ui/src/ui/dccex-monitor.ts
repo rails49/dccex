@@ -26,6 +26,13 @@
  * and the tiles read the same bytes (ADR-0008 d.2), and a monitor that owned
  * the stream would be the one pane of the page the rest had to ask.
  *
+ * **Every row is keyed** (#74). The page keeps the last two thousand lines and
+ * drops the oldest, so at capacity every arriving line shifts the whole
+ * conversation up by one — and an unkeyed list, which Lit matches by position,
+ * re-commits every binding on all two thousand rows for it. Keyed, the shift
+ * moves the rows it already drew. The key is the page's to assign, because the
+ * page is what keeps the conversation (`Keyed`, `dccex-app.ts`).
+ *
  * The pause and the clear are the page's under their own tickets.
  *
  * **The view follows the newest line while the reader is at the bottom and
@@ -35,6 +42,7 @@
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
 import { type Said } from "../stream.js";
@@ -55,6 +63,23 @@ const SENT_MARK = "»";
 /** What the box says before anything is typed into it. The shortest whole
  *  message there is, which is also the one an operator types most. */
 const PLACEHOLDER = "<s>";
+
+/** A line as the page hands it down: what arrived, and the key the page gave
+ *  it when it kept it.
+ *
+ *  The key is what the row is drawn under, so that a line falling off the
+ *  front of the conversation moves the rows above it rather than re-committing
+ *  every binding on all of them. Nothing the line carries would do: a line and
+ *  the millisecond it arrived in are both ordinary to see twice on a serial
+ *  port, and two rows keyed the same are one row.
+ *
+ *  It is the page's to assign, because the page is what keeps the conversation
+ *  (`dccex-app.ts`). */
+export interface Keyed extends Said {
+  /** What this line is keyed by: assigned once when it was kept, never reused,
+   *  and read for nothing else. */
+  readonly key: number;
+}
 
 /** Whether the reader is at the bottom of `scroller`. */
 export function atBottom(scroller: Element): boolean {
@@ -92,7 +117,7 @@ export class DccexMonitor extends LitElement {
   };
 
   /** The conversation to draw, oldest first, as the page hands it down. */
-  said: Said[] = [];
+  said: Keyed[] = [];
 
   /** What sends a typed command, as the page hands it down: the message that
    *  went back, or `null` where nothing did.
@@ -111,19 +136,23 @@ export class DccexMonitor extends LitElement {
       <div class="lines">
         ${this.said.length === 0
           ? html`<div class="quiet">nothing said yet</div>`
-          : this.said.map((said: Said) => {
-              const read = gloss(said.line);
-              return html`
-                <div class=${said.sent ? "line sent" : "line"}>
-                  <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
-                  <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
-                  <span class="said">${said.line}</span>
-                  ${read === null
-                    ? nothing
-                    : html`<span class="gloss">${read}</span>`}
-                </div>
-              `;
-            })}
+          : repeat(
+              this.said,
+              (said: Keyed) => said.key,
+              (said: Keyed) => {
+                const read = gloss(said.line);
+                return html`
+                  <div class=${said.sent ? "line sent" : "line"}>
+                    <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
+                    <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
+                    <span class="said">${said.line}</span>
+                    ${read === null
+                      ? nothing
+                      : html`<span class="gloss">${read}</span>`}
+                  </div>
+                `;
+              },
+            )}
       </div>
       <form class="box" @submit=${this.#send}>
         <input
