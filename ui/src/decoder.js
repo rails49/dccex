@@ -1,11 +1,18 @@
 /**
- * The decoder: one line of the station's conversation in, one **gloss** out or
- * nothing.
+ * The decoder: one line of the station's conversation in, what the page makes
+ * of it out, or nothing.
+ *
+ * What it makes of a line is two things and they are one reading: the **gloss**
+ * the monitor puts beside the bytes, and the fact the band and the tiles are
+ * built out of — the rails hot, the **build** on the station, the milliamps on
+ * a track. Both come off the same line and the same regular expression, so the
+ * page cannot show a sentence it has not made a reading of or a reading it
+ * cannot say (ADR-0008 d.2).
  *
  * A pure function of the line and nothing else (ADR-0009 d.1) — no socket, no
  * state carried between calls, no clock and no DOM — so what it makes of a
- * line is the same for ever and is asserted as a pair of strings on a machine
- * with nothing plugged in (`tests/ui/test_decoder.py`).
+ * line is the same for ever and is asserted as that line and that reading on a
+ * machine with nothing plugged in (`tests/ui/test_decoder.py`).
  *
  * **Silence rather than a guess.** A line this does not recognise whole gets
  * nothing back and the monitor shows it raw. There is no partial gloss and no
@@ -30,21 +37,47 @@ const OPEN = "<";
 const CLOSE = ">";
 
 /**
+ * What the page makes of one line: the sentence a reader is shown, and
+ * whatever fact the line carried.
+ *
+ * A line says at most one of them. Most say none — a turnout thrown is a
+ * sentence and no reading, because nothing on this page is about a railroad
+ * (ADR-0008) — and a field that is not on the line is not on the reading,
+ * rather than being a zero somebody could draw.
+ *
+ * @typedef {object} Reading
+ * @property {string} say the plain sentence the monitor shows beside the bytes
+ * @property {boolean} [hot] whether the rails have power
+ * @property {string} [build] what the station says it is running
+ * @property {number} [milliamps] the current on a track
+ */
+
+/**
  * Track power, on or off: `<p0>`, `<p1>`, and either with the track it is
  * about — `<p1 MAIN>`.
  *
+ * It is the **band**'s second reading: whether the rails are hot. A line about
+ * one named track says it of the rails all the same — this page has no track
+ * row and no railroad to hang one on, and what the station last said about
+ * power is the whole of what it knows (ADR-0008).
+ *
  * @param {string} rest what follows the `p`
- * @returns {string | null}
+ * @returns {Reading | null}
  */
 function power(rest) {
   const said = /^([01])(?: ([A-Z]+))?$/.exec(rest);
   if (said === null) {
     return null;
   }
-  const state = said[1] === "1" ? "on" : "off";
-  return said[2] === undefined
-    ? `track power is ${state}`
-    : `${said[2]} track power is ${state}`;
+  const hot = said[1] === "1";
+  const state = hot ? "on" : "off";
+  return {
+    say:
+      said[2] === undefined
+        ? `track power is ${state}`
+        : `${said[2]} track power is ${state}`,
+    hot,
+  };
 }
 
 /**
@@ -55,14 +88,15 @@ function power(rest) {
  * railroad (docs/ui/README.md) — so the number is what there is to say.
  *
  * @param {string} rest what follows the `H`
- * @returns {string | null}
+ * @returns {Reading | null}
  */
 function turnout(rest) {
   const said = /^(\d+) ([01])$/.exec(rest);
   if (said === null) {
     return null;
   }
-  return `turnout ${said[1]} is ${said[2] === "1" ? "thrown" : "closed"}`;
+  const how = said[2] === "1" ? "thrown" : "closed";
+  return { say: `turnout ${said[1]} is ${how}` };
 }
 
 /**
@@ -76,17 +110,19 @@ function turnout(rest) {
  * worth a sentence.
  *
  * @param {string} rest what follows the `i`
- * @returns {string | null}
+ * @returns {Reading | null}
  */
 function banner(rest) {
   const said = /^DCC-EX V-(\S+) \/ (\S+) \/ \S+ G-(\S+)$/.exec(rest);
   if (said === null) {
     return null;
   }
-  return (
-    `the station came up running DCC-EX ${said[1]} on ${said[2]}, ` +
-    `build ${said[3]}`
-  );
+  return {
+    say:
+      `the station came up running DCC-EX ${said[1]} on ${said[2]}, ` +
+      `build ${said[3]}`,
+    build: said[3],
+  };
 }
 
 /**
@@ -97,14 +133,17 @@ function banner(rest) {
  * reading nobody took.
  *
  * @param {string} rest what follows the `c`
- * @returns {string | null}
+ * @returns {Reading | null}
  */
 function current(rest) {
   const said = /^Current(\S+) (-?\d+) C Milli(?: -?\d+)+$/.exec(rest);
   if (said === null) {
     return null;
   }
-  return `the ${said[1]} track is drawing ${said[2]} milliamps`;
+  return {
+    say: `the ${said[1]} track is drawing ${said[2]} milliamps`,
+    milliamps: Number(said[2]),
+  };
 }
 
 /**
@@ -114,10 +153,10 @@ function current(rest) {
  * sentence does not either.
  *
  * @param {string} rest what follows the `X`
- * @returns {string | null}
+ * @returns {Reading | null}
  */
 function rejected(rest) {
-  return rest === "" ? "the station rejected that command" : null;
+  return rest === "" ? { say: "the station rejected that command" } : null;
 }
 
 /** What the decoder knows, by the letter the station opens the message with.
@@ -131,13 +170,13 @@ const READS = {
 };
 
 /**
- * What the station said, in one plain sentence, or `null` where the page does
- * not recognise the line.
+ * What the page makes of one line the station said, or `null` where it does
+ * not recognise it.
  *
  * @param {string} line one line of the conversation, as the station said it
- * @returns {string | null} the gloss, or nothing
+ * @returns {Reading | null} the sentence and whatever fact went with it
  */
-export function gloss(line) {
+export function read(line) {
   const said = line.trim();
   if (!said.startsWith(OPEN) || !said.endsWith(CLOSE)) {
     return null;
@@ -151,4 +190,20 @@ export function gloss(line) {
     return null;
   }
   return READS[/** @type {keyof typeof READS} */ (verb)](body.slice(1).trim());
+}
+
+/**
+ * What the station said, in one plain sentence, or `null` where the page does
+ * not recognise the line.
+ *
+ * The half of a reading the monitor draws. It is `read` and nothing else, so
+ * a line cannot be glossed without having been read or read without being
+ * sayable.
+ *
+ * @param {string} line one line of the conversation, as the station said it
+ * @returns {string | null} the gloss, or nothing
+ */
+export function gloss(line) {
+  const reading = read(line);
+  return reading === null ? null : reading.say;
 }
