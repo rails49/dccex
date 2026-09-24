@@ -440,8 +440,9 @@ own, and `tests/ui/test_look.py` asserts the two agree token for token — in
 both directions, so a value that drifted here and a token that arrived over
 there with nothing to spend it on both go red. It also holds that block to
 being the only place a colour is written: a hex in a component stylesheet, in
-`ui/src/page.css` or in the page's own markup is red, because each of those
-paints and none of them is that one place (#60). It reads the copy and the
+a component's own template, in `ui/src/page.css` or in the page's own markup is
+red, because each of those paints and none of them is that one place (#60,
+#85). It reads the copy and the
 files beside it and nothing outside this repository, which is what lets it run
 in this gate rather than somewhere that fetches
 ([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)).

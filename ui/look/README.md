@@ -35,8 +35,11 @@ could take.
 
 A colour written out as a hex is what that rule looks like when it breaks, so
 the check looks for one in every file the page draws with: the component
-stylesheets, the plain ones beside them, and `ui/index.html`, where a `style`
-attribute or a `<style>` block paints as surely as a rule does. The `:root`
+stylesheets, the components themselves, the plain stylesheets beside them, and
+`ui/index.html`, where a `style` attribute or a `<style>` block paints as
+surely as a rule does. The components are in that list because the markup is
+theirs: a `style` attribute on a release row paints the chrome with no
+stylesheet anywhere near it (#85). The `:root`
 block in `look.css` is the exception, being the one place a colour is meant to
 be written; a hex anywhere else in that file is a rule painting past it (#60).
 
