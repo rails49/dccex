@@ -49,6 +49,12 @@ OWNED = re.compile(r"(the organisation's|this repository's)[\s*]+ADR-0002")
 
 CITED = re.compile(r"ADR-0002")
 
+#: A citation as `dccex-app.ts` writes it, and the same citation with the owner
+#: struck off: what a bare one added under `ui/src` looks like, for the scan to
+#: be run over below.
+CITATION = "(the organisation's ADR-0002)"
+STRUCK = "(ADR-0002)"
+
 
 def prose() -> list[Path]:
     """Every file of the source a reader of the code reads, both trees."""
@@ -98,6 +104,27 @@ def test_the_source_cites_adr_0002_at_all() -> None:
         "ui/src/ui/dccex-app.ts",
         "ui/src/ui/dccex-releases.ts",
     }
+
+
+def test_a_bare_citation_under_the_page_is_caught() -> None:
+    """The scan, over a page module with the owner struck off its citation.
+
+    What this holds is the reach and not the pattern: before #86 the check
+    read `src/` alone, so the module below was not among the files it reads
+    and the first assertion is the one that would have failed.
+
+    The strike goes on the text the scan read rather than on the file, so a
+    run that dies leaves the tree as it found it. That there was a citation to
+    strike is asserted first — prose that moved would otherwise leave this
+    passing on a substitution that never happened.
+    """
+    page = ROOT / "ui" / "src" / "ui" / "dccex-app.ts"
+    assert page in prose(), f"{page.name} is not read"
+    written = page.read_text()
+    assert CITATION in written, f"no {CITATION} in the module to strike"
+    loose = cited(written.replace(CITATION, STRUCK, 1))
+    assert len(loose) == 1, f"the struck citation was not caught: {loose}"
+    assert loose[0].endswith("what the page talks to (ADR-0002")
 
 
 def test_the_glossary_resolves_the_organisations_adr_0002() -> None:
