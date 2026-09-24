@@ -13,10 +13,10 @@ function under `node`, by way of `tests/ui/message.mjs`, and what that asks of
 the machine the gate runs on is a node and nothing else. A node that is not
 there is red rather than skipped (`scripts/check.sh`).
 
-It is why this and the decoder are the two modules of the page written as
-JavaScript with their types in JSDoc: they are the two the gate runs, because
-they are what decides what a person reads and what reaches the station. `tsc`
-checks both as strictly as the rest (`ui/tsconfig.json`).
+It is why this and the decoder are written as JavaScript with their types in
+JSDoc: they are two of the four the gate runs, because they are what decides
+what a person reads and what reaches the station. `tsc` checks them as
+strictly as the rest (`ui/tsconfig.json`).
 
 **Sending is exercised without a command station attached** twice over. Here,
 as the page's own rule; and at the other end, where a page on the stream types
