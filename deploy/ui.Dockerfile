@@ -19,8 +19,35 @@
 # `deploy/`. `.dockerignore` keeps `node_modules` and a previous `dist` out of
 # it: a host's binaries are not this image's, and a build that copied them in
 # would serve whatever was last built on somebody's laptop.
+#
+# **Both bases are pinned by digest, with the tag kept in front of it.** A tag
+# is republished: `node:22-alpine` is whatever was pushed under that name this
+# morning, so two builds of this commit a month apart are two different images
+# and ADR-0005 d.1 — one commit, one image, one name — holds for the name and
+# not for what is under it. A digest names one build of one base and cannot be
+# moved, so d.7's path for rebuilding an older commit resolves the bases that
+# commit was written against rather than today's. The tag stays because a
+# digest says nothing to a reader about what the image is (#59).
+#
+# What a pin costs is the other half of that, and it is why the digests are
+# written down here rather than resolved when the image is built: **a pinned
+# base does not pick up its own security updates.** It picks them up when
+# somebody moves the pin, and moving it is a commit of this repository like
+# any other change to what the image is — reviewed, named by the commit it
+# ships under, and gone back on by d.7 like anything else.
+#
+# To move one, on a machine that can reach a registry:
+#
+#     docker buildx imagetools inspect node:22-alpine
+#
+# and the `Digest:` it prints replaces the one below, the tag left as it is.
+# The two here are what those tags pointed at on 2026-09-24. Nothing resolves
+# them from inside the gate: that needs a registry, and a digest that cannot
+# be checked from where it is written is a digest nobody has seen. What the
+# gate holds is the shape — `tests/deploy/test_stack.py` reads both lines back
+# and asks that neither names something that can move.
 
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS build
 
 WORKDIR /ui
 
@@ -51,7 +78,7 @@ COPY ui/ ./
 # it.
 RUN pnpm run build
 
-FROM nginx:alpine
+FROM nginx:alpine@sha256:1ed1b0e1d7652937d6cbdaf4018c7b6fc009a7dd6c3047351e2eddda745de43f
 
 # What the compose project names the image after, on the image itself
 # (ADR-0005 d.4). A `docker inspect` on the box then answers what a container
