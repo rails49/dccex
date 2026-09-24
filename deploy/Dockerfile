@@ -75,9 +75,17 @@ RUN uv sync --frozen --no-dev --no-editable
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 
 # What the deploy names the image after, recorded on the image itself
-# (ADR-0005 d.4). `dev` is what a clone that has not been told a commit builds
-# under, so `up --build` works with nothing set.
-ARG DCCEX_COMMIT=dev
+# (ADR-0005 d.4).
+#
+# **The default is empty, and not `dev`.** `dev` is what a clone that has not
+# been told a commit builds *under*, and a name is where it belongs; in a
+# field that means the commit this was built from it is a commit reference
+# that is none. ADR-0005 d.4's amendment is the argument, and `ui.Dockerfile`
+# says the same of the page's image, so neither is repeated here.
+# `compose.box.yaml` passes `${DCCEX_COMMIT:-}` — the same variable the name
+# is built from, so the name and the label cannot disagree — and `up --build`
+# still works with nothing set.
+ARG DCCEX_COMMIT=
 LABEL org.opencontainers.image.revision=$DCCEX_COMMIT
 LABEL org.opencontainers.image.source=https://github.com/rails49/dccex
 

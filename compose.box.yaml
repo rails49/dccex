@@ -52,7 +52,15 @@ services:
       context: .
       dockerfile: deploy/Dockerfile
       args:
-        DCCEX_COMMIT: ${DCCEX_COMMIT:-dev}
+        # The commit, to the build and not only to the name: the image carries
+        # it as `org.opencontainers.image.revision`, so a `docker inspect` on
+        # the box answers what a container was built from even for an image
+        # somebody renamed (ADR-0005 d.4). The same variable the name below is
+        # built from, so the two can never disagree — with no fallback here,
+        # because `dev` belongs in the name and a revision that reads like a
+        # commit and is not one is worse than an empty one (#97,
+        # `deploy/Dockerfile`, and the page's since #57).
+        DCCEX_COMMIT: ${DCCEX_COMMIT:-}
     # Named by the commit it was built from, and the name never moves
     # (ADR-0005 d.1). One variable names both this image and the page's,
     # because the two are two images of one commit and the commit is the one
