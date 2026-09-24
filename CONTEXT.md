@@ -272,11 +272,11 @@ followed from a page written beforehand
 ([docs/cutover.md](docs/cutover.md), #16), and what ends it is a person
 accepting the railroad rather than a command returning.
 
-A **deploy** is the other thing and happens whenever somebody merges: one image
-of this repository replaced by another of its own, nobody watching a train, and
-one step back kept by the deploy's own rule (ADR-0005). Going back on a cutover
-is not that rollback — it puts `control`'s mirror back, named by a digest,
-because that image has no name that says what it is.
+A **deploy** is the other thing and happens whenever somebody merges: both
+images of this repository replaced by others of its own, nobody watching a
+train, and one step back kept by the deploy's own rule (ADR-0005). Going back
+on a cutover is not that rollback — it puts `control`'s mirror back, named by
+a digest, because that image has no name that says what it is.
 
 **Not:** *migration*, *the switch*, *the swap* (the swap is one step of a
 cutover, the container coming off and this one going on), *the window* (the
