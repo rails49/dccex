@@ -29,12 +29,15 @@ export const appStyles = css`
     grid-area: rail;
   }
 
-  /* Where everything the page is about goes. What is in it is the monitor,
-     which takes the whole of it and scrolls its own lines; the tiles and the
-     releases arrive above it under their own tickets, and it is the pane that
-     scrolls once there is more in it than fits. */
+  /* Where everything the page is about goes: the tiles across the top and the
+     monitor under them, which takes the rest of it and scrolls its own lines.
+     The releases arrive between them under their own ticket, and it is the
+     pane that scrolls once there is more in it than fits. */
   .work {
+    display: grid;
     grid-area: work;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
     overflow: auto;
     background: var(--sl-color-neutral-0);
   }

@@ -8,10 +8,11 @@
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
- * The work pane is the **monitor** — the station's conversation as it arrives
- * (#4, #6). What the page around it proves is the installation the rest of the
- * UI rests on: it is built by node inside the image, served by nginx out of it,
- * and draws in the look rules (docs/ui/README.md, ADR-0008).
+ * The work pane is the **tile**s and the **monitor** under them: the station's
+ * particulars, and its conversation as it arrives (#4, #6, #7). What the page
+ * around them proves is the installation the rest of the UI rests on: it is
+ * built by node inside the image, served by nginx out of it, and draws in the
+ * look rules (docs/ui/README.md, ADR-0008).
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
@@ -45,6 +46,7 @@ import { appStyles } from "./dccex-app.styles.js";
 import "./dccex-band.js";
 import "./dccex-monitor.js";
 import "./dccex-rail.js";
+import "./dccex-tiles.js";
 
 /** How many lines the page keeps.
  *
@@ -153,6 +155,7 @@ export class DccexApp extends LitElement {
       <dccex-band .readings=${this.readings}></dccex-band>
       <dccex-rail></dccex-rail>
       <div class="work">
+        <dccex-tiles .readings=${this.readings}></dccex-tiles>
         <dccex-monitor
           .said=${this.said}
           .sends=${this.#sends}
