@@ -22,8 +22,9 @@ What that costs is a node on the machine the gate runs on, and no more than
 that: no packages are installed, nothing is bundled and nothing is fetched.
 It is why the decoder is written as JavaScript with its types in JSDoc rather
 than as TypeScript — `tsc` still checks it (`ui/tsconfig.json`), and a bare
-node can still run it. What the box at the foot sends is the other module
-written that way, for the same reason (`tests/ui/test_message.py`).
+node can still run it. What the box at the foot sends and what the band and
+the tiles read are the other two modules written that way, for the same reason
+(`tests/ui/test_message.py`, `tests/ui/test_readings.py`).
 
 A node that is not there is red rather than skipped, as everything else the
 gate needs is: a check that skips itself leaves a required gate green while
@@ -269,10 +270,11 @@ def test_the_decoder_is_the_one_place_a_line_is_read() -> None:
     """One place the protocol is known (ADR-0009 d.3), and it is not on the way
     in: the stream carries bytes and reads none of them (ADR-0008 d.2).
 
-    Both languages are read, because a module that asked for a reading would
-    as readily be one of the two the gate runs under a bare node as one of the
-    page's TypeScript: a rule over "every module" that looked at one language
-    would stop holding the day a module changed it.
+    Two modules ask it, and neither of them knows a letter of the station's
+    vocabulary. The monitor asks for the sentence it draws beside the bytes,
+    and `readings.js` asks for the fact and folds it into what the band and
+    the tiles show (#7) — which is what keeps the vocabulary in one file when
+    the page grew a second thing to do with it.
     """
     importers = {
         module.name
@@ -281,4 +283,7 @@ def test_the_decoder_is_the_one_place_a_line_is_read() -> None:
         if f'from "{"../" if module.parent.name == "ui" else "./"}decoder.js"'
         in module.read_text()
     }
-    assert importers == {"dccex-monitor.ts"}, f"the decoder is read in {importers}"
+    assert importers == {
+        "dccex-monitor.ts",
+        "readings.js",
+    }, f"the decoder is read in {importers}"
