@@ -25,7 +25,7 @@ import contextlib
 import hashlib
 import json
 import urllib.error
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 from email.message import Message
 from pathlib import Path
 
@@ -33,6 +33,7 @@ import pytest
 
 from dccex_usb.firmware import (
     ASSET,
+    LATEST,
     Asset,
     Flasher,
     Ran,
@@ -52,6 +53,10 @@ DEVICE = "/dev/dccex"
 BINARY = b"the build the railroad asked for"
 DIGEST = f"sha256:{hashlib.sha256(BINARY).hexdigest()}"
 DOWNLOAD = "https://releases.example.invalid/firmware.bin"
+NOWHERE = "example.invalid"
+"""The host the configured source and the firmware it publishes are both at.
+A sentence that spelled either of them — whole, or by the host on its own —
+carries this, so one assertion catches the lot (#94)."""
 TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 
@@ -684,6 +689,121 @@ def test_latest_is_not_a_build() -> None:
         assert wrote.refusal is Refusal.LATEST
         assert flash.refusals == [wrote.said]
         assert flash.fetch.asked == []
+
+    asyncio.run(scenario())
+
+
+TURNED_DOWN = [
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=answered(404))),
+        TAG,
+        id="the source carries no such release",
+    ),
+    pytest.param(
+        lambda: Flash(
+            fetch=FakeFetch(
+                document=urllib.error.URLError(ConnectionRefusedError("refused"))
+            )
+        ),
+        TAG,
+        id="the source could not be reached",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=answered(500, "Internal Server Error"))),
+        TAG,
+        id="the source answered a status of its own",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=b"<html>not a release</html>")),
+        TAG,
+        id="the source answered something that is not JSON",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=b"[]")),
+        TAG,
+        id="the source answered something that is not a release",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=release(name="other.bin"))),
+        TAG,
+        id="the release carries no firmware",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(document=release(digest=None))),
+        TAG,
+        id="the release reports no digest for it",
+    ),
+    pytest.param(
+        lambda: Flash(
+            fetch=FakeFetch(binary=urllib.error.URLError(ConnectionResetError("reset")))
+        ),
+        TAG,
+        id="the firmware could not be fetched",
+    ),
+    pytest.param(
+        lambda: Flash(fetch=FakeFetch(binary=b"a different build")),
+        TAG,
+        id="the firmware is not what the release published",
+    ),
+    pytest.param(
+        lambda: Flash(device=FakeDevice(held=False)),
+        TAG,
+        id="the command station is not there",
+    ),
+    pytest.param(lambda: Flash(), LATEST, id="latest"),
+    pytest.param(
+        lambda: Flash(runner=FakeRunner(Ran(2, "A fatal error occurred"))),
+        TAG,
+        id="esptool exited non-zero",
+    ),
+    pytest.param(
+        lambda: Flash(runner=FakeRunner(Ran(None, ""))),
+        TAG,
+        id="esptool was killed",
+    ),
+]
+"""Every way a gesture is turned down, each as the flasher the face holds
+would turn it down. `IN_FLIGHT` and `RAISED` are the two that need a gesture
+in flight and a runner that raises, and they have tests of their own above;
+neither sentence has a URL to put in one."""
+
+
+@pytest.mark.parametrize(("gesture", "tag"), TURNED_DOWN)
+def test_no_refusal_the_face_can_return_names_where_releases_are_read_from(
+    gesture: Callable[[], Flash], tag: str
+) -> None:
+    """The page shows what the face said word for word (#66), so a sentence
+    spelling the configured source would put it in a browser — and the page
+    promises it names no host, no repository and no query
+    (`ui/src/releases.js`, `docs/ui/README.md`). A refusal says which of the
+    things went wrong and names the tag; where it was read from stays on the
+    box (#94).
+    """
+
+    async def scenario() -> None:
+        flash = gesture()
+
+        wrote = await flash.wants(tag)
+
+        assert wrote.refusal is not None, "the gesture was not refused"
+        assert NOWHERE not in wrote.said, f"the source is in {wrote.said!r}"
+
+    asyncio.run(scenario())
+
+
+def test_the_box_is_told_where_the_releases_were_read_from() -> None:
+    """The source is out of the answer and not gone: the line the box keeps
+    names it, so whoever is fixing a source that is away reads the URL where
+    they already are (#94)."""
+
+    async def scenario() -> None:
+        away = urllib.error.URLError(ConnectionRefusedError("Connection refused"))
+        flash = Flash(fetch=FakeFetch(document=away))
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is Refusal.SOURCE_AWAY
+        assert f"flashing '{TAG}' from {RELEASES}" in flash.log.lines
 
     asyncio.run(scenario())
 
