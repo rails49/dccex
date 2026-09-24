@@ -238,10 +238,14 @@ grace ([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirr
 
 The look rules are the organisation's, in LOOK.md, and their values arrive here
 as a verbatim copy at a fixed path with the commit it was taken at recorded
-beside it: `ui/look/tokens.css`, pinned to c91e9be, with
-[`ui/look/README.md`](../../ui/look/README.md) saying where it came from —
-`control`'s `ui/look/README.md` is the shape that follows. The copy is inert:
-nothing imports it, no build reads it and the page does not link it.
+beside it: `ui/look/tokens.css`, with
+[`ui/look/README.md`](../../ui/look/README.md) saying where it came from and at
+which commit. That page is the one place the commit is written and this one
+does not restate it: the "Taking a change" procedure there is the whole of
+refreshing the copy, and a second pin it never mentions would be a line going
+stale where no check can see it (#62). `control`'s `ui/look/README.md` is the
+shape that follows. The copy is inert: nothing imports it, no build reads it
+and the page does not link it.
 
 What the page draws with is `ui/src/look.css`, a `:root` block of this UI's
 own, and `tests/ui/test_look.py` asserts the two agree token for token — in
