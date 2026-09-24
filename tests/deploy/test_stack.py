@@ -12,8 +12,9 @@ The claims are the ones a box would otherwise discover: that the project is
 pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
-face's port is on nothing, and that the deploy names the image after the
-commit and writes down what it replaced.
+face's port is on nothing, that the page's two bases cannot move underneath a
+name that never moves, and that the deploy names the image after the commit
+and writes down what it replaced.
 """
 
 import re
@@ -37,6 +38,10 @@ DOCKERFILE = ROOT / "deploy" / "Dockerfile"
 #: The page's own, which is the second image of a commit (ADR-0005 d.2, as
 #: amended) and is built by the clean clone's half above.
 UI_DOCKERFILE = ROOT / "deploy" / "ui.Dockerfile"
+
+#: A base image as the page's build names one: the readable tag, and beside it
+#: the one build that tag pointed at when the pin was made.
+PINNED = re.compile(r"FROM (\S+:\S+)@sha256:[0-9a-f]{64}(?: AS \w+)?")
 
 DEPLOY = ROOT / "scripts" / "deploy.sh"
 
@@ -231,6 +236,54 @@ def test_the_pages_build_is_handed_the_commit_its_name_is_built_from() -> None:
     )
     assert "LABEL org.opencontainers.image.revision=$DCCEX_COMMIT" in said
     assert "DCCEX_COMMIT: ${DCCEX_COMMIT:-}" in services(BASE)["web"]
+
+
+def test_the_pages_bases_are_pinned_by_digest_with_the_tag_kept_beside_it() -> None:
+    """ADR-0005 d.1 — one commit, one image, one name — is not true of a build
+    whose bases move underneath it, and d.7's rebuild of an older commit does
+    not reproduce what shipped (#59). A digest names one artefact and cannot
+    be republished; the tag is kept beside it because a digest says nothing to
+    a reader about what the image is.
+
+    What the built image then contains is `tests/ui/test_page_serves.py`'s,
+    which runs it. This is the claim a machine with no daemon can be held to:
+    that neither `FROM` line names something that can move.
+    """
+    froms = [
+        line
+        for line in uncommented(UI_DOCKERFILE.read_text())
+        if line.startswith("FROM ")
+    ]
+    floating = [line for line in froms if PINNED.fullmatch(line) is None]
+    assert floating == [], f"a base that can move under the build: {floating}"
+    pinned = [match.group(1) for line in froms if (match := PINNED.fullmatch(line))]
+    assert pinned == ["node:22-alpine", "nginx:alpine"], (
+        "the page is not built by node and served by nginx any more, or the"
+        " tag a reader reads the pin by is gone"
+    )
+
+
+def test_the_page_says_how_a_pin_is_moved_and_that_moving_it_is_a_commit() -> None:
+    """A pin nobody knows how to move is a base that never takes a security
+    update again, so what it costs and how it is paid are written beside the
+    two lines it is about (#59): the command that resolves a tag to a digest,
+    on a machine that can reach a registry, and that what comes back is
+    committed here rather than resolved during a build.
+
+    The prose only. The pins themselves are the check above, and a sentence
+    about them in a paragraph is not one of them.
+    """
+    prose = "\n".join(
+        line
+        for line in UI_DOCKERFILE.read_text().splitlines()
+        if line.lstrip().startswith("#")
+    )
+    assert (
+        "docker buildx imagetools inspect" in prose
+    ), "the pins do not say what resolves a tag to a digest"
+    assert (
+        "a commit of this repository" in prose
+    ), "the pins do not say that moving one is a commit like any other"
 
 
 def test_the_image_is_built_from_the_lock_file_and_not_from_the_index() -> None:
