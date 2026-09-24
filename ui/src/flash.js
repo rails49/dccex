@@ -79,7 +79,7 @@ export const CUTTING = "cutting track power";
 /** What is said where a step did not leave the page. The stream is the only
  *  way anything reaches the station from here, so a stop that did not go is a
  *  railroad nobody stopped — and nothing is written after one (ADR-0009 d.2). */
-export const UNSENT =
+export const UNSTOPPED =
   "the station's conversation is not open, so the locomotives were not" +
   " stopped and nothing was written";
 
@@ -160,7 +160,7 @@ export async function sequence(tag, hands) {
   ]) {
     hands.shows(step);
     if (hands.sends(typed) === null) {
-      return { flashed: false, says: UNSENT };
+      return { flashed: false, says: UNSTOPPED };
     }
   }
   hands.shows(writing(tag));

@@ -156,8 +156,8 @@ def test_a_sequence_that_stopped_says_so_and_was_not_written() -> None:
     that had not changed (ADR-0009 d.2)."""
     happened = flashed(tag=TAG, sends=0)
 
-    assert happened["wrote"] == {"flashed": False, "says": says()["UNSENT"]}
-    assert "not" in says()["UNSENT"] and "written" in says()["UNSENT"]
+    assert happened["wrote"] == {"flashed": False, "says": says()["UNSTOPPED"]}
+    assert "not" in says()["UNSTOPPED"] and "written" in says()["UNSTOPPED"]
 
 
 @pytest.mark.node
