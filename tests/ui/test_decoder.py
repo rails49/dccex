@@ -156,3 +156,15 @@ def test_the_same_line_reads_the_same_whatever_came_before_it() -> None:
     d.1), so a gloss cannot depend on what the station said a moment ago."""
     twice = (*asked(), *asked())
     assert run(twice) == run(tuple(reversed(twice)))[::-1]
+
+
+def test_the_decoder_is_the_monitor_s_and_nothing_else_reads_a_line() -> None:
+    """One place the protocol is known (ADR-0009 d.3), and it is not on the way
+    in: the stream carries bytes and reads none of them (ADR-0008 d.2)."""
+    importers = {
+        module.name
+        for module in sorted((UI / "src").rglob("*.ts"))
+        if f'from "{"../" if module.parent.name == "ui" else "./"}decoder.js"'
+        in module.read_text()
+    }
+    assert importers == {"dccex-monitor.ts"}, f"the decoder is read in {importers}"
