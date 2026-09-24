@@ -173,6 +173,10 @@ write goes last because it is the step the station does not come back from for a
 minute or two. A step that did not leave the page stops the sequence where it
 is: the stream is the only way anything reaches the station from here, so a stop
 that did not go is a railroad nobody stopped, and nothing is written after one.
+What the operator is told names the step that did not go and is right about the
+one before it: a stop that did not go leaves the railroad untouched, and a cut
+that did not go leaves the locomotives stopped and the power still on, which is
+a railroad nobody should walk up to thinking it is dead (#93).
 
 The control is on the release's own row and only on the releases that carry a
 firmware — a tag the mirror would refuse for having nothing to write is not a
