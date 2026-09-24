@@ -246,9 +246,12 @@ nothing imports it, no build reads it and the page does not link it.
 What the page draws with is `ui/src/look.css`, a `:root` block of this UI's
 own, and `tests/ui/test_look.py` asserts the two agree token for token — in
 both directions, so a value that drifted here and a token that arrived over
-there with nothing to spend it on both go red. It reads the copy and the files
-beside it and nothing outside this repository, which is what lets it run in
-this gate rather than somewhere that fetches
+there with nothing to spend it on both go red. It also holds that block to
+being the only place a colour is written: a hex in a component stylesheet, in
+`ui/src/page.css` or in the page's own markup is red, because each of those
+paints and none of them is that one place (#60). It reads the copy and the
+files beside it and nothing outside this repository, which is what lets it run
+in this gate rather than somewhere that fetches
 ([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)).
 `--rail-turns` is the one value a stylesheet cannot read for itself — a media
 query cannot take a custom property — so it reaches the two sheets that turn as
