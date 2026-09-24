@@ -12,8 +12,9 @@ this issue's criterion names: what a page shows an operator is worth nothing
 asserted against the source that would produce it. The scenarios go through the
 real functions under `node`, by way of `tests/ui/readings.mjs`.
 
-What cannot be run here is Lit. The gate is Python with a bare node in it and
-no packages, so nothing in it can mount a component and read the DOM back:
+What cannot be run here is Lit. The gate is Python and the node beside it is a
+bare one with no packages, so nothing in either can mount a component and read
+the DOM back:
 `control`'s band test renders, and this renders the readings the band draws and
 holds the drawing itself against the component's source
 (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`). The words an operator sees
@@ -28,6 +29,8 @@ import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from tests.ui.test_look import UI
 
@@ -98,6 +101,7 @@ def live() -> dict[str, Any]:
     return drawn(said=list(TALKING), clients=2, now=NOW)
 
 
+@pytest.mark.node
 def test_the_band_carries_two_readings_and_the_tiles_four() -> None:
     """The band is the link and whether the rails are hot, and nothing else
     (CONTEXT.md, **band**); the tiles are the station's four particulars.
@@ -114,6 +118,7 @@ def test_the_band_carries_two_readings_and_the_tiles_four() -> None:
     ]
 
 
+@pytest.mark.node
 def test_the_band_reads_the_link_and_the_rails() -> None:
     """Both of the band's readings, off a station that is saying them."""
     assert band(said=list(TALKING), now=NOW) == {
@@ -122,10 +127,12 @@ def test_the_band_reads_the_link_and_the_rails() -> None:
     }
 
 
+@pytest.mark.node
 def test_the_rails_are_cold_when_the_station_says_the_power_is_off() -> None:
     assert band(said=[("<p0>", NOW - 10)], now=NOW)["rails"] == "cold"
 
 
+@pytest.mark.node
 def test_a_track_named_on_the_line_is_still_the_rails() -> None:
     """`<p1 MAIN>` is the station saying power is on. This page has no track
     row to hang a name on — it is about a command station and not a railroad
@@ -133,6 +140,7 @@ def test_a_track_named_on_the_line_is_still_the_rails() -> None:
     assert band(said=[("<p1 MAIN>", NOW - 10)], now=NOW)["rails"] == "hot"
 
 
+@pytest.mark.node
 def test_the_tiles_read_the_station_s_particulars() -> None:
     """The four of them, off a station that has said its piece and a face that
     has answered how many clients are on the port (ADR-0008 d.2, d.4)."""
@@ -144,6 +152,7 @@ def test_the_tiles_read_the_station_s_particulars() -> None:
     }
 
 
+@pytest.mark.node
 def test_the_last_heard_tile_counts_from_the_last_thing_said() -> None:
     """Anything the station said, not only a line the decoder knows: what the
     tile reads is whether the conversation is alive."""
@@ -151,6 +160,7 @@ def test_the_last_heard_tile_counts_from_the_last_thing_said() -> None:
     assert tiles(said=said, now=NOW)["last heard"] == "4s ago"
 
 
+@pytest.mark.node
 def test_a_line_the_decoder_does_not_know_is_still_the_station_speaking() -> None:
     """This fork answers a subset of DCC-EX's vocabulary and upstream adds to
     it (ADR-0009 d.5). A line the page cannot gloss is a station that is
@@ -159,6 +169,7 @@ def test_a_line_the_decoder_does_not_know_is_still_the_station_speaking() -> Non
     assert band(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW)["link"] == "answering"
 
 
+@pytest.mark.node
 def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     """Before anything has arrived, and with no socket anywhere in it: the
     **link** is the station answering rather than a socket being open
@@ -172,6 +183,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     }
 
 
+@pytest.mark.node
 def test_a_station_that_stops_answering_takes_the_band_and_three_tiles() -> None:
     """The station said all of it and then went quiet past the silence.
 
@@ -195,6 +207,7 @@ def test_a_station_that_stops_answering_takes_the_band_and_three_tiles() -> None
     }
 
 
+@pytest.mark.node
 def test_the_link_holds_for_as_long_as_the_silence_is_allowed() -> None:
     """The boundary itself, both sides of it, so the rule is the number the
     module exports rather than whatever a scenario happened to use."""
@@ -206,6 +219,7 @@ def test_the_link_holds_for_as_long_as_the_silence_is_allowed() -> None:
     assert outside["link"] == "not answering"
 
 
+@pytest.mark.node
 def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
     """A stale pre-flash build is never reported as the one on the board, and
     nothing has to be reloaded to get the new one: the station's banner arrives
@@ -217,6 +231,7 @@ def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
     assert tiles(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
 
 
+@pytest.mark.node
 def test_the_clients_tile_is_the_face_s_and_does_not_blank_with_the_link() -> None:
     """The one reading that is not the station talking (ADR-0008 d.4). A
     station that has gone quiet says nothing about who is on the mirror's
@@ -224,6 +239,7 @@ def test_the_clients_tile_is_the_face_s_and_does_not_blank_with_the_link() -> No
     assert tiles(clients=3, now=NOW)["clients"] == "3"
 
 
+@pytest.mark.node
 def test_nobody_on_the_port_is_a_reading_and_not_a_blank() -> None:
     """Zero is what the face said; blank is the face not having answered. A
     page that drew them the same would hide an app that had stopped talking."""
@@ -231,6 +247,7 @@ def test_nobody_on_the_port_is_a_reading_and_not_a_blank() -> None:
     assert tiles(now=NOW)["clients"] == ""
 
 
+@pytest.mark.node
 def test_a_face_that_did_not_answer_blanks_the_tile_rather_than_reading_zero() -> None:
     """A face that is away, or that answered with something that is not a
     count, says nothing: drawing `0` for an app the page could not ask would
@@ -238,6 +255,7 @@ def test_a_face_that_did_not_answer_blanks_the_tile_rather_than_reading_zero() -
     assert tiles(clients=None, now=NOW)["clients"] == ""
 
 
+@pytest.mark.node
 def test_what_the_station_last_said_is_what_the_readings_read() -> None:
     """Power off after power on is cold, and the second current is the one
     drawn: a reading is the station's latest word and not its first."""
@@ -252,6 +270,7 @@ def test_what_the_station_last_said_is_what_the_readings_read() -> None:
     assert tiles(said=said, now=NOW)["current"] == "0 mA"
 
 
+@pytest.mark.node
 def test_a_reading_the_station_has_not_given_is_blank_and_not_a_zero() -> None:
     """A station that came up and said nothing else has a build and no
     current. Drawing `0 mA` there would be a reading nobody took (ADR-0009
@@ -275,6 +294,7 @@ def test_the_readings_hold_no_clock_and_no_socket() -> None:
         assert held not in source, f"the readings reach {held}"
 
 
+@pytest.mark.node
 def test_the_same_facts_read_the_same_whatever_was_asked_before() -> None:
     """Given the same conversation they draw the same page for ever, so what
     the band says cannot depend on what some other page asked a moment ago."""

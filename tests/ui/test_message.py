@@ -10,12 +10,13 @@ gives and with more at stake: these bytes go down the cable to a command
 station, and a rule about what goes down a cable asserted against the source
 that would produce it is not asserted. So the pairs go through the real
 function under `node`, by way of `tests/ui/message.mjs`, and what that asks of
-the machine the gate runs on is a node and nothing else. A node that is not
-there is red rather than skipped (`scripts/check.sh`).
+the machine is a node and nothing else. The `node` marker is what asks it: the
+gate does not collect these and the workflow runs them, where a node that is
+not there is red rather than skipped (`scripts/check.sh`, #101).
 
 It is why this and the decoder are written as JavaScript with their types in
-JSDoc: they are two of the five the gate runs, because they are what decides
-what a person reads and what reaches the station. `tsc` checks them as
+JSDoc: they are two of the five run under a bare node, because they are what
+decides what a person reads and what reaches the station. `tsc` checks them as
 strictly as the rest (`ui/tsconfig.json`).
 
 **Sending is exercised without a command station attached** twice over. Here,
@@ -104,11 +105,13 @@ def sent() -> dict[str, str | None]:
     return dict(zip(asked(), run(asked()), strict=True))
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("typed", CASES)
 def test_what_is_typed_is_sent_as_one_whole_message(typed: str) -> None:
     assert sent()[typed] == CASES[typed]
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("typed", CASES)
 def test_what_is_sent_is_opened_and_closed_and_nothing_is_outside_it(
     typed: str,
@@ -126,11 +129,13 @@ def test_what_is_sent_is_opened_and_closed_and_nothing_is_outside_it(
     assert "<<" not in written and ">>" not in written
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("typed", SILENT)
 def test_nothing_typed_sends_nothing(typed: str) -> None:
     assert sent()[typed] is None
 
 
+@pytest.mark.node
 def test_the_brackets_are_the_stations_and_not_the_operators() -> None:
     """The criterion in one line: `s` and `<s>` do the same thing (#6).
 
@@ -142,6 +147,7 @@ def test_the_brackets_are_the_stations_and_not_the_operators() -> None:
         assert sent()[bare] == sent()[wrapped] == wrapped
 
 
+@pytest.mark.node
 def test_the_same_typing_sends_the_same_message_whatever_came_before_it() -> None:
     """A pure function of the box's text (`message.js`), so what is sent cannot
     depend on what was sent a moment ago."""

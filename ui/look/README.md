@@ -59,7 +59,9 @@ so it is red before an edit lands rather than after.
 
 It is a `pytest` and not a test in the UI's own toolchain, because
 `scripts/check.sh` is this repository's gate and that gate is Python: it needs
-no node on the machine it runs on, which is the same property the box has
+no node on the machine it runs on — the checks that do need one carry the
+`node` marker and it does not collect them (#101) — which is the same property
+the box has
 (`deploy/ui.Dockerfile` — node builds the page inside the image and the box
 carries none). `control` writes the same assertions in `vitest` because its
 gate is a node one; what ADR-0010 asks for is that the check runs in the

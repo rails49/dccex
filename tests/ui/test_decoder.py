@@ -18,19 +18,21 @@ operator is worth nothing asserted against the source that would produce it,
 and ADR-0009 d.3 asks for the pairs themselves. So the pairs go through the
 real function under `node`, by way of `tests/ui/gloss.mjs`.
 
-What that costs is a node on the machine the gate runs on, and no more than
-that: no packages are installed, nothing is bundled and nothing is fetched.
-It is why the decoder is written as JavaScript with its types in JSDoc rather
-than as TypeScript — `tsc` still checks it (`ui/tsconfig.json`), and a bare
-node can still run it. What the box at the foot sends, what the band and the
+What that costs is a node, and no more than that: no packages are installed,
+nothing is bundled and nothing is fetched. It is why the decoder is written as
+JavaScript with its types in JSDoc rather than as TypeScript — `tsc` still
+checks it (`ui/tsconfig.json`), and a bare node can still run it. What the box at the foot sends, what the band and the
 tiles read, how the releases are listed and what is done to the railroad before
 one is written are the other four modules written that way, for the same reason
 (`tests/ui/test_message.py`, `tests/ui/test_readings.py`,
 `tests/ui/test_releases.py`, `tests/ui/test_flash.py`).
 
-A node that is not there is red rather than skipped, as everything else the
-gate needs is: a check that skips itself leaves a required gate green while
-proving nothing (`scripts/check.sh`).
+**The node is not asked of every machine the gate runs on.** These checks
+carry the `node` marker, `scripts/check.sh` does not collect them, and the
+workflow runs them in a job a pull request requires (#101). Where they do run a
+node that is not there is red rather than skipped, as everything else a gate
+needs is: a check that skips itself leaves a required gate green while proving
+nothing.
 """
 
 import json
@@ -169,11 +171,13 @@ def facts() -> dict[str, dict[str, object]]:
     }
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("line", CASES)
 def test_a_line_the_page_glosses_reads_as_its_sentence(line: str) -> None:
     assert glossed()[line] == CASES[line]
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("line", FACTS)
 def test_a_line_that_carries_a_reading_carries_it(line: str) -> None:
     """The fact the band and the tiles are made of, off the same line as the
@@ -181,6 +185,7 @@ def test_a_line_that_carries_a_reading_carries_it(line: str) -> None:
     assert facts()[line] == FACTS[line]
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("line", [line for line in CASES if line not in FACTS])
 def test_a_line_that_reads_as_nothing_but_a_sentence_carries_no_fact(
     line: str,
@@ -193,6 +198,7 @@ def test_a_line_that_reads_as_nothing_but_a_sentence_carries_no_fact(
     assert facts()[line] == {}
 
 
+@pytest.mark.node
 @pytest.mark.parametrize("line", SILENT)
 def test_a_line_the_page_half_recognises_says_nothing(line: str) -> None:
     """A known letter with the wrong arity, a truncated line, a line that is
@@ -219,6 +225,7 @@ def test_every_line_the_page_glosses_has_a_case() -> None:
     assert reads() <= asserted, f"nothing asserts {sorted(reads() - asserted)}"
 
 
+@pytest.mark.node
 def test_no_letter_the_decoder_does_not_know_is_glossed() -> None:
     """The other direction from the case above, over the whole alphabet.
 
@@ -235,6 +242,7 @@ def test_no_letter_the_decoder_does_not_know_is_glossed() -> None:
     assert run(strangers) == (None,) * len(strangers)
 
 
+@pytest.mark.node
 def test_every_fact_the_decoder_reads_is_one_the_readings_are_made_of() -> None:
     """The other direction from the cases above: the decoder reads what the
     band and the tiles are built out of and nothing besides.
@@ -261,6 +269,7 @@ def test_the_decoder_holds_nothing() -> None:
         assert held not in source, f"the decoder reaches {held}"
 
 
+@pytest.mark.node
 def test_the_same_line_reads_the_same_whatever_came_before_it() -> None:
     """Given the same line it returns the same sentence for ever (ADR-0009
     d.1), so a gloss cannot depend on what the station said a moment ago."""

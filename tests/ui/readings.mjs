@@ -14,8 +14,8 @@
 // them — the band's readings and the tiles', each as what it is called and
 // what it reads. That is the assertion `control`'s band test makes: hand it
 // the facts a page would hand it and read what it draws. What this cannot do
-// is put those through Lit, because the gate is Python with a bare node in it
-// and no packages (`tests/ui/test_decoder.py`); what draws these is held
+// is put those through Lit: this is a bare node with no packages in it
+// (`tests/ui/test_decoder.py`); what draws these is held
 // against the components' sources instead.
 //
 // The shape is `tests/ui/gloss.mjs`'s and so is the reason: what it needs of

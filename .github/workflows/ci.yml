@@ -41,3 +41,21 @@ jobs:
       - run: uv sync
       - name: the image, built and served
         run: uv run --frozen pytest -q -m docker
+
+  # The checks that need a node, which the gate does not collect either (#101).
+  # The five modules of the page written as JavaScript are run here rather than
+  # read, and the runner's own node is what runs them: nothing is installed,
+  # nothing is bundled and nothing is fetched. No node is set up on purpose —
+  # a missing one is an assertion failure inside these tests, which is what
+  # keeps a promised toolchain from turning into a skip. This job is required
+  # on the default branch beside `ci` and `docker`.
+  node:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: the page's own functions, run
+        run: uv run --frozen pytest -q -m node

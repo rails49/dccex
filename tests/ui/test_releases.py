@@ -20,8 +20,9 @@ an operator reads is worth nothing asserted against the source that would
 produce it. The scenarios go through the real function under `node`, by way of
 `tests/ui/releases.mjs`.
 
-What cannot be run here is Lit. The gate is Python with a bare node in it and
-no packages, so nothing in it can mount a component and read the DOM back: the
+What cannot be run here is Lit. The gate is Python and the node beside it is a
+bare one with no packages, so nothing in either can mount a component and read
+the DOM back: the
 words are asserted here and the drawing of them is held against the
 component's source below, which is the cost `tests/ui/test_look.py` already
 names.
@@ -33,6 +34,8 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from tests.ui.test_look import HEX, UI
 from tests.ui.test_monitor import rule
@@ -113,6 +116,7 @@ def says() -> dict[str, str]:
 # -- what the page lists ------------------------------------------------------
 
 
+@pytest.mark.node
 def test_the_releases_are_listed_newest_first_each_with_its_date() -> None:
     """The whole of what the row is for: every release the box is configured
     to read, in the order that puts the one to flash at the top, each with the
@@ -135,6 +139,7 @@ def test_the_releases_are_listed_newest_first_each_with_its_date() -> None:
     ]
 
 
+@pytest.mark.node
 def test_two_releases_published_on_one_day_keep_the_order_they_were() -> None:
     """The stamps are compared whole and not by the day the row shows, so a
     second release on one afternoon does not draw above the one that followed
@@ -148,6 +153,7 @@ def test_two_releases_published_on_one_day_keep_the_order_they_were() -> None:
     assert [row["published"] for row in listing] == ["2025-08-02", "2025-08-02"]
 
 
+@pytest.mark.node
 def test_a_release_the_source_dated_none_is_listed_last_and_dated_none() -> None:
     """A guess standing where a reading goes is an observation the page did
     not make (ADR-0009 d.2), so a release the source stamped no moment on gets
@@ -161,6 +167,7 @@ def test_a_release_the_source_dated_none_is_listed_last_and_dated_none() -> None
     assert listing[-1]["published"] == ""
 
 
+@pytest.mark.node
 def test_the_release_on_the_station_is_the_one_whose_tag_is_the_build() -> None:
     """Being up to date is a thing to see rather than to work out by reading a
     build and a tag against each other (docs/ui/README.md). The build is what
@@ -171,6 +178,7 @@ def test_the_release_on_the_station_is_the_one_whose_tag_is_the_build() -> None:
     assert [row["onStation"] for row in listing] == [False, True, False]
 
 
+@pytest.mark.node
 def test_with_no_build_no_release_is_marked() -> None:
     """The build goes with the **link**: a station that is not answering has
     no build, and a row claiming to be what is on a board the page cannot see
@@ -178,6 +186,7 @@ def test_with_no_build_no_release_is_marked() -> None:
     assert [row["onStation"] for row in rows(carried=CARRIED)] == [False] * 3
 
 
+@pytest.mark.node
 def test_a_build_the_source_does_not_carry_marks_nothing() -> None:
     """A station running something the source has never published is a true
     thing to show and not an error: the list says nothing is on the station,
@@ -187,6 +196,7 @@ def test_a_build_the_source_does_not_carry_marks_nothing() -> None:
     assert not any(row["onStation"] for row in listing)
 
 
+@pytest.mark.node
 def test_a_release_with_no_firmware_on_it_is_distinguishable() -> None:
     """A release exists whether or not anything can be written from it
     (CONTEXT.md), and a row that looked like the others would send an operator
@@ -199,6 +209,7 @@ def test_a_release_with_no_firmware_on_it_is_distinguishable() -> None:
     assert says()["NO_FIRMWARE"] == "no firmware to write"
 
 
+@pytest.mark.node
 def test_a_face_that_did_not_answer_says_so_rather_than_nothing() -> None:
     """Nothing said is not nothing published. An empty list drawn for a face
     that could not be asked would be this page reporting a source it never
@@ -210,6 +221,7 @@ def test_a_face_that_did_not_answer_says_so_rather_than_nothing() -> None:
     assert listing["says"] == says()["UNREADABLE"] == "the releases could not be read"
 
 
+@pytest.mark.node
 def test_a_source_that_has_published_nothing_says_that_instead() -> None:
     """The other way of having no rows, and it is an answer rather than an
     outage: the source was asked and carries nothing (`face.py`)."""
@@ -220,6 +232,7 @@ def test_a_source_that_has_published_nothing_says_that_instead() -> None:
     assert "published" in listing["says"], "an empty source reads as an outage"
 
 
+@pytest.mark.node
 def test_a_list_with_releases_on_it_says_nothing_instead() -> None:
     """The sentence is what stands in for the rows and not a caption over
     them."""
@@ -242,6 +255,7 @@ def test_the_row_draws_the_listing_the_page_hands_it() -> None:
     assert ".build=${this.readings.build}" in app
 
 
+@pytest.mark.node
 def test_the_row_says_which_release_is_on_the_station_in_the_module_s_words() -> None:
     """The two sentences a row can carry are the listing module's, so that
     what an operator reads is asserted by running it rather than by reading
