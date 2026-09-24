@@ -34,6 +34,10 @@ BOX = ROOT / "compose.box.yaml"
 
 DOCKERFILE = ROOT / "deploy" / "Dockerfile"
 
+#: The page's own, which is the second image of a commit (ADR-0005 d.2, as
+#: amended) and is built by the clean clone's half above.
+UI_DOCKERFILE = ROOT / "deploy" / "ui.Dockerfile"
+
 DEPLOY = ROOT / "scripts" / "deploy.sh"
 
 GATE = ROOT / "scripts" / "check.sh"
@@ -205,6 +209,28 @@ def test_the_image_carries_the_commit_as_well_as_being_named_by_it() -> None:
     said = DOCKERFILE.read_text()
     assert "ARG DCCEX_COMMIT=dev" in said
     assert "LABEL org.opencontainers.image.revision=$DCCEX_COMMIT" in said
+
+
+def test_the_pages_build_is_handed_the_commit_its_name_is_built_from() -> None:
+    """The same rule for the second image, which had only the name (#57).
+
+    The build takes the argument the page's image records, and the project
+    passes it the variable the name is built from — one value, so a `docker
+    inspect` and the name can never say different commits. Its fallback is
+    empty where the name's is `dev`: `dev` names an image nobody named a
+    commit for, and a revision that reads like a commit reference and is none
+    is worse than no revision at all (`deploy/ui.Dockerfile`).
+
+    What a built image then carries is `tests/ui/test_page_serves.py`'s and
+    `tests/ui/test_compose_serves.py`'s, which run it rather than read it.
+    """
+    said = UI_DOCKERFILE.read_text()
+    assert re.search(r"^ARG DCCEX_COMMIT=$", said, re.MULTILINE), (
+        "the page's image takes no commit, or defaults it to something that"
+        " reads like one"
+    )
+    assert "LABEL org.opencontainers.image.revision=$DCCEX_COMMIT" in said
+    assert "DCCEX_COMMIT: ${DCCEX_COMMIT:-}" in services(BASE)["web"]
 
 
 def test_the_image_is_built_from_the_lock_file_and_not_from_the_index() -> None:

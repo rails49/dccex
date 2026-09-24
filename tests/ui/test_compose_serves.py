@@ -13,7 +13,8 @@ published, reads the labels off the running container — which is where a door
 reads them from — and takes it down again. What is not held here is what a
 route *does*: there is no door on this machine, no certificate and no shared
 network, and that is the box's and #40's. What is held is that the file parses,
-builds, comes up, serves, and carries the route a door would need.
+builds, comes up, serves, carries the route a door would need, and hands the
+build the commit it names the image by (#57).
 
 The network is deliberately not declared external in `compose.yaml`, so `up`
 works on a clean clone. That is the one thing the file has to do, and this is
@@ -43,6 +44,7 @@ import pytest
 from tests.ui.test_look import ROOT
 from tests.ui.test_page_serves import (
     BUILD_SECONDS,
+    REVISION,
     docker,
     no_daemon,
     served,
@@ -196,6 +198,9 @@ class Up:
 
     #: The one container, by id.
     container: str
+    #: The commit the project was given, which is what the image is named by
+    #: and what it is expected to carry.
+    commit: str
     #: What the image is named, commit and all.
     image: str
     #: The port compose published, which the daemon picked.
@@ -239,6 +244,7 @@ def up() -> Iterator[Up]:
         wait_until_answering(port)
         yield Up(
             container=compose("ps", "-q", SERVICE, env=where),
+            commit=commit,
             image=f"dccex-ui:{commit}",
             port=port,
             environment=where,
@@ -261,6 +267,20 @@ def test_the_project_comes_up_and_serves_the_page(up: Up) -> None:
 def test_the_image_is_named_by_the_commit_it_was_built_from(up: Up) -> None:
     """`dccex-ui:<commit>`, and the name never moves (ADR-0005 d.1)."""
     assert docker("inspect", "--format", "{{.Config.Image}}", up.container) == up.image
+
+
+def test_the_project_gives_the_commit_to_the_build_and_not_only_to_the_name(
+    up: Up,
+) -> None:
+    """ADR-0005 d.4, read off the running container rather than off the file.
+
+    The name is where the commit was written and it was the only place it was
+    written (#57), so an image somebody renamed — or a container somebody was
+    handed — answered nothing. Now the project passes the same variable it
+    builds the name from into the build, and what comes out carries it: this
+    is that value, off the daemon, which is where a person on the box asks.
+    """
+    assert labels(up.container)[REVISION] == up.commit
 
 
 def test_a_clone_that_names_no_commit_builds_dev(up: Up) -> None:

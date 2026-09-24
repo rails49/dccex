@@ -11,7 +11,9 @@
 # node and served by nginx shares neither, and a stage that carried both
 # toolchains would be a second answer to what this repository was tested at.
 # The naming rule is the same one — the commit it was built from, and the name
-# never moves (`compose.yaml`).
+# never moves (`compose.yaml`) — and so is the rule under it: the commit is on
+# the image as well as in the name, so the name is not the only copy of it
+# (ADR-0005 d.4, and `deploy/Dockerfile` does the same).
 #
 # The build context is the repository root, so this file can see `ui/` and
 # `deploy/`. `.dockerignore` keeps `node_modules` and a previous `dist` out of
@@ -50,6 +52,23 @@ COPY ui/ ./
 RUN pnpm run build
 
 FROM nginx:alpine
+
+# What the compose project names the image after, on the image itself
+# (ADR-0005 d.4). A `docker inspect` on the box then answers what a container
+# was built from even for an image somebody renamed, and the name — which is
+# the only place this was written before #57 — stops being the only copy of
+# the fact.
+#
+# **The default is empty, and not `dev`.** `dev` is what a clone that has not
+# been told a commit builds *under*, and it is a true thing to call a name. In
+# a field that means the commit this was built from it would be a commit
+# reference that is not one, which is worse than nothing: `docker inspect`
+# showing an empty revision is an image nobody named a commit for, and there
+# is no reading of it under which some `dev` was checked out. `compose.yaml`
+# passes `${DCCEX_COMMIT:-}` — the same variable the name is built from, so
+# the name and the label cannot disagree.
+ARG DCCEX_COMMIT=
+LABEL org.opencontainers.image.revision=$DCCEX_COMMIT
 
 # The page is served, not proxied. The face the page talks to is the mirror's
 # and reaches it through the door under the `/dccex-usb` prefix, which the door
