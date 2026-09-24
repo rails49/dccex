@@ -58,10 +58,10 @@ The rest is the bus being cut, which is
 and `tests/dccex_usb/`. There is no copy there any more, so a defect in this
 package is fixed here rather than upstream and re-copied
 ([ADR-0003](../docs/adr/0003-the-copy-has-no-original-left-and-is-fixed-here.md),
-superseding ADR-0002). The commit above still says where the package came
-from and the diff still runs; what it no longer says is that the two files
-are the same. Each change made here since is listed, newest last, so a reader
-sorting the diff is told which side of it is ours:
+superseding this repository's ADR-0002). The commit above still says where the
+package came from and the diff still runs; what it no longer says is that the
+two files are the same. Each change made here since is listed, newest last, so
+a reader sorting the diff is told which side of it is ours:
 
 - **#23** — `station.py` and the tests for it: client streams were closed
   where the write buffer may never drain, which hung `Station.close()` and
