@@ -16,6 +16,19 @@ import { css } from "lit";
  * colour alone: whether the box is up to date is the question the list exists
  * to answer, and a reader who does not see the colour is owed the answer all
  * the same — the same rule the monitor marks the page's own lines by.
+ *
+ * **The controls are sized for a thumb.** `--rail-button` is the look rules'
+ * minimum for one and it is a size rather than a colour — the chrome's four
+ * colours stay on the chrome — so it is the value a control meant to be pressed
+ * on a phone held at the layout asks for, as the command box's send is
+ * (`dccex-monitor.styles.ts`).
+ *
+ * **The yes is drawn as the dangerous press it is**, and the warning above it
+ * in the theme's own warning ink: this is the one gesture on the page that
+ * stops a railroad, and nothing behind the page guards it (ADR-0006). They are
+ * Shoelace's `danger` and `warning`, which the work pane follows the theme for;
+ * the red the look rules reserve for the first UI to draw an emergency stop is
+ * the chrome's and stays unclaimed.
  */
 export const releasesStyles = css`
   :host {
@@ -109,5 +122,90 @@ export const releasesStyles = css`
     font-family: var(--sl-font-sans);
     font-size: var(--sl-font-size-x-small);
     font-style: italic;
+  }
+
+  /* What writes a release onto the station: one control to a row, on the
+     releases that carry a firmware. It keeps its size whatever the width,
+     because it is what a thumb has to hit. */
+  button {
+    flex: none;
+    box-sizing: border-box;
+    min-height: var(--rail-button);
+    padding: 0 0.75rem;
+    border: none;
+    border-radius: var(--sl-border-radius-medium);
+    background: var(--sl-color-primary-600);
+    color: var(--sl-color-neutral-0);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+    cursor: pointer;
+  }
+
+  /* A release is chosen once at a time: while a sequence is running there is
+     nothing to press, and a control that looked pressable would be a second
+     station reset asked for, which the mirror refuses rather than queues. */
+  button[disabled] {
+    background: var(--sl-color-neutral-300);
+    color: var(--sl-color-neutral-600);
+    cursor: default;
+  }
+
+  /* The warning, and the two presses that answer it. It opens across the whole
+     of the row it belongs to, under the tag it is about, so what is being
+     written is never off the side of the sentence about writing it. */
+  .warning {
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0.25rem;
+  }
+
+  /* What flashing does, in the sequence's words. It takes its own line above
+     the presses: a sentence beside a button is a sentence read after it. */
+  .warns {
+    flex: 1 0 100%;
+    margin: 0;
+    color: var(--sl-color-warning-700);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+  }
+
+  /* The yes. Drawn as the dangerous press it is, and never the quieter of the
+     two. */
+  .confirms {
+    background: var(--sl-color-danger-600);
+  }
+
+  /* And the no, which is the ordinary way out of a warning. */
+  .cancels {
+    background: var(--sl-color-neutral-100);
+    color: var(--sl-color-neutral-900);
+  }
+
+  /* Which step is running, under the row and so still there when it is shut:
+     the last step is a minute or two of the station being away, and a page
+     with nothing on it reads as a hang. */
+  .step {
+    margin: 0.5rem 0 0;
+    color: var(--sl-color-neutral-700);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+  }
+
+  /* What became of it, where it is drawn for the same reason. */
+  .became {
+    margin: 0.5rem 0 0;
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+  }
+
+  .wrote {
+    color: var(--sl-color-success-700);
+  }
+
+  .refused {
+    color: var(--sl-color-danger-700);
   }
 `;
