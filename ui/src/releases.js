@@ -1,6 +1,6 @@
 /**
- * The releases the box is configured to read, as the page lists them: newest
- * first, each with its date, and the one that is on the station marked.
+ * The releases the mirror is configured to read, as the page lists them:
+ * newest first, each with its date, and the one that is on the station marked.
  *
  * What comes in is what the **face** answered — the **release**s the
  * configured source carries, in the source's own order — and what the station
