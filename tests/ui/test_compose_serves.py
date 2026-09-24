@@ -55,7 +55,8 @@ pytestmark = pytest.mark.docker
 
 PROJECT_FILE = "compose.yaml"
 
-#: The name the file pins (`name: dccex`). Nothing here passes `-p`, so every
+#: The name the file pins (`name: dccex`). Nothing here passes `-p`, and the
+#: variable that would outrank the line is dropped (`DROPPED`), so every
 #: command below is resolved by that line; a clone that lost it would name the
 #: project after whatever directory it was cloned into, and the label read off
 #: the running container would stop saying `dccex`.
@@ -67,11 +68,30 @@ SERVICE = "web"
 #: How long `down` gets: stopping a container and removing an image it built.
 DOWN_SECONDS = 180
 
-#: What the file substitutes into itself. They are dropped from the environment
-#: every command below runs in, so a machine that has any of them set — a
-#: development box, a shell left over from a deploy — runs the same check as a
-#: clean clone does.
-DROPPED = ("DCCEX_COMMIT", "DCCEX_UI_PORT", "BOX_DOMAIN")
+#: What is dropped from the environment every command below runs in, so that a
+#: machine that has any of them set — a development box, a shell left over from
+#: a deploy — runs the same check a clean clone does. Two reasons a name is on
+#: this list, and they are no longer the same job.
+#:
+#: The first three are what the file substitutes into itself: a value left in a
+#: shell would move the commit the image is named by, the port the check asks
+#: for the page on, or the host rule it reads off the container.
+#:
+#: The rest decide which project a command acts on and which files it reads,
+#: and they outrank what is passed explicitly: `COMPOSE_PROJECT_NAME` beats the
+#: file's `name: dccex`, which nothing here overrides with `-p`, and
+#: `COMPOSE_FILE` and `COMPOSE_ENV_FILE` beat the `-f` and the `--env-file` in
+#: `arguments()`. That is worse than a moved value, because of the tear-down:
+#: `down --rmi all` resolved against a project of another name would take down
+#: whatever shares that name and leave this check's own containers standing.
+DROPPED = (
+    "DCCEX_COMMIT",
+    "DCCEX_UI_PORT",
+    "BOX_DOMAIN",
+    "COMPOSE_PROJECT_NAME",
+    "COMPOSE_FILE",
+    "COMPOSE_ENV_FILE",
+)
 
 #: The route, as the door reads it off the container: written out here rather
 #: than parsed out of `compose.yaml`, because a check that read the values from
@@ -103,7 +123,9 @@ def arguments(*argument: str) -> list[str]:
 
     `--env-file` is pointed at nothing on purpose: a `.env` beside the file is
     a developer's and would quietly move the published port out from under
-    this check.
+    this check. Neither this nor the `-f` is the last word on its own —
+    `COMPOSE_ENV_FILE` and `COMPOSE_FILE` outrank both — so what makes them
+    hold is that `environment()` drops those (`DROPPED`).
     """
     return [
         "docker",
@@ -328,6 +350,40 @@ def test_a_project_already_up_is_refused_with_a_sentence(up: Up) -> None:
     assert why is not None, "a project is up and the guard did not see it"
     assert PROJECT in why
     assert "docker compose down" in why, "the sentence does not say how to end it"
+
+
+def test_the_shell_cannot_point_these_commands_at_another_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The variables that outrank what `arguments()` passes, set and gone.
+
+    The one above is the guard against acting on a project somebody else
+    brought up. This is the guard against acting on one nobody here named:
+    `COMPOSE_PROJECT_NAME` beats the file's `name: dccex`, and `COMPOSE_FILE`
+    and `COMPOSE_ENV_FILE` beat the `-f` and the `--env-file`. A shell left
+    over from a deploy has them, and the tear-down is where it would tell —
+    `down --rmi all` against whatever else was named that, with this check's
+    own containers left standing.
+
+    It needs no daemon and asserts nothing about one. It sits here rather than
+    in a module the gate collects because what it is about is this module's own
+    `environment()`, and the docker job the workflow requires runs it.
+    """
+    # The three are written out rather than read off `DROPPED`, for the reason
+    # `ROUTE` is written out: a check that took its list from the thing it is
+    # checking would pass on whatever that list happened to say.
+    overriding = ("COMPOSE_PROJECT_NAME", "COMPOSE_FILE", "COMPOSE_ENV_FILE")
+    for name in (*DROPPED, *overriding):
+        monkeypatch.setenv(name, "somebody-elses")
+
+    clean = environment()
+
+    assert [name for name in overriding if name in clean] == []
+    assert [name for name in DROPPED if name in clean] == []
+    assert "PATH" in clean, "the environment was emptied rather than cleaned"
+    # What the fixture sets is set after the cleaning, so a name on the list is
+    # still one this check can give a value to.
+    assert environment(DCCEX_COMMIT="check-0")["DCCEX_COMMIT"] == "check-0"
 
 
 def test_the_project_comes_down_and_leaves_nothing(up: Up) -> None:
