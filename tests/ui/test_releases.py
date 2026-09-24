@@ -37,7 +37,7 @@ from typing import Any
 
 import pytest
 
-from tests.ui.test_look import HEX, UI
+from tests.ui.test_look import HEX, ROOT, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import NAMED, code, quoted
 
@@ -58,6 +58,10 @@ APP = UI / "src" / "ui" / "dccex-app.ts"
 
 #: Where the page asks the mirror about the mirror.
 FACE = UI / "src" / "face.ts"
+
+#: The app's end of the same reading, where `carried()` draws the line the
+#: page's reader mirrors.
+APP_FACE = ROOT / "src" / "dccex_usb" / "face.py"
 
 NEWEST = {
     "tag": "v5.6.4-rails49.1",
@@ -376,6 +380,45 @@ def test_a_face_that_did_not_answer_reads_as_nothing_said() -> None:
     assert "Promise<Carried[] | null>" in asking, "a face that is away raises"
     assert "} catch {" in fetching, "a face that is away takes the page with it"
     assert fetching.count("return null;") >= 2
+
+
+def test_a_list_that_carries_no_readable_release_reads_as_nothing_said() -> None:
+    """The three answers a `releases` document can get out of the page's
+    reader, and the middle one is the defect this was written for (#95).
+
+    An empty list is the source carrying nothing yet, which is an answer and
+    reads as an empty list; a list of entries none of which is a release is a
+    document the page could not read, and reads as `null`; a list with
+    releases on it reads as those releases. An empty list drawn for the middle
+    one would say the source has published nothing — the distinction #66 was
+    filed to draw, undrawn at this end of the wire until now.
+
+    Read off the source rather than run. `face.ts` is TypeScript and the node
+    the gate has is a bare one that cannot load it, which is why the modules
+    whose words an operator reads are JavaScript with their types in JSDoc
+    (`ui/tsconfig.json`) — the limit this file's own header already names for
+    Lit. What is run, on the same three documents, is the app's half of the
+    rule (`tests/dccex_usb/test_face.py`).
+    """
+    asking = code(FACE.read_text())
+    fetching = asking[asking.index("export async function releases(") :]
+    kept = "const found = listed.flatMap("
+    rule = "if (listed.length > 0 && found.length === 0) {"
+
+    assert kept in fetching, "the page drops the entries it could read"
+    assert rule in fetching, "a list of unreadable entries reads as no releases yet"
+    assert fetching.index(kept) < fetching.index(rule)
+    assert "return found;" in fetching, "an empty list reads as something other than []"
+    assert fetching.index(rule) < fetching.index("return found;")
+
+
+def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
+    """Two ends of a wire read defensively and the duplication stays; what
+    must not differ is the rule (#95). The page's half names whose other half
+    it is, so that whoever changes one finds the other, and the app's half is
+    still the one line it names."""
+    assert "`face.py`'s `carried()`" in FACE.read_text(), "the page names no other half"
+    assert "if listed and not found:" in APP_FACE.read_text(), "the app drew no line"
 
 
 def test_the_releases_are_asked_for_once_and_not_on_the_poll() -> None:
