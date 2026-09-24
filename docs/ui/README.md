@@ -224,8 +224,9 @@ foot.
 - The lines this page sent are marked differently from the lines the station
   said, so an operator can tell their own traffic from the railroad's.
 - It follows the newest line while the view is at the bottom and stays put once
-  it has been scrolled up, so reading back does not fight the feed. It can be
-  paused, and it can be cleared.
+  it has been scrolled up, so reading back does not fight the feed — including
+  across a trim, where the lines it is measured from are the ones that go. It
+  can be paused, and it can be cleared.
 
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
@@ -265,6 +266,24 @@ frame the browser is going to paint, so everything that arrived before it is
 drawn once, which is as often as a reader can see it. None of it changes what
 is on the page: the monitor drew the right thing before and draws the same
 thing now.
+
+**And the reader who has scrolled up keeps their place across a trim** (#75).
+The oldest lines are dropped at capacity, so what a trim takes is the top of
+the list a scroll position is measured from: a reader holding still is holding
+a distance from a front that just got shorter, and the line they were reading
+comes up under them by the height of whatever went. Below capacity nothing is
+removed and nothing moves, which is why this is the one thing about the view
+that only goes wrong on a page that has been open a while — which is when
+somebody is most likely to be reading back. So what the monitor holds across an
+update is a row and where in the view that row sat, and it puts the view back
+to wherever that row has got to: a row is carried up along with everything
+below what went, so it is the same line in front of the reader afterwards for a
+trim of any size, and for none at all the correction is zero. Browsers have
+scroll anchoring that would do some of this — it is best-effort, it is off in
+cases of its own, and the monitor turns it off on the scroller rather than rest
+a promise on it (`overflow-anchor`, `ui/src/ui/dccex-monitor.styles.ts`). The
+measuring is the monitor's and not the page's: the page decides how much
+conversation to keep and the monitor is what has a viewport.
 
 **And what the page understood is beside it** (#5). A line the **decoder**
 recognises whole carries one plain sentence, drawn quieter and smaller than the
