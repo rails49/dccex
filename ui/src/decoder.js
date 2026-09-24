@@ -23,13 +23,13 @@
  * It is the page's own, and it runs the opposite way from the **translator**
  * next door, which turns desired values into these messages (CONTEXT.md).
  *
- * It is JavaScript with its types in JSDoc, as `message.js` is: the two the
- * gate runs rather than reads, being what decides what a person reads and what
- * reaches the station. The gate is Python and cannot run a bundler, and a
- * gloss asserted against the source that would produce it is not asserted;
- * what a bare node can run, the gate can put pairs through
- * (`tests/ui/test_decoder.py`). `tsc` checks this file as it checks the rest
- * (`ui/tsconfig.json`).
+ * It is JavaScript with its types in JSDoc, as `message.js` and `readings.js`
+ * are: the three the gate runs rather than reads, being what decides what a
+ * person reads, what reaches the station and what the chrome says of it. The
+ * gate is Python and cannot run a bundler, and a gloss asserted against the
+ * source that would produce it is not asserted; what a bare node can run, the
+ * gate can put pairs through (`tests/ui/test_decoder.py`). `tsc` checks this
+ * file as it checks the rest (`ui/tsconfig.json`).
  */
 
 /** What the station wraps every message in. */
