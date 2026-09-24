@@ -72,7 +72,7 @@ from http import HTTPStatus
 from typing import NamedTuple, Protocol, cast
 from urllib.parse import urlsplit
 
-from dccex_usb.firmware import RELEASES, Fetch, Refusal, Wrote, fetch
+from dccex_usb.firmware import RELEASES, Fetch, Refusal, Wrote, asset, fetch
 from dccex_usb.station import HOST, READ_SIZE, to_stderr
 from dccex_usb.stream import (
     CLOSE,
@@ -140,11 +140,40 @@ REASON = "reason"
 
 RELEASES_PATH = "/releases"
 """What the releases the source carries are asked for at, with the door's
-prefix already off it (ADR-0004). The answer is their tags, because a tag is
-the only thing a caller ever names (CONTEXT.md)."""
+prefix already off it (ADR-0004). Each of them goes back as three things: the
+**tag** it is chosen by, the day it was published, and whether it carries a
+firmware to write. A tag is still the only thing a caller ever names
+(CONTEXT.md); the other two are what a page needs to say which release is
+newest and which one there would be nothing to write (#8)."""
 
 TAG = "tag_name"
 """What the release API calls a release's tag."""
+
+PUBLISHED_AT = "published_at"
+"""What the release API calls the moment a release was published. A draft
+carries none, and a service under no obligation to us may stop carrying it at
+all, so a release without one is listed without a date rather than dropped:
+what the source carries is what the page is shown."""
+
+CARRIED = "releases"
+"""What the list goes back under. Releases and not tags: an entry is three
+facts about one release now, and a key saying `tags` over a list of objects
+would be the one name a reader trusts for what is in it."""
+
+LISTED_TAG = "tag"
+"""What a listed release names its tag under — the same word the body of a
+flash names one with, because it is the same thing being named."""
+
+PUBLISHED = "published"
+"""What a listed release carries its publication date under, as the source
+stamped it. Empty where the source named none."""
+
+FLASHABLE = "flashable"
+"""What says whether a listed release carries the firmware this app would
+write. False is not a refusal and not an error: it is a release published with
+no `firmware.bin` on it, which is a thing the source does and a thing a page
+can show, so that an operator is not sent to a tag there would be nothing to
+write for (#8, `firmware.py`)."""
 
 FLASH_PATH = "/flash"
 """What a build is asked to be written at, with the door's prefix already off
@@ -259,31 +288,71 @@ class Answered(NamedTuple):
     upgrade: str = ""
 
 
-def tags(document: object) -> list[str] | None:
-    """The tags the releases in `document` are named by, or None where it is
-    not a list of releases at all.
+class Carried(NamedTuple):
+    """One release the source carries, as the face answers it: the **tag** it
+    is named by, the moment it was published, and whether it carries a
+    firmware to write.
+
+    Three facts and no more. What a release document from the API also holds
+    — its notes, its author, its assets one by one — is somebody else's shape
+    and is not this app's to pass on: a page that was handed the whole entry
+    would be a page reading the release API through a hole in the face.
+    """
+
+    tag: str
+    published: str
+    flashable: bool
+
+
+def carried(document: object) -> list[Carried] | None:
+    """The releases in `document`, as the face answers them, or None where it
+    is not a list of releases at all.
 
     Read the way a document from a service is read — one field at a time, and
-    every shape it is not is None rather than an exception — because this is
-    somebody else's API and a reader that reached into it would be taken down
-    by whatever it returned the day it returned something else. A source that
-    lists nothing carries no releases yet, which is an answer; a source that
-    lists entries and names none of them is not answering about releases,
-    which is not.
+    every shape it is not is a fact left empty rather than an exception —
+    because this is somebody else's API and a reader that reached into it
+    would be taken down by whatever it returned the day it returned something
+    else. A source that lists nothing carries no releases yet, which is an
+    answer; a source that lists entries and names none of them is not
+    answering about releases, which is not.
+
+    A release with no date reads as one with an empty date, and one with no
+    firmware on it reads as one that cannot be flashed. Neither is a reason to
+    drop it: what the source carries is what the page is shown, and a list
+    quietly shorter than the source's would be this app deciding what a person
+    may see.
     """
     if not isinstance(document, list):
         return None
     listed = cast(list[object], document)
-    named: list[str] = []
+    found: list[Carried] = []
     for entry in listed:
         if not isinstance(entry, dict):
             continue
-        tag = cast(dict[str, object], entry).get(TAG)
-        if isinstance(tag, str) and tag:
-            named.append(tag)
-    if listed and not named:
+        fields = cast(dict[str, object], entry)
+        tag = fields.get(TAG)
+        if not isinstance(tag, str) or not tag:
+            continue
+        published = fields.get(PUBLISHED_AT)
+        found.append(
+            Carried(
+                tag,
+                published if isinstance(published, str) else "",
+                asset(fields) is not None,
+            )
+        )
+    if listed and not found:
         return None
-    return named
+    return found
+
+
+def says(release: Carried) -> dict[str, object]:
+    """One release as it goes on the wire."""
+    return {
+        LISTED_TAG: release.tag,
+        PUBLISHED: release.published,
+        FLASHABLE: release.flashable,
+    }
 
 
 def named(body: bytes) -> str | None:
@@ -419,7 +488,7 @@ class Face:
                     HTTPStatus.METHOD_NOT_ALLOWED,
                     f"{asked} is read with GET, and this was {method}",
                 )
-            return await self._carried()
+            return await self._listed()
         if asked == FLASH_PATH:
             if method != "POST":
                 return refused(
@@ -451,9 +520,17 @@ class Face:
             HTTPStatus.NOT_FOUND, f"the mirror's face does not answer {asked}"
         )
 
-    async def _carried(self) -> Answered:
-        """The tags the configured source carries, or why they could not be
-        read: the source is away, or what it said is not a list of releases."""
+    async def _listed(self) -> Answered:
+        """The releases the configured source carries, in the order it lists
+        them, or why they could not be read: the source is away, or what it
+        said is not a list of releases.
+
+        The order is the source's and is passed on as it came. Which of them
+        is newest is a question about the dates that go back with them, and
+        the page that draws them is what asks it (#8): a list this sorted
+        would be this app deciding what a person reads first out of a field it
+        does not own.
+        """
         try:
             document = json.loads(await self._fetch(self._releases))
         except (OSError, ValueError) as away:
@@ -461,13 +538,13 @@ class Face:
                 HTTPStatus.BAD_GATEWAY,
                 f"the releases at {self._releases} could not be read: {away}",
             )
-        carried = tags(document)
-        if carried is None:
+        found = carried(document)
+        if found is None:
             return refused(
                 HTTPStatus.BAD_GATEWAY,
                 f"the releases at {self._releases} are not a list of releases",
             )
-        return Answered(HTTPStatus.OK, {"tags": carried})
+        return Answered(HTTPStatus.OK, {CARRIED: [says(release) for release in found]})
 
     async def _writes(self, body: bytes) -> Answered:
         """A named release written onto the command station, and the caller

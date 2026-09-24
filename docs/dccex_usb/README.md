@@ -224,7 +224,10 @@ What it answers, which is four things — three questions and a conversation:
 
 ```
 $ curl http://dccex-usb:8080/releases
-{"tags": ["v5.6.4-rails49.1", "v5.6.3-rails49.2"]}
+{"releases": [
+  {"tag": "v5.6.4-rails49.1", "published": "2025-09-14T10:32:07Z", "flashable": true},
+  {"tag": "v5.6.3-rails49.2", "published": "2025-08-02T18:05:44Z", "flashable": true}
+]}
 
 $ curl -X POST http://dccex-usb:8080/flash -d '{"tag": "v5.6.4-rails49.1"}'
 {"flashed": "v5.6.4-rails49.1"}
@@ -233,14 +236,26 @@ $ curl http://dccex-usb:8080/clients
 {"clients": 3}
 ```
 
-The **tags** of the **releases** the configured source carries, in the order
-the release API lists them, so nobody has to type one from memory. A tag is
-all a caller is given and all one will ever name: **where releases are read
-from is `--firmware-releases`, this app's configuration, and no request can
-redirect it.** The query string is dropped and the body is not read for a
-source, because the LAN carries no authentication on purpose (control
-ADR-0042) and a request that named a source would be a request that decides
-what the station is offered to run.
+The **release**s the configured source carries, in the order the release API
+lists them, so nobody has to type a **tag** from memory. Three facts about
+each: the tag it is named by, the moment the source published it, and whether
+it carries the `firmware.bin` this app would write. The last two are what a
+page needs to say which release is newest and which one there would be nothing
+to write for, and a release missing either is listed without it rather than
+dropped — what the source carries is what a person is shown (#8). What is
+*not* passed on is the rest of somebody else's entry: a page handed the whole
+document would be a page reading the release API through a hole in the face.
+
+A tag is still all a caller ever names: **where releases are read from is
+`--firmware-releases`, this app's configuration, and no request can redirect
+it.** The query string is dropped and the body is not read for a source,
+because the LAN carries no authentication on purpose (control ADR-0042) and a
+request that named a source would be a request that decides what the station
+is offered to run.
+
+Which of them is newest is the page's question rather than this app's: the
+dates go back as the source stamped them and the ordering is done where the
+list is drawn (docs/ui/README.md).
 
 The third is how many **client**s are on 2560 at the moment it is asked, and
 it is the one reading on the page that is not the station talking: a command
