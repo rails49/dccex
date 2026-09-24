@@ -18,8 +18,13 @@ import re
 
 from tests.ui.test_look import UI
 
-#: Where the stream is, and what arrives on it.
+#: The socket: where the stream is held open, and what is done with what
+#: arrives on it.
 STREAM = UI / "src" / "stream.ts"
+
+#: The two rules that are not the socket — where the stream is, and where a
+#: line ends — which a bare node runs rather than reads.
+FRAMING = UI / "src" / "framing.js"
 
 #: Where the mirror's face is: the one place the page spells the prefix.
 FACE = UI / "src" / "face.ts"
@@ -38,14 +43,16 @@ NAMED = re.compile(r"://|BOX_DOMAIN|localhost|127\.0\.0\.1|\b(?:2560|8080)\b")
 def modules() -> dict[str, str]:
     """Every module the page is made of, by file name.
 
-    Both languages. Five of them are JavaScript with their types in JSDoc —
+    Both languages. Seven of them are JavaScript with their types in JSDoc —
     what a line means, what is sent for what was typed, what the band and the
-    tiles read, how the releases are listed, and what is done to the railroad
-    before one is written — because those five are run under a bare node
-    (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
+    tiles read, how the releases are listed, what is done to the railroad
+    before one is written, where the stream is and where a line ends, and what
+    the monitor works out without drawing — because those seven are run under a
+    bare node (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
     `tests/ui/test_readings.py`, `tests/ui/test_releases.py`,
-    `tests/ui/test_flash.py`), and a rule held over "every module" that looked
-    at one language would stop holding the day a module changed it.
+    `tests/ui/test_flash.py`, and this module and `tests/ui/test_monitor.py`),
+    and a rule held over "every module" that looked at one language would stop
+    holding the day a module changed it.
     """
     return {
         module.name: module.read_text()
@@ -82,11 +89,11 @@ def test_the_stream_is_opened_on_the_page_s_own_origin() -> None:
     under a prefix on that origin (ADR-0004), so the address of the stream is
     the page's own address with the scheme swapped and nothing else touched.
     """
-    source = STREAM.read_text()
     assert (
-        "new URL(STREAM_PATH, where.href)" in source
+        "new URL(path, where.href)" in FRAMING.read_text()
     ), "the stream's address is not built from the page's own location"
-    assert "new WebSocket(streamAt(window.location))" in source
+    source = STREAM.read_text()
+    assert "new WebSocket(streamAt(window.location, STREAM_PATH))" in source
     for name, module in modules().items():
         opened = module.count("new WebSocket(")
         assert opened == (
@@ -141,9 +148,10 @@ def test_a_line_carries_the_time_it_arrived() -> None:
     There is nothing on the stream but bytes (ADR-0007, ADR-0008 d.2), so there
     is no time on it but this one.
     """
-    source = STREAM.read_text()
-    assert "at: Date" in source, "a line the station said carries no time"
-    assert "new Date()" in source
+    assert (
+        "readonly at: Date" in FRAMING.read_text()
+    ), "a line the station said carries no time"
+    assert "new Date()" in STREAM.read_text()
 
 
 def test_the_page_types_up_the_stream_in_one_place() -> None:
@@ -191,7 +199,8 @@ def test_every_line_says_which_end_of_the_conversation_it_is() -> None:
     two differently and a reader can tell their own traffic from the
     railroad's (#6). What arrives on the stream is the station's, always: the
     mirror hands a client the station's bytes and never its own."""
-    source = STREAM.read_text()
-    assert "readonly sent: boolean" in source, "a line does not say whose it is"
-    assert "sent: false" in source, "what arrives is not marked as the station's"
-    assert "sent: true" not in source, "the stream marks a line it did not send"
+    framing = FRAMING.read_text()
+    assert "readonly sent: boolean" in framing, "a line does not say whose it is"
+    assert "sent: false" in framing, "what arrives is not marked as the station's"
+    for name, module in ((FRAMING.name, framing), (STREAM.name, STREAM.read_text())):
+        assert "sent: true" not in module, f"{name} marks a line it did not send"

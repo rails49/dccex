@@ -20,6 +20,13 @@
  * `message.js`'s, which is another. This module is the socket: where it is,
  * what arrives on it, and one whole message at a time going up it (#4, #6).
  *
+ * **And nothing here is a rule that could be run.** The address the socket is
+ * opened at and the lines the bytes are cut into are `framing.js`'s, which is
+ * JavaScript so that a bare node can put the pairs that matter through them
+ * rather than read the source that would produce them (#78). What is left here
+ * is the socket itself: a browser value, a timer and a `WebSocket`, none of
+ * which a gate without a browser can exercise.
+ *
  * **What goes up goes in one write.** The page holds what is being typed until
  * it is a whole `<…>` message and writes the message in one frame, so two
  * pages open at once cannot interleave a command — the same rule the mirror
@@ -27,15 +34,12 @@
  */
 
 import { FACE } from "./face.js";
+import { lines, streamAt, type Said } from "./framing.js";
 import { message } from "./message.js";
 
 /** Where the stream is. Opened by upgrading and fetched no other way: what it
  *  carries is what the station is saying now (`face.py`). */
 export const STREAM_PATH = `${FACE}/stream`;
-
-const HTTPS = "https:";
-const WSS = "wss:";
-const WS = "ws:";
 
 /** How long the page waits before opening the stream again.
  *
@@ -59,69 +63,6 @@ export const REOPEN_MS = 2000;
  * character left half-arrived across two of them.
  */
 const CHARACTERS = new TextDecoder("latin1");
-
-const NEWLINE = "\n";
-const RETURN = /\r+$/;
-
-/** One line of the conversation, and the moment it was on the page's clock. */
-export interface Said {
-  /** When it arrived: the page's clock at the read that carried it, or at the
-   *  write that sent it. Two lines in one read carry the same stamp, which is
-   *  what happened. */
-  readonly at: Date;
-  /** The line as the station said it, with the newline it ended off — or the
-   *  whole message this page sent, as it went. */
-  readonly line: string;
-  /** Which end of the conversation it is: `true` where this page sent it,
-   *  `false` where the station said it. The monitor draws the two differently,
-   *  so a reader can tell their own traffic from the railroad's. */
-  readonly sent: boolean;
-}
-
-/** Where the stream is for the page `where` was read off.
- *
- * The page's own address with the scheme swapped and nothing else touched, so
- * a browser opens `wss://` from a page served over `https` and `ws://` from
- * one served over plain HTTP, on whatever host and port the page itself came
- * from. Nothing about the stream is a name or a port of its own (ADR-0004
- * d.3), and nothing in this page names a host: a page that did would work on
- * the machine it was written on and nowhere else.
- */
-export function streamAt(where: Location): string {
-  const at = new URL(STREAM_PATH, where.href);
-  at.protocol = where.protocol === HTTPS ? WSS : WS;
-  return at.href;
-}
-
-/** Fold `arrived` into `buffered` and take off every whole line, stamped `at`.
- *
- * Returns what is still a partial line, to be passed back as `buffered` next
- * time, and the lines that completed, in the order they did — the shape the
- * mirror's own readers have (`stream.py`, `framing.py`), and for the same
- * reason: bytes arrive in whatever chunks the network hands over, and a rule
- * that needed a line whole would be a rule about the network.
- *
- * A line that is empty once its newline is off is dropped. It is the `\r` of a
- * `\r\n` pair and a blank line the station wrote, and neither is something it
- * said.
- */
-export function lines(
-  buffered: string,
-  arrived: string,
-  at: Date,
-): [string, Said[]] {
-  const whole = buffered + arrived;
-  const parts = whole.split(NEWLINE);
-  const rest = parts.pop() ?? "";
-  const said: Said[] = [];
-  for (const part of parts) {
-    const line = part.replace(RETURN, "");
-    if (line) {
-      said.push({ at, line, sent: false });
-    }
-  }
-  return [rest, said];
-}
 
 /**
  * The stream, open for as long as somebody is watching.
@@ -207,7 +148,7 @@ export class Stream {
   #dial(): void {
     this.#reopening = null;
     this.#partial = "";
-    const socket = new WebSocket(streamAt(window.location));
+    const socket = new WebSocket(streamAt(window.location, STREAM_PATH));
     socket.binaryType = "arraybuffer";
     socket.addEventListener("message", (said: MessageEvent<unknown>) => {
       this.#arrived(said.data);

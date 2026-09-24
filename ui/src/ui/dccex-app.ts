@@ -50,6 +50,7 @@
 import { LitElement, html, type TemplateResult } from "lit";
 
 import { clients, flash, releases } from "../face.js";
+import { type Said } from "../framing.js";
 import {
   QUIET,
   asOf,
@@ -59,7 +60,7 @@ import {
   type Readings,
 } from "../readings.js";
 import { type Carried } from "../releases.js";
-import { Stream, type Said } from "../stream.js";
+import { Stream } from "../stream.js";
 import { appStyles } from "./dccex-app.styles.js";
 import { type Keyed } from "./dccex-monitor.js";
 import "./dccex-band.js";
