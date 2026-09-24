@@ -200,3 +200,54 @@ def test_the_box_is_usable_at_the_width_of_a_phone() -> None:
     assert "flex: 1 1 auto" in typed
     assert "min-width: 0" in typed, "a long command pushes the send off the side"
     assert "flex: none" in rule(styles, "button"), "the send button shrinks away"
+
+
+def test_the_rows_are_keyed_by_the_key_the_page_gave_each_line() -> None:
+    """Keyed, so a line falling off the front moves the rows above it rather
+    than re-committing every binding on all two thousand of them (#74).
+
+    Lit's unkeyed diff matches template instances by position, and at capacity
+    every arriving frame shifts every row by one — which is a few thousand
+    times the work the page needs, exactly when the station is busiest.
+    """
+    drawn = MONITOR.read_text()
+    assert (
+        'from "lit/directives/repeat.js"' in drawn
+    ), "the conversation is drawn unkeyed"
+    assert "this.said.map(" not in drawn, "the rows are still matched by position"
+    assert (
+        re.search(r"repeat\(\s*this\.said,\s*\(said: Keyed\) => said\.key,", drawn)
+        is not None
+    ), "the conversation is not drawn keyed by the key the page assigned"
+
+
+def test_two_identical_lines_in_the_same_millisecond_are_two_rows() -> None:
+    """The key is assigned when a line is kept and is nothing the line carries.
+
+    A line and the moment it arrived in are both ordinary to see twice on a
+    serial port, so a key made of either would draw two rows as one. It is the
+    page's to assign, because the page is what keeps the conversation.
+    """
+    keying = MONITOR.read_text()
+    keying = keying[keying.index("repeat(") : keying.index("const read = gloss(")]
+    assert "said.at" not in keying, "the key is made of when the line arrived"
+    assert "said.line" not in keying, "the key is made of what the line says"
+    app = APP.read_text()
+    keeping = app[app.index("#keep(said: Said[])") :]
+    assert "key: this.#keys++" in keeping, "the page numbers nothing it keeps"
+
+
+def test_a_key_is_assigned_once_and_never_reused() -> None:
+    """Stable for the life of a line, which is what makes the row the line's.
+
+    One counter, incremented in one place and never wound back: a page that
+    renumbered what it holds on a trim would hand the monitor the same shift it
+    was keyed to avoid.
+    """
+    app = APP.read_text()
+    assert (
+        app.count("this.#keys++") == 1
+    ), "the lines are numbered in more than one place"
+    assert (
+        app.count("#keys = 0") == 1
+    ), "the counter is wound back somewhere after it is declared"

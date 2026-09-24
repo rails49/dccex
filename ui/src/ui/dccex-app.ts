@@ -61,6 +61,7 @@ import {
 import { type Carried } from "../releases.js";
 import { Stream, type Said } from "../stream.js";
 import { appStyles } from "./dccex-app.styles.js";
+import { type Keyed } from "./dccex-monitor.js";
 import "./dccex-band.js";
 import "./dccex-monitor.js";
 import "./dccex-rail.js";
@@ -121,8 +122,9 @@ export class DccexApp extends LitElement {
   };
 
   /** The conversation: what the station has said and what this page sent,
-   *  oldest first. */
-  said: Said[] = [];
+   *  oldest first, each line keyed by the number the page gave it when it kept
+   *  it. */
+  said: Keyed[] = [];
 
   /** What the band and the tiles are drawn from, as they stand. */
   readings: Readings = asOf(QUIET, 0);
@@ -136,6 +138,16 @@ export class DccexApp extends LitElement {
    *  out of. It is not reactive: what a component draws is `readings`, and a
    *  second thing to draw would be a second answer to what the page knows. */
   #kept: Kept = QUIET;
+
+  /** What the next line kept is keyed by.
+   *
+   * The monitor draws a row per key, so a key is assigned once, is never
+   * reused and is never wound back: a key made of what a line says or of when
+   * it arrived would draw two identical lines in one millisecond as one row,
+   * and a page that renumbered what it holds on a trim would hand the monitor
+   * the shift the keys are there to save it (#74).
+   */
+  #keys = 0;
 
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
@@ -260,7 +272,8 @@ export class DccexApp extends LitElement {
       }
     }
     this.#now();
-    const kept = [...this.said, ...said];
+    const keyed = said.map((line: Said) => ({ ...line, key: this.#keys++ }));
+    const kept = [...this.said, ...keyed];
     this.said = kept.length > KEPT ? kept.slice(kept.length - KEPT) : kept;
   }
 }
