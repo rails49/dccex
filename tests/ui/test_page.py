@@ -29,6 +29,12 @@ FACE = UI / "src" / "face.ts"
 #: (ADR-0008 d.5).
 COMMANDS = ("<0>", "<1>", "<!>")
 
+#: The one module that may carry one of them: the flash sequence, which stops
+#: the locomotives and cuts track power as its own steps, after an operator has
+#: been told what flashing does and has said yes (#9, ADR-0006 d.2). It is the
+#: exception docs/ui/README.md already names, and it is one module wide.
+SEQUENCE = "flash.js"
+
 
 def test_the_page_polls_the_station_on_its_own_schedule() -> None:
     """Nothing else on the box asks (ADR-0010).
@@ -129,7 +135,30 @@ def test_nothing_on_the_page_commands_track_power() -> None:
     page does not command is not commanding it — and because the one thing
     that may still carry `<0>` is what an operator types into the box, which
     is not a literal anywhere.
+
+    The flash sequence is the one exception and is held below: it cuts power as
+    a step of writing a release, which is the one caller docs/ui/README.md has
+    always named (#9).
     """
     for name, module in modules().items():
+        if name == SEQUENCE:
+            continue
         for literal in quoted(module):
             assert literal not in COMMANDS, f"{name} sends {literal}"
+
+
+def test_the_flash_sequence_is_the_one_caller_that_cuts_power() -> None:
+    """It stops the locomotives and cuts the rails before a release is
+    written, in that order, and an operator is warned and asked first (#9,
+    ADR-0006 d.2). What the sequence *does* with them is run rather than read
+    (`tests/ui/test_flash.py`); what is held here is that this is the only
+    module that carries one at all.
+
+    **And nothing turns power back on.** A page that put the rails back after
+    a flash would be commanding power with nothing having checked what is on
+    the layout — the thing this page does not do (ADR-0008 d.5). What happens
+    after a station comes back is the operator's.
+    """
+    sent = [literal for literal in quoted(modules()[SEQUENCE]) if literal in COMMANDS]
+
+    assert set(sent) == {"<!>", "<0>"}, f"the sequence sends {sent}"
