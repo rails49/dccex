@@ -29,13 +29,23 @@
 
 set -euo pipefail
 
-# The box, the clone on it, and where the clone came from. Every one of them
+# The box, the clone on it and the branch it is brought to. Every one of them
 # is overridable, and every one of them has the answer for the box this
-# repository is deployed to.
+# repository is deployed to: a different box or a different branch is an
+# ordinary thing to want, and neither of them decides whose code runs.
 BOX=${DCCEX_BOX:-ttmetro@gleis49.org}
 STACK=${DCCEX_STACK:-dccex}
-ORIGIN=${DCCEX_ORIGIN:-https://github.com/rails49/dccex.git}
 BRANCH=${DCCEX_BRANCH:-main}
+
+# Where the clone came from, and the one value here the environment has no say
+# in (#102). The line below sets the origin rather than believing it, because a
+# box whose remote somebody had repointed stopped a deploy dead (control#541) —
+# and a variable would hand the shell this was run from exactly the say that
+# was taken off the box. So it comes out of the checkout, which is what the
+# comment down there claims and what a reader who trusts it can rely on. A
+# fork's origin, if it is ever genuinely wanted, is an argument to this script
+# rather than something the surrounding environment sets behind it.
+ORIGIN=https://github.com/rails49/dccex.git
 
 # The box's declaration of itself: root-owned, edited by hand, and the one
 # file every stack on this box is started against. It is not in this
@@ -47,7 +57,7 @@ RECORD=/var/lib/rails49/deploys/dccex
 
 echo "+ ssh $BOX"
 
-# Unquoted, so the four names above are substituted into the script that goes
+# Unquoted, so the names set above are substituted into the script that goes
 # over the wire; everything the far end evaluates is written `\$`.
 ssh "$BOX" bash -l <<REMOTE
 set -euo pipefail
@@ -77,9 +87,10 @@ fi
 
 cd "\$stack"
 
-# Set rather than trusted. A clone somebody repointed by hand is a clone that
-# deploys somebody else's commits, and the origin is not a thing this script
-# reads off the box and believes.
+# Set rather than trusted, and set to the constant above. A clone somebody
+# repointed by hand is a clone that deploys somebody else's commits, and the
+# origin is not a thing this script reads off the box — or off the shell it
+# was run from — and believes.
 git remote set-url origin "$ORIGIN"
 
 # No prompt, ever. A deploy that stops on a credential prompt stops holding
