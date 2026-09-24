@@ -7,10 +7,12 @@
     "types": ["vite/client"],
     "strict": true,
 
-    // The decoder is JavaScript with its types in JSDoc, because the gate runs
-    // it under a bare node to assert what it makes of a line
-    // (`tests/ui/test_decoder.py`, ADR-0009 d.3). It is checked here under the
-    // same strictness as everything else rather than taken on trust.
+    // Two modules of the page are JavaScript with their types in JSDoc — what
+    // a line means, and what is sent for what was typed — because the gate
+    // runs them under a bare node to assert the pairs themselves
+    // (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`, ADR-0009 d.3).
+    // They are checked here under the same strictness as everything else
+    // rather than taken on trust.
     "allowJs": true,
     "checkJs": true,
     "noUnusedLocals": true,

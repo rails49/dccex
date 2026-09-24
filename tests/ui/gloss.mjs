@@ -6,8 +6,9 @@
 //
 // It is here rather than in the UI's own toolchain because the gate is Python
 // (`scripts/check.sh`). What it needs is a node and nothing else: no packages,
-// no bundler, no DOM and no network, which is why the decoder is the one
-// module of the page written as JavaScript (`ui/src/decoder.js`).
+// no bundler, no DOM and no network, which is why the decoder is written as
+// JavaScript (`ui/src/decoder.js`), as the box's own rule is
+// (`ui/src/message.js`, `tests/ui/message.mjs`).
 
 import { gloss } from "../../ui/src/decoder.js";
 

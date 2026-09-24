@@ -16,10 +16,17 @@
  * none.
  *
  * **Nothing here reads a line.** What one means is the decoder's, which is a
- * pure function of a line and lands under its own ticket (ADR-0009), and
- * nothing is typed back up here at all: this is the monitor's downward half
- * (#4).
+ * pure function of a line (ADR-0009), and what is sent for what was typed is
+ * `message.js`'s, which is another. This module is the socket: where it is,
+ * what arrives on it, and one whole message at a time going up it (#4, #6).
+ *
+ * **What goes up goes in one write.** The page holds what is being typed until
+ * it is a whole `<…>` message and writes the message in one frame, so two
+ * pages open at once cannot interleave a command — the same rule the mirror
+ * holds every client of its port to (`framing.py`, ADR-0007 d.2).
  */
+
+import { message } from "./message.js";
 
 /** The prefix the mirror's face answers under on this page's own origin, and
  *  the whole of what it claims there — the door strips it before the app sees
@@ -60,13 +67,19 @@ const CHARACTERS = new TextDecoder("latin1");
 const NEWLINE = "\n";
 const RETURN = /\r+$/;
 
-/** One line the station said, and the moment it arrived. */
+/** One line of the conversation, and the moment it was on the page's clock. */
 export interface Said {
-  /** When it arrived: the page's clock at the read that carried it. Two lines
-   *  in one read carry the same stamp, which is what happened. */
+  /** When it arrived: the page's clock at the read that carried it, or at the
+   *  write that sent it. Two lines in one read carry the same stamp, which is
+   *  what happened. */
   readonly at: Date;
-  /** The line as the station said it, with the newline it ended off. */
+  /** The line as the station said it, with the newline it ended off — or the
+   *  whole message this page sent, as it went. */
   readonly line: string;
+  /** Which end of the conversation it is: `true` where this page sent it,
+   *  `false` where the station said it. The monitor draws the two differently,
+   *  so a reader can tell their own traffic from the railroad's. */
+  readonly sent: boolean;
 }
 
 /** Where the stream is for the page `where` was read off.
@@ -108,7 +121,7 @@ export function lines(
   for (const part of parts) {
     const line = part.replace(RETURN, "");
     if (line) {
-      said.push({ at, line });
+      said.push({ at, line, sent: false });
     }
   }
   return [rest, said];
@@ -117,11 +130,11 @@ export function lines(
 /**
  * The stream, open for as long as somebody is watching.
  *
- * It holds one socket, hands whole lines to whoever asked for them, and opens
- * another after `REOPEN_MS` when the one it has goes. It says nothing: the
- * page writes nothing up the stream under this ticket, and what the station
- * said while the stream was away is not in the one that follows — the mirror
- * keeps no history and there is nothing to ask for (ADR-0010).
+ * It holds one socket, hands whole lines to whoever asked for them, takes one
+ * whole message at a time back up, and opens another socket after `REOPEN_MS`
+ * when the one it has goes. What the station said while the stream was away is
+ * not in the one that follows — the mirror keeps no history and there is
+ * nothing to ask for (ADR-0010).
  *
  * **A line the stream was cut off in the middle of is handed on as far as it
  * got.** Those bytes arrived, the newline that would have finished them never
@@ -159,6 +172,40 @@ export class Stream {
     const socket = this.#socket;
     this.#socket = null;
     socket?.close();
+  }
+
+  /** Send what was typed, as one whole `<…>` message in one write.
+   *
+   * Returns the message that went, so the monitor can show what it sent, or
+   * `null` where nothing did — there was nothing to send, or there is no
+   * stream open to send it on. A page that showed a line it had not managed to
+   * send would be telling an operator a command reached the station when it
+   * reached nothing, which is the observation nobody made (ADR-0009 d.2).
+   *
+   * **One write, and the whole message in it.** The buffering is the box at
+   * the foot: what is typed is held there until an operator sends it, and what
+   * leaves here is a message rather than a keystroke. Two pages open at once
+   * therefore cannot interleave a command, which is the rule the mirror holds
+   * every client of its port to and is not written a second time here
+   * (`framing.py`, ADR-0007 d.2).
+   *
+   * It rides as a text frame. The mirror reads what a page sends as payload
+   * whatever kind of frame carries it, and a `<…>` message is ASCII, so there
+   * is nothing here for a decoding to lose — which is not true of the bytes
+   * coming the other way (ADR-0007 d.5).
+   */
+  send(typed: string): string | null {
+    const said = message(typed);
+    const socket = this.#socket;
+    if (
+      said === null ||
+      socket === null ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
+      return null;
+    }
+    socket.send(said);
+    return said;
   }
 
   #dial(): void {
@@ -204,7 +251,7 @@ export class Stream {
     }
     this.#socket = null;
     if (this.#partial) {
-      this.#said([{ at: this.#partialAt, line: this.#partial }]);
+      this.#said([{ at: this.#partialAt, line: this.#partial, sent: false }]);
       this.#partial = "";
     }
     if (this.#wanted) {
