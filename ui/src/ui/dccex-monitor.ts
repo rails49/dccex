@@ -58,19 +58,22 @@
  * has got to. Browsers have scroll anchoring that may do this and may not — it
  * is best-effort and off in cases of its own — and the one thing the monitor
  * promises a reader who has scrolled up (#4) does not rest on it.
+ *
+ * **Two of what it works out are run rather than read** (#78). Whether the
+ * reader is at the bottom and the time a line arrived are `monitor.js`'s,
+ * which is JavaScript so that a bare node can put the pairs that matter
+ * through them. What is left here needs a browser — the rows, the box at the
+ * foot, the rectangles a held row is measured with — and a gate with no
+ * browser in it can read that and cannot scroll it.
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
-import { type Said } from "../stream.js";
+import { type Said } from "../framing.js";
+import { atBottom, stamped } from "../monitor.js";
 import { monitorStyles } from "./dccex-monitor.styles.js";
-
-/** How close to the bottom still counts as being at it, in CSS pixels. A
- *  scroller that is one rounded sub-pixel from the end is a reader who has not
- *  scrolled up. */
-const SLACK_PX = 4;
 
 /** What marks a line this page sent, in the column the station's lines leave
  *  empty. A mark and a colour rather than a colour alone, because a reader who
@@ -98,14 +101,6 @@ export interface Keyed extends Said {
   /** What this line is keyed by: assigned once when it was kept, never reused,
    *  and read for nothing else. */
   readonly key: number;
-}
-
-/** Whether the reader is at the bottom of `scroller`. */
-export function atBottom(scroller: Element): boolean {
-  return (
-    scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
-    SLACK_PX
-  );
 }
 
 /** Where a reader who has scrolled up is, kept across an update: a row, and
@@ -144,25 +139,6 @@ function sits(scroller: Element, row: Element): number {
 function holding(scroller: Element): Held | null {
   const row = scroller.querySelector(".line:last-of-type");
   return row === null ? null : { row, below: sits(scroller, row) };
-}
-
-function padded(value: number, width = 2): string {
-  return String(value).padStart(width, "0");
-}
-
-/** The time a line arrived, as the operator's own clock says it.
- *
- * Local time, because the person reading is at the layout correlating what
- * they saw with what the station said, and to the millisecond, because a burst
- * of `<…>` messages arrives inside one second. The instant itself rides on the
- * element's `datetime`, so nothing about when a line arrived is lost to the
- * formatting.
- */
-export function stamped(at: Date): string {
-  return (
-    `${padded(at.getHours())}:${padded(at.getMinutes())}` +
-    `:${padded(at.getSeconds())}.${padded(at.getMilliseconds(), 3)}`
-  );
 }
 
 export class DccexMonitor extends LitElement {

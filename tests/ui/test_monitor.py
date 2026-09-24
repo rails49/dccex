@@ -145,7 +145,7 @@ def test_the_monitor_is_handed_its_lines_and_its_sending() -> None:
     """
     drawn = MONITOR.read_text()
     assert "new Stream(" not in drawn, "the monitor opens a stream of its own"
-    assert 'import { type Said } from "../stream.js"' in drawn
+    assert 'import { type Said } from "../framing.js"' in drawn
     assert "sends: (typed: string) => string | null" in drawn
     app = APP.read_text()
     assert "new Stream(" in app, "nothing on the page opens the stream"
