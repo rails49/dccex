@@ -44,7 +44,8 @@ top of them.
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware, no Docker daemon
-and no node. The three checks that do need a daemon — the page's image built
+and no node — `uv` and an environment, and the first run in a fresh one
+downloads `pyright`'s own toolchain before it can check anything. The three checks that do need a daemon — the page's image built
 and served,
 the compose project brought up, served and taken down, and the mirror's image
 run with a pty for a device and 2560 dialled against it — carry the `docker`
