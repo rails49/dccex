@@ -5,8 +5,8 @@ label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
 **The page is here, the monitor is a full client of the mirror, the page says
-what the station is doing, and it lists what the station could be written
-with.** `ui/` holds the band, the rail and the work pane, built and served the
+what the station is doing, it lists what the station could be written with, and
+it writes one of them.** `ui/` holds the band, the rail and the work pane, built and served the
 way this page says (#3) — which is the tracer bullet, and it is the
 installation everything below rests on. What is in the work pane is the
 **tile**s, the **release**s under them and the **monitor** under those: the
@@ -15,10 +15,10 @@ arrived, newest at the bottom (#4), and a box at the foot that types a whole
 `<…>` message back (#6). The band carries its two readings and the tiles carry
 the particulars, all of them made of what the station said and kept live by the
 page's own polling (#7). The releases are listed newest first with the one on
-the station marked (#8); what is still written ahead of itself is the flashing
-of one, as [the cutover page](../cutover.md) was written ahead of its evening,
-because what it says was decided in rails49/dccex#1 and the tickets under that
-spec are each a part of it. What is already here besides is the other end: the
+the station marked (#8), and choosing one writes it onto the station — which is
+the last thing here that needed a terminal (#9). What it says was decided in
+rails49/dccex#1 and the tickets under that spec are each a part of it, as [the
+cutover page](../cutover.md) was written ahead of its evening. What is already here besides is the other end: the
 **mirror**'s **face**, which is the one thing the page talks to
 ([the mirror's page](../dccex_usb/README.md)).
 
@@ -157,8 +157,7 @@ A face that could not be asked says the releases could not be read, which is a
 different sentence from a source that has published nothing — nothing said is
 not nothing published (ADR-0009 d.2).
 
-Choosing one flashes it, and the page sequences that itself. None of that is
-built: #8 lists the releases and nothing on the row writes a station.
+Choosing one flashes it, and the page sequences that itself (#9).
 
 1. Say plainly what is about to happen — the station resets, the rails drop,
    every throttle loses it, it takes a minute or two — and get a yes.
@@ -166,6 +165,29 @@ built: #8 lists the releases and nothing on the row writes a station.
 3. Cut track power.
 4. Ask the face to write the tag.
 5. Show which step is running, so a minute of silence is not a hang.
+
+**The order is the whole of it.** The stop goes first because a locomotive
+coasting on dead rails is what is left if the power is cut under it, and the
+write goes last because it is the step the station does not come back from for a
+minute or two. A step that did not leave the page stops the sequence where it
+is: the stream is the only way anything reaches the station from here, so a stop
+that did not go is a railroad nobody stopped, and nothing is written after one.
+
+The control is on the release's own row and only on the releases that carry a
+firmware — a tag the mirror would refuse for having nothing to write is not a
+thing to offer. The warning opens under it and the yes is a press of its own
+beside a cancel, because a sequence the operator declines is a flash that was
+not asked for rather than one that was refused. The step is drawn under the row
+rather than inside it, since the row can be shut while the station is away. And
+while a sequence is running there is nothing to press: a second flash is a
+second station reset.
+
+What goes down the cable, in what order, and what is said at each step is
+`ui/src/flash.js`'s — a module with no socket, no face and no DOM of its own, so
+the whole of it runs under a bare node (`tests/ui/test_flash.py`). The drawing
+is `ui/src/ui/dccex-releases.ts`'s, and what it flashes with is handed down from
+the page: the same `send` an operator's typing goes up, so the stop and the cut
+are marked as the page's in the monitor, and the face's own `flash`.
 
 **Nothing behind the page guards this.** The mirror checks the tag, the
 release, the digest, the device and whether it is already writing, and it
@@ -471,7 +493,8 @@ Two things the prototype left open and the tickets settle while building:
   reading a long one on the box;
 - narrow widths were never confirmed in a browser. The rules are written — the
   band drops the track reading below 560px, the tiles wrap onto a second row,
-  the release rows wrap, and the command box is thumb-sized with a field that
+  the release rows wrap, the flash's warning takes its own line above the two
+  presses that answer it, and the command box is thumb-sized with a field that
   shrinks rather than pushing the send button off the side — and nobody has
   held a phone up to them.
 

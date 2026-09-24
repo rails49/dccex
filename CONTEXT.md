@@ -205,12 +205,13 @@ than this repository's.
 ## rail
 
 The chrome down the side of every rails49 UI, carrying what the view in front
-of a person offers. Here it offers nothing yet: `dccex-rail` draws the column,
-one button wide, and the run the first buttons will land in — the flash
-sequence's, when it arrives. It is the **band**'s counterpart and LOOK.md's in
-the same way, which is why its colour, the width of a button on it and the
-window height it turns at are the `--rail*` tokens rather than numbers of this
-page's (`ui/src/ui/dccex-rail.ts`, [ui/look/README.md](ui/look/README.md)).
+of a person offers. Here it offers nothing: `dccex-rail` draws the column, one
+button wide, and the run the first buttons will land in. The flash's are not
+them: a flash is a gesture about one **release** and is pressed on that
+release's row, where the tag it names is (#9). It is the **band**'s counterpart
+and LOOK.md's in the same way, which is why its colour, the width of a button
+on it and the window height it turns at are the `--rail*` tokens rather than
+numbers of this page's (`ui/src/ui/dccex-rail.ts`, [ui/look/README.md](ui/look/README.md)).
 Below `--rail-turns` it lies down along the top of the work pane, and a rail
 lying down is still the rail.
 

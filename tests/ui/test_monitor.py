@@ -190,8 +190,9 @@ def test_the_box_is_usable_at_the_width_of_a_phone() -> None:
     the send button off the side.
 
     `--rail-button` is the look rules' minimum for a thumb (`look.css`). It is
-    a size and not one of the chrome's colours, which is what makes it the
-    value the work pane's one control may ask for.
+    a size and not one of the chrome's colours, which is what makes it the one
+    look value a control on the work pane may ask for — this box's send, and the
+    flash on a release's row (#9, `tests/ui/test_releases.py`).
     """
     styles = STYLES.read_text()
     assert "min-height: var(--rail-button)" in styles, "the box is not thumb-sized"
