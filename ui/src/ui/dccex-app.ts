@@ -8,11 +8,12 @@
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
- * The work pane is the **tile**s and the **monitor** under them: the station's
- * particulars, and its conversation as it arrives (#4, #6, #7). What the page
- * around them proves is the installation the rest of the UI rests on: it is
- * built by node inside the image, served by nginx out of it, and draws in the
- * look rules (docs/ui/README.md, ADR-0008).
+ * The work pane is the **tile**s, the **release**s under them and the
+ * **monitor** under those: the station's particulars, what the box could be
+ * written with, and its conversation as it arrives (#4, #6, #7, #8). What the
+ * page around them proves is the installation the rest of the UI rests on: it
+ * is built by node inside the image, served by nginx out of it, and draws in
+ * the look rules (docs/ui/README.md, ADR-0008).
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
@@ -24,15 +25,22 @@
  * marked as this page's in the monitor and an operator can tell their own
  * traffic from the railroad's.
  *
- * The releases go above the monitor under their own ticket, and that does not
- * change this: the band and the rail do not vary between rails49 UIs, and the
- * page is the same on a box with a command station and no layout as on the
- * layout box (ADR-0008 d.6).
+ * **The releases are asked for once and not on the poll** (#8). What the
+ * station is doing changes under the eye, which is what the schedule above is
+ * for; what the configured source carries changes when somebody publishes, and
+ * a page that asked the release API through the face every five seconds would
+ * spend somebody else's rate limit on an answer that is the same all evening.
+ * What does change — which release is on the station — arrives on the banner
+ * and is read off the **build** (ADR-0008 d.3).
+ *
+ * None of it changes the chrome: the band and the rail do not vary between
+ * rails49 UIs, and the page is the same on a box with a command station and no
+ * layout as on the layout box (ADR-0008 d.6).
  */
 
 import { LitElement, html, type TemplateResult } from "lit";
 
-import { clients } from "../face.js";
+import { clients, releases } from "../face.js";
 import {
   QUIET,
   asOf,
@@ -41,11 +49,13 @@ import {
   type Kept,
   type Readings,
 } from "../readings.js";
+import { type Carried } from "../releases.js";
 import { Stream, type Said } from "../stream.js";
 import { appStyles } from "./dccex-app.styles.js";
 import "./dccex-band.js";
 import "./dccex-monitor.js";
 import "./dccex-rail.js";
+import "./dccex-releases.js";
 import "./dccex-tiles.js";
 
 /** How many lines the page keeps.
@@ -98,6 +108,7 @@ export class DccexApp extends LitElement {
   static override readonly properties = {
     said: { state: true },
     readings: { state: true },
+    carried: { state: true },
   };
 
   /** The conversation: what the station has said and what this page sent,
@@ -106,6 +117,11 @@ export class DccexApp extends LitElement {
 
   /** What the band and the tiles are drawn from, as they stand. */
   readings: Readings = asOf(QUIET, 0);
+
+  /** What the face said the configured source carries, or `null` where it has
+   *  not answered — which is also where it has not been asked yet, and the
+   *  list says the releases could not be read until it has. */
+  carried: Carried[] | null = null;
 
   /** What the station and the face have said, which the readings are worked
    *  out of. It is not reactive: what a component draws is `readings`, and a
@@ -123,6 +139,7 @@ export class DccexApp extends LitElement {
     super.connectedCallback();
     this.#stream.open();
     this.#ask();
+    void this.#list();
     this.#polling = setInterval(() => {
       this.#ask();
     }, POLL_MS);
@@ -156,6 +173,10 @@ export class DccexApp extends LitElement {
       <dccex-rail></dccex-rail>
       <div class="work">
         <dccex-tiles .readings=${this.readings}></dccex-tiles>
+        <dccex-releases
+          .carried=${this.carried}
+          .build=${this.readings.build}
+        ></dccex-releases>
         <dccex-monitor
           .said=${this.said}
           .sends=${this.#sends}
@@ -199,6 +220,19 @@ export class DccexApp extends LitElement {
   /** The readings as they stand, on the page's own clock. */
   #now(): void {
     this.readings = asOf(this.#kept, Date.now());
+  }
+
+  /** Ask the face what the configured source carries, once.
+   *
+   * Once, because a release list is not a reading: what it carries changes
+   * when somebody publishes, and the page is one browser asking somebody
+   * else's service through this app. A face that could not be asked leaves the
+   * list saying so rather than saying the source is empty (`face.ts`,
+   * ADR-0009 d.2), and the way to ask again is to reload the page — which is
+   * also what somebody does after publishing one.
+   */
+  async #list(): Promise<void> {
+    this.carried = await releases();
   }
 
   /** Keep the lines, and read the station's own into the readings.
