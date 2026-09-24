@@ -235,6 +235,40 @@ def test_a_release_with_no_firmware_on_it_is_listed_and_says_so() -> None:
     }
 
 
+def test_a_release_whose_firmware_reports_no_digest_is_not_flashable() -> None:
+    """A firmware the source reports no digest for is one this app refuses to
+    write — unchecked is not written (`firmware.py`, ADR-0065 d.4) — so the
+    flag the page offers the row on says so. Otherwise the sequence stops the
+    locomotives and cuts track power for a write the mirror was never going to
+    accept (#81).
+
+    Listed all the same, like a release with no asset at all: what the source
+    carries is what the page is shown, and the sentence stays the mirror's to
+    give if somebody asks for this tag anyway.
+    """
+    unchecked = json.dumps(
+        [
+            {
+                "tag_name": TAG,
+                "published_at": PUBLISHED[TAG],
+                "assets": [
+                    {
+                        "name": "firmware.bin",
+                        "browser_download_url": f"https://example.invalid/{TAG}.bin",
+                    }
+                ],
+            }
+        ]
+    ).encode()
+
+    answered = asyncio.run(face(Source(unchecked)).answer("GET", "/releases", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {
+        "releases": [{"tag": TAG, "published": PUBLISHED[TAG], "flashable": False}]
+    }
+
+
 def test_a_release_the_source_stamped_no_date_on_is_listed_without_one() -> None:
     """A draft carries no date, and a service under no obligation to us may
     stop carrying one at all. What the source carries is what the page is

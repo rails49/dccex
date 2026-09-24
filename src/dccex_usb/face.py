@@ -170,10 +170,12 @@ stamped it. Empty where the source named none."""
 
 FLASHABLE = "flashable"
 """What says whether a listed release carries the firmware this app would
-write. False is not a refusal and not an error: it is a release published with
-no `firmware.bin` on it, which is a thing the source does and a thing a page
-can show, so that an operator is not sent to a tag there would be nothing to
-write for (#8, `firmware.py`)."""
+write, with the digest that makes writing it a checked write. False is not a
+refusal and not an error: it is a release published with no `firmware.bin` on
+it, or one whose `firmware.bin` the source reports no digest for, which are
+both things the source does and things a page can show, so that an operator is
+not sent to a tag there would be nothing to write for or nothing to check it
+against (#8, #81, `firmware.py`)."""
 
 FLASH_PATH = "/flash"
 """What a build is asked to be written at, with the door's prefix already off
@@ -317,10 +319,11 @@ def carried(document: object) -> list[Carried] | None:
     answering about releases, which is not.
 
     A release with no date reads as one with an empty date, and one with no
-    firmware on it reads as one that cannot be flashed. Neither is a reason to
-    drop it: what the source carries is what the page is shown, and a list
-    quietly shorter than the source's would be this app deciding what a person
-    may see.
+    firmware on it — or none the source reports a digest for, which the write
+    path refuses just as flatly — reads as one that cannot be flashed. None of
+    that is a reason to drop it: what the source carries is what the page is
+    shown, and a list quietly shorter than the source's would be this app
+    deciding what a person may see.
     """
     if not isinstance(document, list):
         return None
@@ -334,11 +337,12 @@ def carried(document: object) -> list[Carried] | None:
         if not isinstance(tag, str) or not tag:
             continue
         published = fields.get(PUBLISHED_AT)
+        firmware = asset(fields)
         found.append(
             Carried(
                 tag,
                 published if isinstance(published, str) else "",
-                asset(fields) is not None,
+                firmware is not None and bool(firmware.digest),
             )
         )
     if listed and not found:
