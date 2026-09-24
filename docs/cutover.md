@@ -61,6 +61,22 @@ The first two need the box. When this page was written they had not been done:
 the box was not reachable from where it was written, and both went back to the
 person rather than being skipped (#42).
 
+**Where those four stand, 2026-09-24** (read over ssh, nothing started and
+nothing stopped):
+
+1. **Not done, and not doable yet.** There is no `~/dccex` on the box and no
+   image to build there: the stack, the mirror's image and the deploy are
+   #15's and #15 is not built. This step waits on it.
+2. **Done, and it says wait.** The box's `control` checkout is at `ba611d6`
+   (#557) and `control`'s `main` is 31 commits ahead of it. That is far more
+   than control#567 and the repoint, so by this page's own rule the cutover
+   night's deploy would not be a delta of one known change. Reported on #16,
+   where the split point is named.
+3. **Done.** The blanks under [Going back](#going-back) are filled, from the
+   container that was serving 2560 at the time.
+4. Still the person's, on the night. `scripts/deaf_client.py` is in this
+   repository.
+
 ## The order
 
 **`control`'s deploy first.** Not because it is polite but because it is the
@@ -120,17 +136,30 @@ deleted from `control`'s `main`:
 ```
 docker rm -f <this stack's mirror container>          # 2560 goes quiet here
 
-docker run -d --name ____________________ \
+docker run -d --name tc49-dccex-usb-1 \
   --restart unless-stopped \
-  --device ____________________ \
+  --network tc49_default \
+  --device /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0:/dev/dccex \
   -p 2560:2560 \
-  sha256:________________________________________________________________ \
-  ____________________
+  sha256:c41622ef3d4fa1bd6027f945958262fedece9b2ddafc4c38a9b2014371d69af4 \
+  python -m tc49.dccex_usb --broker broker:1883 --device /dev/dccex --port 2560
 ```
 
 Filled in from step 3 of [the day before](#the-day-before) — the digest, the
 name, the device and the command the container was running, read off the box
-while it was still running them. The translator goes back with `control`'s
+while it was still running them. Read on 2026-09-24 from `tc49-dccex-usb-1`,
+up at the time and serving 2560, and the image is the one that container was
+created from. The image has never been pushed anywhere, so `RepoDigests`
+carries the same `sha256:` its `Id` does; it is a handle on that box's copy
+and on no other.
+
+**`--network tc49_default` is not in the skeleton this replaced, and it is not
+optional.** `control`'s mirror is a client of the bus and dials the broker by
+the name `broker`, which resolves on that network and nowhere else. A rollback
+that started it without the network would take 2560 back and publish nothing,
+which is the state `control`'s dispatcher reads as the mirror being gone. This
+repository's mirror needs no such flag: it has no broker, which is what
+ADR-0001 is about. The translator goes back with `control`'s
 previous deploy; nothing in this repository repoints it.
 
 **Nothing is pruned until the cutover is accepted.** No `docker image prune`,
