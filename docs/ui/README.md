@@ -156,9 +156,32 @@ browser can hold:
   nothing is replayed on it, so what the station said while it was away is not
   in it.
 
-The **gloss**, the marking of the lines this page sent, the pause, the clear,
-the box at the foot and the polling are the rest of the monitor and land under
-their own tickets. Until the box lands the page types nothing at all: it is one
+**And what the page understood is beside it** (#5). A line the **decoder**
+recognises whole carries one plain sentence, drawn quieter and smaller than the
+bytes and in the page's own face rather than the monospace the station's words
+are in; a line it does not recognise carries nothing at all. Five letters are
+known so far — the banner the station comes up with, track power, a turnout
+thrown or closed, the current on a track, and a command the station would not
+take — and what it knows grows by adding a reader and a pair of strings
+(ADR-0009 d.5). The component knows no protocol: it asks the pure function and
+draws what comes back.
+
+**The pairs are run rather than read.** Every other check of the page here
+reads its sources, because the gate is Python and there is no browser in it.
+The decoder's cannot: a sentence an operator is shown is worth nothing asserted
+against the source that would produce it, and ADR-0009 d.3 asks for the pairs
+themselves. So `tests/ui/test_decoder.py` puts every line the page glosses and
+every near miss through the real function under `node`, by way of
+`tests/ui/gloss.mjs`. What that asks of the machine the gate runs on is a node
+and nothing else — no packages, no bundler, nothing fetched, no DOM — and a
+node that is not there is red rather than skipped, as everything else the gate
+needs is. It is why `ui/src/decoder.js` is the one module of the page written
+as JavaScript with its types in JSDoc: `tsc` checks it as strictly as the rest
+(`ui/tsconfig.json`), and a bare node can still run it.
+
+The marking of the lines this page sent, the pause, the clear, the box at the
+foot and the polling are the rest of the monitor and land under their own
+tickets. Until the box lands the page types nothing at all: it is one
 more **client** of the mirror's port, and it is reading.
 
 The box at the foot sends one whole `<…>` message — buffered until complete and
