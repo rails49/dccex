@@ -175,6 +175,44 @@ def test_a_face_that_did_not_answer_says_nothing_rather_than_nobody() -> None:
     assert "} catch {" in counting, "a face that is away takes the page with it"
 
 
+def test_an_answer_from_an_older_ask_does_not_change_the_count() -> None:
+    """The count is the one reading on the page that could go backwards (#88).
+
+    Every other one is monotonic: a line that arrived has arrived, and the
+    clock only goes forward. The count is a request, and which order a browser
+    hands back the answers to a dozen requests in is the browser's business.
+    During a flash that is a dozen — the face is inside esptool for the length
+    of a write, the poll goes on firing every five seconds, the asks stack up,
+    and an answer from the first of them arriving last would put a count from a
+    minute ago on the tile and leave it there until another answer happened to
+    arrive in order.
+
+    So the asks are numbered, and an answer that is not the newest ask's is
+    dropped where it arrives — the shape `stream.ts` drops a socket that closed
+    after it stopped being the stream's with. Nothing is cancelled by that: a
+    face that is answering slowly is not a request to abort, and the count the
+    newest ask answers with is the one the tile wants, whenever it arrives.
+
+    Read off the source rather than run, for the reason this module opens with.
+    What a reader of it can be held to is the guard: the number taken before the
+    ask goes, the comparison in the answer, and nothing between that comparison
+    and the readings.
+    """
+    page = APP.read_text()
+    asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
+    assert "++this.#asks" in asking, "the asks are not numbered"
+    numbered = asking.index("++this.#asks")
+    answer = asking.index(".then(")
+    assert numbered < answer, "the ask is numbered after its answer could arrive"
+
+    answering = asking[answer:]
+    assert "this.#asks" in answering, "the answer is read whichever ask it is from"
+    assert answering.count("return;") == 1, "the answer is dropped on something else"
+    dropped = answering.index("return;")
+    read = answering.index("counted(")
+    assert dropped < read, "an answer from an older ask reaches the readings"
+
+
 def test_nothing_on_the_page_commands_track_power() -> None:
     """`control`'s band presses ON, STOP and OFF because `layout` checks the
     railroad is drained first; this page is on no bus for anything to check,
