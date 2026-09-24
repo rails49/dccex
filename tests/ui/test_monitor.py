@@ -106,3 +106,69 @@ def test_the_gloss_is_subordinate_to_the_line_the_station_said() -> None:
     assert sizes.index(gloss_size.group(1)) < sizes.index(
         lines_size.group(1)
     ), "the gloss is drawn as large as the line the station said"
+
+
+def test_the_box_at_the_foot_sends_what_is_typed_in_it() -> None:
+    """One form, submitted, and what goes up is the stream's to write (#6).
+
+    A form rather than a key handler, because what sends a command on a phone
+    is the keyboard's own send key and what sends it on a laptop is Enter, and
+    a form is the one thing both of them reach.
+    """
+    drawn = MONITOR.read_text()
+    assert 'class="box" @submit=${this.#send}' in drawn, "there is no box to type in"
+    assert 'class="typed"' in drawn
+    assert 'type="submit"' in drawn, "the box cannot be sent on a phone"
+    assert "this.#stream.send(box.value)" in drawn, "the box sends nothing"
+
+
+def test_what_the_box_draws_is_what_left_the_page() -> None:
+    """The line shown is what `send` handed back, and nothing is drawn when
+    nothing went.
+
+    A command that was not sent — nothing typed, or no stream open to send it
+    on — must leave no line behind it: a line claiming the station was asked
+    something it was never asked is the observation nobody made (ADR-0009 d.2).
+    """
+    drawn = MONITOR.read_text()
+    sending = drawn[drawn.index("#send(") :]
+    assert re.search(r"if \(sent === null\) \{\s*return;", sending) is not None
+    assert "line: sent, sent: true" in sending, "the line drawn is not what went"
+    assert sending.index("sent === null") < sending.index(
+        "line: sent"
+    ), "a line is drawn before it is known that anything was sent"
+
+
+def test_a_line_this_page_sent_is_drawn_differently_from_one_the_station_said() -> None:
+    """A mark and a colour, not a colour alone.
+
+    Which lines this page put on the railroad is the one thing the monitor must
+    not be ambiguous about, and a distinction carried by colour alone is no
+    distinction to a reader who does not see it.
+    """
+    drawn = MONITOR.read_text()
+    assert 'said.sent ? "line sent" : "line"' in drawn, "a sent line is not marked"
+    assert "said.sent ? SENT_MARK : nothing" in drawn
+    styles = STYLES.read_text()
+    said = rule(styles, ".said")
+    sent = rule(styles, ".sent .said")
+    assert "color:" in sent and sent.strip() != said.strip()
+    assert "width: 1ch" in rule(
+        styles, ".mark"
+    ), "the mark column collapses on a line with no mark in it"
+
+
+def test_the_box_is_usable_at_the_width_of_a_phone() -> None:
+    """A thumb's worth of height, and a field that shrinks rather than pushing
+    the send button off the side.
+
+    `--rail-button` is the look rules' minimum for a thumb (`look.css`). It is
+    a size and not one of the chrome's colours, which is what makes it the
+    value the work pane's one control may ask for.
+    """
+    styles = STYLES.read_text()
+    assert "min-height: var(--rail-button)" in styles, "the box is not thumb-sized"
+    typed = rule(styles, ".typed")
+    assert "flex: 1 1 auto" in typed
+    assert "min-width: 0" in typed, "a long command pushes the send off the side"
+    assert "flex: none" in rule(styles, "button"), "the send button shrinks away"

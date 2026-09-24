@@ -12,9 +12,17 @@
  * function this component asks and holds no part of (ADR-0009 d.1) — and the
  * drawing is this component's.
  *
- * Nothing is sent: the box at the foot that types a whole `<…>` message, the
- * pause, the clear and the polling that keeps the readings live are all the
- * page's under their own tickets (ADR-0010 d.1). What is here is the reading.
+ * **And there is a box at the foot** (#6). What is typed in it goes up the
+ * stream as one whole `<…>` message and is shown in the lines above, marked
+ * differently from what the station said, so a reader can tell their own
+ * traffic from the railroad's. Everything the station understands is typed
+ * here, `<0>` included — that is what a raw monitor is, and none of it is a
+ * named control on the page (ADR-0008 d.5). What is sent for what was typed is
+ * `message.js`'s, and writing it is the stream's; this component holds the box
+ * and draws what went.
+ *
+ * The pause, the clear and the polling that keeps the readings live are the
+ * page's under their own tickets (ADR-0010 d.1).
  *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
@@ -43,6 +51,17 @@ export const KEPT = 2000;
  *  scroller that is one rounded sub-pixel from the end is a reader who has not
  *  scrolled up. */
 const SLACK_PX = 4;
+
+/** What marks a line this page sent, in the column the station's lines leave
+ *  empty. A mark and a colour rather than a colour alone, because a reader who
+ *  does not see the colour is still owed the distinction — and because the one
+ *  thing this page must never be ambiguous about is which of these lines it
+ *  put on the railroad. */
+const SENT_MARK = "»";
+
+/** What the box says before anything is typed into it. The shortest whole
+ *  message there is, which is also the one an operator types most. */
+const PLACEHOLDER = "<s>";
 
 /** Whether the reader is at the bottom of `scroller`. */
 export function atBottom(scroller: Element): boolean {
@@ -82,7 +101,7 @@ export class DccexMonitor extends LitElement {
   said: Said[] = [];
 
   readonly #stream = new Stream((said: Said[]) => {
-    this.#arrived(said);
+    this.#keep(said);
   });
 
   /** Whether the reader was at the bottom when the lines last changed. */
@@ -106,8 +125,9 @@ export class DccexMonitor extends LitElement {
           : this.said.map((said: Said) => {
               const read = gloss(said.line);
               return html`
-                <div class="line">
+                <div class=${said.sent ? "line sent" : "line"}>
                   <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
+                  <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
                   <span class="said">${said.line}</span>
                   ${read === null
                     ? nothing
@@ -116,6 +136,20 @@ export class DccexMonitor extends LitElement {
               `;
             })}
       </div>
+      <form class="box" @submit=${this.#send}>
+        <input
+          class="typed"
+          type="text"
+          placeholder=${PLACEHOLDER}
+          aria-label="a command for the station"
+          enterkeyhint="send"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button type="submit">send</button>
+      </form>
     `;
   }
 
@@ -141,13 +175,43 @@ export class DccexMonitor extends LitElement {
     }
   }
 
-  #arrived(said: Said[]): void {
+  /** Send what is in the box, and show what went.
+   *
+   * What is drawn is what `send` handed back, which is what left the page: a
+   * command that was not sent — nothing typed, or no stream open to send it on
+   * — draws no line and leaves the typing where it is, because a line claiming
+   * the station was asked something it was never asked is the observation
+   * nobody made (ADR-0009 d.2).
+   */
+  #send(sending: Event): void {
+    sending.preventDefault();
+    const box = this.#box();
+    if (box === null) {
+      return;
+    }
+    const sent = this.#stream.send(box.value);
+    if (sent === null) {
+      return;
+    }
+    this.#keep([{ at: new Date(), line: sent, sent: true }]);
+    box.value = "";
+  }
+
+  #keep(said: Said[]): void {
     const kept = [...this.said, ...said];
     this.said = kept.length > KEPT ? kept.slice(kept.length - KEPT) : kept;
   }
 
   #scroller(): HTMLElement | null {
     return this.renderRoot.querySelector<HTMLElement>(".lines");
+  }
+
+  /** The box at the foot. What is being typed lives in the element and not in
+   *  a property of this component: a monitor that held every keystroke as
+   *  state would redraw two thousand lines on each one, and nothing above the
+   *  box is about what has not been sent yet. */
+  #box(): HTMLInputElement | null {
+    return this.renderRoot.querySelector<HTMLInputElement>(".typed");
   }
 }
 
