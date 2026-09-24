@@ -29,8 +29,10 @@ export const appStyles = css`
     grid-area: rail;
   }
 
-  /* Where everything the page is about goes. It is empty: this is the page
-     existing, served and drawn in the look rules, and nothing on it yet. */
+  /* Where everything the page is about goes. What is in it is the monitor,
+     which takes the whole of it and scrolls its own lines; the tiles and the
+     releases arrive above it under their own tickets, and it is the pane that
+     scrolls once there is more in it than fits. */
   .work {
     grid-area: work;
     overflow: auto;
