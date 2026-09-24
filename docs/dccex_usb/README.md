@@ -510,6 +510,16 @@ until somebody commits the fix and deploys it, and the record above is where
 that is visible. One step back is what is kept; older images are the box's to
 prune, and what pruning them costs is a second step.
 
+**A deploy that fails is a deploy that did not happen.** `.env` has to say the
+new commit before the `up` — `--env-file .env` is how compose is told which one
+— so an `up` that fails is a file naming a commit that was never brought up. It
+is put back: the previous commit, or removed where a first deploy onto a box had
+none, so that what the next deploy reads for its `went` is true (#83). Nothing
+is appended to the record, which is right — nothing was replaced. The failure is
+loud: the deploy exits non-zero and says which commit the box was left on. The
+containers are not rolled back, and going back on a deploy that did happen is
+the command above rather than something a failure does on its own.
+
 All of this is code here now. `deploy/Dockerfile` is the image; `compose.yaml`
 and `compose.box.yaml` are the project, the second being the box's half — the
 mirror, the device, 2560 raw, the shared network external and the box's
@@ -518,7 +528,11 @@ one ssh and one heredoc, which refuses a clone that is not clean and appends
 the line above. The gate reaches no box and builds no image, so it is one
 command with one exit status as it was: the check that starts the built image
 and dials 2560 against it carries the `docker` marker, and the workflow runs
-it in the job of its own that the page's two are already in (#54, #56).
+it in the job of its own that the page's two are already in (#54, #56). What
+the deploy leaves behind either way is run rather than read, in
+`tests/deploy/test_deploy_runs.py`: the heredoc is saved by a fake `ssh` and put
+through `bash` here, against a clone the suite makes and a `docker` that fails
+on purpose.
 
 **The first one is a cutover and not a deploy.** 2560 is served on the layout
 box today by `control`'s copy of this app, and the evening it changes hands is
