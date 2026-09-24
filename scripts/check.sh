@@ -56,7 +56,7 @@ check() {
 # can hold us to.
 words() {
   local missing="" word
-  for word in station mirror translator face build release tag; do
+  for word in station mirror translator face build release tag rail; do
     grep -q "^## ${word}\$" CONTEXT.md 2>/dev/null || missing="$missing $word"
   done
   compgen -G 'docs/adr/0001-*.md' >/dev/null || missing="$missing ADR-0001"
@@ -64,7 +64,7 @@ words() {
     echo "not defined, or not there:$missing"
     return 1
   fi
-  echo "station, mirror, translator, face, build, release, tag; ADR-0001"
+  echo "station, mirror, translator, face, build, release, tag, rail; ADR-0001"
 }
 
 # The code still says where it was written. `control` deleted its side, so
