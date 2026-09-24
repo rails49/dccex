@@ -32,7 +32,11 @@
  * on originating nothing, which is the whole of its correctness argument
  * (ADR-0010 d.2). The polls go up the way anything typed goes up, so they are
  * marked as this page's in the monitor and an operator can tell their own
- * traffic from the railroad's.
+ * traffic from the railroad's. The first one waits for the stream to say it is
+ * open rather than for the schedule to come round: a poll written at a socket
+ * that is still connecting is refused and goes nowhere, and a page that asked
+ * there spent its first five seconds reporting a station that was answering as
+ * one that was not (#82).
  *
  * **The releases are asked for once and not on the poll** (#8). What the
  * station is doing changes under the eye, which is what the schedule above is
@@ -153,14 +157,21 @@ export class DccexApp extends LitElement {
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
 
-  readonly #stream = new Stream((said: Said[]) => {
-    this.#keep(said);
-  });
+  /** The stream, and the two things it hands up: the lines that arrive, and
+   *  the socket being open — which is when the page asks, because a poll sent
+   *  at one that was still connecting was refused and went nowhere (#82). */
+  readonly #stream = new Stream(
+    (said: Said[]) => {
+      this.#keep(said);
+    },
+    () => {
+      this.#ask();
+    },
+  );
 
   override connectedCallback(): void {
     super.connectedCallback();
     this.#stream.open();
-    this.#ask();
     void this.#list();
     this.#polling = setInterval(() => {
       this.#ask();
