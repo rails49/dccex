@@ -1,6 +1,9 @@
 # ADR-0004 — the face reaches a browser through the door, and never the LAN
 
-- **Status:** accepted, 2026-09-23
+- **Status:** accepted, 2026-09-23; amended 2026-09-24 (#40): d.2 said the
+  page's router outranks the face's, and d.5 said the mirror carries no door
+  labels. Neither can be how Traefik routes a face that lives in the mirror's
+  container. The intent of both is unchanged.
 - **Ticket:** rails49/dccex#40, under #10
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (the
   mirror leaves the bus for a face),
@@ -48,9 +51,12 @@ published to the LAN, and the face is given no label and no certificate of its
 own.
 
 **d.2** The page and the face are one origin — the box's `dccex` label — and
-two routers on it. The page's takes the host rule and outranks the face's: the
-origin is the page's, and the face claims nothing on it but the path prefix
-`/dccex-usb`, which the door strips before the mirror sees it. Under that
+two routers on it. The page's takes the host rule at priority 1 and the
+face's takes the same host under the path prefix `/dccex-usb` at priority 2,
+so the page yields that prefix and keeps everything else. In Traefik the
+higher priority wins, and this is the order `control` gave its page and its
+broker's `/mqtt`. The origin is the page's, and the face claims nothing on it
+but the prefix, which the door strips before the mirror sees it. Under that
 prefix the face answers and nothing else does; everything else on the label is
 the page's, including anything the two rules are ever both written for. The
 face's address is that prefix and has never been anything else, so no UI
@@ -69,8 +75,11 @@ two share is the label. A request with no origin on it is not a page from
 another one — an origin is what a browser attaches, and what limits a caller
 that is not a browser is d.1 and ADR-0042.
 
-**d.5** Only the containers a browser reaches carry door labels. The mirror
-goes on publishing 2560 raw, with no router and no certificate over it: it is
+**d.5** Only the containers a browser reaches carry door labels. The face is
+in the mirror's container, so the mirror carries the face's router, which
+dials the face's port and nothing else, and joins the box's network for it.
+Nothing routes 2560. The mirror goes on publishing it raw, with no router and
+no certificate over it: it is
 a serial conversation between programs on the wifi, ADR-0042 is what limits
 it, and putting it behind the door would put a certificate between a throttle
 and the command station for nobody's benefit.
@@ -78,7 +87,10 @@ and the command station for nobody's benefit.
 **d.6** The steps on the box are not code and are not in this repository. An
 `A` record for the `dccex` label, because the door holds no wildcard;
 `dccex` in `BOX_UIS` in `/etc/rails49/box.env`, so the box's page links it.
-The stack that carries the labels above is #15's.
+The stack that carries the labels above is #15's. Whether those steps
+worked is checked once from a browser on the box, which is what closes #40:
+the page loads over the door's certificate, the monitor's stream opens as
+`wss://`, and a fetch from another origin gets the face's `403`.
 
 ## Consequences
 
@@ -86,9 +98,14 @@ The stack that carries the labels above is #15's.
   unchanged. What keeps the face off the LAN is that its port is not
   published, and what keeps it answering is that the door is on the box's own
   network.
-- The gate cannot check any of this: there is no door in the suite and no box.
-  What is held here is the face's side of it — the origin refusal, and that
-  the path the face answers is `/releases` with the prefix already off.
+- The gate cannot check the door itself: there is no door in the suite and no
+  box. What is held here is the face's side of it (the origin refusal, and
+  that the path the face answers is `/releases` with the prefix already off)
+  and what the stack hands the door: the two routers and their priorities,
+  the stripped prefix spelt as the page spells it, the face's port, and that
+  nothing routes 2560.
+- The box guard is the overlay's own line, `x-require-box-domain`, and not a
+  default inside any one label, so rewriting a route cannot take it away.
 - The face's refusals gain a status. `403` joins the `404`, `405`, `502`,
   `400`, `413` and `431` that were there, and carries its sentence in the same
   `reason` field.

@@ -215,10 +215,13 @@ code here:
   per router through ACME DNS-01 and holds no wildcard;
 - `dccex` in `BOX_UIS` in `/etc/rails49/box.env`, which is root-owned and
   edited by hand, so that the box's page links the UI;
-- the face's own router, which goes on the page's origin under the prefix the
-  door strips rather than on a label of its own, and is #40's. The stack it
-  goes in is `compose.box.yaml`, where the mirror carries no door label at all
-  today (ADR-0004 d.5).
+- checking it once from a browser: the page loads over the door's
+  certificate, the monitor's stream opens as `wss://`, and a fetch from
+  another origin gets the face's `403`.
+
+The face's router is code, and it is in `compose.box.yaml` on the mirror's
+container: the page's host at priority 2 under `/dccex-usb`, stripped before
+the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
 What it answers, which is four things — three questions and a conversation:
 

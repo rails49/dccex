@@ -17,6 +17,15 @@
 # is still `compose.yaml`'s `name: dccex`, and every command above resolves to
 # the one project (ADR-0005 d.7's `.env` is that project's).
 
+# Nothing reads this. It is **the box guard**: where the box's name is
+# required, so that a box started without its declaration is told which file
+# is missing rather than given routers under a blank name. Compose interpolates
+# the whole file before it runs any subcommand, so this one line covers every
+# rule below and every `logs` and `ps` besides — the shape `control` uses for
+# the same job. It lived inside the page's host rule until #40, which put it at
+# the mercy of whoever next rewrote that label; here it belongs to no label.
+x-require-box-domain: ${BOX_DOMAIN:?the box's declaration is missing or declares no BOX_DOMAIN - this stack is started against /etc/rails49/box.env, which is root-owned and edited by hand, and there is no default for it on a box}
+
 services:
   # The page, on a box. Everything about it is `compose.yaml`'s but the network
   # it is reached on and the domain it is reached at.
@@ -34,13 +43,9 @@ services:
     labels:
       # The one label a box moves: the host rule carries the box's own domain
       # rather than the clean clone's `localhost`. Every other label is
-      # `compose.yaml`'s and is merged in as written.
-      #
-      # **This is the box guard.** `:?` is compose refusing to come up, loudly
-      # and by name, when the box's declaration was not passed or does not
-      # declare `BOX_DOMAIN` — rather than coming up on a default that is
-      # wrong for a box and serving the page at a host nothing resolves.
-      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN:?the box's declaration is missing or declares no BOX_DOMAIN - this stack is started against /etc/rails49/box.env, which is root-owned and edited by hand, and there is no default for it on a box}`)
+      # `compose.yaml`'s and is merged in as written. No `:?` here — the guard
+      # at the top of this file has already refused a box with no domain.
+      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN}`)
 
   # The mirror: the app that holds the command station's device and repeats it
   # on 2560. This is the service `control` deleted with its own copy of the
@@ -105,15 +110,48 @@ services:
     # that ends cleanly whether the app hung or not (#103). The two measure
     # different things, and the one that moves for a flash is this one.
     stop_grace_period: 330s
-    # **No door labels.** Only a container a browser reaches carries a route,
-    # and nothing reaches this one but programs on the wifi. The face's router
-    # is #40's, and it goes on the page's origin under the prefix the door
-    # strips rather than on a label of its own (ADR-0004 d.2, d.5).
+    # The face's route, and nothing over 2560. A browser reaches this
+    # container, but only through its face, so the routers here name the
+    # face's port and no other (ADR-0004 d.1, d.5, as amended by #40).
+    #
+    # Same host as the page, under `/dccex-usb`, at priority 2: the page's
+    # router sits at 1 and keeps everything on the origin the face does not
+    # claim, which is the shape `control` gave its broker's `/mqtt` beside its
+    # page (ADR-0004 d.2). The prefix is stripped before the face sees a
+    # request, so the face answers `/releases` and `/stream`, and the prefix
+    # is spelt once more in `ui/src/face.ts`, which a test holds to this.
+    #
+    # The monitor's stream rides this router too, so it is `wss://` on the
+    # page's own origin under the page's certificate (d.3).
+    #
+    # **No refusal router.** A page from another origin is refused by the face
+    # itself, with a status and a sentence (`face.py`, `elsewhere`), which is
+    # how `control`'s store does it; the door gets no `-foreign` twin of this
+    # route (d.4). Nothing here rewrites `Host`, because that refusal compares
+    # the page's origin to the host the door passes on.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=rails49
+      - traefik.http.services.dccex-usb.loadbalancer.server.port=8080
+      - traefik.http.routers.dccex-usb.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/dccex-usb`)
+      - traefik.http.routers.dccex-usb.priority=2
+      - traefik.http.routers.dccex-usb.entrypoints=websecure
+      - traefik.http.routers.dccex-usb.service=dccex-usb
+      - traefik.http.routers.dccex-usb.middlewares=dccex-usb-strip
+      - traefik.http.routers.dccex-usb.tls.certresolver=le
+      - traefik.http.middlewares.dccex-usb-strip.stripprefix.prefixes=/dccex-usb
+    # The project's own network and the installation's, which is the one the
+    # door dials the face on. Joined for the face alone: 2560 is published to
+    # the LAN and needs neither.
+    networks:
+      - default
+      - rails49
 
 networks:
   # The installation's, under the fixed name the door and every other stack on
   # the box know it by. External: this project joins it and does not create it,
   # and a box where the installation has not run is a box where this refuses
-  # to start rather than one where the door quietly cannot see the page.
+  # to start rather than one where the door quietly cannot see the page or the
+  # face.
   rails49:
     external: true
