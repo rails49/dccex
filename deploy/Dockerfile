@@ -23,9 +23,13 @@
 # packages come from, so the image is the versions this repository was checked
 # at rather than whatever the index had this morning.
 #
-# The bases are pinned by tag and not by digest, which is what the page's are
-# (`ui.Dockerfile`). Resolving a digest needs a registry and this was written
-# where there is none; inventing one would name an image nobody has seen.
+# The bases here are pinned by tag and not by digest, which the page's are no
+# longer (`ui.Dockerfile`, #59). Resolving a digest needs a registry and this
+# was written where there is none; inventing one would name an image nobody
+# has seen. So this image still has what that ticket describes — a base that
+# moves underneath a name ADR-0005 d.1 says never moves — and pinning these
+# two is a ticket of its own, wanting a machine that can reach a registry to
+# resolve them.
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build
 
 # Copied rather than linked: the venv this stage produces is carried whole
