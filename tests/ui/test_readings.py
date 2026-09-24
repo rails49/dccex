@@ -231,6 +231,13 @@ def test_nobody_on_the_port_is_a_reading_and_not_a_blank() -> None:
     assert tiles(now=NOW)["clients"] == ""
 
 
+def test_a_face_that_did_not_answer_blanks_the_tile_rather_than_reading_zero() -> None:
+    """A face that is away, or that answered with something that is not a
+    count, says nothing: drawing `0` for an app the page could not ask would
+    be reporting an empty port nobody saw (ADR-0009 d.2, `face.ts`)."""
+    assert tiles(clients=None, now=NOW)["clients"] == ""
+
+
 def test_what_the_station_last_said_is_what_the_readings_read() -> None:
     """Power off after power on is cold, and the second current is the one
     drawn: a reading is the station's latest word and not its first."""
