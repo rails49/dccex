@@ -35,6 +35,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 import pytest
 
@@ -118,9 +119,20 @@ def wait_until_answering(port: int) -> None:
     raise AssertionError(f"the page never answered: {last}")
 
 
+@dataclass(frozen=True)
+class Serving:
+    """The image, built and answering: what every assertion below is about."""
+
+    #: What the build was tagged, so a claim about the artefact itself — what
+    #: it carries rather than what it serves — is asked of the image.
+    tag: str
+    #: The host port the daemon put in front of the container's 80.
+    port: int
+
+
 @pytest.fixture(scope="module")
-def serving() -> Iterator[int]:
-    """The image built, run, and answering: the port to ask it on.
+def serving() -> Iterator[Serving]:
+    """The image built, run, and answering: the image, and the port to ask it on.
 
     One build and one container for the whole module. The build is the
     expensive part of this check and it is the same artefact every assertion
@@ -142,7 +154,7 @@ def serving() -> Iterator[int]:
         container = docker("run", "-d", "-p", "127.0.0.1:0:80", tag)
         port = published(container)
         wait_until_answering(port)
-        yield port
+        yield Serving(tag=tag, port=port)
     finally:
         if container:
             subprocess.run(
@@ -160,45 +172,45 @@ def named(page: str, pattern: str) -> str:
     return match.group(1)
 
 
-def test_the_image_serves_the_page_it_built(serving: int) -> None:
+def test_the_image_serves_the_page_it_built(serving: Serving) -> None:
     """A clean clone, no `control` beside it and no node on the machine: a
     browser asking for `/` gets this UI's page."""
-    status, page = served(serving, "/")
+    status, page = served(serving.port, "/")
     assert status == 200
     assert "<dccex-app></dccex-app>" in page
     assert "/assets/" in page, "the page names nothing that was built"
 
 
-def test_the_band_and_the_rail_are_in_what_was_built(serving: int) -> None:
+def test_the_band_and_the_rail_are_in_what_was_built(serving: Serving) -> None:
     """The two pieces of chrome, in the artefact rather than in the sources.
 
     A page that compiled and drew neither would pass every other check here.
     """
-    _, page = served(serving, "/")
-    status, module = served(serving, named(page, r'src="([^"]*\.js)"'))
+    _, page = served(serving.port, "/")
+    status, module = served(serving.port, named(page, r'src="([^"]*\.js)"'))
     assert status == 200
     for element in ["dccex-band", "dccex-rail"]:
         assert element in module, f"{element} is not in the built page"
 
 
-def test_the_chrome_draws_with_the_copied_values(serving: int) -> None:
+def test_the_chrome_draws_with_the_copied_values(serving: Serving) -> None:
     """What a browser receives, against `ui/look/tokens.css`.
 
     `test_look.py` holds the sources against that copy. This holds the served
     bytes against it, which is the same claim with a build, a bundler and a
     server between it and nothing left to assume.
     """
-    _, page = served(serving, "/")
-    status, stylesheet = served(serving, named(page, r'href="([^"]*\.css)"'))
+    _, page = served(serving.port, "/")
+    status, stylesheet = served(serving.port, named(page, r'href="([^"]*\.css)"'))
     assert status == 200
     for token, value in declarations(COPY.read_text()).items():
         assert f"{token}: {value}" in stylesheet, f"{token} is not what is served"
 
 
-def test_a_path_the_page_owns_is_the_page(serving: int) -> None:
+def test_a_path_the_page_owns_is_the_page(serving: Serving) -> None:
     """One page and one document. Everything on the origin that is not the
     face's prefix is the page's (ADR-0004 d.2), so a reload on a path the page
     put in the bar is the page again rather than a 404 from under it."""
-    status, page = served(serving, "/anything")
+    status, page = served(serving.port, "/anything")
     assert status == 200
     assert "<dccex-app></dccex-app>" in page
