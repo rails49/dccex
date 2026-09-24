@@ -465,8 +465,8 @@ this app has never had and the reason it is trustworthy.
 
 ## Deploying it, and going back
 
-The mirror runs on the box as a container of this repository's one **image**,
-built from its source at one commit and named by it
+The mirror runs on the box as a container of `dccex:<commit>`, the **image**
+built from this repository's source at one commit and named by it
 ([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
 The name never moves: nothing runs `latest` and nothing runs `main`, because a
 name that means a different commit next week is a name nothing can be gone
