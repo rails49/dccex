@@ -201,3 +201,45 @@ def test_the_sequence_reaches_nothing_of_its_own() -> None:
     written = code(FLASH.read_text())
     for held in ("fetch(", "WebSocket", "document", "window", "setTimeout"):
         assert held not in written, f"the sequence reaches {held}"
+
+
+# -- what the page asks -------------------------------------------------------
+
+
+def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
+    """A UI talks to the bus, the store and its own app's face and nothing
+    else (ADR-0002), and what a caller may name is a **tag**: where releases
+    are read from is the app's configuration, and a body that named a source
+    would let anyone on the wifi choose what the command station is offered to
+    run (ADR-0042, `firmware.py`)."""
+    asking = code(FACE.read_text())
+    assert "FLASH_PATH = `${FACE}/flash`" in asking, "the page builds no address"
+    writing = asking[asking.index("export async function flash(") :]
+    assert "fetch(FLASH_PATH, {" in writing
+    assert "method: POST" in writing, "a flash is asked for with a GET"
+    assert "JSON.stringify({ [TAG]: tag })" in writing, "the body names more"
+    assert (
+        'fetch("' not in writing and "fetch(`" not in writing
+    ), "the page writes an address of its own rather than building one"
+
+
+def test_a_flash_the_face_refused_is_said_in_the_face_s_own_words() -> None:
+    """The mirror says what it turned a flash down for, and a page that wrote
+    its own sentence over that would be guessing at an answer it was given
+    (ADR-0050, `face.py`)."""
+    asking = code(FACE.read_text())
+    writing = asking[asking.index("export async function flash(") :]
+    assert "REASON" in writing, "the refusal the face gave is dropped"
+    assert says()["UNANSWERED"] not in writing, "every refusal reads as no answer"
+
+
+def test_a_face_that_did_not_answer_reads_as_nothing_said() -> None:
+    """A face that is away, or an answer this page cannot read: the sequence
+    says the mirror could not be asked rather than that the station was not
+    written, because a page that could not read an answer did not get one
+    (ADR-0009 d.2)."""
+    asking = code(FACE.read_text())
+    writing = asking[asking.index("export async function flash(") :]
+    assert "Promise<Wrote>" in writing, "a face that is away raises"
+    assert "} catch {" in writing, "a face that is away takes the page with it"
+    assert writing.count("UNANSWERED") >= 2
