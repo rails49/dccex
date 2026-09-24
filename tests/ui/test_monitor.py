@@ -47,12 +47,24 @@ def test_the_view_is_measured_before_it_changes_and_followed_after() -> None:
     assert "scrollTop =" in drawn[after:], "the view is not followed after the update"
 
 
+def test_a_line_the_page_sent_is_kept_as_the_page_s_own() -> None:
+    """The line the page keeps is what `send` handed back, which is what left
+    it, and it is marked as this page's so the monitor can draw it as such."""
+    app = APP.read_text()
+    sending = app[app.index("#sends = ") :]
+    assert "this.#stream.send(typed)" in sending
+    assert "line: sent, sent: true" in sending, "the line kept is not what went"
+    assert sending.index("sent !== null") < sending.index(
+        "line: sent"
+    ), "a line is kept before it is known that anything was sent"
+
+
 def test_the_monitor_is_the_page_s_and_is_in_the_work_pane() -> None:
     """The conversation goes in the work pane, which is where everything the
     page is about goes (ADR-0008, `dccex-app`)."""
     app = APP.read_text()
     assert 'import "./dccex-monitor.js";' in app
-    assert "<dccex-monitor></dccex-monitor>" in app
+    assert "<dccex-monitor" in app
     assert 'customElements.define("dccex-monitor"' in MONITOR.read_text()
 
 
@@ -119,24 +131,39 @@ def test_the_box_at_the_foot_sends_what_is_typed_in_it() -> None:
     assert 'class="box" @submit=${this.#send}' in drawn, "there is no box to type in"
     assert 'class="typed"' in drawn
     assert 'type="submit"' in drawn, "the box cannot be sent on a phone"
-    assert "this.#stream.send(box.value)" in drawn, "the box sends nothing"
+    assert "this.sends(box.value)" in drawn, "the box sends nothing"
 
 
-def test_what_the_box_draws_is_what_left_the_page() -> None:
-    """The line shown is what `send` handed back, and nothing is drawn when
-    nothing went.
+def test_the_monitor_is_handed_its_lines_and_its_sending() -> None:
+    """The conversation is the page's and not this pane's (#7).
 
-    A command that was not sent — nothing typed, or no stream open to send it
-    on — must leave no line behind it: a line claiming the station was asked
-    something it was never asked is the observation nobody made (ADR-0009 d.2).
+    The band and the tiles are made of the same bytes the monitor draws
+    (ADR-0008 d.2), so the page holds the stream and hands the lines down. A
+    monitor that owned it would be the one pane of the page the rest had to
+    ask, and a second stream for the readings would be a second client of the
+    mirror's port for one page.
     """
     drawn = MONITOR.read_text()
-    sending = drawn[drawn.index("#send(") :]
+    assert "new Stream(" not in drawn, "the monitor opens a stream of its own"
+    assert 'import { type Said } from "../stream.js"' in drawn
+    assert "sends: (typed: string) => string | null" in drawn
+    app = APP.read_text()
+    assert "new Stream(" in app, "nothing on the page opens the stream"
+    assert ".said=${this.said}" in app
+    assert ".sends=${this.#sends}" in app
+
+
+def test_the_box_clears_only_for_what_left_the_page() -> None:
+    """A command that was not sent — nothing typed, or no stream open to send
+    it on — leaves the typing where it is and draws no line: a line claiming
+    the station was asked something it was never asked is the observation
+    nobody made (ADR-0009 d.2)."""
+    sending = MONITOR.read_text()
+    sending = sending[sending.index("#send(") :]
     assert re.search(r"if \(sent === null\) \{\s*return;", sending) is not None
-    assert "line: sent, sent: true" in sending, "the line drawn is not what went"
     assert sending.index("sent === null") < sending.index(
-        "line: sent"
-    ), "a line is drawn before it is known that anything was sent"
+        'box.value = ""'
+    ), "the box is cleared before it is known that anything was sent"
 
 
 def test_a_line_this_page_sent_is_drawn_differently_from_one_the_station_said() -> None:
