@@ -133,6 +133,24 @@ the check that starts the built image and dials 2560 against it carries the
 `docker` marker of the amendment above, so the gate is still one command and
 one exit status on a machine with no daemon.
 
+*Amended for [#55](https://github.com/rails49/dccex/issues/55), 2026-09-24:*
+
+**d.2's count is two, and the second is the page's.** What it decided about
+the Python apps stands as written: the mirror and the translator share a lock
+file and they share the esptool pin, they are one image and not one each, and
+a second image of them would be a second answer to which esptool this
+repository was tested at. #3 built a page, and a page built by node and served
+by nginx shares neither the lock file nor the pin. The single stage that would
+have kept it in the one image is a stage carrying both toolchains — which is
+the second answer this decision exists to prevent, arriving as a stage instead
+of as an image, rather than a way around it. So the page is
+`dccex-ui:<commit>`, built by `deploy/ui.Dockerfile` and named by d.1's rule
+like everything else here (`compose.yaml`). What d.2 divides on is a
+toolchain and not an app: an app that shares the lock file shares the image,
+which is every app this repository has. Nothing else of d.2 moves, and nothing
+of d.1 does — the commit names both images, which is what lets the amendment
+above keep d.7's rollback at one line.
+
 ## Consequences
 
 - #15 has a shape to build rather than `control`'s to inherit, and #16 cuts

@@ -209,13 +209,25 @@ the station talking.
 
 ## image
 
-What the apps here run as on the box: one image, built from this repository's
-source at one commit and named by it — `dccex:<commit>`, and the name never
-moves ([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
-One for the repository and not one per app, so the mirror and, when it lands,
-the translator are the same image run twice. What a box is running is
-therefore a commit a person can read off it, and the deploy that replaced one
-wrote down which it replaced.
+What the apps here run as on the box: built from this repository's source at
+one commit and named by it — `dccex:<commit>`, and the name never moves
+([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
+
+There are two, and the second is the page's (#3). The apps do not get one
+each: the mirror and, when it lands, the translator are the same image run
+twice, because they share a lock file and the esptool pin, and a second image
+of them would be a second answer to which esptool this repository was tested
+at. The page shares neither — it is built by node and served by nginx — so
+`dccex-ui:<commit>` is its own, and the single stage that would have held it
+with them is the one carrying both toolchains, which is the second answer
+rather than a way around it (`deploy/ui.Dockerfile`,
+[docs/ui/README.md](docs/ui/README.md)). What divides images here is a
+toolchain and never an app.
+
+Both are named by the same commit, so what a box is running is a commit a
+person can read off it, going back names it once and takes both (ADR-0005
+d.7, as amended), and the deploy that replaced them wrote down which it
+replaced.
 
 **Not:** *version*, *build* (the build is the station's), *release* (a release
 is firmware, published elsewhere), *tag* (a tag names a release), *the
