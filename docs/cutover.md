@@ -270,17 +270,35 @@ acceptance is about.
    ```
    docker logs -f <this stack's mirror container>            # from the box, left open
    python3 scripts/deaf_client.py --host <box> --port 2560   # says when it is full
-   docker stop <this stack's mirror container>               # from the box
+   time docker stop <this stack's mirror container>          # from the box
    ```
 
-   The container exits well inside Docker's ten-second grace and exits `0`,
-   not `137`. A shutdown that waits for that client to take its megabyte waits
-   forever; `137` is that wait being killed. Then bring it back up, and
-   check 2 and 3 again.
+   **The stop is timed, and five seconds is the bound.** `time` is on the
+   `docker stop` because the clock is what this check reads. A healthy stop
+   comes back in about a second — the app closes its face, aborts what its
+   clients have not taken and lets the device go — and a `real` under five
+   seconds is the pass, with the container's exit status `0` beside it, read
+   where check 1 read `docker ps -a`.
 
-   **There is time, and there is a bound.** The mirror cuts a client off
-   itself once more than a megabyte is outstanding to it, which is about a
-   minute and a half of the device talking flat out at 115200 8N1
+   **The configured 330 seconds are a flash's, and are not this.**
+   `compose.box.yaml` gives this container `stop_grace_period: 330s`, because
+   `firmware.py` allows esptool 300 seconds to write the station and a
+   container killed in the middle of a write leaves the station half written
+   (#15). That is the room a flash is given, not what a shutdown is expected
+   to take, and nothing is being written at this point in the evening: the two
+   numbers measure different things, and this step is held to the five seconds
+   above rather than to the grace. A stop still running at five has already
+   failed it — the shutdown is waiting for the deaf client to take its
+   megabyte, which is a wait that does not end. Left alone it comes back five
+   and a half minutes later with the container dead of `137`, the same fault
+   read off an exit status instead of off a clock, and there is no reason to
+   stand there for it.
+
+   Then bring it back up, and check 2 and 3 again.
+
+   **There is time before the stop, and a limit on it.** The mirror cuts a
+   client off itself once more than a megabyte is outstanding to it, which is
+   about a minute and a half of the device talking flat out at 115200 8N1
    ([the mirror's page](dccex_usb/README.md#what-it-does-with-the-bytes)).
    That minute and a half is a floor: what fills the deaf client's buffer is
    the station's replies to its own `<s>`, which is a trickle beside flat out,
@@ -296,8 +314,8 @@ acceptance is about.
    ```
 
    After that line there is no deaf client left to hold the shutdown up, and a
-   `docker stop` exits `0` for a reason that has nothing to do with what this
-   check is here to prove. Restart `scripts/deaf_client.py` and do the step
+   `docker stop` comes back inside the bound for a reason that has nothing to
+   do with what this check is here to prove. Restart `scripts/deaf_client.py` and do the step
    again from the top.
 
 The deaf client says nothing when the mirror goes, and that is expected: the
