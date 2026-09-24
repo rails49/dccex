@@ -22,16 +22,23 @@ FROM node:22-alpine AS build
 
 WORKDIR /ui
 
+# pnpm, which is what the project builds pages with (#1, #58), at the version
+# `package.json` names. `corepack` reads that field, so the pnpm that installs
+# here is the pnpm the lock file was written by rather than whatever the base
+# image happens to ship.
+RUN corepack enable
+
 # The dependencies in a layer of their own, ahead of the sources. The sources
 # change on nearly every commit and the lock file seldom does; a single copy
 # would put them in one layer and reinstall packages that did not move.
-COPY ui/package.json ui/package-lock.json ./
+COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./
 
-# `ci` and not `install`: the lock file is honoured rather than updated, so the
+# `--frozen-lockfile`: the lock file is honoured rather than updated, so the
 # image is the versions this repository was checked at, and a lock file that
 # has drifted from `package.json` stops the build instead of being rewritten
-# inside it where nobody would see it.
-RUN npm ci
+# inside it where nobody would see it. This is also the only place that
+# drift is caught — the gate runs no node (`scripts/check.sh`).
+RUN pnpm install --frozen-lockfile
 
 COPY ui/ ./
 
@@ -39,7 +46,7 @@ COPY ui/ ./
 # the box has no node, so this is the one place the page's TypeScript is
 # compiled at all, and a type error has to stop the image rather than ship in
 # it.
-RUN npm run build
+RUN pnpm run build
 
 FROM nginx:alpine
 

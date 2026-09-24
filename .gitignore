@@ -3,3 +3,6 @@ dist/
 __pycache__/
 *.pyc
 .venv/
+
+# pnpm writes a store here when it is run outside the image (`--lockfile-only`).
+.pnpm-store/

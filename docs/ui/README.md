@@ -174,7 +174,12 @@ rails49 UIs do, and it works at the width of a phone held at the layout.
 A multi-stage image, `deploy/ui.Dockerfile`: node to build the sources, nginx
 to serve what came out. The box needs Docker and nothing else — no node
 toolchain on a machine whose job is a command station — and the node that
-builds the page is a container that lasts as long as the build. No image is
+builds the page is a container that lasts as long as the build. It installs
+with **pnpm**, which is what the project builds pages with (#1, #58), at the
+version `ui/package.json` names and from `ui/pnpm-lock.yaml`, frozen: the
+image is the versions this repository was checked at, and a lock file that has
+drifted stops the build. Nothing outside the image installs anything, so that
+build is also the only place the drift is caught. No image is
 published anywhere: the box clones and builds
 ([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
 It is named by the commit it was built from like everything else here, as
