@@ -154,6 +154,20 @@ export class DccexApp extends LitElement {
    */
   #keys = 0;
 
+  /** Which ask an answer has to be from to be read: how many times the page
+   *  has asked, counted up before each one goes.
+   *
+   * The count of clients is the one reading here that could go backwards.
+   * Every other one is monotonic — a line that arrived has arrived, and the
+   * clock only goes forward — but this one is a request, and which order a
+   * browser hands back the answers to a dozen of them in is the browser's
+   * business. During a flash it is a dozen: the face is inside esptool for the
+   * length of a write, the schedule goes on firing, and an answer from the
+   * first ask arriving last would put a count from a minute ago on the tile
+   * and leave it there until another answer happened to arrive in order (#88).
+   */
+  #asks = 0;
+
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
 
@@ -243,10 +257,21 @@ export class DccexApp extends LitElement {
    * a client does (ADR-0007 d.2, ADR-0010 d.1); the face is asked about
    * itself, because who is listening to a command station is not something a
    * command station knows (ADR-0008 d.4).
+   *
+   * **The face's answer is read only if it is the newest ask's** (`#asks`,
+   * #88). An older one is dropped where it arrives, the way `Stream` drops a
+   * socket that closed after it stopped being the stream's. Nothing is
+   * cancelled by that: a face that is answering slowly is not a request to
+   * abort, and the count the newest ask answers with is the one the tile
+   * wants, whenever it arrives.
    */
   #ask(): void {
     this.#sends(POLL);
+    const ask = ++this.#asks;
     void clients().then((count: number | null) => {
+      if (ask !== this.#asks) {
+        return;
+      }
       this.#kept = counted(this.#kept, count);
       this.#now();
     });
