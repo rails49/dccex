@@ -239,7 +239,10 @@ $ curl http://dccex-usb:8080/clients
 The **release**s the configured source carries, in the order the release API
 lists them, so nobody has to type a **tag** from memory. Three facts about
 each: the tag it is named by, the moment the source published it, and whether
-it carries the `firmware.bin` this app would write. The last two are what a
+it carries the `firmware.bin` this app would write — with the digest the source
+reports for it, because an asset the source reports no digest for is one this
+app refuses to write, and a flag that said otherwise would send an operator
+through the whole flash sequence for a refusal (#81). The last two are what a
 page needs to say which release is newest and which one there would be nothing
 to write for, and a release missing either is listed without it rather than
 dropped — what the source carries is what a person is shown (#8). What is
