@@ -41,6 +41,7 @@ from dccex_usb.firmware import (
     argv,
     asset,
     matches,
+    reads_as_release,
     release_url,
 )
 from tests.dccex_usb.test_station import Log, Pty, station
@@ -242,6 +243,29 @@ def test_a_document_that_cannot_be_read_names_no_asset(document: object) -> None
     assert asset(document) is None
 
 
+def test_a_release_document_reads_as_a_release() -> None:
+    assert reads_as_release(json.loads(release()))
+    assert reads_as_release(json.loads(release(name="other.bin")))
+
+
+def test_a_release_carrying_nothing_at_all_still_reads_as_a_release() -> None:
+    """An empty list is a release that carries no firmware, which is what
+    `NO_ASSET` is for. The source answered the question that was asked."""
+    assert reads_as_release({"assets": []})
+
+
+@pytest.mark.parametrize(
+    "document", ["", [], {}, {"assets": "several"}, {"tag_name": TAG}, None]
+)
+def test_a_document_that_is_not_a_release_does_not_read_as_one(
+    document: object,
+) -> None:
+    """What `asset` answers None for twice over is told apart here: a release
+    with nothing in it, and a document this app cannot read as a release at
+    all (#66)."""
+    assert not reads_as_release(document)
+
+
 def test_an_asset_the_api_reports_no_digest_for_carries_none() -> None:
     found = asset(json.loads(release(digest=None)))
 
@@ -431,6 +455,33 @@ def test_a_source_that_answers_a_status_other_than_404_is_refused() -> None:
         assert wrote.refusal is Refusal.SOURCE_AWAY
         assert RELEASES in wrote.said
         assert "500" in wrote.said
+        assert flash.refusals == [wrote.said]
+        assert flash.device.order == []
+        assert flash.device.held, "the device is not let go"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "document", [b"[]", b"{}"], ids=["a list of them", "an object with nothing in it"]
+)
+def test_a_source_that_answers_something_that_is_not_a_release_is_refused(
+    document: bytes,
+) -> None:
+    """A `200` carrying a document this app cannot read as a release is the
+    source answering oddly, not a release with nothing in it: the tag is not
+    what to go and retype, so it is `SOURCE_AWAY` and the sentence names the
+    source (#66)."""
+
+    async def scenario() -> None:
+        flash = Flash(fetch=FakeFetch(document=document))
+
+        wrote = await flash.wants()
+
+        assert wrote.refusal is Refusal.SOURCE_AWAY
+        assert RELEASES in wrote.said
+        assert "not a release" in wrote.said
+        assert f"carries no {ASSET}" not in wrote.said
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
         assert flash.device.held, "the device is not let go"
