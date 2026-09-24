@@ -48,6 +48,16 @@
  * stays where it is once they have scrolled up**, so reading back does not
  * fight the feed. Where they were is measured before the lines change, because
  * afterwards every view is at the bottom of what it was.
+ *
+ * **And staying where they were survives a trim** (#75). At capacity the page
+ * drops the oldest lines, so the pixels that go are the ones above the view: a
+ * reader holding a scroll position is holding a distance from the top of a list
+ * that just got shorter, and what they were reading comes up under them by the
+ * height of whatever went. So the place held across an update is a row and
+ * where in the view that row sat, and the view is put back to wherever that row
+ * has got to. Browsers have scroll anchoring that may do this and may not — it
+ * is best-effort and off in cases of its own — and the one thing the monitor
+ * promises a reader who has scrolled up (#4) does not rest on it.
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
@@ -98,6 +108,44 @@ export function atBottom(scroller: Element): boolean {
   );
 }
 
+/** Where a reader who has scrolled up is, kept across an update: a row, and
+ *  where in the view that row sat.
+ *
+ *  Not a number of pixels from the top of the conversation. The page drops the
+ *  oldest lines at capacity (`KEPT`, `dccex-app.ts`), so what a trim takes is
+ *  the top of that list, and a view left at the same `scrollTop` is looking at
+ *  a different line afterwards. A row is not moved out from under a reader by
+ *  that — it is carried up along with everything below what went — so putting
+ *  the view back on the row puts the reader back on what they were reading,
+ *  whether a thousand lines were dropped or none (#75).
+ *
+ *  The row is the newest one drawn. Lines arrive below it, so nothing arriving
+ *  moves it, and it is the last row a trim could reach. */
+interface Held {
+  /** The row the place is measured against. */
+  readonly row: Element;
+
+  /** How far below the top of the view its top sat, in CSS pixels. Negative
+   *  where the row begins above the view. */
+  readonly below: number;
+}
+
+/** How far below the top of `scroller` the top of `row` sits.
+ *
+ *  Off the rectangles, which carry the fraction: `offsetTop` is rounded to
+ *  whole pixels, and a fraction lost on every trim is a view that creeps away
+ *  from the line the reader is on over an evening. */
+function sits(scroller: Element, row: Element): number {
+  return row.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+}
+
+/** Where the reader of `scroller` is, or `null` where there is no row to hold
+ *  them by — a conversation nothing has been said in yet. */
+function holding(scroller: Element): Held | null {
+  const row = scroller.querySelector(".line:last-of-type");
+  return row === null ? null : { row, below: sits(scroller, row) };
+}
+
 function padded(value: number, width = 2): string {
   return String(value).padStart(width, "0");
 }
@@ -139,6 +187,11 @@ export class DccexMonitor extends LitElement {
 
   /** Whether the reader was at the bottom when the lines last changed. */
   #following = true;
+
+  /** Where a reader who was not at the bottom was when the lines last changed.
+   *  `null` where nobody has to be put back: a reader following the tail, or a
+   *  conversation with no rows in it. */
+  #held: Held | null = null;
 
   override render(): TemplateResult {
     return html`
@@ -203,21 +256,59 @@ export class DccexMonitor extends LitElement {
    * Afterwards is too late: once a line has been appended, a reader who was at
    * the bottom and a reader who had scrolled up are the same distance from the
    * end of a longer page, and the scrolled-up one is who the rule is for.
+   *
+   * Two readings, because a reader is doing one of two things. One at the
+   * bottom is following the tail and is put back on the tail. One who has
+   * scrolled up is on a row, and it is the row that is remembered rather than
+   * the position, because the position is what a trim takes away (`Held`).
    */
   override willUpdate(): void {
     const scroller = this.#scroller();
     this.#following = scroller === null || atBottom(scroller);
+    this.#held =
+      scroller === null || this.#following ? null : holding(scroller);
   }
 
-  /** The newest line, if that is where they were. */
+  /** Put the view back where the reading was: on the newest line for a reader
+   *  who was at the bottom, on their own row for one who had scrolled up.
+   *
+   * The view is set in one place, so there is one answer to where it goes.
+   */
   override updated(): void {
-    if (!this.#following) {
+    const scroller = this.#scroller();
+    if (scroller === null) {
       return;
     }
-    const scroller = this.#scroller();
-    if (scroller !== null) {
-      scroller.scrollTop = scroller.scrollHeight;
+    const where = this.#following
+      ? scroller.scrollHeight
+      : this.#back(scroller);
+    if (where !== null) {
+      scroller.scrollTop = where;
     }
+  }
+
+  /** Where the view has to be for the held row to be where the reader had it.
+   *
+   * The correction is what that row moved by, which is the height of whatever
+   * the page trimmed off the front of the conversation — measured rather than
+   * counted, so it is right for rows of any height and is exactly zero on an
+   * update that only appended, where nothing above the view changed. It is
+   * arithmetic on the scroll position as it stands, and the browser is told to
+   * do none of its own (`overflow-anchor`, `dccex-monitor.styles.ts`): scroll
+   * anchoring is best-effort and off in cases of its own, and the criterion
+   * that the view does not move under a reader who has scrolled up cannot rest
+   * on it (#75, #4).
+   *
+   * `null` where there is nobody to put back: no row was held, or the row that
+   * was held is gone — one update that dropped the whole conversation, after
+   * which there is nothing left of what they were looking at to hold them to.
+   */
+  #back(scroller: HTMLElement): number | null {
+    const held = this.#held;
+    if (held === null || !held.row.isConnected) {
+      return null;
+    }
+    return scroller.scrollTop + sits(scroller, held.row) - held.below;
   }
 
   /** Send what is in the box, and clear it once something went.

@@ -266,3 +266,62 @@ def test_several_frames_arriving_before_the_next_paint_are_one_update() -> None:
     scheduling = drawn[drawn.index("override async scheduleUpdate(") :]
     assert "requestAnimationFrame(" in scheduling, "the update waits for nothing"
     assert "super.scheduleUpdate()" in scheduling, "the update is never made"
+
+
+def test_the_place_a_reader_holds_is_a_row_and_not_a_number_of_pixels() -> None:
+    """A trim takes lines off the front, and a position measured from the front
+    moves under the reader by the height of what went (#75).
+
+    So what is held across an update is a row and where in the view that row
+    sat. A row is carried up with everything below it, so putting the view back
+    on the row puts the reader back where they were — for a trim of any size,
+    and for nothing at all, since an update that only appended moves no row
+    already drawn.
+    """
+    drawn = MONITOR.read_text()
+    holding = drawn[
+        drawn.index("override willUpdate(") : drawn.index("override updated(")
+    ]
+    assert "holding(scroller)" in holding, "nothing is held before the lines change"
+    assert (
+        "below: sits(scroller, row)" in drawn
+    ), "the place held is not a row and where it sat"
+    following = drawn[drawn.index("override updated(") :]
+    assert "this.#back(scroller)" in following, "the reader is not put back"
+    assert (
+        "scroller.scrollTop + sits(scroller, held.row) - held.below" in drawn
+    ), "the view is not moved by what the row moved by"
+
+
+def test_the_correction_is_measured_and_not_counted() -> None:
+    """Off the rectangles, so it is right for rows of any height.
+
+    `offsetTop` is rounded to whole pixels, and a fraction of a pixel lost on
+    every trim is a view that creeps away from the line the reader is on. The
+    row that is measured against is the newest one drawn — lines arrive below
+    it, so nothing arriving moves it — and it is measured only while it is
+    still on the page.
+    """
+    drawn = MONITOR.read_text()
+    assert "getBoundingClientRect()" in drawn, "the place is not measured"
+    assert ".offsetTop" not in drawn, "the place is measured in whole pixels"
+    assert ".line:last-of-type" in drawn, "the row held is not the one a trim spares"
+    assert "isConnected" in drawn, "a row that is gone is still measured against"
+
+
+def test_a_reader_at_the_bottom_still_follows_the_tail() -> None:
+    """The two readers are the two branches of one answer (#4, #75).
+
+    One at the bottom is put on the end of the conversation, one who has
+    scrolled up is put back on their row, and the view is set in the one place
+    either way — so there is one answer to where it goes.
+    """
+    drawn = MONITOR.read_text()
+    following = drawn[drawn.index("override updated(") :]
+    assert (
+        re.search(r"this\.#following\s*\?\s*scroller\.scrollHeight", following)
+        is not None
+    ), "a reader at the bottom no longer follows the tail"
+    assert (
+        drawn.count("scrollTop =") == 1
+    ), "the view is scrolled in more than one place"
