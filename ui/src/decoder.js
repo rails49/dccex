@@ -24,10 +24,11 @@
  * next door, which turns desired values into these messages (CONTEXT.md).
  *
  * It is JavaScript with its types in JSDoc, as `message.js`, `readings.js`,
- * `releases.js` and `flash.js` are: the five the gate runs rather than reads,
- * being what decides what a person reads, what reaches the station, what the
- * chrome says of it, what the box could be written with and what is done to
- * the railroad before one is written. The gate is Python and cannot
+ * `releases.js`, `flash.js`, `framing.js` and `monitor.js` are: the seven the
+ * gate runs rather than reads, being what decides what a person reads, what
+ * reaches the station, what the chrome says of it, what the box could be
+ * written with, what is done to the railroad before one is written, where the
+ * conversation arrives and how it is read off the page. The gate is Python and cannot
  * run a bundler, and a gloss asserted against the source that would produce it
  * is not asserted; what a bare node can run, the gate can put pairs through
  * (`tests/ui/test_decoder.py`). `tsc` checks this file as it checks the rest

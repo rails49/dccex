@@ -15,7 +15,7 @@ gate does not collect these and the workflow runs them, where a node that is
 not there is red rather than skipped (`scripts/check.sh`, #101).
 
 It is why this and the decoder are written as JavaScript with their types in
-JSDoc: they are two of the five run under a bare node, because they are what
+JSDoc: they are two of the seven run under a bare node, because they are what
 decides what a person reads and what reaches the station. `tsc` checks them as
 strictly as the rest (`ui/tsconfig.json`).
 
