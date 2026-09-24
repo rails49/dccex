@@ -1,11 +1,11 @@
 """The mirror's own face: what the UI asks this app about this app.
 
 A face is an app's own interface, served on the UI's origin and behind the
-same door, about the app rather than about a railroad (ADR-0002). This one is
-the mirror's, and it is what the page for the command station talks to and the
-only thing it talks to: a command station is not a fact about a railroad, so
-there is no bus here to carry the question and no store to keep the answer
-(ADR-0001).
+same door, about the app rather than about a railroad (the organisation's
+ADR-0002). This one is the mirror's, and it is what the page for the command
+station talks to and the only thing it talks to: a command station is not a
+fact about a railroad, so there is no bus here to carry the question and no
+store to keep the answer (ADR-0001).
 
 **Three things are asked of it: what releases the source carries, that one of
 them be written onto the station, and the station's own conversation, both
@@ -124,7 +124,7 @@ KEY = "sec-websocket-key"
 read. A request for the stream that carries none is not a browser opening one,
 and the rest of the negotiation — the version, the subprotocols, the
 extensions — is protocol this would carry without ever being asked for it, on
-a private origin spoken to by one page (ADR-0002)."""
+a private origin spoken to by one page (the organisation's ADR-0002)."""
 
 LOOPBACK = "127.0.0.1"
 """Where the mirror's port is joined for a monitor: the box itself and never
@@ -494,10 +494,10 @@ def requested(head: bytes) -> Asked | None:
     origin the request was addressed to, which the door passes on as the label
     it answered for (ADR-0004) — and the key a browser names when what it is
     doing is opening a stream. This is a face on a private origin behind the
-    door, spoken to by one page (ADR-0002), so the parts of the protocol a
-    general server owes the world — negotiation, encodings, a connection kept
-    open for the next request — are parts this would carry without ever being
-    asked for them.
+    door, spoken to by one page (the organisation's ADR-0002), so the parts
+    of the protocol a general server owes the world — negotiation, encodings,
+    a connection kept open for the next request — are parts this would carry
+    without ever being asked for them.
     """
     lines = head.decode("latin-1").split(CRLF)
     asked = lines[0].split(" ")

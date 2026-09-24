@@ -52,16 +52,17 @@ mirror's port like any other.
 ## face
 
 An app's own interface, served on the UI's origin and behind the same door,
-about that app rather than about a railroad (ADR-0002). The UI talks to one
-face and nothing else. A face is private to its app: it is not somewhere else
-to get at the railroad. Its address is a path prefix on the page's own origin,
-which the door strips before the app sees it, and a page from anywhere else is
-refused (ADR-0004). The mirror's face answers what releases the source
-carries (#12), writes one of them onto the station when a caller names its tag
-(#13), and carries the station's own conversation to the page and back (#14,
-the **stream** below). It guards nothing while it does: a face is about its
-app, so whether a railroad can spare its command station for two minutes is
-the operator's question and not this app's (ADR-0006).
+about that app rather than about a railroad (the organisation's
+[ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
+The UI talks to one face and nothing else. A face is private to its app: it is
+not somewhere else to get at the railroad. Its address is a path prefix on the
+page's own origin, which the door strips before the app sees it, and a page
+from anywhere else is refused (ADR-0004). The mirror's face answers what
+releases the source carries (#12), writes one of them onto the station when a
+caller names its tag (#13), and carries the station's own conversation to the
+page and back (#14, the **stream** below). It guards nothing while it does: a
+face is about its app, so whether a railroad can spare its command station for
+two minutes is the operator's question and not this app's (ADR-0006).
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
