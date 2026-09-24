@@ -2,11 +2,11 @@
  * The monitor's two rules that are not drawing: whether the reader is at the
  * bottom of the conversation, and the time a line arrived as a clock says it.
  *
- * The page is `ui/src/ui/dccex-monitor.ts`, and everything about it that needs
- * a browser stays there — the rows, the box at the foot, the rectangles a held
- * row is measured with, and the view being put back. What is here is what that
- * component works out from numbers and a `Date`, which is what lets both be
- * run with the pairs that matter on a machine with no browser in it
+ * The page is `ui/src/ui/dccex-monitor.ts`, and everything about it that
+ * needs a browser stays there — the rows, the box at the foot, the rectangles
+ * a held row is measured with, and the view being put back. What is here is
+ * what that component works out from numbers and a `Date`, which is what lets
+ * both be run with the pairs that matter on a machine with no browser in it
  * (`tests/ui/test_monitor.py`).
  *
  * Neither is a reading of the railroad. What the **band** and the **tile**s
@@ -32,9 +32,9 @@ const SLACK_PX = 4;
  * tall what is in it is, how far down it has been scrolled, and how much of it
  * a reader can see.
  *
- * An `Element` is one, and so is a plain object with the three numbers — which
- * is what lets the rule below be run under a bare node. Nothing here touches a
- * browser value; it reads three numbers off one.
+ * An `Element` is one, and so is a plain object with the three numbers —
+ * which is what lets the rule below be run under a bare node. Nothing here
+ * touches a browser value; it reads three numbers off one.
  *
  * @typedef {{
  *   readonly scrollHeight: number,
@@ -74,8 +74,8 @@ function padded(value, width = 2) {
  *
  * Local time, because the person reading is at the layout correlating what
  * they saw with what the station said, and to the millisecond, because a burst
- * of `<…>` messages arrives inside one second. The instant itself rides on the
- * element's `datetime` (`dccex-monitor.ts`), so nothing about when a line
+ * of `<…>` messages arrives inside one second. The instant itself rides on
+ * the element's `datetime` (`dccex-monitor.ts`), so nothing about when a line
  * arrived is lost to the formatting.
  *
  * @param {Date} at when the line arrived, on the page's clock
