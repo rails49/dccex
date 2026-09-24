@@ -1573,8 +1573,20 @@ def forgotten() -> Generator[list[str]]:
     between a connection given up and a connection forgotten, and it is what
     stops a leak from passing for a fix on a machine whose collector is
     prompt enough to close the socket before a test can look at it.
+
+    There are two collections and the first one is not belt and braces. Every
+    test before this one leaves cycles behind, and until something reaps them
+    their transports are unclosed and have said nothing yet. The collection at
+    the end would reap those too, and their warnings would land in this window
+    and be read as this block's — an unclosed transport forgotten anywhere in
+    the suite, reported against whichever test used this. So the first
+    collection empties that backlog *before* the window opens, which leaves
+    the second one nothing to reap but what ran inside it (#65).
     """
     said: list[str] = []
+    # Outside `catch_warnings`, so what it reaps is not only reaped before the
+    # window but says so outside it.
+    gc.collect()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         yield said
