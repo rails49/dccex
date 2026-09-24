@@ -476,6 +476,16 @@ too, so `docker inspect` still answers the question for one somebody renamed.
 is the thing that gets written onto the station, and the two sentences are one
 `docker` command apart on the same box ([CONTEXT.md](../../CONTEXT.md)).
 
+**A build nobody gave a commit claims none.** That is what `docker compose up
+--build` on a clean clone is, and the label it writes is empty: `dev` is what
+such a build is *named*, where it is true, and a revision that reads like a
+commit reference and is none would send a reader of `docker inspect` looking
+for a checkout that never existed (ADR-0005 d.4 as amended, #97). The stack
+hands the build the same variable the name is built from, so the two cannot
+name different commits. `tests/deploy/test_mirror_serves.py` is where this is
+held rather than read: it builds the image with nothing passed and asks the
+built artefact what it claims.
+
 **What is under the name does not move either.** Both bases of
 `deploy/Dockerfile` are pinned by digest with the readable tag in front of it,
 so two builds of one commit a month apart are the same image and d.7's rebuild
