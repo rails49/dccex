@@ -24,6 +24,10 @@ from tests.ui.test_look import ROOT
 #: `node.py` does would show up.
 HERE = Path(__file__).resolve().parent
 
+#: The other half of the same boundary: what the seven runners import for
+#: stdin and stdout, so that each of them is the mapping it is for.
+PRELUDE = HERE / "each.mjs"
+
 #: What the scans below walk past: the one module allowed to run a runner,
 #: and this one, which has to spell what it is looking for to look for it.
 SPELT = {HERE / "node.py", Path(__file__).resolve()}
@@ -97,3 +101,18 @@ def test_a_runner_is_started_in_one_place() -> None:
         if STARTS in module.read_text()
     )
     assert started == [], f"a runner is started in {started} as well"
+
+
+@pytest.mark.node
+def test_every_ask_is_answered_in_the_order_it_was_asked(tmp_path: Path) -> None:
+    """And a promise is waited for, which is what one of the seven answers.
+
+    The sequence a flash runs is asynchronous (`tests/ui/flash.mjs`), so the
+    prelude cannot hand back what `map` gives it: the asks go through one after
+    another and what comes back is in the order it was asked.
+    """
+    runner = tmp_path / "ordered.mjs"
+    runner.write_text(
+        f'import {{ each }} from "{PRELUDE}";\n' "await each(async (n) => n * 2);\n"
+    )
+    assert ran(runner, [1, 2, 3], "the prelude") == [2, 4, 6]
