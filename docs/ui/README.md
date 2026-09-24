@@ -251,6 +251,21 @@ browser can hold:
   nothing is replayed on it, so what the station said while it was away is not
   in it.
 
+**The busiest line is the cheapest drawing of it** (#74). Two thousand lines
+kept and the oldest dropped means that at capacity every arriving line shifts
+the whole conversation up by one, and a list matched by position re-commits
+every binding on all two thousand rows for that — per frame the station sends,
+which is the case the monitor exists for. So every line carries a key the page
+gives it when it keeps it, assigned once and never reused, and the rows are
+drawn under those keys: the shift moves the rows the page already drew. The
+key is the page's own and is nothing the line carries — a line and the
+millisecond it arrived in are both ordinary to see twice on a serial port, and
+two rows keyed the same would be one row. The drawing itself waits for the
+frame the browser is going to paint, so everything that arrived before it is
+drawn once, which is as often as a reader can see it. None of it changes what
+is on the page: the monitor drew the right thing before and draws the same
+thing now.
+
 **And what the page understood is beside it** (#5). A line the **decoder**
 recognises whole carries one plain sentence, drawn quieter and smaller than the
 bytes and in the page's own face rather than the monospace the station's words
