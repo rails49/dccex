@@ -164,7 +164,11 @@ a release exists whether or not anything can be written from it, and a row that
 looked like the others would send an operator to a tag the mirror would refuse.
 A face that could not be asked says the releases could not be read, which is a
 different sentence from a source that has published nothing — nothing said is
-not nothing published (ADR-0009 d.2).
+not nothing published (ADR-0009 d.2). An answer that carries entries and names
+no release among them is the first of those and not the second: it is a
+document the page could not read rather than a source with nothing on it, and
+the app draws the same line on the same document at the other end of the wire
+(`face.ts`, `face.py`, #95).
 
 Choosing one flashes it, and the page sequences that itself (#9).
 
