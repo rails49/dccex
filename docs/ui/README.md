@@ -306,10 +306,12 @@ reads the band and the tiles back (`tests/ui/readings.mjs`), and
 reads the release rows back (`tests/ui/releases.mjs`), and
 `tests/ui/test_flash.py` puts a flash through the sequence and reads back what
 went down the cable, in what order, and what the page said while it did
-(`tests/ui/flash.mjs`). What that asks of the machine the gate runs on is a node
-and nothing else — no packages, no bundler, nothing fetched, no DOM — and a node
-that is not there is red rather than skipped, as everything else the gate needs
-is. It is why `ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
+(`tests/ui/flash.mjs`). What that asks of a machine is a node and nothing
+else — no packages, no bundler, nothing fetched, no DOM — and it is not asked of
+every machine the gate runs on: these checks carry the `node` marker,
+`scripts/check.sh` does not collect them, and the workflow runs them in a job a
+pull request requires (#101). Where they do run, a node that is not there is red
+rather than skipped, as everything else a gate needs is. It is why `ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
 `ui/src/releases.js` and `ui/src/flash.js` are the five modules of the page
 written as JavaScript with their types in JSDoc: `tsc` checks them as strictly
 as the rest (`ui/tsconfig.json`), and a bare node can still run them.
