@@ -183,6 +183,14 @@ class Unasked:
         raise AssertionError(f"the gate asked for '{tag}' to be written")
 
 
+class Uncounted:
+    """The mirror, as the face here reads the count off it: nothing in this
+    file serves 2560, so nobody is on it. What makes a client one is
+    `test_station.py`'s and what a page is told is `test_face.py`'s."""
+
+    clients = 0
+
+
 class Unjoined:
     """What joins the mirror's port here, and never does: nothing in this file
     opens a monitor's stream. What one carries is `test_face.py`'s, where the
@@ -195,7 +203,7 @@ class Unjoined:
 def served(port: int = 0) -> Server:
     """The face on an OS-chosen port, which is what the loop is handed."""
     return Server(
-        Face(fetch=unreachable, flasher=Unasked()),
+        Face(fetch=unreachable, flasher=Unasked(), counts=Uncounted()),
         port,
         joins=Unjoined(),
         log=lambda line: None,
@@ -208,7 +216,7 @@ class Unserved(Server):
 
     def __init__(self) -> None:
         super().__init__(
-            Face(fetch=unreachable, flasher=Unasked()),
+            Face(fetch=unreachable, flasher=Unasked(), counts=Uncounted()),
             FACE_PORT,
             joins=Unjoined(),
             log=lambda line: None,

@@ -418,6 +418,20 @@ class Station:
         return self._device
 
     @property
+    def clients(self) -> int:
+        """How many clients are on this port at this moment.
+
+        The one reading the **station** cannot say about itself, which is why
+        it is the app's own to answer (ADR-0008 d.4): the mirror knows how
+        many sockets it is fanning out to, and nothing on the cable does. It
+        counts what the fan-out counts — a client is on the port from the
+        moment it connects until its handler lets go of it — so a throttle
+        that has fallen too far behind is still one until the cut-off takes
+        it, which is what the number would say if a person counted the plugs.
+        """
+        return len(self._clients)
+
+    @property
     def held(self) -> bool:
         """Whether the device is open at this moment.
 

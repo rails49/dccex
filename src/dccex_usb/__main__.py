@@ -73,11 +73,17 @@ def serve(
     # that waits one out on the way down. There is one device, so there is one
     # thing that may write it, and a second would refuse nothing (#13).
     #
-    # The mirror is handed to the face a second time and differently: a
+    # The mirror is handed to the face twice more and differently: a
     # monitor's stream is joined to `port` from inside this process, so the
     # page watching the station is a client of the same port JMRI is on and
-    # not a second fan-out (ADR-0007, #14).
-    face = Server(Face(releases, flasher=flasher), face_port, joins=Loopback(station))
+    # not a second fan-out (ADR-0007, #14), and the count of who is on that
+    # port is read off the fan-out itself, because it is the one reading on
+    # the page the station cannot say about itself (ADR-0008 d.4).
+    face = Server(
+        Face(releases, flasher=flasher, counts=station),
+        face_port,
+        joins=Loopback(station),
+    )
     to_stderr(
         f"serving {device} on {port}, face on {face_port}, flashing from {releases}"
     )

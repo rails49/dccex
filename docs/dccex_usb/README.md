@@ -220,7 +220,7 @@ code here:
   goes in is `compose.box.yaml`, where the mirror carries no door label at all
   today (ADR-0004 d.5).
 
-What it answers, which is three things — two questions and a conversation:
+What it answers, which is four things — three questions and a conversation:
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -228,6 +228,9 @@ $ curl http://dccex-usb:8080/releases
 
 $ curl -X POST http://dccex-usb:8080/flash -d '{"tag": "v5.6.4-rails49.1"}'
 {"flashed": "v5.6.4-rails49.1"}
+
+$ curl http://dccex-usb:8080/clients
+{"clients": 3}
 ```
 
 The **tags** of the **releases** the configured source carries, in the order
@@ -238,6 +241,16 @@ redirect it.** The query string is dropped and the body is not read for a
 source, because the LAN carries no authentication on purpose (control
 ADR-0042) and a request that named a source would be a request that decides
 what the station is offered to run.
+
+The third is how many **client**s are on 2560 at the moment it is asked, and
+it is the one reading on the page that is not the station talking: a command
+station knows nothing about who is listening to it, and the app holding the
+port does ([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
+d.4, #7). A count and not a list — clients are equal here and the mirror does
+not know which of them is which (CONTEXT.md) — read off the fan-out at the
+question rather than kept, so a throttle that has gone is not one a page goes
+on being shown. Nobody on the port is `0` and an answer like any other: on the
+box this UI exists for, a page and nothing else is the ordinary evening.
 
 The second is [the flash](#writing-the-firmware), and the answer comes back
 when it is over: a minute or two, because that is how long writing four
@@ -256,9 +269,10 @@ log on the box (control ADR-0050):
   about and carries no release for. The tag is the thing to fix, which is why
   a source that was never asked is a `502` below and not this. A face is
   private to its app and is not somewhere else to get at the railroad.
-- `405` — the releases are read, with `GET`; a flash is asked for, with
-  `POST`. There is nothing at `/flash` to read, and a page that reloaded one
-  would write the station again.
+- `405` — the releases and the count of clients are read, with `GET`; a flash
+  is asked for, with `POST`. There is nothing at `/flash` to read, and a page
+  that reloaded one would write the station again; there is nothing at
+  `/clients` to change, because who is on 2560 is decided by who dialled it.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
