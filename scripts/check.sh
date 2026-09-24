@@ -29,6 +29,16 @@
 # that would produce it — worth a node somewhere, and not worth a node on
 # every machine this gate runs on (#101). The workflow runs those too, in a
 # job of its own required on the pull request.
+#
+# **One thing it does fetch, once per environment.** `pyright` is distributed as
+# a wrapper: the first time it runs in an environment it downloads a node and
+# its own npm package into it, which is the `Install prebuilt node` line in the
+# output. It is cached there, so a second run is silent and a machine with no
+# network runs the whole gate as long as its environment already exists — but a
+# cold `uv sync` and a cold gate do reach the network, and CI does it on every
+# run because it builds the environment from scratch. The type checker stays in
+# the gate regardless: a gate that dropped it to avoid a download would be
+# green while proving less, which is the thing this script says twice above.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
