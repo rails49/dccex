@@ -24,7 +24,7 @@
  */
 
 import { UNANSWERED, WROTE, type Wrote } from "./flash.js";
-import { type Carried } from "./releases.js";
+import { carried, type Carried } from "./releases.js";
 
 /** The prefix the mirror's face answers under on this page's own origin, and
  *  the whole of what it claims there — the door strips it before the app sees
@@ -82,11 +82,6 @@ export const RELEASES_PATH = `${FACE}/releases`;
 /** What the list comes back under. */
 const RELEASES = "releases";
 
-/** The three fields a listed release carries. */
-const TAG = "tag";
-const PUBLISHED = "published";
-const FLASHABLE = "flashable";
-
 /**
  * The releases the configured source carries, or `null` where the face did
  * not say.
@@ -98,23 +93,20 @@ const FLASHABLE = "flashable";
  * to a release API that is perfectly well (ADR-0009 d.2). The source carrying
  * nothing is a different sentence and it is the face's `[]`.
  *
- * Read one field at a time, as the app reads the release API (`face.py`): a
- * page that reached into an answer would be a page taken down by whatever the
- * app on the other end of its own origin returned the day it returned
- * something else. An entry that names no tag is not a release, and the rest of
- * a release is left where it is rather than guessed at — no date reads as no
- * date, and no `flashable` reads as nothing to write, which is the direction
- * that does not send an operator at a tag the mirror would refuse.
- *
- * **A list that yields no release is not an answer about releases.** A source
- * that lists nothing carries no releases yet, which is an answer and is the
- * face's `[]`; a list that carries entries and names none of them is a
- * document this page could not read, and the empty list drawn for it would
- * say the source has published nothing (#66, `releases.js`). The rule is
+ * **What this does is the asking, and the reading is `releases.js`'s
+ * `carried()`.** The document is read one field at a time, as the app reads
+ * the release API, and a list that carries entries and names no release among
+ * them comes back as `null` rather than as an empty list — the rule is
  * `face.py`'s `carried()`, which draws the same line on the same document at
- * the app's end of the wire, and the check below is written as that one is —
- * the same two names, in the same order — so that whoever changes one finds
- * the other.
+ * the app's end of the wire, and the page's half is written as that one is so
+ * that whoever changes either finds the other (#66, #95).
+ *
+ * The two halves of this function are split where a browser stops: the
+ * `fetch`, the status and the envelope need one and are here, and what the
+ * page makes of a release document needs nothing and is in a module a bare
+ * node can run, so that the three answers it can give are asserted by running
+ * it (`tests/ui/test_releases.py`, ADR-0009 d.3). It is the same seam
+ * `stream.ts` and `framing.js` are split on.
  */
 export async function releases(): Promise<Carried[] | null> {
   try {
@@ -126,32 +118,7 @@ export async function releases(): Promise<Carried[] | null> {
     if (typeof said !== "object" || said === null) {
       return null;
     }
-    const listed = (said as Record<string, unknown>)[RELEASES];
-    if (!Array.isArray(listed)) {
-      return null;
-    }
-    const found = listed.flatMap((entry: unknown) => {
-      if (typeof entry !== "object" || entry === null) {
-        return [];
-      }
-      const fields = entry as Record<string, unknown>;
-      const tag = fields[TAG];
-      if (typeof tag !== "string" || tag === "") {
-        return [];
-      }
-      const published = fields[PUBLISHED];
-      return [
-        {
-          tag,
-          published: typeof published === "string" ? published : "",
-          flashable: fields[FLASHABLE] === true,
-        },
-      ];
-    });
-    if (listed.length > 0 && found.length === 0) {
-      return null;
-    }
-    return found;
+    return carried((said as Record<string, unknown>)[RELEASES]);
   } catch {
     return null;
   }
@@ -162,9 +129,11 @@ export async function releases(): Promise<Carried[] | null> {
  *  reloaded one would write the station twice (`face.py`). */
 export const FLASH_PATH = `${FACE}/flash`;
 
-/** How a flash is asked for, and what the tag it names rides in. */
+/** How a flash is asked for, what the tag it names rides in, and what it
+ *  names the release to write under. */
 const POST = "POST";
 const JSON_TYPE = "application/json";
+const TAG = "tag";
 
 /** What the answer names the release it wrote under, and what it says a
  *  refusal was for. */
