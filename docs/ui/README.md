@@ -274,6 +274,19 @@ It is named by the commit it was built from like everything else here, as
 `dccex-ui:<commit>`; it is a second image rather than the mirror's, which shares
 a lock file and an esptool pin with the translator and neither with a page.
 
+**And it carries that commit as well as being named by it.** The build takes it
+as an argument and writes it on the image as
+`org.opencontainers.image.revision`, so a `docker inspect` on the box says what
+a container was built from even for an image somebody renamed — the name is not
+the only copy of the fact, which is what
+[ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)
+d.4 asks for and what the mirror's image has had since #15. `compose.yaml`
+hands the build the same variable it builds the name from, so the two cannot
+name different commits. A build nobody gave a commit — which is what
+`docker compose up --build` on a clean clone is — carries that label empty: the
+name says `dev`, where it is true, and a revision that reads like a commit
+reference and is none would be worse than none at all (#57).
+
 `compose.yaml` at the root is the compose project: one service, the door route
 as labels on its own container, and nothing more. `docker compose up --build`
 from a clean clone serves the page. The stack a **box** runs — the mirror
@@ -287,7 +300,9 @@ repository exists for, and it is the first thing the first ticket proves.
 it, and asks it for the page over HTTP, because a suite that reads the files
 cannot tell two programs of the same name apart — which is how
 `rails49/installation`'s `page/render.sh` ran green everywhere except the only
-place it ran for real. It is not part of the gate: it carries the `docker`
+place it ran for real. It builds the way a clean clone builds, with no commit
+passed, so it is also where the empty revision above is held: present, and
+saying nothing. It is not part of the gate: it carries the `docker`
 marker, and the workflow runs it in a job of its own that a pull request
 requires, where a missing daemon is a failure (#54, #56). Run by hand where no
 daemon answers it skips and says so.
@@ -298,8 +313,9 @@ daemon answers it skips and says so.
 rather than reading it (#53): `docker compose up -d --build` against this
 repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
 page fetched over HTTP on the port `docker compose port web 80` says it got,
-the image name and the eight route labels read back off the running container —
-which is where a door reads them from — and `docker compose down` with its
+the image name, the commit the project handed the build, and the eight route
+labels read back off the running container — which is where a door reads them
+from — and `docker compose down` with its
 volumes, its network and the image it built, in a `finally`, so a red assertion
 leaves nothing behind either. It carries the same `docker` marker and the same
 no-daemon rule as the check above it. Two things it does not hold: what a route
