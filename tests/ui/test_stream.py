@@ -21,6 +21,9 @@ from tests.ui.test_look import UI
 #: Where the stream is, and what arrives on it.
 STREAM = UI / "src" / "stream.ts"
 
+#: Where the mirror's face is: the one place the page spells the prefix.
+FACE = UI / "src" / "face.ts"
+
 #: The prefix the mirror's face answers under on the page's origin, and the
 #: whole of what it claims there (ADR-0004 d.2).
 PREFIX = "/dccex-usb"
@@ -101,10 +104,19 @@ def test_the_page_writes_no_host_port_or_origin_into_itself() -> None:
 
 def test_the_stream_is_under_the_door_s_prefix() -> None:
     """The face claims the prefix and the page keeps the rest of the origin
-    (ADR-0004 d.2), so the one path the page opens is under it."""
-    source = STREAM.read_text()
-    assert f'FACE = "{PREFIX}"' in source
-    assert "STREAM_PATH = `${FACE}/stream`" in source
+    (ADR-0004 d.2), so the one path the page opens is under it.
+
+    The prefix is written once, in the module that says where the face is, and
+    everything the page asks for is built from that one spelling: a second
+    would be a second answer to where the app is.
+    """
+    assert f'FACE = "{PREFIX}"' in FACE.read_text()
+    assert "STREAM_PATH = `${FACE}/stream`" in STREAM.read_text()
+    for name, module in modules().items():
+        written = quoted(module).count(PREFIX)
+        assert written == (
+            1 if name == FACE.name else 0
+        ), f"{name} spells the door's prefix {written} times"
 
 
 def test_the_station_s_bytes_are_read_as_bytes() -> None:
