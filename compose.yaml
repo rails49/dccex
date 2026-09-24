@@ -9,10 +9,12 @@
 # and the page is on http://localhost:8080. That is the installation this
 # repository exists for (ADR-0008), and proving it is what this file is for.
 #
-# The stack a box runs — the mirror beside this, the box's declaration, the
-# shared network the door reaches containers on, the deploy and the record it
-# appends to — is #15's, built in ADR-0005's shape. What is settled here is
-# that there is a page to put in it.
+# The stack a box runs is this file and `compose.box.yaml` together — the
+# mirror beside this page, the box's own declaration, the shared network the
+# door reaches containers on, and the deploy that brings the two up and writes
+# down what it replaced. The box's half is an overlay rather than a second
+# project precisely so that this half goes on doing the one thing above, and
+# `compose.box.yaml`'s header says why each line of it could not live here.
 
 name: dccex
 
@@ -26,7 +28,8 @@ services:
     # Named by the commit it was built from, and the name never moves
     # (ADR-0005 d.1). `dev` is what a clone that has not been told a commit
     # builds under, so `up --build` works with nothing set; a box is given one
-    # by the deploy, which is #15's.
+    # by the deploy (`scripts/deploy.sh`), and it names this image and the
+    # mirror's both.
     image: dccex-ui:${DCCEX_COMMIT:-dev}
     restart: unless-stopped
     # How the page is reached before there is a door in front of it — a clean
@@ -43,14 +46,16 @@ services:
     # the page keeps everything else on the origin (ADR-0004 d.2).
     #
     # `traefik.docker.network` names the network the door dials this container
-    # on. **Joining it is #15's**: it is created by the installation under a
-    # fixed name, and a stack that declared it external here would refuse to
-    # come up on a clean clone, which is the one thing this file has to do.
+    # on. **Joining it is `compose.box.yaml`'s**: it is created by the
+    # installation under a fixed name, and a stack that declared it external
+    # here would refuse to come up on a clean clone, which is the one thing
+    # this file has to do.
     #
     # `BOX_DOMAIN` is the box's declaration of itself, one file every stack on
     # the box is started against. It defaults here so that a clone with no box
-    # behind it still comes up; on a box, #15 starts this against
-    # `/etc/rails49/box.env` and a missing declaration is an error there.
+    # behind it still comes up; on a box the overlay starts this against
+    # `/etc/rails49/box.env` and replaces this rule with one that has no
+    # default, so a missing declaration is an error there.
     labels:
       - traefik.enable=true
       - traefik.docker.network=rails49

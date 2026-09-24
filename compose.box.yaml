@@ -1,0 +1,103 @@
+# The box's half of this project: the mirror, the shared network the door is
+# on, and the box's own declaration required rather than defaulted.
+#
+#   docker compose -f compose.yaml -f compose.box.yaml \
+#     --env-file /etc/rails49/box.env --env-file .env up -d --build
+#
+# which is what `scripts/deploy.sh` runs, and what ADR-0005 d.7's rollback runs
+# without the `--build`.
+#
+# **Why there are two files and not one.** `compose.yaml` has one thing it has
+# to do: come up from a clean clone with no box behind it (ADR-0008). That is
+# why the shared network is not declared external there and why `BOX_DOMAIN`
+# has a default — a project that declared a network the installation creates
+# would refuse to start on a laptop, and a laptop is where the page is worked
+# on. A box wants the opposite of both, and wants a device only a box has. So
+# the box's requirements are an overlay rather than a second project: the name
+# is still `compose.yaml`'s `name: dccex`, and every command above resolves to
+# the one project (ADR-0005 d.7's `.env` is that project's).
+
+services:
+  # The page, on a box. Everything about it is `compose.yaml`'s but the network
+  # it is reached on and the domain it is reached at.
+  web:
+    networks:
+      # The project's own, which is where `compose.yaml` puts it and where it
+      # would be with nothing said here. Named because naming a second one
+      # replaces the list rather than adding to it.
+      - default
+      # The installation's, created by it under a fixed name and declared
+      # external below. The door is on it and this is how it dials the page —
+      # `traefik.docker.network` on the label has named it since the label was
+      # written, and joining it is what this file adds.
+      - rails49
+    labels:
+      # The one label a box moves: the host rule carries the box's own domain
+      # rather than the clean clone's `localhost`. Every other label is
+      # `compose.yaml`'s and is merged in as written.
+      #
+      # **This is the box guard.** `:?` is compose refusing to come up, loudly
+      # and by name, when the box's declaration was not passed or does not
+      # declare `BOX_DOMAIN` — rather than coming up on a default that is
+      # wrong for a box and serving the page at a host nothing resolves.
+      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN:?the box's declaration is missing or declares no BOX_DOMAIN - this stack is started against /etc/rails49/box.env, which is root-owned and edited by hand, and there is no default for it on a box}`)
+
+  # The mirror: the app that holds the command station's device and repeats it
+  # on 2560. This is the service `control` deleted with its own copy of the
+  # app (control#567), recreated here — without the broker, which went with
+  # the bus (ADR-0001), and without a profile, because this project is the
+  # mirror rather than a profile of a bigger one.
+  mirror:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      args:
+        DCCEX_COMMIT: ${DCCEX_COMMIT:-dev}
+    # Named by the commit it was built from, and the name never moves
+    # (ADR-0005 d.1). One variable names both this image and the page's,
+    # because the two are two images of one commit and the commit is the one
+    # thing that differs between two deploys of this repository — so going
+    # back is the one line d.7 asks for, in this project's `.env`.
+    image: dccex:${DCCEX_COMMIT:-dev}
+    restart: unless-stopped
+    # 2560 on the LAN, raw. It is what it has always been: JMRI, a hand-held
+    # throttle and the translator are programs on the wifi holding a serial
+    # conversation, what limits them is the network they are on, and there is
+    # no other way in for DecoderPro (ADR-0042, ADR-0004 d.5).
+    #
+    # **The face's port is published by nothing.** It answers on 8080 inside
+    # the container and reaches a browser through the door or not at all
+    # (ADR-0004 d.1): one of the three things it does is write firmware onto
+    # the command station, and that does not go on an unauthenticated network
+    # because the port beside it does.
+    ports:
+      - "2560:2560"
+    # The device, which is a mapping this project has to carry because there
+    # is no udev rule anywhere: `/dev/dccex` was the container-side name of
+    # `control`'s own `devices:` entry and went out with it. The host side is
+    # the `by-id` path, behind a variable so a box that moves it overrides one
+    # line; the container side keeps the name the app's default argument and
+    # this repository's prose already say.
+    devices:
+      - "${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}:/dev/dccex"
+    # What the image's own `CMD` already is, written out because a stack that
+    # does not say which device on which port is a stack somebody has to read
+    # a Dockerfile to understand.
+    command: ["--device", "/dev/dccex", "--port", "2560"]
+    # Long enough for a flash to be waited out. `firmware.py` gives esptool
+    # 300 seconds before it kills it, and a container killed in the middle of
+    # a write leaves the command station half written; the app closes its face
+    # first and waits the flash out after, and this is the room to do it in.
+    stop_grace_period: 330s
+    # **No door labels.** Only a container a browser reaches carries a route,
+    # and nothing reaches this one but programs on the wifi. The face's router
+    # is #40's, and it goes on the page's origin under the prefix the door
+    # strips rather than on a label of its own (ADR-0004 d.2, d.5).
+
+networks:
+  # The installation's, under the fixed name the door and every other stack on
+  # the box know it by. External: this project joins it and does not create it,
+  # and a box where the installation has not run is a box where this refuses
+  # to start rather than one where the door quietly cannot see the page.
+  rails49:
+    external: true
