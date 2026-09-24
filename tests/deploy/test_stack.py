@@ -64,6 +64,12 @@ DECLARATION = "/etc/rails49/box.env"
 #: What a box has run, one line per deploy (ADR-0005 d.5).
 RECORD = "/var/lib/rails49/deploys/dccex"
 
+#: The repository a box's clone is pointed at and pulls from. It is written
+#: into the script rather than read out of the environment (#102): which
+#: repository a box deploys is this checkout's answer and not the surrounding
+#: shell's.
+ORIGIN = "https://github.com/rails49/dccex.git"
+
 #: The command station's device on the box this deploys to: a symlink to
 #: whichever `ttyUSB` the node came up as, which is why it is the `by-id` path
 #: and not the number.

@@ -16,13 +16,17 @@ script over a git checkout has already asked of the machine, so neither is a
 marker of its own (`pyproject.toml`). A machine without either is red here
 rather than skipped.
 
-**Two absolute paths are pointed somewhere writable.** `/etc/rails49/box.env`
-is root-owned and `/var/lib/rails49/deploys/dccex` is the box's record; neither
-is this suite's to make, so each is replaced once in the saved program with a
-path under `tmp_path`, and the replacement is asserted to have matched — a
-substitution that silently found nothing would run a script that refuses at its
-first guard and prove nothing. That the two paths are the ones written down is
-`test_stack.py`'s claim and stays there.
+**Two absolute paths and the origin are pointed at what this machine has.**
+`/etc/rails49/box.env` is root-owned and `/var/lib/rails49/deploys/dccex` is the
+box's record, and neither is this suite's to make; the origin is this
+repository on GitHub, which the script writes down as a constant of its own and
+no variable can move (#102), and fetching from it would be a gate that reaches
+the network. So each is replaced in the saved program with something under
+`tmp_path` — the two paths once each, the origin in both places it is named —
+and every replacement is asserted to have matched as many times as it is
+written: a substitution that silently found nothing would run a script that
+refuses at its first guard and prove nothing. That these three are the ones
+written down is `test_stack.py`'s claim and stays there.
 
 **What is not held here** is the exit status reaching the person who typed the
 command: `ssh` carries it back from a box and the fake one does not, so what is
@@ -36,7 +40,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from tests.deploy.test_stack import DECLARATION, DEPLOY, RECORD
+from tests.deploy.test_stack import DECLARATION, DEPLOY, ORIGIN, RECORD
 
 #: The commit a box is on before the deploy under test — a full-length one,
 #: because that is what `git rev-parse HEAD` gives the script and what the
@@ -91,6 +95,9 @@ def executable(path: Path, script: str) -> None:
 
 def a_clone(tmp_path: Path, home: Path) -> str:
     """A clean clone of a repository on a box, with an origin to fetch from.
+
+    The bare repository returned is what the script's own origin is pointed at
+    in the program below, in place of this repository on GitHub.
 
     `.gitignore` carries `.env`, as this repository's does and for the reason
     written there: the deploy writes that file into the clone, and a clone the
@@ -158,19 +165,22 @@ def deployed(tmp_path: Path, *, env: str | None, comes_up: bool) -> Box:
         "HOME": str(home),
         "DCCEX_BOX": "somebody@box.example.invalid",
         "DCCEX_STACK": "dccex",
-        "DCCEX_ORIGIN": origin,
         "DCCEX_BRANCH": "main",
     }
     subprocess.run((str(DEPLOY),), env=reached, capture_output=True, check=True)
 
     here = saved.read_text()
-    for absolute, writable in ((DECLARATION, declaration), (RECORD, record)):
-        assert here.count(absolute) == 1, (
-            f"{absolute} is named {here.count(absolute)} times in the program the"
-            " box runs, and pointing it somewhere writable would run a script"
-            " this module has not checked"
+    for named, times, stands_in in (
+        (DECLARATION, 1, str(declaration)),
+        (RECORD, 1, str(record)),
+        (ORIGIN, 2, origin),
+    ):
+        assert here.count(named) == times, (
+            f"{named} is named {here.count(named)} times in the program the box"
+            f" runs rather than {times}, and pointing it at what this machine"
+            " has would run a script this module has not checked"
         )
-        here = here.replace(absolute, str(writable))
+        here = here.replace(named, stands_in)
     saved.write_text(here)
 
     ran = subprocess.run(
