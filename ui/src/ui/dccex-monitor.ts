@@ -35,6 +35,15 @@
  *
  * The pause and the clear are the page's under their own tickets.
  *
+ * **And a burst of arrivals is one drawing of it** (#74). Lit batches what
+ * changes within a task, and the frames a busy line arrives in are each their
+ * own task, so a station talking steadily is one update per frame it sends.
+ * The monitor waits for the frame the browser is going to paint instead: what
+ * arrived in between is drawn once, which is as often as anybody can read it.
+ * A page nobody is looking at — another tab, a window behind one — is painting
+ * nothing, so it draws nothing until it is looked at again, and what it draws
+ * then is the conversation as it stands.
+ *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
  * fight the feed. Where they were is measured before the lines change, because
@@ -169,6 +178,24 @@ export class DccexMonitor extends LitElement {
         <button type="submit">send</button>
       </form>
     `;
+  }
+
+  /** Wait for the next animation frame, and draw once for everything that
+   *  arrived before it.
+   *
+   * A line arrives in a frame of its own and Lit schedules an update per task,
+   * so a busy station is a drawing per frame the station sent; a reader sees
+   * the one the browser paints. Waiting for that paint coalesces the burst
+   * into it, and every line that arrived in the meantime is in the one
+   * drawing — none of them is dropped, because what is drawn is the
+   * conversation the page holds and not the frame that woke it.
+   *
+   * Where the reader is is still measured before the lines change: the
+   * measuring is `willUpdate`'s and the update is what this defers.
+   */
+  protected override async scheduleUpdate(): Promise<void> {
+    await new Promise((painted) => requestAnimationFrame(painted));
+    await super.scheduleUpdate();
   }
 
   /** Where the reader is, read before the lines change.

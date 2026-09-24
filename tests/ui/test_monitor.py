@@ -251,3 +251,18 @@ def test_a_key_is_assigned_once_and_never_reused() -> None:
     assert (
         app.count("#keys = 0") == 1
     ), "the counter is wound back somewhere after it is declared"
+
+
+def test_several_frames_arriving_before_the_next_paint_are_one_update() -> None:
+    """One update per animation frame, which is what a reader can see (#74).
+
+    Lit batches what changes within a task and WebSocket frames arrive in their
+    own tasks, so a busy line is one update per frame; waiting for the frame
+    the browser will paint coalesces the burst into the one drawing of it
+    anybody looks at.
+    """
+    drawn = MONITOR.read_text()
+    assert "override async scheduleUpdate(" in drawn, "every arriving frame is drawn"
+    scheduling = drawn[drawn.index("override async scheduleUpdate(") :]
+    assert "requestAnimationFrame(" in scheduling, "the update waits for nothing"
+    assert "super.scheduleUpdate()" in scheduling, "the update is never made"
