@@ -62,9 +62,20 @@ check() {
 # The words the repository says it defines, still defined, and the decision
 # still written down. Cheap, and it is the part of the vocabulary a machine
 # can hold us to.
+#
+# All eighteen of them. The list held eight for as long as there were eight,
+# and the ten that arrived with the page were never added, so deleting `##
+# client` left the gate green while #7 leaned on the word (#91). It is written
+# out rather than read off `CONTEXT.md`'s headings, because a check that took
+# its list from the file it is checking would pass on whatever that file said —
+# the same reason `ROUTE` is written out in `tests/ui/test_compose_serves.py`.
 words() {
   local missing="" word
-  for word in station mirror translator face build release tag rail; do
+  local -a defined=(
+    station mirror translator face build release tag client stream
+    link monitor decoder gloss band rail tile image cutover
+  )
+  for word in "${defined[@]}"; do
     grep -q "^## ${word}\$" CONTEXT.md 2>/dev/null || missing="$missing $word"
   done
   compgen -G 'docs/adr/0001-*.md' >/dev/null || missing="$missing ADR-0001"
@@ -72,7 +83,8 @@ words() {
     echo "not defined, or not there:$missing"
     return 1
   fi
-  echo "station, mirror, translator, face, build, release, tag, rail; ADR-0001"
+  local joined="${defined[*]}"
+  echo "${joined// /, }; ADR-0001"
 }
 
 # The code still says where it was written. `control` deleted its side, so
