@@ -18,19 +18,34 @@
 # Two stages, so that what ships is the interpreter and the packages and not
 # the tool that resolved them. The build context is the repository root, as
 # `ui.Dockerfile`'s is.
+#
+# **Both bases are pinned by digest, with the tag kept in front of it.** A tag
+# is republished, so a base moves underneath the name d.1 says never moves; a
+# digest names one build of one base and cannot be moved, and the tag stays
+# because a digest says nothing to a reader about what the image is. The
+# argument is `ui.Dockerfile`'s, written beside the page's two when they were
+# pinned (#59) — including what the pin costs, which is that a pinned base
+# takes no security update of its own until somebody moves it — and is not
+# repeated here.
+#
+# Moving one is a commit of this repository like any other. On a machine that
+# can reach a registry:
+#
+#     docker buildx imagetools inspect python:3.12-slim-bookworm
+#
+# and the `Digest:` it prints replaces the one below, the tag left as it is.
+# The two here are what those tags pointed at on **2026-09-24**, read from a
+# machine that could reach both registries, because nothing resolves them from
+# where this is written: the gate has no registry and neither does the sandbox
+# this repository is worked in, and a digest that cannot be checked from where
+# it is written is a digest nobody has seen (#96). What the gate holds is the
+# shape — `tests/deploy/test_stack.py` reads both lines back and asks that
+# neither names something that can move.
 
 # uv, on the interpreter the runtime stage is. The lock file is what the
 # packages come from, so the image is the versions this repository was checked
 # at rather than whatever the index had this morning.
-#
-# The bases here are pinned by tag and not by digest, which the page's are no
-# longer (`ui.Dockerfile`, #59). Resolving a digest needs a registry and this
-# was written where there is none; inventing one would name an image nobody
-# has seen. So this image still has what that ticket describes — a base that
-# moves underneath a name ADR-0005 d.1 says never moves — and pinning these
-# two is a ticket of its own, wanting a machine that can reach a registry to
-# resolve them.
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim@sha256:e5b65587bce7de595f299855d7385fe7fca39b8a74baa261ba1b7147afa78e58 AS build
 
 # Copied rather than linked: the venv this stage produces is carried whole
 # into the next one, and a hard link into uv's cache does not survive the copy.
@@ -57,7 +72,7 @@ COPY src/ src/
 # dccex_usb` to find them.
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 
 # What the deploy names the image after, recorded on the image itself
 # (ADR-0005 d.4). `dev` is what a clone that has not been told a commit builds
