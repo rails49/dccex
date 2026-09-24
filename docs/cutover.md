@@ -215,10 +215,16 @@ previous deploy; nothing in this repository repoints it.
 
 **Nothing is pruned until the cutover is accepted.** No `docker image prune`,
 no `docker system prune`, nothing removed by hand. Not because a prune would
-destroy the only way back — it would not, the checkout above rebuilds it — but
-because a prune during the one evening the box is being changed turns a
-five-second rollback into a ten-minute one, and does it at the moment that
-matters. After the acceptance in #16 it is the box's to prune.
+destroy the way back — it would not, the checkout above rebuilds it — but for
+two smaller reasons that both land on the one evening it would matter. A prune
+turns a five-second rollback into a ten-minute one. And **the rebuild is
+equivalent rather than identical**: `control`'s image is
+`FROM python:3.12-slim` with an unpinned `apt-get install`, so the base and the
+Debian packages resolve at build time even though `uv sync --frozen` pins the
+Python side. The image on the box is the one that was serving the railroad this
+morning; a rebuild is an image that should. On an evening spent deciding
+whether something is broken, that difference is worth keeping on disk. After
+the acceptance in #16 it is the box's to prune.
 This repository's own images keep one step back by the deploy's rule rather
 than by anybody remembering this line (ADR-0005 d.6).
 
