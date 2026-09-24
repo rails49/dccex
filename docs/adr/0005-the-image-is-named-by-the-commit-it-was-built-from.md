@@ -97,9 +97,18 @@ backwards — it skips the build, because the thing it wants was built already.
 **d.9** None of this is code in this repository. The stack, its compose file
 and the deploy are #15's, and they are built in this shape; what is here is
 the decision and the mirror's page saying it (ADR-0004 d.6 is the same
-division for the door's box steps). The gate is untouched by it: there is no
-docker in the suite, no box, and nothing to reach — one command and one exit
-status, as before.
+division for the door's box steps). The gate is untouched by it: no box and
+nothing to reach — one command and one exit status, as before.
+
+*Amended for [#54](https://github.com/rails49/dccex/issues/54) and
+[#56](https://github.com/rails49/dccex/issues/56), 2026-09-24:* "there is no
+docker in the suite" stopped being true when #3 built the page inside the
+image that serves it. The division stands by a different mechanism: a test
+that needs a daemon carries the `docker` marker, the gate does not collect it,
+and the workflow runs it in a job of its own that the pull request requires.
+The gate is still one command, one exit status and no daemon; what the
+amendment buys is that the check which proves an image serves cannot skip
+itself out of a required gate, as it had in every recorded run.
 
 ## Consequences
 

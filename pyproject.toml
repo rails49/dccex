@@ -17,6 +17,12 @@ packages = ["src/dccex_usb"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# A test that cannot run without a Docker daemon. `scripts/check.sh` does not
+# collect these; the workflow runs them in a job of its own, required on the
+# pull request, where a missing daemon is a failure (#54, #56). A bare
+# `pytest` still runs everything, which is what a development machine with a
+# daemon on it wants.
+markers = ["docker: needs a Docker daemon"]
 
 # The three below are `control`'s at deee7b6, unchanged. The code they read
 # was written under them — fully annotated, black-formatted, four `cast(...)`
