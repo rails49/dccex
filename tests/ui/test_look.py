@@ -43,6 +43,12 @@ PAGE = UI / "index.html"
 #: fragment or an id selector is not read as a colour.
 HEX = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
 
+#: A release row as `dccex-releases.ts` draws it, and the same row with a
+#: colour written onto it: what a component painted past the look rules looks
+#: like, for the scan to be run over below.
+ROW = '<span class="tag">'
+PAINTED_ROW = '<span class="tag" style="color:#f00">'
+
 #: The two sheets that turn: the grid that gives the rail a row, and the rail
 #: that lies its own contents down. Named rather than globbed — the claim is
 #: that these two agree, and a glob would pass by finding neither.
@@ -131,6 +137,15 @@ def painted() -> dict[str, str]:
     return written
 
 
+def colours(written: str) -> list[str]:
+    """Every colour one file writes out as a hex.
+
+    The step the scan ends in, named so that it can be run over a file with a
+    colour put into it as well as over the files as they are.
+    """
+    return [match.group() for match in HEX.finditer(written)]
+
+
 def rail_turns_px() -> int:
     """`RAIL_TURNS_PX`, read out of the module that exports it."""
     match = re.search(r"RAIL_TURNS_PX\s*=\s*(\d+)", LOOK_TS.read_text())
@@ -189,8 +204,39 @@ def test_nothing_the_page_draws_with_writes_a_colour_out_as_a_hex() -> None:
     the look rules never named is a second place with the drift still to come.
     """
     for name, written in sorted(painted().items()):
-        found = [match.group() for match in HEX.finditer(written)]
+        found = colours(written)
         assert not found, f"{name} writes a colour out as a hex: {', '.join(found)}"
+
+
+def test_the_scan_reads_every_component_and_reads_nothing_twice() -> None:
+    """The file list, against the directory the components are in.
+
+    Every one of them is in it — the templates as well as the sheets beside
+    them — and no file name arrives twice. `painted()` is keyed by name, so a
+    file both globs found would come back as one entry and the scan would look
+    exactly as it does now, which is a duplicate nobody could see (#85).
+    """
+    files = paintable()
+    assert len({source.name for source in files}) == len(files), "a file read twice"
+    for component in sorted((UI / "src" / "ui").glob("*.ts")):
+        assert component in files, f"{component.name} is not scanned"
+
+
+def test_a_colour_written_into_a_component_is_caught() -> None:
+    """The scan, over a component with a colour on a release row.
+
+    What this holds is the reach and not the regex: before #85 the components
+    were not read at all, so `painted()` had no entry under this name and the
+    line below raised rather than found anything.
+
+    The paint goes on the text the scan read rather than on the file, so a run
+    that dies leaves the tree as it found it. That there was a row to paint is
+    asserted first — a template that moved would otherwise leave this passing
+    on a substitution that never happened.
+    """
+    written = painted()["dccex-releases.ts"]
+    assert ROW in written, f"no {ROW} in the component to paint"
+    assert colours(written.replace(ROW, PAINTED_ROW, 1)) == ["#f00"]
 
 
 def test_the_height_the_rail_turns_at_is_the_copys() -> None:
