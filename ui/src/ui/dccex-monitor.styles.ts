@@ -41,11 +41,20 @@ export const monitorStyles = css`
 
   /* The one thing that scrolls. It is given the height and the overflow so
      that following the newest line is a scroll position this component owns,
-     rather than the work pane's or the window's. */
+     rather than the work pane's or the window's.
+
+     Scroll anchoring is off on it (#75). The page drops the oldest lines at
+     capacity and the component puts a reader who has scrolled up back on the
+     row they were on itself (dccex-monitor.ts); a browser compensating for
+     the same trim would be a second hand on the same scroll position — one
+     that is best-effort, off in cases of its own and not the same in every
+     browser. Off, where the view ends up is this component's arithmetic and
+     nobody else's. */
   .lines {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overflow-anchor: none;
     box-sizing: border-box;
     padding: 0.25rem 0.5rem;
     border: 1px solid var(--sl-color-neutral-200);

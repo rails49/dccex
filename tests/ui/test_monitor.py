@@ -325,3 +325,16 @@ def test_a_reader_at_the_bottom_still_follows_the_tail() -> None:
     assert (
         drawn.count("scrollTop =") == 1
     ), "the view is scrolled in more than one place"
+
+
+def test_nothing_rests_on_the_browser_s_scroll_anchoring() -> None:
+    """The scroller says so itself (#75).
+
+    Scroll anchoring is best-effort, it is off in cases of its own and it is
+    not the same in every browser, so the criterion that the view does not move
+    under a reader who has scrolled up cannot rest on it. The component does
+    the arithmetic; the browser is told not to do any of its own.
+    """
+    assert "overflow-anchor: none" in rule(
+        STYLES.read_text(), ".lines"
+    ), "the scroller leans on the browser's scroll anchoring"
