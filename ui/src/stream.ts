@@ -26,12 +26,8 @@
  * holds every client of its port to (`framing.py`, ADR-0007 d.2).
  */
 
+import { FACE } from "./face.js";
 import { message } from "./message.js";
-
-/** The prefix the mirror's face answers under on this page's own origin, and
- *  the whole of what it claims there — the door strips it before the app sees
- *  a request (ADR-0004 d.2). */
-export const FACE = "/dccex-usb";
 
 /** Where the stream is. Opened by upgrading and fetched no other way: what it
  *  carries is what the station is saying now (`face.py`). */
