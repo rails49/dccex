@@ -26,7 +26,7 @@
  * It is JavaScript with its types in JSDoc, as `message.js`, `readings.js`,
  * `releases.js`, `flash.js`, `framing.js` and `monitor.js` are: the seven the
  * gate runs rather than reads, being what decides what a person reads, what
- * reaches the station, what the chrome says of it, what the box could be
+ * reaches the station, what the chrome says of it, what the station could be
  * written with, what is done to the railroad before one is written, where the
  * conversation arrives and how it is read off the page. The gate is Python and cannot
  * run a bundler, and a gloss asserted against the source that would produce it
