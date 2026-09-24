@@ -270,16 +270,19 @@ def test_the_list_is_collapsed_under_the_tiles() -> None:
     assert "<details" in drawn and "<summary" in drawn
 
 
-def test_the_row_flashes_nothing_and_commands_nothing() -> None:
-    """Nothing is flashed yet (#8). Choosing a release runs a sequence the
-    operator is asked through first, and that is its own ticket's; what may
-    not exist before it is a control on this row that writes a station
-    (ADR-0006)."""
+def test_the_row_holds_no_counterparty_of_its_own() -> None:
+    """Choosing a release flashes it as of #9, and what it is flashed with is
+    handed down: the **stream** the stop and the cut go up and the **face**
+    that is asked to write are the page's (ADR-0002, `dccex-app.ts`).
+
+    What the gesture does is held where the sequence is run
+    (`tests/ui/test_flash.py`); what is held here is that this pane reaches for
+    neither of them.
+    """
     drawn = code(LIST.read_text())
-    for pressed in ("<button", "@click", "<form", "@submit", "<input"):
-        assert pressed not in drawn, f"the row carries a {pressed}"
-    for asked in ("/flash", "POST", "face.js"):
-        assert asked not in drawn, f"the row asks the face to {asked}"
+    assert '"../face.js"' not in drawn, "the row holds the face"
+    assert '"../stream.js"' not in drawn, "the row holds the stream"
+    assert "fetch(" not in drawn, "the row asks somebody itself"
 
 
 def test_the_row_works_no_reading_out_of_its_own() -> None:
@@ -302,12 +305,18 @@ def test_the_rows_wrap_at_the_width_of_a_phone() -> None:
 def test_the_row_is_the_work_pane_s_and_not_the_chrome_s() -> None:
     """The chrome's four values say *this is the same project* across rails49's
     UIs and stay on the chrome; a pane follows the system's theme, which is
-    Shoelace's tokens (LOOK.md)."""
+    Shoelace's tokens (LOOK.md).
+
+    The one look value it may ask for is `--rail-button`, and it is a size
+    rather than a colour: it is the rules' minimum for a thumb, and the control
+    that writes a release is pressed on a phone held at the layout, as the
+    command box's send is (`tests/ui/test_monitor.py`, #9).
+    """
     styles = STYLES.read_text()
     assert not HEX.findall(styles), "the row writes a colour out"
     asked = set(re.findall(r"var\((--[a-z0-9-]+)\)", styles))
     borrowed = {token for token in asked if not token.startswith("--sl-")}
-    assert borrowed == set(), f"the row takes the chrome's {borrowed}"
+    assert borrowed == {"--rail-button"}, f"the row takes the chrome's {borrowed}"
 
 
 # -- what the browser asks ----------------------------------------------------

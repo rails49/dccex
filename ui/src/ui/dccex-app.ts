@@ -15,6 +15,15 @@
  * is built by node inside the image, served by nginx out of it, and draws in
  * the look rules (docs/ui/README.md, ADR-0008).
  *
+ * **The counterparties are the page's, the flash included** (#9). Choosing a
+ * release stops the locomotives, cuts track power and asks the **face** to
+ * write, in that order and with the operator warned first (`flash.js`,
+ * ADR-0006 d.2) — and what the row runs it with is handed down from here: the
+ * same `#sends` the monitor is handed, so the stop and the cut go up the stream
+ * as anything typed does and are marked as this page's in the monitor, and the
+ * face's own `flash`, because a pane holding a counterparty of its own would be
+ * a second answer to what the page talks to (ADR-0002).
+ *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
  * a bench says nothing at all; on the box this UI exists for there is no
@@ -40,7 +49,7 @@
 
 import { LitElement, html, type TemplateResult } from "lit";
 
-import { clients, releases } from "../face.js";
+import { clients, flash, releases } from "../face.js";
 import {
   QUIET,
   asOf,
@@ -176,6 +185,8 @@ export class DccexApp extends LitElement {
         <dccex-releases
           .carried=${this.carried}
           .build=${this.readings.build}
+          .sends=${this.#sends}
+          .writes=${flash}
         ></dccex-releases>
         <dccex-monitor
           .said=${this.said}

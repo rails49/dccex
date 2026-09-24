@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from tests.ui.test_look import UI
-from tests.ui.test_stream import code
+from tests.ui.test_stream import code, quoted
 
 #: The sequence, and the module it is the whole of.
 FLASH = UI / "src" / "flash.js"
@@ -189,6 +189,106 @@ def test_the_yes_is_a_press_of_its_own() -> None:
     decline: the choice, the warning, and then the gesture."""
     assert says()["CHOOSES"] and says()["CONFIRMS"] and says()["CANCELS"]
     assert says()["CHOOSES"] != says()["CONFIRMS"]
+
+
+# -- what the row draws -------------------------------------------------------
+
+
+def test_a_release_is_chosen_on_the_row_it_is_listed_on() -> None:
+    """The one control on the page that writes a station, and it is on the row
+    where the releases are (#9, docs/ui/README.md).
+
+    Only on the ones that carry a firmware: a release the mirror would refuse
+    for having no asset to write is not a thing to offer an operator, and the
+    row already says so of one (#8).
+    """
+    drawn = code(LIST.read_text())
+    assert "CHOOSES" in drawn, "there is nothing on the row to press"
+    assert "<button" in drawn and "@click=" in drawn
+    offered = drawn[drawn.index("release.flashable") :]
+    assert offered.index("<button") < offered.index(
+        "NO_FIRMWARE"
+    ), "a release with no firmware on it is offered all the same"
+
+
+def test_the_operator_is_warned_on_the_row_and_then_asked() -> None:
+    """The choice, the warning, and then the gesture (ADR-0006 d.2). The
+    warning opens under the release it is about, above the two presses that
+    answer it — a sentence beside a button is a sentence read after it — and it
+    is announced, because an operator reading the page with a screen reader is
+    the guard too.
+    """
+    drawn = code(LIST.read_text())
+    warning = drawn[drawn.index("#warning(tag: string)") :]
+    assert "WARNS" in warning and "CONFIRMS" in warning and "CANCELS" in warning
+    assert warning.index("WARNS") < warning.index(
+        "CONFIRMS"
+    ), "the yes is drawn above what it agrees to"
+    assert 'role="alert"' in warning, "the warning is drawn and never announced"
+
+
+def test_the_sequence_the_row_runs_is_the_module_s() -> None:
+    """A row with a stop and a cut of its own would be a second answer to what
+    a flash is, and the one above would stop holding (ADR-0009 d.1). It calls
+    the sequence and hands it the three things it needs."""
+    drawn = code(LIST.read_text())
+    assert 'from "../flash.js"' in drawn
+    assert "sequence(tag, {" in drawn, "the row writes the order out itself"
+    running = drawn[drawn.index("sequence(tag, {") :]
+    for handed in ("sends:", "writes:", "shows:"):
+        assert handed in running, f"the sequence is handed no {handed}"
+
+
+def test_every_word_the_row_says_about_a_flash_is_the_sequence_s() -> None:
+    """So that what an operator reads is asserted by running the sequence
+    rather than by reading the component, which is the whole reason the
+    sentences live in a module a bare node can run."""
+    sentences = set(says().values())
+    for literal in quoted(LIST.read_text()):
+        assert literal not in sentences, f"the row writes {literal!r} out again"
+
+
+def test_the_step_is_drawn_where_a_shut_row_still_shows_it() -> None:
+    """The row is collapsed when nobody has asked about firmware and can be
+    shut while the station is being written, which is the minute or two a page
+    with nothing on it reads as a hang (#9)."""
+    drawn = code(LIST.read_text())
+    assert 'class="step"' in drawn, "the row shows no step"
+    assert drawn.index("</details>") < drawn.index(
+        'class="step"'
+    ), "the step is inside the row it can be hidden by"
+
+
+def test_a_release_is_chosen_once_at_a_time() -> None:
+    """A second flash is a second station reset, and what the mirror does with
+    one asked for anyway is refuse it rather than queue it (`firmware.py`).
+
+    Twice over: there is nothing to press while a step is showing, and the
+    sequence is not started a second time if there is. The step is set before
+    the sequence's first `await`, so two presses in one turn cannot both pass
+    the check — the same reason the mirror reads its own flag where nothing is
+    awaited after it.
+    """
+    drawn = code(LIST.read_text())
+    assert "?disabled=${this.step !== null}" in drawn, "a second flash is pressable"
+    flashing = drawn[drawn.index("async #flashes(") :]
+    assert flashing.index("if (this.step !== null)") < flashing.index(
+        "await sequence("
+    ), "a second sequence starts before the first is looked for"
+
+
+def test_the_page_hands_the_row_its_stream_and_its_face() -> None:
+    """A pane holding a counterparty of its own would be a second answer to
+    what the page talks to (ADR-0002).
+
+    The stop and the cut go up the same `send` an operator's typing goes up, so
+    they are marked as this page's in the monitor and an operator can see what
+    the sequence did; the face is asked by the page's own `flash`.
+    """
+    app = code(APP.read_text())
+    assert 'import { clients, flash, releases } from "../face.js";' in app
+    assert ".sends=${this.#sends}" in app, "the row is handed no stream"
+    assert ".writes=${flash}" in app, "the row is handed no face"
 
 
 # -- what the sequence is -----------------------------------------------------
