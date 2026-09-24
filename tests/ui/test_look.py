@@ -38,6 +38,11 @@ LOOK_TS = UI / "src" / "look.ts"
 
 PAGE = UI / "index.html"
 
+#: A colour written out: `#rgb` and `#rrggbb`, and the two forms that carry an
+#: alpha channel. Held to those four lengths so that an issue number, a
+#: fragment or an id selector is not read as a colour.
+HEX = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
+
 #: The two sheets that turn: the grid that gives the rail a row, and the rail
 #: that lies its own contents down. Named rather than globbed — the claim is
 #: that these two agree, and a glob would pass by finding neither.
@@ -48,7 +53,16 @@ TURNING = [
 
 
 def sheets() -> dict[str, str]:
-    """Every component stylesheet the page draws with, by file name."""
+    """Every component stylesheet the page draws with, by file name.
+
+    Narrower than `painted()` below, and on purpose. What reads this is the
+    claim that some rule *asks* for each token, and the rules that paint the
+    chrome are these: `page.css` names Shoelace's tokens rather than these
+    ones, and `index.html` carries no rules at all, so a `var(--band)` found
+    in either would satisfy the claim with nothing painted by it. What a
+    colour can be *written into* is a wider set, and that is the other
+    function's.
+    """
     return {
         sheet.name: sheet.read_text()
         for sheet in sorted((UI / "src" / "ui").glob("*.styles.ts"))
@@ -68,6 +82,34 @@ def declarations(css: str) -> dict[str, str]:
         value: str = match.group(2)
         found[name] = value.strip()
     return found
+
+
+def painted() -> dict[str, str]:
+    """Every file a colour the page draws with can be written into, by name.
+
+    The component stylesheets, the plain stylesheets beside them, and the page
+    itself — a `style` attribute or a `<style>` block paints as surely as a
+    rule in a Lit sheet does, and a colour written into any of the three is a
+    second place the page's chrome is changed in.
+
+    `look.css` is the one place there is meant to be, so the declarations of
+    the copy's own tokens come out of it before the scan reads it — those, in
+    that one file, and nothing else. A component sheet declaring `--band` as a
+    hex of its own is the drift this is for, and a hex anywhere else in
+    `look.css` is a rule painting past the block above it.
+    """
+    written: dict[str, str] = {}
+    for source in [
+        *sorted((UI / "src" / "ui").glob("*.styles.ts")),
+        *sorted((UI / "src").glob("*.css")),
+        PAGE,
+    ]:
+        text = source.read_text()
+        if source == DRAWN:
+            for token in declarations(COPY.read_text()):
+                text = re.sub(rf"{token}\s*:\s*[^;]*;", "", text)
+        written[source.name] = text
+    return written
 
 
 def rail_turns_px() -> int:
@@ -113,18 +155,23 @@ def test_every_token_that_can_be_asked_for_is_asked_for_by_a_rule() -> None:
         assert f"var({token})" in written, f"no rule asks for {token}"
 
 
-def test_no_sheet_writes_a_chrome_colour_out_as_a_hex() -> None:
+def test_nothing_the_page_draws_with_writes_a_colour_out_as_a_hex() -> None:
     """One place a colour is changed in.
 
     A rule carrying the hex would pass the assertion above with the rule
-    broken: the token would be read somewhere and this sheet would go on
-    painting whatever it was copied with.
+    broken: the token would be read somewhere and that sheet would go on
+    painting whatever it was copied with. A hex in `page.css` or in the page's
+    own markup is the same break with a different file around it, which is why
+    what is read here is everything the page draws with rather than the
+    component sheets alone (#60).
+
+    Any hex, rather than the four the copy gives. The claim above this one is
+    that the page holds its colours in one place; a colour written out that
+    the look rules never named is a second place with the drift still to come.
     """
-    written = "".join(sheets().values())
-    for token, value in declarations(COPY.read_text()).items():
-        if not value.startswith("#"):
-            continue
-        assert value not in written, f"{token}'s value is written out as a hex"
+    for name, written in sorted(painted().items()):
+        found = [match.group() for match in HEX.finditer(written)]
+        assert not found, f"{name} writes a colour out as a hex: {', '.join(found)}"
 
 
 def test_the_height_the_rail_turns_at_is_the_copys() -> None:
