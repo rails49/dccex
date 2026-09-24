@@ -108,10 +108,14 @@ layout there is no dispatcher to ask
 sequence above is where the care lives and the operator is the guard.
 
 **A flash that cannot start says why.** The face answers a refusal with a
-status and a sentence — a tag with no release, a release with no asset or no
-digest, a digest that did not match, a station that is not there, a flash
-already in flight — so a bad tag never looks like a slow one. A second flash
-asked for while one is running is refused and not queued.
+status and a sentence — a tag with no release, a source that could not be asked
+about it at all or answered with something that is not a release, a release
+with no asset or no digest, a digest that did not match, a station that is not
+there, a flash already in flight — so a bad tag never looks like a slow one,
+and a source that is away never looks like a bad tag: what the operator is told
+is that the releases could not be read, and not to go and retype a tag that is
+perfectly good (#46). A second flash asked for while one is running is refused
+and not queued.
 
 **A flash that started is not replied to; it is observed.** The stream drops as
 the device goes, the tiles blank, and when the station comes back its banner
