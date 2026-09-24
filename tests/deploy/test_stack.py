@@ -19,8 +19,9 @@ pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
 face's port is on nothing, that neither image's bases can move underneath a
-name that never moves, and that the deploy names the image after the commit
-and writes down what it replaced.
+name that never moves, that the repository a box pulls from is written down
+rather than taken from whoever ran the deploy, and that the deploy names the
+image after the commit and writes down what it replaced.
 """
 
 import re
@@ -407,6 +408,31 @@ def test_the_deploy_is_a_program_a_box_can_be_deployed_by() -> None:
     assert "git remote set-url origin" in said
     assert "up -d --build --remove-orphans" in said
     assert '--env-file "\\$box_env"' in said
+
+
+def test_the_origin_is_the_scripts_own_and_not_the_environments() -> None:
+    """Which repository a box deploys is this checkout's answer (#102).
+
+    The origin is set rather than believed, because a clone somebody had
+    repointed by hand stopped a deploy dead — and a variable would have handed
+    the shell that ran the deploy the very say that was taken off the box,
+    under a comment saying the value comes from here. So the constant is
+    asserted as written, and `DCCEX_ORIGIN` as gone: a default that happens to
+    be this repository is still an override.
+
+    It is set before the pull, which is the whole of what setting it is for: a
+    fetch is what brings somebody else's commits onto the box, and an origin
+    corrected afterwards would correct nothing. The box and the branch stay
+    variables beside it — a different box or a different branch is an ordinary
+    thing to want, and neither decides whose code runs.
+    """
+    said = DEPLOY.read_text()
+    assert f"\nORIGIN={ORIGIN}\n" in said, "the origin is not a constant of the script"
+    assert "DCCEX_ORIGIN" not in said, "the origin is read out of the environment"
+    setting = said.index('git remote set-url origin "$ORIGIN"')
+    assert setting < said.index("git fetch"), "the origin is set after the pull"
+    assert re.search(r"^BOX=\$\{DCCEX_BOX:-", said, re.MULTILINE)
+    assert re.search(r"^BRANCH=\$\{DCCEX_BRANCH:-", said, re.MULTILINE)
 
 
 def test_the_deploy_refuses_a_clone_that_is_not_clean() -> None:
