@@ -21,6 +21,14 @@
 # one — must still be able to run all of it. And a check that may skip itself
 # is a check that can leave a required gate green while proving nothing, which
 # is what `tests/ui/test_page_serves.py` did in every run recorded before this.
+#
+# A `node` marker is the same mechanism for the same reason, and this script
+# does not collect it either (`-m "not docker and not node"`). Five modules of
+# the page are written as JavaScript so a bare node can run them, and what
+# they assert is put through the real function rather than read off the source
+# that would produce it — worth a node somewhere, and not worth a node on
+# every machine this gate runs on (#101). The workflow runs those too, in a
+# job of its own required on the pull request.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -93,7 +101,7 @@ check source source_recorded
 check ruff tool ruff check .
 check black tool black --check .
 check pyright tool pyright
-check tests "${PY[@]}" -m pytest -q -m "not docker"
+check tests "${PY[@]}" -m pytest -q -m "not docker and not node"
 
 if [ -n "$red" ]; then
   printf 'red:%s\n' "$red"

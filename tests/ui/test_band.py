@@ -8,8 +8,8 @@ nothing, that no red reaches the chrome, and which reading survives a band too
 narrow to carry both.
 
 Read off the sources, for the reason `tests/ui/test_stream.py` gives: the gate
-is Python with a bare node in it and no packages, so nothing in it can mount a
-Lit component and read the DOM back.
+is Python, the node beside it is a bare one with no packages, and nothing in
+either can mount a Lit component and read the DOM back.
 """
 
 import re

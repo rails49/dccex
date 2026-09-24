@@ -25,8 +25,9 @@ the digest the release API reports before the device is let go, and a second
 flash refused rather than queued (`tests/dccex_usb/test_firmware.py`,
 `tests/dccex_usb/test_face.py`).
 
-What cannot be run here is Lit. The gate is Python with a bare node in it and
-no packages, so nothing in it can mount a component and press a button: the
+What cannot be run here is Lit. The gate is Python and the node beside it is a
+bare one with no packages, so nothing in either can mount a component and press
+a button: the
 words and the ordering are asserted here and the drawing of them is held
 against the component's source below, which is the cost `tests/ui/test_look.py`
 already names.
@@ -38,6 +39,8 @@ import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from tests.ui.test_look import UI
 from tests.ui.test_stream import code, quoted
@@ -98,6 +101,7 @@ def says() -> dict[str, str]:
 # -- what the page does -------------------------------------------------------
 
 
+@pytest.mark.node
 def test_the_locomotives_are_stopped_and_the_power_cut_before_the_write() -> None:
     """The order the railroad depends on (#9, ADR-0006 d.2): everything moving
     is stopped, the rails are dropped, and only then is the station taken away
@@ -112,6 +116,7 @@ def test_the_locomotives_are_stopped_and_the_power_cut_before_the_write() -> Non
     assert happened["order"] == ["sent <!>", "sent <0>", f"wrote {TAG}"]
 
 
+@pytest.mark.node
 def test_the_stop_is_the_emergency_stop_and_the_cut_is_track_power() -> None:
     """Two whole `<…>` messages of the station's own, sent the way anything
     typed on this page is sent — so they are marked as the page's in the
@@ -120,6 +125,7 @@ def test_the_stop_is_the_emergency_stop_and_the_cut_is_track_power() -> None:
     assert words()["sends"] == {"STOPS": "<!>", "CUTS": "<0>"}
 
 
+@pytest.mark.node
 def test_the_page_says_which_step_is_running() -> None:
     """A minute of silence reads as a hang, and the last step is a minute or
     two of the station being away (#9)."""
@@ -134,6 +140,7 @@ def test_the_page_says_which_step_is_running() -> None:
     assert "minute" in happened["writing"], "the step does not say how long"
 
 
+@pytest.mark.node
 def test_a_step_that_did_not_leave_the_page_stops_the_sequence() -> None:
     """The stream is the only way anything reaches the station from here. A
     stop that did not go is a railroad nobody stopped, and a page that asked
@@ -142,6 +149,7 @@ def test_a_step_that_did_not_leave_the_page_stops_the_sequence() -> None:
     assert flashed(tag=TAG, sends=1)["order"] == ["sent <!>"]
 
 
+@pytest.mark.node
 def test_a_sequence_that_stopped_says_so_and_was_not_written() -> None:
     """What an operator is told is that nothing was stopped and nothing was
     written, because a page that said nothing would leave them reading a list
@@ -152,6 +160,7 @@ def test_a_sequence_that_stopped_says_so_and_was_not_written() -> None:
     assert "not" in says()["UNSENT"] and "written" in says()["UNSENT"]
 
 
+@pytest.mark.node
 def test_a_flash_that_cannot_start_says_why() -> None:
     """The face answers a refusal with a sentence — a tag with no release, a
     source that could not be asked, a release with no asset or no digest, a
@@ -162,6 +171,7 @@ def test_a_flash_that_cannot_start_says_why() -> None:
     assert flashed(tag=TAG, wrote=refused)["wrote"] == refused
 
 
+@pytest.mark.node
 def test_a_flash_that_was_written_is_answered_and_then_observed() -> None:
     """Success is not replied to with a build: what is on the station is read
     off the station, on the banner it sends when it comes back (ADR-0006 d.3,
@@ -173,6 +183,7 @@ def test_a_flash_that_was_written_is_answered_and_then_observed() -> None:
     assert "build" in says()["WROTE"], "the page does not say where to look"
 
 
+@pytest.mark.node
 def test_the_operator_is_warned_what_flashing_does() -> None:
     """The guard is the person and a person can only be one if they are told
     what the gesture does (#9, ADR-0006 d.2)."""
@@ -183,6 +194,7 @@ def test_the_operator_is_warned_what_flashing_does() -> None:
     assert "minute" in warning
 
 
+@pytest.mark.node
 def test_the_yes_is_a_press_of_its_own() -> None:
     """A sequence the operator declines is a flash that was not asked for
     rather than one that was refused (ADR-0006 d.2), so there is something to
@@ -239,6 +251,7 @@ def test_the_sequence_the_row_runs_is_the_module_s() -> None:
         assert handed in running, f"the sequence is handed no {handed}"
 
 
+@pytest.mark.node
 def test_every_word_the_row_says_about_a_flash_is_the_sequence_s() -> None:
     """So that what an operator reads is asserted by running the sequence
     rather than by reading the component, which is the whole reason the
@@ -323,6 +336,7 @@ def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
     ), "the page writes an address of its own rather than building one"
 
 
+@pytest.mark.node
 def test_a_flash_the_face_refused_is_said_in_the_face_s_own_words() -> None:
     """The mirror says what it turned a flash down for, and a page that wrote
     its own sentence over that would be guessing at an answer it was given

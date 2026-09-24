@@ -334,7 +334,8 @@ def test_the_deploy_writes_down_what_it_replaced_and_keeps_it() -> None:
 
 
 def test_the_gate_is_still_one_command_with_one_exit_code() -> None:
-    """The check that starts the built image needs a daemon, so it carries the
-    `docker` marker and the gate does not collect it (#54, #56). Nothing in
-    this ticket moved that line."""
-    assert '-m "not docker"' in GATE.read_text()
+    """The check that starts the built image needs a daemon and the page's five
+    JavaScript modules need a node, so each carries a marker and the gate
+    collects neither (#54, #56, #101). Nothing in this ticket moved that
+    line."""
+    assert '-m "not docker and not node"' in GATE.read_text()

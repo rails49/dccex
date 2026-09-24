@@ -17,12 +17,20 @@ packages = ["src/dccex_usb"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# A test that cannot run without a Docker daemon. `scripts/check.sh` does not
-# collect these; the workflow runs them in a job of its own, required on the
-# pull request, where a missing daemon is a failure (#54, #56). A bare
-# `pytest` still runs everything, which is what a development machine with a
-# daemon on it wants.
-markers = ["docker: needs a Docker daemon"]
+# Two prerequisites the gate does not assume, one marker each.
+# `scripts/check.sh` collects neither; the workflow runs each in a job that a
+# pull request requires, where a missing prerequisite is a failure and not a
+# skip (#54, #56, #101). A bare `pytest` still runs everything, which is what
+# a development machine that has both wants.
+#
+# `docker` is a daemon. `node` is a node on `PATH` and no more than that — no
+# packages are installed, nothing is bundled and nothing is fetched — and what
+# needs it is the five modules of the page written as JavaScript so their real
+# functions can be run rather than read (`tests/ui/test_decoder.py`).
+markers = [
+  "docker: needs a Docker daemon",
+  "node: needs a node on the machine",
+]
 
 # The three below are `control`'s at deee7b6, unchanged. The code they read
 # was written under them — fully annotated, black-formatted, four `cast(...)`

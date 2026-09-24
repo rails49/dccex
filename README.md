@@ -43,14 +43,17 @@ top of them.
   ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
 
 The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
-`./scripts/check.sh`, one command, and it needs no hardware and no Docker
-daemon. The three checks that do need one — the page's image built and served,
+`./scripts/check.sh`, one command, and it needs no hardware, no Docker daemon
+and no node. The three checks that do need a daemon — the page's image built
+and served,
 the compose project brought up, served and taken down, and the mirror's image
 run with a pty for a device and 2560 dialled against it — carry the `docker`
 marker, which the gate does not collect; `uv run pytest -m docker` is how they
 are run, and the workflow runs them in a job of its own that a pull request
 requires, where a missing daemon is a failure rather than a skip (#53, #54,
-#56, #15).
+#56, #15). The checks that put the page's own functions through a bare node
+carry a `node` marker beside it, are kept out of the gate the same way, and are
+run in a job of their own for the same reason (#101).
 
 ## What the UI talks to
 

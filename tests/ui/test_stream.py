@@ -41,7 +41,7 @@ def modules() -> dict[str, str]:
     Both languages. Five of them are JavaScript with their types in JSDoc —
     what a line means, what is sent for what was typed, what the band and the
     tiles read, how the releases are listed, and what is done to the railroad
-    before one is written — because the gate runs those five under a bare node
+    before one is written — because those five are run under a bare node
     (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
     `tests/ui/test_readings.py`, `tests/ui/test_releases.py`,
     `tests/ui/test_flash.py`), and a rule held over "every module" that looked
