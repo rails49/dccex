@@ -26,6 +26,7 @@ proving nothing (`scripts/check.sh`).
 import json
 import re
 import shutil
+import string
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -59,6 +60,11 @@ CASES: dict[str, str] = {
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
+#: A malformed payload, a truncated message, and a whole message the station
+#: says in a letter the page has never learned — which is the common one. This
+#: fork answers a subset of DCC-EX's vocabulary and upstream adds to it, so a
+#: station saying something new degrades to a stream of raw lines rather than
+#: to a page of confident nonsense (ADR-0009).
 SILENT: tuple[str, ...] = (
     "<p>",
     "<p3>",
@@ -70,6 +76,9 @@ SILENT: tuple[str, ...] = (
     "<c CurrentMAIN 123 C Amps 0 0 4000 1000>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10",
+    "<l 3 0 128 0>",
+    "<Q 12>",
+    "<* Power overload *>",
     "<>",
     "",
     "p0",
@@ -135,6 +144,22 @@ def test_every_line_the_page_glosses_has_a_case() -> None:
     """
     asserted = {line.strip()[1:2] for line in CASES}
     assert reads() <= asserted, f"nothing asserts {sorted(reads() - asserted)}"
+
+
+def test_no_letter_the_decoder_does_not_know_is_glossed() -> None:
+    """The other direction from the case above, over the whole alphabet.
+
+    The station says far more than the page has learned, and what it says next
+    is upstream's to decide (ADR-0009 d.5). A letter outside the table gets
+    nothing back however well-formed the message around it is, which is what
+    makes a firmware that has grown a stream of raw lines rather than a page of
+    confident nonsense.
+    """
+    strangers = tuple(
+        f"<{letter} 1 2 3>" for letter in string.ascii_letters if letter not in reads()
+    )
+    assert len(strangers) > 1, "the decoder claims most of the alphabet"
+    assert run(strangers) == (None,) * len(strangers)
 
 
 def test_the_decoder_holds_nothing() -> None:
