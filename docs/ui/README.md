@@ -4,12 +4,14 @@ The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
 label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
-**The page is here and the monitor is reading.** `ui/` holds the band, the rail
-and the work pane, built and served the way this page says (#3) — which is the
-tracer bullet, and it is the installation everything below rests on. What is in
-the work pane is the **monitor**'s downward half: the station's conversation as
-it arrives, every line stamped with the time it arrived, newest at the bottom
-(#4). The rest of the work pane is still written ahead of itself, as
+**The page is here and the monitor is a full client of the mirror.** `ui/`
+holds the band, the rail and the work pane, built and served the way this page
+says (#3) — which is the tracer bullet, and it is the installation everything
+below rests on. What is in the work pane is the **monitor**, both halves of it:
+the station's conversation as it arrives, every line stamped with the time it
+arrived, newest at the bottom (#4), and a box at the foot that types a whole
+`<…>` message back (#6). The rest of the work pane is still written ahead of
+itself, as
 [the cutover page](../cutover.md) was written ahead of its evening, because
 what it says was decided in rails49/dccex#1 and the tickets under that spec are
 each a part of it. What is already here besides is the other end: the
@@ -166,28 +168,60 @@ take — and what it knows grows by adding a reader and a pair of strings
 (ADR-0009 d.5). The component knows no protocol: it asks the pure function and
 draws what comes back.
 
+**And the page types** (#6). The box at the foot sends one whole `<…>` message
+— buffered until complete and written in one write, so two people on the page
+at once cannot interleave a command. A command typed without the angle brackets
+is sent as if they were there: `s` and `<s>` do the same thing, because the
+brackets are the station's rather than the operator's. Everything the station
+understands can be typed, `<0>` included; that is what a raw monitor is, and
+none of it is a named control on the page. Four more things about it are the
+page's own:
+
+- what is sent for what was typed is a pure function of the box's text
+  (`ui/src/message.js`), and nothing typed sends nothing: a `<>` on the wire is
+  a message the station would refuse, and a page sending one would be typing at
+  the railroad on its own account;
+- the line the page sent is drawn where the station's lines are, with a mark in
+  a column they leave empty and in the page's own accent — two channels rather
+  than a colour alone, because which of these lines the page put on the
+  railroad is the thing a monitor must not be ambiguous about;
+- a command that was not sent draws no line and leaves the typing in the box.
+  Nothing typed and no stream open are the two ways that happens, and a line
+  claiming the station was asked something it was never asked is the
+  observation nobody made (ADR-0009 d.2);
+- the box is thumb-sized and the field shrinks rather than pushing the send off
+  the side, because the phone at the layout is where a command gets typed.
+
+The framing that makes it a whole message at the device is the **mirror**'s and
+is not written a second time here: the page writes one message in one frame and
+the mirror reads for the `>`, exactly as it does for JMRI and a throttle
+(ADR-0007 d.2, `framing.py`).
+
 **The pairs are run rather than read.** Every other check of the page here
 reads its sources, because the gate is Python and there is no browser in it.
-The decoder's cannot: a sentence an operator is shown is worth nothing asserted
-against the source that would produce it, and ADR-0009 d.3 asks for the pairs
+Two of them cannot: a sentence an operator is shown is worth nothing asserted
+against the source that would produce it — and so is a rule about what goes
+down a cable to a command station — and ADR-0009 d.3 asks for the pairs
 themselves. So `tests/ui/test_decoder.py` puts every line the page glosses and
 every near miss through the real function under `node`, by way of
-`tests/ui/gloss.mjs`. What that asks of the machine the gate runs on is a node
-and nothing else — no packages, no bundler, nothing fetched, no DOM — and a
-node that is not there is red rather than skipped, as everything else the gate
-needs is. It is why `ui/src/decoder.js` is the one module of the page written
-as JavaScript with its types in JSDoc: `tsc` checks it as strictly as the rest
-(`ui/tsconfig.json`), and a bare node can still run it.
+`tests/ui/gloss.mjs`, and `tests/ui/test_message.py` puts every spelling an
+operator may type through the real function the same way
+(`tests/ui/message.mjs`). What that asks of the machine the gate runs on is a
+node and nothing else — no packages, no bundler, nothing fetched, no DOM — and
+a node that is not there is red rather than skipped, as everything else the
+gate needs is. It is why `ui/src/decoder.js` and `ui/src/message.js` are the
+two modules of the page written as JavaScript with their types in JSDoc: `tsc`
+checks them as strictly as the rest (`ui/tsconfig.json`), and a bare node can
+still run them.
 
-The marking of the lines this page sent, the pause, the clear, the box at the
-foot and the polling are the rest of the monitor and land under their own
-tickets. Until the box lands the page types nothing at all: it is one
-more **client** of the mirror's port, and it is reading.
+**Sending is held at the other end too.** What a page types is one more
+client's bytes on the mirror's port, so two monitors typing at once is the
+interleaving rule `tests/dccex_usb/test_face.py` runs against a pty — two whole
+messages at the device, in one order or the other, on a machine with no command
+station attached.
 
-The box at the foot sends one whole `<…>` message — buffered until complete and
-written in one write, so two people on the page at once cannot interleave a
-command. A command typed without the angle brackets is sent as if they were
-there: `s` and `<s>` do the same thing.
+The pause, the clear and the polling are the rest of the monitor and land under
+their own tickets.
 
 **The page is what polls.** The station volunteers a banner and a `<p…>`, and
 an idle one says nothing; on a box with no **translator** running, nothing else
@@ -297,8 +331,9 @@ Two things the prototype left open and the tickets settle while building:
 - whether the release list stays a collapsed row once it grows past four
   entries;
 - narrow widths were never confirmed in a browser. The rules are written — the
-  band drops the track reading below 560px and the release rows wrap — and
-  nobody has held a phone up to them.
+  band drops the track reading below 560px, the release rows wrap, and the
+  command box is thumb-sized with a field that shrinks rather than pushing the
+  send button off the side — and nobody has held a phone up to them.
 
 What each tile reads while the link is down was the third and is settled above,
 by ADR-0008 d.3.
