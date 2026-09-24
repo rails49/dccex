@@ -84,26 +84,45 @@ def declarations(css: str) -> dict[str, str]:
     return found
 
 
-def painted() -> dict[str, str]:
-    """Every file a colour the page draws with can be written into, by name.
+def paintable() -> list[Path]:
+    """Every file a colour the page draws with can be written into.
 
-    The component stylesheets, the plain stylesheets beside them, and the page
-    itself — a `style` attribute or a `<style>` block paints as surely as a
-    rule in a Lit sheet does, and a colour written into any of the three is a
-    second place the page's chrome is changed in.
+    The component stylesheets, the components themselves, the plain
+    stylesheets beside them, and the page — a `style` attribute or a `<style>`
+    block paints as surely as a rule in a Lit sheet does, and a colour written
+    into any of the four is a second place the page's chrome is changed in.
 
-    `look.css` is the one place there is meant to be, so the declarations of
-    the copy's own tokens come out of it before the scan reads it — those, in
-    that one file, and nothing else. A component sheet declaring `--band` as a
-    hex of its own is the drift this is for, and a hex anywhere else in
-    `look.css` is a rule painting past the block above it.
+    The components are in it because that is where the markup went when the
+    page grew Lit templates: `style="color:#f00"` on a release row is a colour
+    written into the chrome with no stylesheet anywhere near it (#85).
+
+    A component stylesheet is a `*.ts` too, so the second glob leaves out what
+    the first one found. `painted()` below is keyed by file name, and a name
+    arriving twice would read as a collision rather than as a finding.
     """
-    written: dict[str, str] = {}
-    for source in [
+    return [
         *sorted((UI / "src" / "ui").glob("*.styles.ts")),
+        *(
+            component
+            for component in sorted((UI / "src" / "ui").glob("*.ts"))
+            if not component.name.endswith(".styles.ts")
+        ),
         *sorted((UI / "src").glob("*.css")),
         PAGE,
-    ]:
+    ]
+
+
+def painted() -> dict[str, str]:
+    """The text of every file `paintable()` names, by file name.
+
+    `look.css` is the one place a colour is meant to be written, so the
+    declarations of the copy's own tokens come out of it before the scan reads
+    it — those, in that one file, and nothing else. A component sheet
+    declaring `--band` as a hex of its own is the drift this is for, and a hex
+    anywhere else in `look.css` is a rule painting past the block above it.
+    """
+    written: dict[str, str] = {}
+    for source in paintable():
         text = source.read_text()
         if source == DRAWN:
             for token in declarations(COPY.read_text()):
