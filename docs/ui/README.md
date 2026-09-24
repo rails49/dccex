@@ -281,14 +281,16 @@ real function the same way (`tests/ui/message.mjs`), and
 `tests/ui/test_readings.py` puts whole conversations through the readings and
 reads the band and the tiles back (`tests/ui/readings.mjs`), and
 `tests/ui/test_releases.py` puts what the face answered through the listing and
-reads the release rows back (`tests/ui/releases.mjs`). What that asks of the
-machine the gate runs on is a node and nothing else — no packages, no bundler,
-nothing fetched, no DOM — and a node that is not there is red rather than
-skipped, as everything else the gate needs is. It is why `ui/src/decoder.js`,
-`ui/src/message.js`, `ui/src/readings.js` and `ui/src/releases.js` are the four
-modules of the page written as JavaScript with their types in JSDoc: `tsc`
-checks them as strictly as the rest (`ui/tsconfig.json`), and a bare node can
-still run them.
+reads the release rows back (`tests/ui/releases.mjs`), and
+`tests/ui/test_flash.py` puts a flash through the sequence and reads back what
+went down the cable, in what order, and what the page said while it did
+(`tests/ui/flash.mjs`). What that asks of the machine the gate runs on is a node
+and nothing else — no packages, no bundler, nothing fetched, no DOM — and a node
+that is not there is red rather than skipped, as everything else the gate needs
+is. It is why `ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
+`ui/src/releases.js` and `ui/src/flash.js` are the five modules of the page
+written as JavaScript with their types in JSDoc: `tsc` checks them as strictly
+as the rest (`ui/tsconfig.json`), and a bare node can still run them.
 
 **What no check here reaches is Lit.** A bare node with no packages cannot
 mount a component, so what the band, the tiles and the release rows *draw* is

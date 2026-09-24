@@ -38,13 +38,14 @@ NAMED = re.compile(r"://|BOX_DOMAIN|localhost|127\.0\.0\.1|\b(?:2560|8080)\b")
 def modules() -> dict[str, str]:
     """Every module the page is made of, by file name.
 
-    Both languages. Four of them are JavaScript with their types in JSDoc —
+    Both languages. Five of them are JavaScript with their types in JSDoc —
     what a line means, what is sent for what was typed, what the band and the
-    tiles read, and how the releases are listed — because the gate runs those
-    four under a bare node (`tests/ui/test_decoder.py`,
-    `tests/ui/test_message.py`, `tests/ui/test_readings.py`,
-    `tests/ui/test_releases.py`), and a rule held over "every module" that
-    looked at one language would stop holding the day a module changed it.
+    tiles read, how the releases are listed, and what is done to the railroad
+    before one is written — because the gate runs those five under a bare node
+    (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
+    `tests/ui/test_readings.py`, `tests/ui/test_releases.py`,
+    `tests/ui/test_flash.py`), and a rule held over "every module" that looked
+    at one language would stop holding the day a module changed it.
     """
     return {
         module.name: module.read_text()
