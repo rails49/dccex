@@ -503,15 +503,22 @@ def test_a_release_that_carries_no_firmware_is_refused() -> None:
 
 def test_a_release_the_api_reports_no_digest_for_is_refused() -> None:
     """Unchecked is not written: the per-asset digest is what makes a tag
-    chosen at the moment of the gesture safe (ADR-0065, decision 4)."""
+    chosen at the moment of the gesture safe (ADR-0065, decision 4).
+
+    The whole sentence, because the face now lists such a release as not
+    flashable (#81) and this refusal is what is left for a caller that named
+    the tag anyway — the flag moved and the sentence did not.
+    """
 
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(document=release(digest=None)))
 
         wrote = await flash.wants()
 
-        assert wrote.refusal is Refusal.NO_DIGEST
-        assert "reports no digest" in wrote.said
+        assert wrote == Wrote(
+            Refusal.NO_DIGEST,
+            f"release '{TAG}' reports no digest for {ASSET}, so it is unchecked",
+        )
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
 
