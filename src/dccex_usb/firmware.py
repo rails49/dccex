@@ -51,6 +51,15 @@ what went wrong with a station and a release; the status that carries it to a
 caller is a fact about the way that caller asked, and belongs to whatever
 answered them (`face.py`).
 
+**And a refusal names no source.** The gesture cannot name one and the answer
+must not either: a sentence goes to the face and the page shows what the face
+said word for word (#66), so a URL spelled into one is a URL in a browser —
+which the page promises there is not (`ui/src/releases.js`,
+`docs/ui/README.md`). Every sentence below says which of the things went wrong
+and names the tag that was asked for, and none of them says where releases are
+read from. That is on this box's log, one line above, where whoever is fixing
+a source that is away already is (#94).
+
 **A second gesture while a flash is in flight is refused, not queued.** A
 command is honoured now or ignored, which is what this app already does with
 what a client sends while the device is away; a queued flash is a station that
@@ -512,7 +521,10 @@ class Flasher:
             # `OSError`, so this has to be told apart before them (#46).
             if replied.code != NO_SUCH:
                 return self._unreachable(tag, replied)
-            return Wrote(Refusal.NO_RELEASE, f"no release '{tag}' at {url}: {replied}")
+            return Wrote(
+                Refusal.NO_RELEASE,
+                f"no release '{tag}' where releases are read from: {replied}",
+            )
         except (OSError, ValueError) as away:
             # Refused, timed out, no such host, or a body that is not JSON:
             # the source was never asked, so the tag is not what is wrong.
@@ -532,7 +544,7 @@ class Flasher:
         except (OSError, urllib.error.URLError) as away:
             return Wrote(
                 Refusal.NO_ASSET,
-                f"{ASSET} for '{tag}' could not be fetched from {found.url}: {away}",
+                f"{ASSET} for '{tag}' could not be fetched: {away}",
             )
         if not matches(binary, found.digest):
             return Wrote(
@@ -543,8 +555,8 @@ class Flasher:
         return await self._runs(tag, binary)
 
     def _unreachable(self, tag: str, away: Exception) -> Wrote:
-        """The source could not be asked, said the way the releases route
-        says it: the source named, and what went wrong with it (`face.py`).
+        """The source could not be asked: what went wrong with it, and the tag
+        the gesture named, said the way the releases route says it (`face.py`).
 
         Separate from `NO_RELEASE` because the two send a person to different
         places — one to type a tag the source carries, the other to find out
@@ -553,7 +565,7 @@ class Flasher:
         """
         return Wrote(
             Refusal.SOURCE_AWAY,
-            f"the releases at {self._releases} could not be read,"
+            f"the release source could not be read,"
             f" so '{tag}' was not written: {away}",
         )
 
@@ -562,14 +574,16 @@ class Flasher:
 
         `SOURCE_AWAY` and not `NO_ASSET`, because "release 'x' carries no
         firmware.bin" points the operator at a release nobody was shown and at
-        a tag that is not at fault. The sentence names the source, as
-        `_unreachable`'s does: the tag is there to say which gesture was
-        turned down and not as the thing to go and retype (#66).
+        a tag that is not at fault. The tag is there to say which gesture was
+        turned down and not as the thing to go and retype (#66), and the
+        source is no more named here than in `_unreachable`'s (#94). *The
+        release source* and not *the releases*, which is what the page says
+        where it is the face it could not read (`ui/src/releases.js`).
         """
         return Wrote(
             Refusal.SOURCE_AWAY,
-            f"the releases at {self._releases} answered with something that is"
-            f" not a release, so '{tag}' was not written",
+            f"the release source answered with something that is not a"
+            f" release, so '{tag}' was not written",
         )
 
     async def _runs(self, tag: str, binary: bytes) -> Wrote:

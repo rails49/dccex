@@ -407,7 +407,8 @@ def test_a_tag_with_no_such_release_is_refused() -> None:
 def test_a_source_that_cannot_be_reached_is_refused_as_the_source() -> None:
     """Not the tag's doing: the source was never asked, so a caller told the
     release does not exist would go off and retype a tag that is good. The
-    sentence names the source and what went wrong with it (#46)."""
+    sentence says the release source could not be read, and what went wrong
+    with reading it, and names the tag it turned down (#46, #94)."""
 
     async def scenario() -> None:
         away = urllib.error.URLError(ConnectionRefusedError("Connection refused"))
@@ -416,7 +417,7 @@ def test_a_source_that_cannot_be_reached_is_refused_as_the_source() -> None:
         wrote = await flash.wants()
 
         assert wrote.refusal is Refusal.SOURCE_AWAY
-        assert RELEASES in wrote.said
+        assert f"the release source could not be read, so '{TAG}' was" in wrote.said
         assert "Connection refused" in wrote.said
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
@@ -435,7 +436,7 @@ def test_a_source_that_answers_something_that_is_not_json_is_refused() -> None:
         wrote = await flash.wants()
 
         assert wrote.refusal is Refusal.SOURCE_AWAY
-        assert RELEASES in wrote.said
+        assert f"the release source could not be read, so '{TAG}' was" in wrote.said
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
         assert flash.device.held, "the device is not let go"
@@ -453,7 +454,7 @@ def test_a_source_that_answers_a_status_other_than_404_is_refused() -> None:
         wrote = await flash.wants()
 
         assert wrote.refusal is Refusal.SOURCE_AWAY
-        assert RELEASES in wrote.said
+        assert f"the release source could not be read, so '{TAG}' was" in wrote.said
         assert "500" in wrote.said
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
@@ -470,8 +471,8 @@ def test_a_source_that_answers_something_that_is_not_a_release_is_refused(
 ) -> None:
     """A `200` carrying a document this app cannot read as a release is the
     source answering oddly, not a release with nothing in it: the tag is not
-    what to go and retype, so it is `SOURCE_AWAY` and the sentence names the
-    source (#66)."""
+    what to go and retype, so it is `SOURCE_AWAY` and the sentence says the
+    release source answered with something else (#66)."""
 
     async def scenario() -> None:
         flash = Flash(fetch=FakeFetch(document=document))
@@ -479,7 +480,7 @@ def test_a_source_that_answers_something_that_is_not_a_release_is_refused(
         wrote = await flash.wants()
 
         assert wrote.refusal is Refusal.SOURCE_AWAY
-        assert RELEASES in wrote.said
+        assert f"'{TAG}' was not written" in wrote.said
         assert "not a release" in wrote.said
         assert f"carries no {ASSET}" not in wrote.said
         assert flash.refusals == [wrote.said]
