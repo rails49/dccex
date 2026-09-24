@@ -19,9 +19,11 @@ pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
 face's port is on nothing, that neither image's bases can move underneath a
-name that never moves, that the repository a box pulls from is written down
-rather than taken from whoever ran the deploy, and that the deploy names the
-image after the commit and writes down what it replaced.
+name that never moves, that the mirror is given a flash to be waited out and
+the cutover's stop is bounded by something else, that the repository a box
+pulls from is written down rather than taken from whoever ran the deploy, and
+that the deploy names the image after the commit and writes down what it
+replaced.
 """
 
 import re
@@ -55,6 +57,23 @@ SOURCE = "org.opencontainers.image.source=https://github.com/rails49/dccex"
 PINNED = re.compile(r"FROM (\S+:\S+)@sha256:[0-9a-f]{64}(?: AS \w+)?")
 
 DEPLOY = ROOT / "scripts" / "deploy.sh"
+
+#: The page the evening the port changes hands is followed from. Its check 6
+#: stops this stack's container with a client on 2560 that has stopped
+#: reading, which is where the grace below is read as something it is not.
+CUTOVER = ROOT / "docs" / "cutover.md"
+
+#: The room a flash is waited out in: `firmware.py` allows esptool 300 seconds
+#: and a container killed in the middle of a write leaves the command station
+#: half written (#15). It is not what a stop takes, and it is not to be tidied
+#: down to one.
+GRACE = "stop_grace_period: 330s"
+
+#: What check 6 holds a healthy stop to, spelt as both files spell it. A
+#: shutdown with nothing being written is about a second — the face closed,
+#: the clients aborted, the device let go — and this is the wall clock that
+#: separates that from a shutdown waiting on a client that will never read.
+BOUND = "five seconds"
 
 GATE = ROOT / "scripts" / "check.sh"
 
@@ -116,6 +135,31 @@ def services(compose: Path) -> dict[str, str]:
         elif name:
             blocks[name].append(line)
     return {name: "\n".join(body) for name, body in blocks.items()}
+
+
+def comment_above(path: Path, line: str) -> str:
+    """The paragraph written over one line of a file.
+
+    What a declaration is given is `services()`'s, which drops every comment
+    because a claim about what compose is handed cannot be met by prose. This
+    is the opposite read, for the one claim below that is about the prose: a
+    number whose reasons are not beside it is a number the next reader
+    re-derives.
+    """
+    lines = path.read_text().splitlines()
+    above = lines.index(line)
+    taken: list[str] = []
+    while above and lines[above - 1].lstrip().startswith("#"):
+        above -= 1
+        taken.append(lines[above])
+    return "\n".join(reversed(taken))
+
+
+def check_six() -> str:
+    """The deaf-client step of the cutover page, as its reader meets it."""
+    said = CUTOVER.read_text()
+    start = said.index("\n6. ")
+    return said[start : said.index("\n## ", start)]
 
 
 def entries(block: str, key: str) -> list[str]:
@@ -205,6 +249,40 @@ def test_the_mirror_runs_the_device_and_the_port_the_mapping_names() -> None:
     themselves: a stack that mapped the device to one name and opened another
     would come up and mirror nothing."""
     assert f'"--device", "{INSIDE}", "--port", "2560"' in services(BOX)["mirror"]
+
+
+def test_the_mirrors_grace_is_a_flashs_and_names_the_page_a_stop_is_on() -> None:
+    """330 seconds, and the reasons beside it (#15).
+
+    The value is what a flash is allowed and the paragraph over it has said so
+    since it was written. What is asserted with it is the other half (#103):
+    that the same paragraph names the page which bounds a stop, so that the
+    number cannot be read as what stopping this container should take. A
+    reader who has only the first half re-derives the conflict that made the
+    cutover's check 6 measure nothing.
+    """
+    assert GRACE in services(BOX)["mirror"], "the grace moved, or went"
+    beside = comment_above(BOX, f"    {GRACE}")
+    assert "docs/cutover.md" in beside, "the grace does not point at the page"
+    assert BOUND in beside, "the grace does not say what a stop is held to"
+
+
+def test_the_cutovers_stop_is_bounded_by_a_clock_and_not_by_the_grace() -> None:
+    """Check 6's reading, against the grace it is not (#103).
+
+    The step was written against Docker's ten seconds, which this container
+    has not had since the grace landed: a mirror that hangs on shutdown is not
+    killed at ten seconds any more, it is waited out for five and a half
+    minutes and then exits `0`. So the page states a wall clock a healthy stop
+    meets and a hung one misses, times the stop to read it, and says what the
+    330 seconds are instead — all three asserted here, because a page that
+    dropped any of them is a check that passes either way.
+    """
+    said = check_six()
+    assert "time docker stop" in said, "the stop is not timed"
+    assert BOUND in said, "check 6 states no bound a stop is held to"
+    assert "ten-second" not in said, "check 6 still reads Docker's default"
+    assert "330" in said, "check 6 does not say what the configured grace is"
 
 
 def test_no_container_in_this_project_carries_a_door_label_but_the_page() -> None:
