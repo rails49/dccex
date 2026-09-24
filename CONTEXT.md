@@ -197,6 +197,30 @@ than this repository's.
 **Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
 *status bar*.
 
+## rail
+
+The chrome down the side of every rails49 UI, carrying what the view in front
+of a person offers. Here it offers nothing yet: `dccex-rail` draws the column,
+one button wide, and the run the first buttons will land in — the flash
+sequence's, when it arrives. It is the **band**'s counterpart and LOOK.md's in
+the same way, which is why its colour, the width of a button on it and the
+window height it turns at are the `--rail*` tokens rather than numbers of this
+page's (`ui/src/ui/dccex-rail.ts`, [ui/look/README.md](ui/look/README.md)).
+Below `--rail-turns` it lies down along the top of the work pane, and a rail
+lying down is still the rail.
+
+It is not the steel. What the locomotives run on is the track, which this file
+speaks of in the plural — the **band**'s second reading is whether the rails
+are hot, and a **tile** carries the current on them — and never as *the rail*.
+So the bare word here is the chrome, the way the bare **station** here is the
+hardware: what is drawn down the side of a page, and never anything a train
+touches.
+
+**Not:** *sidebar*, *side nav*, *nav*, *navbar*, *drawer*, *menu*, *toolbar*,
+*the rails* (the rails are the track's steel, and what they are is hot or
+not), *strip* (the strip is the shape this takes on a short window and not a
+second thing).
+
 ## tile
 
 One reading of the station's particulars on the page's work pane. There are
