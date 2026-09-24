@@ -398,6 +398,25 @@ link going down is the absence of a line rather than the arrival of one; and a
 page that has left stops asking, because a conversation that is quiet when
 nobody is watching is the correct conversation (ADR-0010 d.4).
 
+**The first one is asked when the stream is open, not when the page joins**
+(#82). Opening a stream dials a socket, and a socket that is connecting cannot
+be written to: the poll that used to go in the line after `open()` was refused
+and went nowhere, so nothing had been asked and nothing had answered until the
+interval came round, and every load of the page spent its first five seconds
+saying a healthy station was not answering with the **build** tile blank. The
+stream hands the open up the way it hands a line up, and the page asks there —
+which covers a reopen too, since the socket the reopen timer dials says it is
+open like any other. The schedule is untouched and is started once, where the
+page joins the document, so a stream that drops and comes back leaves one
+poller and not two.
+
+**Nothing typed is held for it.** A message an operator typed while the stream
+was down is a command to a command station, and one arriving seconds later,
+after the page has moved on, is worse than one that never went: `send` returns
+nothing, the box at the foot says so, and the stream keeps no queue (#6). The
+poll is the exception because it is not held either — it is stateless, so the
+page asks again rather than the stream remembering.
+
 The page is one more client of the mirror's port and is subject to every rule
 that port has, including being cut off once it falls too far behind and being
 disconnected alongside the throttles when the device has been away past the
