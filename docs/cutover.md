@@ -278,7 +278,7 @@ Acceptance:
       duplicate.
 ```
 
-When it is filed, its number goes here.
+Filed as [control#578](https://github.com/rails49/control/issues/578).
 
 ## Not on this page
 
