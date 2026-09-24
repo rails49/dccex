@@ -137,8 +137,13 @@ export function heard(kept, line, at) {
  * through an outage the other three blank in: a station that has stopped
  * talking says nothing about who is listening (ADR-0008 d.4).
  *
+ * A face that could not be asked answers `null` and the tile blanks: a page
+ * drawing `0` for an app it could not reach would be reporting an empty port
+ * it never saw, and zero is what the face says when the port is empty
+ * (`face.ts`, ADR-0009 d.2).
+ *
  * @param {Kept} kept what the page had
- * @param {number} clients what the face answered
+ * @param {number | null} clients what the face answered, or nothing
  * @returns {Kept} what the page has now
  */
 export function counted(kept, clients) {

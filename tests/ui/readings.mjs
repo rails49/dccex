@@ -44,7 +44,7 @@ const drawn = (scenario) => {
   for (const [line, at] of scenario.said ?? []) {
     kept = heard(kept, line, at);
   }
-  if (scenario.clients !== undefined && scenario.clients !== null) {
+  if ("clients" in scenario) {
     kept = counted(kept, scenario.clients);
   }
   const readings = asOf(kept, scenario.now ?? 0);
