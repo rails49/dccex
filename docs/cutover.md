@@ -27,8 +27,9 @@ changes go in one at a time.
 | the translator | `control`'s, pointed at `control`'s mirror | pointed at this stack's, by control#567's repoint |
 | the face | nowhere | `https://dccex.$BOX_DOMAIN/dccex-usb/` ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
 
-The stack that runs it is #15's, the image is named by the commit it was built
-from ([ADR-0005](adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
+The stack that runs it is this repository's own — `compose.yaml` with
+`compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the image
+is named by the commit it was built from ([ADR-0005](adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
 and what the mirror does once it is up is
 [the mirror's page](dccex_usb/README.md).
 
@@ -81,9 +82,10 @@ person rather than being skipped (#42).
 **Where those four stand, 2026-09-24** (read over ssh, nothing started and
 nothing stopped):
 
-1. **Not done, and not doable yet.** There is no `~/dccex` on the box and no
-   image to build there: the stack, the mirror's image and the deploy are
-   #15's and #15 is not built. This step waits on it.
+1. **Not done.** There is no `~/dccex` on the box and so no image built there.
+   What it waited on has landed: the mirror's image, the compose overlay and
+   the deploy are #15's and are in this repository. What is left is the clone
+   and one build on the box, which is this step and is a person's.
 2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and
    `control`'s `main` is 31 commits ahead of it — the store moving to loopback,
    broker-first startup, the store image's uid and table ownership, the stock
@@ -113,9 +115,10 @@ at once is a railroad with two suspects.
    makes the next step's failures this repository's.
 2. **Check the old mirror container is gone and not merely stopped**, below.
    Getting it wrong is invisible until a reboot.
-3. This stack's deploy: brought up from `/etc/rails49/dccex` (#15,
-   ADR-0005 d.7). It takes 2560 and its face's port, and it appends what it
-   replaced to `/var/lib/rails49/deploys/dccex`.
+3. This stack's deploy: `scripts/deploy.sh`, which brings the project up from
+   the clone against `/etc/rails49/box.env` (#15, ADR-0005 d.7). It takes 2560
+   and its face's port, and it appends what it replaced to
+   `/var/lib/rails49/deploys/dccex`.
 4. [The checks](#the-checks), in order, and then the physical acceptance,
    which is a person and a train and is #16's.
 
@@ -344,7 +347,8 @@ Filed as [control#578](https://github.com/rails49/control/issues/578).
 - The evening itself — the deploys above being run, the acceptance, and the
   decision to carry on or go back. That is #16, and this page is what it
   follows.
-- The stack, the compose file and the deploy: #15's, and this page names them
-  rather than containing them.
+- The stack, the compose files and the deploy: built in #15 —
+  `deploy/Dockerfile`, `compose.box.yaml` and `scripts/deploy.sh` — and this
+  page names them rather than containing them.
 - `control`'s side of it: the pointer from its box procedures is
   [a ticket there](#the-pointer-in-control) rather than an edit from here.

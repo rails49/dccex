@@ -110,6 +110,29 @@ The gate is still one command, one exit status and no daemon; what the
 amendment buys is that the check which proves an image serves cannot skip
 itself out of a required gate, as it had in every recorded run.
 
+*Amended for [#15](https://github.com/rails49/dccex/issues/15), 2026-09-24,
+where the stack was built:*
+
+**d.7's one line is `DCCEX_COMMIT=<commit>`**, not `DCCEX_IMAGE=dccex:<commit>`,
+and the directory it is written in is the clone on the box rather than
+`/etc/rails49/dccex`. Both for the same reason: the page landed between this
+decision and the stack that carries it, and it is a second image of the same
+commit under the same naming rule (`compose.yaml`, `deploy/ui.Dockerfile`). A
+rollback naming one image would take the mirror back and leave the page where
+it was — two lines, where this decision asked for one — and the commit names
+both, `dccex:<commit>` and `dccex-ui:<commit>`. Nothing else of d.7 moves: one
+line, in the project's own `.env`, no rebuild, and `restart: unless-stopped`
+bringing back what was rolled back *to*.
+
+**d.9 has run its course.** The stack is code in this repository now —
+`deploy/Dockerfile`, `compose.box.yaml` beside `compose.yaml`, and
+`scripts/deploy.sh` — and it is built in this shape. The box's half is an
+overlay because `compose.yaml` has one promise of its own to keep, which is to
+come up from a clean clone. The gate is untouched, as d.9 said it would be:
+the check that starts the built image and dials 2560 against it carries the
+`docker` marker of the amendment above, so the gate is still one command and
+one exit status on a machine with no daemon.
+
 ## Consequences
 
 - #15 has a shape to build rather than `control`'s to inherit, and #16 cuts

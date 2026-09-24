@@ -278,7 +278,8 @@ a lock file and an esptool pin with the translator and neither with a page.
 as labels on its own container, and nothing more. `docker compose up --build`
 from a clean clone serves the page. The stack a **box** runs — the mirror
 beside it, the shared network the door dials containers on, the deploy and the
-record it appends to — is #15's.
+record it appends to — is that file and `compose.box.yaml` together, and the
+overlay exists so that this file keeps the promise in the sentence before.
 
 **It serves with no `control` clone present.** That is the installation this
 repository exists for, and it is the first thing the first ticket proves.
@@ -302,9 +303,9 @@ which is where a door reads them from — and `docker compose down` with its
 volumes, its network and the image it built, in a `finally`, so a red assertion
 leaves nothing behind either. It carries the same `docker` marker and the same
 no-daemon rule as the check above it. Two things it does not hold: what a route
-*does*, which wants a door and is #40's, and the shared network, which is #15's
-and is deliberately not declared external here so that `up` works on a clean
-clone at all. A project already up under the name the file pins — `name: dccex`
+*does*, which wants a door and is #40's, and the shared network, which is
+declared external in `compose.box.yaml` and deliberately not here, so that `up`
+works on a clean clone at all. A project already up under the name the file pins — `name: dccex`
 — fails the check with a sentence saying so, because taking down a project it
 did not start is not its to do.
 

@@ -215,7 +215,10 @@ code here:
   per router through ACME DNS-01 and holds no wildcard;
 - `dccex` in `BOX_UIS` in `/etc/rails49/box.env`, which is root-owned and
   edited by hand, so that the box's page links the UI;
-- the labels themselves, which belong to the mirror's stack (#15).
+- the face's own router, which goes on the page's origin under the prefix the
+  door strips rather than on a label of its own, and is #40's. The stack it
+  goes in is `compose.box.yaml`, where the mirror carries no door label at all
+  today (ADR-0004 d.5).
 
 What it answers, which is three things — two questions and a conversation:
 
@@ -458,23 +461,32 @@ keeps the image it replaced, so it is already on the box: nothing is rebuilt,
 nothing is pulled, and no digest is recovered by hand.
 
 ```
-$ cd /etc/rails49/dccex
-$ echo DCCEX_IMAGE=dccex:8f2c1d4… > .env && docker compose up -d
+$ cd ~/dccex
+$ echo DCCEX_COMMIT=8f2c1d4… > .env
+$ docker compose -f compose.yaml -f compose.box.yaml \
+    --env-file /etc/rails49/box.env --env-file .env up -d
 ```
 
-The stack's `.env` holds that one name, because the image's name is the one
-thing that differs between two deploys of this repository, and writing it
-there is what makes `restart: unless-stopped` bring back what was rolled back
-*to*. Nothing about a rollback moves `main`: the box is behind the repository
+The stack's `.env` holds that one line, because the commit is the one thing
+that differs between two deploys of this repository, and writing it there is
+what makes `restart: unless-stopped` bring back what was rolled back *to*.
+**One line and not two**: the commit names the mirror's image and the page's
+both — `dccex:<commit>` and `dccex-ui:<commit>` — and ADR-0005 d.7 is amended
+for it, because when d.7 was written the page was not here to be rolled back
+with the mirror. Nothing about a rollback moves `main`: the box is behind the repository
 until somebody commits the fix and deploys it, and the record above is where
 that is visible. One step back is what is kept; older images are the box's to
 prune, and what pruning them costs is a second step.
 
-None of this is code here. The image is built by the stack, the stack carries
-the deploy and the door's labels, and both are #15's — what this repository
-holds is the shape they are built in, which is ADR-0005, and this page. The
-gate reaches no box and builds no image, so it is one command with one exit
-status as it was.
+All of this is code here now. `deploy/Dockerfile` is the image; `compose.yaml`
+and `compose.box.yaml` are the project, the second being the box's half — the
+mirror, the device, 2560 raw, the shared network external and the box's
+declaration required rather than defaulted; `scripts/deploy.sh` is the deploy,
+one ssh and one heredoc, which refuses a clone that is not clean and appends
+the line above. The gate reaches no box and builds no image, so it is one
+command with one exit status as it was: the check that starts the built image
+and dials 2560 against it carries the `docker` marker, and the workflow runs
+it in the job of its own that the page's two are already in (#54, #56).
 
 **The first one is a cutover and not a deploy.** 2560 is served on the layout
 box today by `control`'s copy of this app, and the evening it changes hands is
