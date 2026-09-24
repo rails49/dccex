@@ -17,6 +17,16 @@
  * browser asks is the mirror's face on its own origin, and the face asks the
  * source it was started with.
  *
+ * **Nor does anything the face says name it.** The promise above is about
+ * what these modules spell, and it would be worth little if a sentence
+ * written on the box arrived with the URL in it — the page shows what the
+ * face said word for word (#66), so a refusal that spelled the source would
+ * put it on the page by the back way. A flash turned down because the release
+ * source could not be read, or answered with something that is not a release,
+ * says so and names the **tag**; where it is read from is on the box's log,
+ * for whoever is fixing it (`firmware.py`, `tests/dccex_usb/test_firmware.py`,
+ * #94).
+ *
  * **Newest first is this page's ordering and not the source's.** The face
  * passes the list on as it came, because which one is newest is a question
  * about the dates rather than about the wire, and it is asked here where the
