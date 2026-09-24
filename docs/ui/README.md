@@ -4,10 +4,12 @@ The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
 label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
-**The page is here and nothing is on it.** `ui/` holds the band, the rail and
-an empty work pane, built and served the way this page says (#3) — which is the
-tracer bullet, and it is the installation everything below rests on. Everything
-in the work pane is still written ahead of itself, as
+**The page is here and the monitor is reading.** `ui/` holds the band, the rail
+and the work pane, built and served the way this page says (#3) — which is the
+tracer bullet, and it is the installation everything below rests on. What is in
+the work pane is the **monitor**'s downward half: the station's conversation as
+it arrives, every line stamped with the time it arrived, newest at the bottom
+(#4). The rest of the work pane is still written ahead of itself, as
 [the cutover page](../cutover.md) was written ahead of its evening, because
 what it says was decided in rails49/dccex#1 and the tickets under that spec are
 each a part of it. What is already here besides is the other end: the
@@ -129,6 +131,35 @@ foot.
 - It follows the newest line while the view is at the bottom and stays put once
   it has been scrolled up, so reading back does not fight the feed. It can be
   paused, and it can be cleared.
+
+**What is built of it is the reading** (#4). The page opens the stream on its
+own origin — the page's own address with the scheme swapped, under the prefix
+the door strips (ADR-0004 d.2, d.3) — cuts what arrives at the newlines the
+station writes, and shows each line stamped with the time it arrived. Four
+things about that are the page's own and are decided here rather than in an
+ADR, because none of them is about anything but how much of a conversation a
+browser can hold:
+
+- the bytes are read one byte to one character and never as UTF-8: a serial
+  line promises no UTF-8, which is why they ride as binary frames at all, and a
+  replacement character drawn on the page is a byte the page threw away
+  (ADR-0007 d.5);
+- a line the stream was cut off in the middle of is shown as far as it got —
+  those bytes arrived, and the newline that would have finished them never
+  will;
+- the last two thousand lines are kept and the oldest are dropped. A monitor is
+  what the station is saying now, and there is no history behind it to scroll
+  into: the mirror keeps none (ADR-0010);
+- a stream that closed is opened again after two seconds, because everything
+  that ends one is something that ends — the cut-off, an outage past its grace,
+  the app restarting (ADR-0007 d.2). Nothing is asked for on the new one and
+  nothing is replayed on it, so what the station said while it was away is not
+  in it.
+
+The **gloss**, the marking of the lines this page sent, the pause, the clear,
+the box at the foot and the polling are the rest of the monitor and land under
+their own tickets. Until the box lands the page types nothing at all: it is one
+more **client** of the mirror's port, and it is reading.
 
 The box at the foot sends one whole `<…>` message — buffered until complete and
 written in one write, so two people on the page at once cannot interleave a
