@@ -17,7 +17,10 @@
  * write goes last because it is the step that takes the station away. A step
  * that did not leave the page stops the sequence where it is: a page that
  * asked for a write after failing to stop anything would have done the one
- * dangerous half of this.
+ * dangerous half of this. What it says names the step that did not go and is
+ * right about the one before it: a cut that did not go leaves the locomotives
+ * stopped and the rails hot, which is the state of the railroad the operator
+ * is the only guard on.
  *
  * **What it is doing is said while it does it**, because the last step is a
  * minute or two of nothing at all and a page with nothing on it reads as a
@@ -76,12 +79,22 @@ export const STOPPING = "stopping the locomotives";
 /** The second. */
 export const CUTTING = "cutting track power";
 
-/** What is said where a step did not leave the page. The stream is the only
+/** What is said where the stop did not leave the page. The stream is the only
  *  way anything reaches the station from here, so a stop that did not go is a
- *  railroad nobody stopped — and nothing is written after one (ADR-0009 d.2). */
+ *  railroad nobody stopped — nothing was done to it, and nothing is written
+ *  after one (ADR-0009 d.2). */
 export const UNSTOPPED =
   "the station's conversation is not open, so the locomotives were not" +
   " stopped and nothing was written";
+
+/** What is said where the stop went and the cut did not. The sentence above
+ *  is the wrong half of the truth here and the dangerous half: the locomotives
+ *  are stopped and the rails are still hot, and what the page says about the
+ *  state of the railroad is the whole of what the guard has to go on
+ *  (ADR-0006 d.2). */
+export const UNCUT =
+  "the station's conversation is not open, so track power was not cut: the" +
+  " locomotives are stopped, the power is still on, and nothing was written";
 
 /** What is said where the face could not be asked at all, or answered with
  *  something this page cannot read. Nothing said is not nothing done: the
@@ -154,13 +167,13 @@ export function writing(tag) {
  * @returns {Promise<Wrote>} what became of it
  */
 export async function sequence(tag, hands) {
-  for (const [step, typed] of [
-    [STOPPING, STOPS],
-    [CUTTING, CUTS],
+  for (const [step, typed, unsent] of [
+    [STOPPING, STOPS, UNSTOPPED],
+    [CUTTING, CUTS, UNCUT],
   ]) {
     hands.shows(step);
     if (hands.sends(typed) === null) {
-      return { flashed: false, says: UNSTOPPED };
+      return { flashed: false, says: unsent };
     }
   }
   hands.shows(writing(tag));
