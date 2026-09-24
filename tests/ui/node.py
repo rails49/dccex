@@ -31,8 +31,9 @@ from typing import Any
 def ran(runner: Path, asks: Any, what: str, *, zone: str | None = None) -> Any:
     """What `runner` printed for `asks`, in one running of it.
 
-    `asks` goes up as JSON and what comes back is read as JSON: what a
-    module hands this and what it gets back are its own business and not this
+    `asks` goes up as JSON and what comes back is read as JSON: every runner
+    is the same shape on that side too (`tests/ui/each.mjs`), so what a module
+    hands this and what it gets back are its own business and not this
     function's.
 
     `what` is what a person is told could not be run — "the decoder", "the

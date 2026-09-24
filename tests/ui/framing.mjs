@@ -23,17 +23,11 @@
 //
 // The shape is `tests/ui/gloss.mjs`'s and so is the reason: the gate is Python
 // (`scripts/check.sh`) and what this needs of the machine it runs on is a node
-// and nothing else — no packages, no bundler, no DOM and no network.
+// and nothing else — no packages, no bundler, no DOM and no network. Stdin and
+// stdout are `tests/ui/each.mjs`'s.
 
 import { lines, streamAt } from "../../ui/src/framing.js";
-
-const asked = async () => {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-};
+import { each } from "./each.mjs";
 
 const framed = (arrived) => {
   let buffered = "";
@@ -58,5 +52,4 @@ const answered = (ask) =>
     ? { opened: streamAt(ask.where, ask.path) }
     : framed(ask.arrived);
 
-const asks = JSON.parse(await asked());
-process.stdout.write(JSON.stringify(asks.map(answered)));
+await each(answered);

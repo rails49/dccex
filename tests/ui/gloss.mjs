@@ -12,16 +12,10 @@
 // no bundler, no DOM and no network, which is why the decoder is written as
 // JavaScript (`ui/src/decoder.js`), as the box's own rule is
 // (`ui/src/message.js`, `tests/ui/message.mjs`).
+//
+// Stdin and stdout are `tests/ui/each.mjs`'s, which the seven runners share.
 
 import { read } from "../../ui/src/decoder.js";
+import { each } from "./each.mjs";
 
-const asked = async () => {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-};
-
-const lines = JSON.parse(await asked());
-process.stdout.write(JSON.stringify(lines.map((line) => read(line) ?? null)));
+await each((line) => read(line) ?? null);

@@ -26,7 +26,7 @@
 //
 // The shape is `tests/ui/readings.mjs`'s and so is the reason: what it needs
 // of the machine it runs on is a node and nothing else — no packages, no
-// bundler, no DOM and no network.
+// bundler, no DOM and no network. Stdin and stdout are `tests/ui/each.mjs`'s.
 
 import {
   NONE,
@@ -36,14 +36,7 @@ import {
   carried,
   listing,
 } from "../../ui/src/releases.js";
-
-const asked = async () => {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-};
+import { each } from "./each.mjs";
 
 const drawn = (scenario) => ({
   listing: listing(scenario.carried ?? null, scenario.build ?? null),
@@ -51,5 +44,4 @@ const drawn = (scenario) => ({
   says: { ON_STATION, NO_FIRMWARE, UNREADABLE, NONE },
 });
 
-const scenarios = JSON.parse(await asked());
-process.stdout.write(JSON.stringify(scenarios.map(drawn)));
+await each(drawn);
