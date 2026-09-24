@@ -110,10 +110,11 @@ not reach would be reporting an empty port nobody saw.
 ### The releases
 
 Every **release** the box is configured to read, newest first, each with its
-publication date and whether it carries a flashable asset (#8). The one whose
-**tag** matches the build on the station now is marked as such, so being up to
-date is something to see rather than to work out. The list is collapsed under
-the tiles.
+publication date and whether it carries a flashable asset — one with a digest
+to check it against, which is what the face answers `flashable` for (#8, #81).
+The one whose **tag** matches the build on the station now is marked as such,
+so being up to date is something to see rather than to work out. The list is
+collapsed under the tiles.
 
 **The app fetches and the browser does not.** A UI talks to the bus, the store
 and its own app's face and nothing else (ADR-0002), so the list is read by
