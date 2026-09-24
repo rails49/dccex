@@ -33,15 +33,13 @@ against the component's source below, which is the cost `tests/ui/test_look.py`
 already names.
 """
 
-import json
-import shutil
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import UI
 from tests.ui.test_stream import code, quoted
 
@@ -66,17 +64,7 @@ TAG = "v5.6.4-rails49.1"
 
 def run(scenarios: tuple[dict[str, Any], ...]) -> tuple[dict[str, Any], ...]:
     """What the page did, for each of `scenarios`, in one running."""
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the sequence with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(list(scenarios)),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 0, f"the sequence did not run: {ran.stderr.strip()}"
-    happened: list[dict[str, Any]] = json.loads(ran.stdout)
+    happened: list[dict[str, Any]] = ran(RUNNER, list(scenarios), "the sequence")
     return tuple(happened)
 
 

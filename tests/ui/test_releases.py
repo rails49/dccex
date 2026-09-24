@@ -31,15 +31,13 @@ component's source below, which is the cost `tests/ui/test_look.py` already
 names.
 """
 
-import json
 import re
-import shutil
-import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import HEX, ROOT, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import NAMED, code, quoted
@@ -88,17 +86,7 @@ CARRIED = [MIDDLE, OLDEST, NEWEST]
 
 def run(scenarios: tuple[dict[str, Any], ...]) -> tuple[dict[str, Any], ...]:
     """What a page would be drawing for each of `scenarios`, in one running."""
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the listing with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(list(scenarios)),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 0, f"the listing did not run: {ran.stderr.strip()}"
-    drawn: list[dict[str, Any]] = json.loads(ran.stdout)
+    drawn: list[dict[str, Any]] = ran(RUNNER, list(scenarios), "the listing")
     return tuple(drawn)
 
 

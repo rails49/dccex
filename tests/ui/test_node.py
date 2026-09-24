@@ -18,10 +18,19 @@ from pathlib import Path
 import pytest
 
 from tests.ui.node import ran
+from tests.ui.test_look import ROOT
 
 #: The suite's own directory: where the runners are, and where a copy of what
 #: `node.py` does would show up.
 HERE = Path(__file__).resolve().parent
+
+#: What the scans below walk past: the one module allowed to run a runner,
+#: and this one, which has to spell what it is looking for to look for it.
+SPELT = {HERE / "node.py", Path(__file__).resolve()}
+
+#: Finding the node, and starting it. The two halves that were copied.
+FINDS = 'shutil.which("node")'
+STARTS = "subprocess"
 
 
 def test_a_node_that_is_not_there_says_what_could_not_be_run(
@@ -58,3 +67,33 @@ def test_a_runner_that_did_not_run_says_so_with_its_stderr(tmp_path: Path) -> No
         match=r"(?s)the decoder did not run: .*does not provide an export named",
     ):
         ran(runner, [], "the decoder")
+
+
+def test_a_node_is_found_in_one_place() -> None:
+    """The whole suite's, and not this directory's alone.
+
+    It is one line and it is the kind of line that gets copied to wherever the
+    next runner is written, which is how there came to be seven of it (#98).
+    """
+    found = sorted(
+        str(module.relative_to(ROOT))
+        for module in ROOT.glob("tests/**/*.py")
+        if module not in SPELT and FINDS in module.read_text()
+    )
+    assert found == [], f"a node is found in {found} as well"
+
+
+def test_a_runner_is_started_in_one_place() -> None:
+    """A module that names a runner does not start one.
+
+    Said of the modules that name a `.mjs` rather than of every module here,
+    because `tests/ui/test_page_serves.py` runs `docker` and shares none of
+    this (#98).
+    """
+    started = sorted(
+        str(module.relative_to(ROOT))
+        for module in HERE.glob("*.py")
+        if module not in SPELT and ".mjs" in module.read_text()
+        if STARTS in module.read_text()
+    )
+    assert started == [], f"a runner is started in {started} as well"

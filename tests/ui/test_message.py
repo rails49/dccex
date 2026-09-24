@@ -25,14 +25,12 @@ at a pty and the device gets whole messages
 (`tests/dccex_usb/test_face.py`).
 """
 
-import json
-import shutil
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import UI
 
 #: The pure function, and the module it is the whole of.
@@ -85,17 +83,7 @@ def asked() -> tuple[str, ...]:
 
 def run(typed: tuple[str, ...]) -> tuple[str | None, ...]:
     """What the page sends for `typed`, in one running of the function."""
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the page's rule with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(list(typed)),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 0, f"the rule did not run: {ran.stderr.strip()}"
-    sent: list[str | None] = json.loads(ran.stdout)
+    sent: list[str | None] = ran(RUNNER, list(typed), "the page's rule")
     return tuple(sent)
 
 

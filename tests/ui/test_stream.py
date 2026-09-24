@@ -25,10 +25,7 @@ cost of a page checked in a Python gate, and it is the same cost
 `test_look.py` names.
 """
 
-import json
 import re
-import shutil
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -36,6 +33,7 @@ from urllib.parse import urlsplit
 
 import pytest
 
+from tests.ui.node import ran
 from tests.ui.test_look import UI
 
 #: The socket: where the stream is held open, and what is done with what
@@ -153,17 +151,7 @@ READ: dict[str, tuple[tuple[tuple[int, str], ...], str]] = {
 
 def run(asks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """What the two rules answer for `asks`, in one running of them."""
-    node = shutil.which("node")
-    assert node is not None, "no node on this machine to run the page's rules with"
-    ran = subprocess.run(
-        [node, str(RUNNER)],
-        input=json.dumps(asks),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 0, f"the rules did not run: {ran.stderr.strip()}"
-    answered: list[dict[str, Any]] = json.loads(ran.stdout)
+    answered: list[dict[str, Any]] = ran(RUNNER, asks, "the page's rules")
     return answered
 
 
