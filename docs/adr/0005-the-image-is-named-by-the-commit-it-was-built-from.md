@@ -151,6 +151,29 @@ which is every app this repository has. Nothing else of d.2 moves, and nothing
 of d.1 does — the commit names both images, which is what lets the amendment
 above keep d.7's rollback at one line.
 
+*Amended for [#57](https://github.com/rails49/dccex/issues/57), 2026-09-24:*
+
+**d.4 is both images', and an image nobody named a commit for carries an empty
+revision.** d.4 was written when there was one image and says "the image"; the
+page's, added by #3 and counted by the amendment above, carried no label at all
+until #57 — its name was the only copy of the commit, which is the thing d.4
+exists to prevent, and it falls back to `dev`. It carries one now, from a build
+argument `compose.yaml` passes the same variable the name is built from, so the
+two cannot name different commits.
+
+What d.4 did not say is what the label says when no commit is supplied, which
+is what `docker compose up --build` on a clean clone is. It says nothing: the
+argument defaults to empty, and no `dev`, `unknown` or `local` goes in it.
+`dev` is what such a build is *named*, and a name is where it belongs; a
+revision that reads like a commit reference and is none would send somebody
+looking for a checkout that never existed, where an empty one can only be read
+as nobody having named one. Nothing else of d.4 moves — the label is always
+set, and it is still the copy that survives a rename.
+
+The mirror's image defaults that argument to `dev` (`deploy/Dockerfile`, #15),
+which this leaves standing. The two images disagree about what an unnamed build
+claims to have been built from, and settling that is a ticket of its own.
+
 ## Consequences
 
 - #15 has a shape to build rather than `control`'s to inherit, and #16 cuts
