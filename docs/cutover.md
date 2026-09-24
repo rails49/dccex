@@ -256,7 +256,7 @@ acceptance is about.
 5. **The face answers through the door**, from a browser on the page's origin:
 
    ```
-   https://dccex.$BOX_DOMAIN/dccex-usb/releases   →   {"tags": [...]}
+   https://dccex.$BOX_DOMAIN/dccex-usb/releases   →   {"releases": [...]}
    ```
 
    The label, its `A` record and `BOX_UIS` are box steps and a person's

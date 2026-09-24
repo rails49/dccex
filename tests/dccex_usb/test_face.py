@@ -31,6 +31,7 @@ import warnings
 from collections.abc import Awaitable, Callable, Generator, Sequence
 from http import HTTPStatus
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -73,24 +74,43 @@ ELSEWHERE = "https://api.example.invalid/repos/someone-else/CommandStation-EX/re
 TAGS = ["v5.6.4-rails49.1", "v5.6.3-rails49.2"]
 """What the source carries, newest first, as the release API lists them."""
 
+PUBLISHED = {
+    "v5.6.4-rails49.1": "2025-09-14T10:32:07Z",
+    "v5.6.3-rails49.2": "2025-08-02T18:05:44Z",
+}
+"""When the source published each of them, as the release API stamps them."""
+
 
 def listing(tags: Sequence[str] = TAGS) -> bytes:
     """A releases document, as the API answers the source with one.
 
     Carrying more than the face reads, because the API does: what is asserted
-    is the tags, and a reader that took the whole entry would be taken down by
-    whatever the service returned the day it returned something else.
+    is the three facts about each release, and a reader that took the whole
+    entry would be taken down by whatever the service returned the day it
+    returned something else.
     """
     return json.dumps(
         [
             {
                 "tag_name": tag,
                 "name": f"CommandStation-EX {tag}",
-                "assets": [{"name": "firmware.bin", "digest": "sha256:…"}],
+                "published_at": PUBLISHED[tag],
+                "assets": [
+                    {
+                        "name": "firmware.bin",
+                        "browser_download_url": f"https://example.invalid/{tag}.bin",
+                        "digest": "sha256:…",
+                    }
+                ],
             }
             for tag in tags
         ]
     ).encode()
+
+
+CARRIED = [{"tag": tag, "published": PUBLISHED[tag], "flashable": True} for tag in TAGS]
+"""What the face answers for `listing()`: each release as its **tag**, the
+moment it was published and whether there is a firmware on it to write (#8)."""
 
 
 class Source:
@@ -172,14 +192,62 @@ def face(
     )
 
 
-def test_a_request_to_the_face_answers_the_tags_the_source_carries() -> None:
+def test_a_request_to_the_face_answers_the_releases_the_source_carries() -> None:
     """The whole of what the face is for here: a client asks what releases
-    the configured source carries and gets the tags back, so nobody has to
-    type one from memory."""
+    the configured source carries and gets them back — the **tag** each is
+    named by, the moment it was published and whether there is a firmware on
+    it to write — so nobody has to type a tag from memory and nobody has to
+    ask the release API themselves (#8)."""
     answered = asyncio.run(face().answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.OK
-    assert answered.body == {"tags": TAGS}
+    assert answered.body == {"releases": CARRIED}
+
+
+def test_the_releases_go_back_in_the_order_the_source_lists_them() -> None:
+    """The order is the source's and is passed on as it came. Which of them is
+    newest is a question about the dates that go back with them, and the page
+    that draws them is what asks it (#8)."""
+    answered = asyncio.run(
+        face(Source(listing(list(reversed(TAGS))))).answer("GET", "/releases", b"")
+    )
+
+    listed = answered.body["releases"]
+    assert isinstance(listed, list)
+    named = cast(list[dict[str, object]], listed)
+    assert [release["tag"] for release in named] == list(reversed(TAGS))
+
+
+def test_a_release_with_no_firmware_on_it_is_listed_and_says_so() -> None:
+    """A release published with nothing to write is a thing the source does,
+    and a page that showed it like the rest would send an operator to a tag
+    this app would refuse. It is listed, and it is listed as not flashable
+    (#8, `firmware.py`)."""
+    bare = json.dumps(
+        [{"tag_name": TAG, "published_at": PUBLISHED[TAG], "assets": []}]
+    ).encode()
+
+    answered = asyncio.run(face(Source(bare)).answer("GET", "/releases", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {
+        "releases": [{"tag": TAG, "published": PUBLISHED[TAG], "flashable": False}]
+    }
+
+
+def test_a_release_the_source_stamped_no_date_on_is_listed_without_one() -> None:
+    """A draft carries no date, and a service under no obligation to us may
+    stop carrying one at all. What the source carries is what the page is
+    shown: the release is listed with an empty date rather than dropped, and
+    the page puts it where a release with no date goes."""
+    undated = json.dumps([{"tag_name": TAG, "assets": []}]).encode()
+
+    answered = asyncio.run(face(Source(undated)).answer("GET", "/releases", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {
+        "releases": [{"tag": TAG, "published": "", "flashable": False}]
+    }
 
 
 def test_the_releases_are_read_from_the_source_the_face_was_configured_with() -> None:
@@ -207,7 +275,7 @@ def test_no_request_can_redirect_the_source() -> None:
 
     assert source.asked == [RELEASES]
     assert answered.status == HTTPStatus.OK
-    assert answered.body == {"tags": TAGS}
+    assert answered.body == {"releases": CARRIED}
 
 
 def test_a_source_that_cannot_be_reached_is_a_status_and_a_reason() -> None:
@@ -252,7 +320,7 @@ def test_a_source_that_carries_no_releases_yet_is_an_empty_answer() -> None:
     answered = asyncio.run(asked.answer("GET", "/releases", b""))
 
     assert answered.status == HTTPStatus.OK
-    assert answered.body == {"tags": []}
+    assert answered.body == {"releases": []}
 
 
 def test_a_path_the_face_does_not_answer_is_a_refusal() -> None:
@@ -487,7 +555,7 @@ def test_an_answer_that_is_not_an_upgrade_says_so_on_the_wire() -> None:
     """The two shapes an answer has: a status with a JSON body, or the upgrade
     that hands the connection over. A caller reading one as the other is a page
     holding a socket nobody is going to talk on."""
-    fetched = response(Answered(HTTPStatus.OK, {"tags": TAGS}))
+    fetched = response(Answered(HTTPStatus.OK, {"releases": CARRIED}))
     opened = response(Answered(HTTPStatus.SWITCHING_PROTOCOLS, {}, accepted(KEY)))
 
     assert b"Content-Type: application/json" in fetched
@@ -518,7 +586,7 @@ def test_a_page_on_the_face_s_own_origin_is_answered() -> None:
     )
 
     assert answered.status == HTTPStatus.OK
-    assert answered.body == {"tags": TAGS}
+    assert answered.body == {"releases": CARRIED}
 
 
 @pytest.mark.parametrize(
@@ -734,7 +802,7 @@ def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
     status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
 
     assert status == HTTPStatus.OK
-    assert body == {"tags": TAGS}
+    assert body == {"releases": CARRIED}
 
 
 @pytest.mark.parametrize(
@@ -798,7 +866,7 @@ def test_the_page_s_own_origin_arrives_on_the_head_and_is_answered() -> None:
     status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
 
     assert status == HTTPStatus.OK
-    assert body == {"tags": TAGS}
+    assert body == {"releases": CARRIED}
 
 
 IMPATIENT_S = 0.05
@@ -972,7 +1040,7 @@ def test_serving_the_face_disturbs_neither_the_device_nor_the_mirror_s_port() ->
             assert streamed.port != mirror.port
 
             status, body = await ask(streamed.port)
-            assert (status, body) == (HTTPStatus.OK, {"tags": TAGS})
+            assert (status, body) == (HTTPStatus.OK, {"releases": CARRIED})
 
             reader, writer = await connect(mirror)
             await send(writer, b"<s>")
@@ -1134,7 +1202,7 @@ def test_a_page_on_the_stream_is_one_more_client_of_the_mirror() -> None:
 
             # And the face is still a face: one port carries the upgrade and
             # the requests that are not one (ADR-0004 d.3).
-            assert await ask(streamed.port) == (HTTPStatus.OK, {"tags": TAGS})
+            assert await ask(streamed.port) == (HTTPStatus.OK, {"releases": CARRIED})
 
             page.close()
             writer.close()
