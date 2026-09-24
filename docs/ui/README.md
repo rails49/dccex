@@ -4,20 +4,21 @@ The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
 label under the box's door, about the **station** at the end of the cable and
 about nothing else.
 
-**The page is here, the monitor is a full client of the mirror, and the page
-says what the station is doing.** `ui/` holds the band, the rail and the work
-pane, built and served the way this page says (#3) — which is the tracer
-bullet, and it is the installation everything below rests on. What is in the
-work pane is the **tile**s and the **monitor**, both halves of the monitor: the
+**The page is here, the monitor is a full client of the mirror, the page says
+what the station is doing, and it lists what the station could be written
+with.** `ui/` holds the band, the rail and the work pane, built and served the
+way this page says (#3) — which is the tracer bullet, and it is the
+installation everything below rests on. What is in the work pane is the
+**tile**s, the **release**s under them and the **monitor** under those: the
 station's conversation as it arrives, every line stamped with the time it
 arrived, newest at the bottom (#4), and a box at the foot that types a whole
 `<…>` message back (#6). The band carries its two readings and the tiles carry
 the particulars, all of them made of what the station said and kept live by the
-page's own polling (#7). The rest of the work pane — the releases — is still
-written ahead of itself, as
-[the cutover page](../cutover.md) was written ahead of its evening, because
-what it says was decided in rails49/dccex#1 and the tickets under that spec are
-each a part of it. What is already here besides is the other end: the
+page's own polling (#7). The releases are listed newest first with the one on
+the station marked (#8); what is still written ahead of itself is the flashing
+of one, as [the cutover page](../cutover.md) was written ahead of its evening,
+because what it says was decided in rails49/dccex#1 and the tickets under that
+spec are each a part of it. What is already here besides is the other end: the
 **mirror**'s **face**, which is the one thing the page talks to
 ([the mirror's page](../dccex_usb/README.md)).
 
@@ -44,8 +45,10 @@ that is not is how many **client**s are on the mirror's port, which is the
 app's own business about itself.
 
 It calls no third-party service. The releases are read by the app from its
-configured source and handed on; the browser never reaches the release API
-([the mirror's page](../dccex_usb/README.md#the-face)).
+configured source and handed on; the browser never reaches the release API, and
+no module of the page names one — not a host, not a repository and not a query
+([the mirror's page](../dccex_usb/README.md#the-face),
+`tests/ui/test_releases.py`).
 
 ## What is on it
 
@@ -107,12 +110,55 @@ not reach would be reporting an empty port nobody saw.
 ### The releases
 
 Every **release** the box is configured to read, newest first, each with its
-publication date and whether it carries a flashable asset. The one whose
+publication date and whether it carries a flashable asset (#8). The one whose
 **tag** matches the build on the station now is marked as such, so being up to
 date is something to see rather than to work out. The list is collapsed under
 the tiles.
 
-Choosing one flashes it, and the page sequences that itself:
+**The app fetches and the browser does not.** A UI talks to the bus, the store
+and its own app's face and nothing else (ADR-0002), so the list is read by
+`dccex-usb` from its configured source and handed to the page, which asks its
+own face for it on its own origin. **Where releases are read from is that
+app's configuration and cannot be set from here**: the LAN carries no
+authentication on purpose, and a payload naming a repository would let anyone
+on the wifi choose what the command station is offered to run (control
+ADR-0042). No module of the page names a host, a repository or a query, and
+`tests/ui/test_releases.py` holds that shut.
+
+It is asked for once, when the page opens, and not on the poll. What the
+station is doing changes under the eye and that is what the five-second `<s>`
+is for; what the source carries changes when somebody publishes, and a page
+that asked the release API through the face every five seconds would spend
+somebody else's rate limit on an answer that is the same all evening. What does
+change — which release is on the station — arrives on the banner and is read
+off the **build**.
+
+Three things about the list are the page's own and are decided here:
+
+- **newest first is the page's ordering.** The face passes the source's list on
+  as it came, because which one is newest is a question about the dates; the
+  stamps are compared whole, so two releases published in one afternoon keep
+  the order they were published in, and a release the source stamped nothing on
+  goes under the ones that can be ordered and is drawn with no date;
+- **the date is the day and not the moment.** A stamp is UTC and a reader is at
+  the layout, so an hour drawn here would be an hour in a zone nobody asked
+  about; it is `2025-09-14` rather than a month's name because this page is read
+  in more than one country;
+- **nothing is marked while the station is quiet.** The build goes with the
+  **link** (ADR-0008 d.3), so a page that held one over would be claiming to
+  know what is on a board it cannot see. A build the source does not carry marks
+  nothing either: that is a station running something nobody published here,
+  which is a true thing to show and not an error.
+
+A release published with no firmware on it says so and is listed all the same:
+a release exists whether or not anything can be written from it, and a row that
+looked like the others would send an operator to a tag the mirror would refuse.
+A face that could not be asked says the releases could not be read, which is a
+different sentence from a source that has published nothing — nothing said is
+not nothing published (ADR-0009 d.2).
+
+Choosing one flashes it, and the page sequences that itself. None of that is
+built: #8 lists the releases and nothing on the row writes a station.
 
 1. Say plainly what is about to happen — the station resets, the rails drop,
    every throttle loses it, it takes a minute or two — and get a yes.
@@ -233,19 +279,22 @@ through the real function under `node`, by way of `tests/ui/gloss.mjs`,
 `tests/ui/test_message.py` puts every spelling an operator may type through the
 real function the same way (`tests/ui/message.mjs`), and
 `tests/ui/test_readings.py` puts whole conversations through the readings and
-reads the band and the tiles back (`tests/ui/readings.mjs`). What that asks of
-the machine the gate runs on is a node and nothing else — no packages, no
-bundler, nothing fetched, no DOM — and a node that is not there is red rather
-than skipped, as everything else the gate needs is. It is why
-`ui/src/decoder.js`, `ui/src/message.js` and `ui/src/readings.js` are the three
+reads the band and the tiles back (`tests/ui/readings.mjs`), and
+`tests/ui/test_releases.py` puts what the face answered through the listing and
+reads the release rows back (`tests/ui/releases.mjs`). What that asks of the
+machine the gate runs on is a node and nothing else — no packages, no bundler,
+nothing fetched, no DOM — and a node that is not there is red rather than
+skipped, as everything else the gate needs is. It is why `ui/src/decoder.js`,
+`ui/src/message.js`, `ui/src/readings.js` and `ui/src/releases.js` are the four
 modules of the page written as JavaScript with their types in JSDoc: `tsc`
 checks them as strictly as the rest (`ui/tsconfig.json`), and a bare node can
 still run them.
 
 **What no check here reaches is Lit.** A bare node with no packages cannot
-mount a component, so what the band and the tiles *draw* is asserted as the
-words the readings produce and the drawing is held against the components'
-sources (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`). That is the same
+mount a component, so what the band, the tiles and the release rows *draw* is
+asserted as the words those modules produce and the drawing is held against the
+components' sources (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
+`tests/ui/test_releases.py`). That is the same
 cost the look values check names: the page is checked in a Python gate, and
 that gate has no browser in it.
 
@@ -416,7 +465,8 @@ did not start is not its to do.
 Two things the prototype left open and the tickets settle while building:
 
 - whether the release list stays a collapsed row once it grows past four
-  entries;
+  entries. It is a collapsed row as of #8, and what would change it is somebody
+  reading a long one on the box;
 - narrow widths were never confirmed in a browser. The rules are written — the
   band drops the track reading below 560px, the tiles wrap onto a second row,
   the release rows wrap, and the command box is thumb-sized with a field that

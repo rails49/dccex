@@ -58,11 +58,12 @@ The UI talks to one face and nothing else. A face is private to its app: it is
 not somewhere else to get at the railroad. Its address is a path prefix on the
 page's own origin, which the door strips before the app sees it, and a page
 from anywhere else is refused (ADR-0004). The mirror's face answers what
-releases the source carries (#12), writes one of them onto the station when a
-caller names its tag (#13), carries the station's own conversation to the page
-and back (#14, the **stream** below), and says how many **client**s are on the
-mirror's port (#7) — which is the one reading on the page the **station**
-cannot make about itself. It guards nothing while it does: a face is about its
+releases the source carries — each with the day it was published and whether
+there is a firmware on it to write (#12, #8) — writes one of them onto the
+station when a caller names its tag (#13), carries the station's own
+conversation to the page and back (#14, the **stream** below), and says how
+many **client**s are on the mirror's port (#7) — which is the one reading on
+the page the **station** cannot make about itself. It guards nothing while it does: a face is about its
 app, so whether a railroad can spare its command station for two minutes is the
 operator's question and not this app's (ADR-0006).
 
