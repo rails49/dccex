@@ -324,9 +324,9 @@ is not written a second time here: the page writes one message in one frame and
 the mirror reads for the `>`, exactly as it does for JMRI and a throttle
 (ADR-0007 d.2, `framing.py`).
 
-**The pairs are run rather than read.** Every other check of the page here
-reads its sources, because the gate is Python and there is no browser in it.
-Three of them cannot: a sentence an operator is shown is worth nothing asserted
+**The pairs are run rather than read.** The rest of the checks of the page
+here read its sources, because the gate is Python and there is no browser in
+it. These cannot: a sentence an operator is shown is worth nothing asserted
 against the source that would produce it — and so is a rule about what goes
 down a cable to a command station, and so is what the band says about the
 railroad's power — and ADR-0009 d.3 asks for the pairs themselves. So
@@ -340,15 +340,32 @@ reads the band and the tiles back (`tests/ui/readings.mjs`), and
 reads the release rows back (`tests/ui/releases.mjs`), and
 `tests/ui/test_flash.py` puts a flash through the sequence and reads back what
 went down the cable, in what order, and what the page said while it did
-(`tests/ui/flash.mjs`). What that asks of a machine is a node and nothing
+(`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
+and a conversation arriving on the socket through the rules that answer where
+the stream is and where a line ends (`tests/ui/framing.mjs`), and
+`tests/ui/test_monitor.py` puts a scroller and a time through the rules that
+answer whether the reader is at the bottom and what the stamp beside a line
+reads (`tests/ui/monitor.mjs`). The last two were read off their sources for as
+long as there was no node here to run them with: a framing that kept its
+delimiter, a scheme picked the wrong way round and a stamp an hour out all
+leave a module saying every right word, which is what reading one can be held
+to (#78). What that asks of a machine is a node and nothing
 else — no packages, no bundler, nothing fetched, no DOM — and it is not asked of
 every machine the gate runs on: these checks carry the `node` marker,
 `scripts/check.sh` does not collect them, and the workflow runs them in a job a
 pull request requires (#101). Where they do run, a node that is not there is red
-rather than skipped, as everything else a gate needs is. It is why `ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
-`ui/src/releases.js` and `ui/src/flash.js` are the five modules of the page
-written as JavaScript with their types in JSDoc: `tsc` checks them as strictly
-as the rest (`ui/tsconfig.json`), and a bare node can still run them.
+rather than skipped, as everything else a gate needs is. It is why
+`ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
+`ui/src/releases.js`, `ui/src/flash.js`, `ui/src/framing.js` and
+`ui/src/monitor.js` are the seven modules of the page written as JavaScript
+with their types in JSDoc: `tsc` checks them as strictly as the rest
+(`ui/tsconfig.json`), and a bare node can still run them.
+
+What is left in the two modules those last two came out of is what needs a
+browser — the socket, its timer and `window.location` in `ui/src/stream.ts`,
+and the rows, the box at the foot and the rectangles a held row is measured
+with in `ui/src/ui/dccex-monitor.ts` — and that is still read rather than run,
+for the reason the next paragraph gives.
 
 **What no check here reaches is Lit.** A bare node with no packages cannot
 mount a component, so what the band, the tiles and the release rows *draw* is
