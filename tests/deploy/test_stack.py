@@ -45,6 +45,10 @@ DOCKERFILE = ROOT / "deploy" / "Dockerfile"
 #: amended) and is built by the clean clone's half above.
 UI_DOCKERFILE = ROOT / "deploy" / "ui.Dockerfile"
 
+#: The repository, written on the image beside the revision. It names a
+#: repository and not a build, so nothing a build is or is not given moves it.
+SOURCE = "org.opencontainers.image.source=https://github.com/rails49/dccex"
+
 #: A base image as either build names one: the readable tag, and beside it the
 #: one build that tag pointed at when the pin was made.
 PINNED = re.compile(r"FROM (\S+:\S+)@sha256:[0-9a-f]{64}(?: AS \w+)?")
@@ -216,10 +220,28 @@ def test_both_images_are_named_by_the_commit_they_were_built_from() -> None:
 
 def test_the_image_carries_the_commit_as_well_as_being_named_by_it() -> None:
     """So that `docker inspect` answers the question for one somebody renamed
-    (ADR-0005 d.4)."""
+    (ADR-0005 d.4).
+
+    The default is empty and the overlay hands the build the same variable the
+    name is built from — the page's rule since #57, and this image's since #97.
+    `dev` is a true thing to call a name and a false thing to put in a field
+    that means the commit this was built from: it reads like a commit
+    reference, it is none, and it would send somebody looking for a checkout
+    that never existed, where an empty revision can only be read as nobody
+    having named one. The name is still `dev`, which is the test above.
+
+    What a built image then carries is `test_mirror_serves.py`'s, which builds
+    it rather than reading it. The repository beside the revision is asserted
+    here because nothing a build is or is not given moves it.
+    """
     said = DOCKERFILE.read_text()
-    assert "ARG DCCEX_COMMIT=dev" in said
+    assert re.search(r"^ARG DCCEX_COMMIT=$", said, re.MULTILINE), (
+        "the mirror's image takes no commit, or defaults it to something that"
+        " reads like one"
+    )
     assert "LABEL org.opencontainers.image.revision=$DCCEX_COMMIT" in said
+    assert f"LABEL {SOURCE}" in said
+    assert "DCCEX_COMMIT: ${DCCEX_COMMIT:-}" in services(BOX)["mirror"]
 
 
 def test_the_pages_build_is_handed_the_commit_its_name_is_built_from() -> None:

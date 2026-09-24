@@ -20,6 +20,12 @@ yet is an outage and not a crash (`station.py`) — so the order below is the
 container first and the station after, which is also the order a box powers
 things on in.
 
+**There is a second build, and it is given no commit.** One build and one
+container serve every assertion about a running mirror; what an image carries
+when nobody named a commit for it is about the build argument itself, so it
+gets a build of its own with nothing passed and nothing run from it (#97).
+Everything under the label is the first build's layers.
+
 **This is not part of the gate.** It carries the `docker` marker, which
 `scripts/check.sh` does not collect, and the workflow runs it in a job of its
 own that the pull request requires (#54, #56). Where it runs, a missing daemon
@@ -40,7 +46,13 @@ from dataclasses import dataclass, field
 import pytest
 
 from tests.ui.test_look import ROOT
-from tests.ui.test_page_serves import BUILD_SECONDS, docker, no_daemon
+from tests.ui.test_page_serves import (
+    BUILD_SECONDS,
+    REVISION,
+    carried,
+    docker,
+    no_daemon,
+)
 
 pytestmark = pytest.mark.docker
 
@@ -52,6 +64,12 @@ INSIDE = "/dev/dccex"
 
 #: The port, which is what it has always been.
 PORT = 2560
+
+#: Where the repository is written on the image, beside the revision. It names
+#: a repository and not a build, so nothing a build is or is not given moves
+#: it.
+SOURCE = "org.opencontainers.image.source"
+REPOSITORY = "https://github.com/rails49/dccex"
 
 #: How long the app gets to say what it is serving, and the station's first
 #: line to reach a client after that. The device is opened with backoff, so
@@ -160,6 +178,23 @@ class Mirroring:
     station: Talking
 
 
+def needs_a_daemon() -> None:
+    """Stop here if no daemon answers, the way the split says to.
+
+    Where these are required — the workflow's docker job — the daemon is part
+    of what was promised, so its absence is the check failing and not the
+    check excusing itself (#54). Run by hand on a laptop with no Docker it
+    skips and says why, because such a machine cannot be made to run this by
+    going red.
+    """
+    why = no_daemon()
+    if why is None:
+        return
+    if os.environ.get("CI"):
+        pytest.fail(f"this job requires a Docker daemon: {why}")
+    pytest.skip(f"the mirror cannot be run here: {why}")
+
+
 def published(container: str) -> int:
     """The host port the daemon put in front of the container's 2560."""
     mapping = docker("port", container, str(PORT))
@@ -213,14 +248,7 @@ def mirroring() -> Iterator[Mirroring]:
     expensive part of this check and it is the same artefact every assertion
     below is about.
     """
-    why = no_daemon()
-    if why is not None:
-        # Where this is required — the workflow's docker job — the daemon is
-        # part of what was promised, so its absence is the check failing and
-        # not the check excusing itself (#54).
-        if os.environ.get("CI"):
-            pytest.fail(f"this job requires a Docker daemon: {why}")
-        pytest.skip(f"the mirror cannot be run here: {why}")
+    needs_a_daemon()
 
     commit = f"check-{uuid.uuid4().hex[:8]}"
     tag = f"dccex:{commit}"
@@ -263,6 +291,29 @@ def mirroring() -> Iterator[Mirroring]:
             subprocess.run(
                 ["docker", "rm", "-f", container], capture_output=True, check=False
             )
+        subprocess.run(
+            ["docker", "image", "rm", "-f", tag], capture_output=True, check=False
+        )
+
+
+@pytest.fixture(scope="module")
+def unnamed() -> Iterator[str]:
+    """The same image built with no commit passed, by tag.
+
+    A second build rather than a second reading of the one above, because the
+    argument is what this is about and the fixture above passes one. It is the
+    same Dockerfile and everything under the label is the first build's layers,
+    so what the second costs is the end of the last stage. Nothing is run from
+    it: the claim is about the artefact, which is why this yields a tag where
+    `mirroring` yields a container.
+    """
+    needs_a_daemon()
+
+    tag = f"dccex:check-{uuid.uuid4().hex[:8]}"
+    docker("build", "-f", DOCKERFILE, "-t", tag, ".", seconds=BUILD_SECONDS)
+    try:
+        yield tag
+    finally:
         subprocess.run(
             ["docker", "image", "rm", "-f", tag], capture_output=True, check=False
         )
@@ -321,3 +372,28 @@ def test_the_image_carries_the_commit_it_was_built_from(mirroring: Mirroring) ->
         mirroring.container,
     )
     assert revision == mirroring.commit
+
+
+def test_a_build_given_no_commit_claims_none(unnamed: str) -> None:
+    """The clean clone's build: `docker build` with nothing passed, which is
+    what `up --build` does where `DCCEX_COMMIT` is unset.
+
+    The label is there and it is empty. An image nobody named a commit for
+    says so in the place ADR-0005 d.4 asks the commit to be said, and it says
+    nothing else: a `dev`, an `unknown` or a `local` there would read like a
+    commit reference and be none, where an empty revision cannot be read as
+    anything but nobody having named one (#97, and the page's since #57).
+    `dev` is still said — in the name, where it is true, and
+    `tests/deploy/test_stack.py` is what holds it.
+
+    The repository beside it is unchanged by any of that: it names a
+    repository and not a build, so a build that was told no commit carries it
+    exactly as the one above does.
+    """
+    on_it = carried(unnamed)
+    assert REVISION in on_it, f"the image carries no revision at all: {on_it}"
+    assert on_it[REVISION] == "", (
+        f"a build that was given no commit claims {on_it[REVISION]!r} as the one"
+        " it was built from"
+    )
+    assert on_it.get(SOURCE) == REPOSITORY, f"the repository is {on_it.get(SOURCE)!r}"
