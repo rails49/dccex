@@ -1213,6 +1213,74 @@ def test_what_a_page_types_is_framed_by_the_mirror_s_rule_and_capped_by_it() -> 
     asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
 
 
+def test_two_pages_typing_at_once_never_interleave_a_command() -> None:
+    """Two monitors open, both typing, and two whole messages at the device.
+
+    `test_station.py` holds this for two clients that dialled 2560 themselves.
+    This is the same claim for the two the page reaches the port by, because
+    that is the one an operator meets: two people on the UI at the layout, each
+    typing at the same command station. The bytes are handed over one at a
+    time and alternately, which is the worst a network can do to them, and what
+    reaches the cable is still one message and then the other.
+
+    Nothing in the stream is what makes it so — the framing is the mirror's and
+    has no second version here (ADR-0007 d.2). What the page adds is at the
+    other end: the box holds what is typed until it is a whole message and
+    writes it in one frame (`ui/src/stream.ts`, #6), so a browser never even
+    offers the mirror half a command.
+
+    **And no command station is attached.** The device is a pty, as everything
+    else in this suite that drives one is, so sending is exercised on a machine
+    with nothing plugged into it.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        streamed = served(joins=Loopback(mirror))
+        await mirror.start()
+        await streamed.start()
+        watching: list[asyncio.Task[None]] = []
+        try:
+            await log.wait_for("serial open")
+            one = await Browser.opened(streamed.port)
+            two = await Browser.opened(streamed.port)
+            watching = [asyncio.create_task(page.run()) for page in (one, two)]
+            await log.wait_for_count("client connected", 2)
+
+            first, second = b"<t 3 50 1>", b"<a 12 1>"
+            for at in range(max(len(first), len(second))):
+                if at < len(first):
+                    await one.types(first[at : at + 1])
+                if at < len(second):
+                    await two.types(second[at : at + 1])
+
+            got = await arriving(cable.master, len(first) + len(second))
+            assert got in (first + second, second + first)
+
+            # And what the station answers goes to both of them, because a
+            # monitor is a client of the port and the port answers nobody in
+            # particular: the reply to a typed command arrives in the stream
+            # the same way every other byte does.
+            answered = b"<X>"
+            os.write(cable.master, answered)
+            for page in (one, two):
+                await page.hears(len(answered))
+                assert bytes(page.heard) == answered
+
+            one.close()
+            two.close()
+        finally:
+            for direction in watching:
+                direction.cancel()
+            await streamed.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
 def test_the_app_going_down_lets_go_of_a_page_on_the_stream() -> None:
     """A stream is open for as long as somebody is watching the railroad, so
     the app ending is what ends it. Closing the face aborts the connection the
