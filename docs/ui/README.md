@@ -48,7 +48,10 @@ It calls no third-party service. The releases are read by the app from its
 configured source and handed on; the browser never reaches the release API, and
 no module of the page names one — not a host, not a repository and not a query
 ([the mirror's page](../dccex_usb/README.md#the-face),
-`tests/ui/test_releases.py`).
+`tests/ui/test_releases.py`). Neither do the face's own sentences: a flash
+turned down because the source could not be read says so without spelling it,
+so the source does not arrive in the words the page shows either
+(`tests/dccex_usb/test_firmware.py`, #94).
 
 ## What is on it
 
@@ -124,7 +127,12 @@ app's configuration and cannot be set from here**: the LAN carries no
 authentication on purpose, and a payload naming a repository would let anyone
 on the wifi choose what the command station is offered to run (control
 ADR-0042). No module of the page names a host, a repository or a query, and
-`tests/ui/test_releases.py` holds that shut.
+`tests/ui/test_releases.py` holds that shut. The sentences the face answers
+with name none either — this page shows a refusal word for word (#66), so one
+that spelled the source would be the URL on the page by another road; what a
+turned-down flash says is which thing went wrong and which **tag** it was,
+and where releases are read from is left on the box's log
+(`tests/dccex_usb/test_firmware.py`, #94).
 
 It is asked for once, when the page opens, and not on the poll. What the
 station is doing changes under the eye and that is what the five-second `<s>`
