@@ -452,6 +452,55 @@ def test_nothing_is_sent_on_a_stream_that_is_not_open() -> None:
     assert "send(typed: string): string | null" in source
 
 
+def test_the_stream_says_when_it_is_open() -> None:
+    """A signal of the same kind as a line arriving, and the page polls on it.
+
+    `open()` dials and the socket is `CONNECTING`, so a message written to it
+    then does not go — which is what happened to the page's first `<s>`, and
+    why a healthy station read as absent until the interval fired five seconds
+    later (#82). The socket having opened is therefore handed up to whoever
+    asked for the stream, beside the lines, and the page asks there.
+
+    Held against the one place a socket is dialled, which is also the place the
+    reopen timer dials from
+    (`test_the_stream_is_opened_on_the_page_s_own_origin`): a reopen is the
+    same case, so the socket that follows an outage says it is open too rather
+    than leaving the page to wait out an interval for a reading it could have
+    had.
+    """
+    source = STREAM.read_text()
+    assert (
+        "constructor(said: (said: Said[]) => void, opened: () => void)" in source
+    ), "the stream has no second signal to hand the open up on"
+    dialling = code(source)
+    dialling = dialling[dialling.index("#dial(): void {") : dialling.index("#arrived(")]
+    assert 'addEventListener("open"' in dialling, "the open is never noticed"
+    assert "this.#opened();" in dialling, "the open is noticed and not handed up"
+
+
+def test_the_stream_holds_no_queue_of_things_to_send() -> None:
+    """What was typed while the socket was down is refused and not kept.
+
+    A message is a command to a command station, and one arriving seconds after
+    it was typed, when the page has moved on, is worse than one that never went
+    (#6). So `send` goes on returning `null` and the box at the foot says so
+    (`test_nothing_is_sent_on_a_stream_that_is_not_open`), and nothing is held
+    back here to be flushed when a socket opens.
+
+    The page's own poll is the thing that is sent again, and it is the page
+    that sends it: it is stateless and safe to repeat, which is what makes it
+    the one message a page may ask twice (#82, `dccex-app.ts`).
+    """
+    source = code(STREAM.read_text())
+    assert "= []" not in source, "the stream holds a list of its own"
+    assert ".push(" not in source, "the stream keeps something back"
+    sending = source[
+        source.index("send(typed: string)") : source.index("#dial(): void {")
+    ]
+    assert sending.count("socket.send(") == 1, "the one write is not where send is"
+    assert source.count("socket.send(") == 1, "something else writes to the socket"
+
+
 def test_every_line_says_which_end_of_the_conversation_it_is() -> None:
     """A line carries whether this page sent it, so the monitor can draw the
     two differently and a reader can tell their own traffic from the

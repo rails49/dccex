@@ -65,6 +65,56 @@ def test_the_poll_goes_up_the_way_anything_typed_does() -> None:
     assert "this.#sends(POLL)" in asking
 
 
+def test_the_page_asks_when_the_stream_is_open() -> None:
+    """Not while the socket is still connecting, which is where the first
+    `<s>` went (#82).
+
+    `connectedCallback` opened the stream and asked in the next line, with the
+    socket `CONNECTING`; `send` refused it and returned `null`, so nothing
+    left, and nothing asked again until the interval fired five seconds later.
+    Until an answer arrives the readings are made of silence, so every load of
+    the page said a healthy station was not answering and left the **build**
+    tile blank.
+
+    So the page asks on the stream saying it is open — the signal `Stream`
+    hands up beside the lines (`tests/ui/test_stream.py`) — and the one `#ask`
+    left in `connectedCallback` is the interval's. A reopen is the same case
+    and needs nothing more: the socket drops, the reopen timer dials another,
+    and the page asks as soon as that one is open rather than waiting out an
+    interval.
+    """
+    page = APP.read_text()
+    handed = page[page.index("new Stream(") : page.index("override connectedCallback(")]
+    assert "this.#ask();" in handed, "the page is never told the stream is open"
+
+    joining = page[
+        page.index("override connectedCallback(") : page.index("/** Let the stream go")
+    ]
+    assert "this.#stream.open();" in joining
+    assert joining.count("this.#ask();") == 1, "the page asks twice on connecting"
+    assert joining.index("setInterval(") < joining.index("this.#ask();"), (
+        "the page asks before the stream is open, which is where the first " "poll went"
+    )
+
+
+def test_a_stream_that_comes_back_leaves_one_schedule_running() -> None:
+    """The page asks on every open and starts a timer on none of them.
+
+    A page left open across a morning's outages reopens its stream as often as
+    the cable goes (`REOPEN_MS`, `stream.ts`), and a schedule started on the
+    open would be one more poller each time — a page asking the station a dozen
+    times every five seconds, which is not the schedule ADR-0010 d.1 gives it.
+    Both timers are started where the page joins the document and stopped where
+    it leaves, and nowhere else.
+    """
+    page = APP.read_text()
+    joining = page[
+        page.index("override connectedCallback(") : page.index("/** Let the stream go")
+    ]
+    assert joining.count("setInterval(") == 2, "a timer is started somewhere else"
+    assert page.count("setInterval(") == 2, "the page starts a timer off the schedule"
+
+
 def test_the_page_stops_asking_when_it_goes() -> None:
     """A conversation that is quiet when nobody is watching is the correct
     conversation (ADR-0010 d.4). A page that kept a timer alive after it left
