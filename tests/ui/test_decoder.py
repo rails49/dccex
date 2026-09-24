@@ -14,9 +14,10 @@ real function under `node`, by way of `tests/ui/gloss.mjs`.
 
 What that costs is a node on the machine the gate runs on, and no more than
 that: no packages are installed, nothing is bundled and nothing is fetched.
-It is why the decoder is the one module of the page written as JavaScript with
-its types in JSDoc rather than as TypeScript — `tsc` still checks it
-(`ui/tsconfig.json`), and a bare node can still run it.
+It is why the decoder is written as JavaScript with its types in JSDoc rather
+than as TypeScript — `tsc` still checks it (`ui/tsconfig.json`), and a bare
+node can still run it. What the box at the foot sends is the other module
+written that way, for the same reason (`tests/ui/test_message.py`).
 
 A node that is not there is red rather than skipped, as everything else the
 gate needs is: a check that skips itself leaves a required gate green while

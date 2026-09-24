@@ -33,9 +33,18 @@ NAMED = re.compile(r"://|BOX_DOMAIN|localhost|127\.0\.0\.1|\b(?:2560|8080)\b")
 
 
 def modules() -> dict[str, str]:
-    """Every module the page is made of, by file name."""
+    """Every module the page is made of, by file name.
+
+    Both languages. Two of them are JavaScript with their types in JSDoc —
+    what a line means and what is sent for what was typed — because the gate
+    runs those two under a bare node (`tests/ui/test_decoder.py`,
+    `tests/ui/test_message.py`), and a rule held over "every module" that
+    looked at one language would stop holding the day a module changed it.
+    """
     return {
-        module.name: module.read_text() for module in sorted((UI / "src").rglob("*.ts"))
+        module.name: module.read_text()
+        for kind in ("*.ts", "*.js")
+        for module in sorted((UI / "src").rglob(kind))
     }
 
 
@@ -122,14 +131,52 @@ def test_a_line_carries_the_time_it_arrived() -> None:
     assert "new Date()" in source
 
 
-def test_nothing_is_typed_back_up_the_stream_yet() -> None:
-    """This is the monitor's downward half (#4).
+def test_the_page_types_up_the_stream_in_one_place() -> None:
+    """One module writes to the socket, and it is the one that holds it (#6).
 
-    The box that sends a whole `<…>` message and the polling that keeps the
-    readings live are the page's under their own tickets (ADR-0010 d.1), and
-    until one of them lands the page is a reader. It is worth holding: what a
-    page types on the stream reaches the mirror's own framing and goes down the
-    cable, so anything sent here reaches the command station.
+    What a page types on the stream reaches the mirror's own framing and goes
+    down the cable, so anything written here reaches the command station. That
+    is worth having in one place: a second writer somewhere on the page would
+    be a second rule about what a whole message is, and the day the two
+    disagree is the day a command goes down half-formed.
     """
-    for name, module in modules().items():
-        assert ".send(" not in module, f"{name} types up the stream"
+    for module, source in modules().items():
+        written = code(source).count("socket.send(")
+        assert written == (
+            1 if module == STREAM.name else 0
+        ), f"{module} writes to the socket {written} times"
+
+
+def test_what_goes_up_is_one_whole_message_and_the_rule_is_its_own() -> None:
+    """The message is composed by the pure function and written in one call.
+
+    The composing is `message.js`'s, which the gate runs pairs through
+    (`tests/ui/test_message.py`); what is held here is that the stream sends
+    what that function returned and nothing it assembled itself, and that it
+    sends it whole — one `send` of one string, so two pages open at once cannot
+    interleave a command (ADR-0007 d.2).
+    """
+    source = STREAM.read_text()
+    assert 'from "./message.js"' in source, "the stream composes a message itself"
+    assert "const said = message(typed);" in source
+    assert "socket.send(said);" in source
+
+
+def test_nothing_is_sent_on_a_stream_that_is_not_open() -> None:
+    """A page that drew a line it had not managed to send would be telling an
+    operator a command reached the station when it reached nothing (ADR-0009
+    d.2). What the caller gets back is what went, or nothing."""
+    source = STREAM.read_text()
+    assert "socket.readyState !== WebSocket.OPEN" in source
+    assert "send(typed: string): string | null" in source
+
+
+def test_every_line_says_which_end_of_the_conversation_it_is() -> None:
+    """A line carries whether this page sent it, so the monitor can draw the
+    two differently and a reader can tell their own traffic from the
+    railroad's (#6). What arrives on the stream is the station's, always: the
+    mirror hands a client the station's bytes and never its own."""
+    source = STREAM.read_text()
+    assert "readonly sent: boolean" in source, "a line does not say whose it is"
+    assert "sent: false" in source, "what arrives is not marked as the station's"
+    assert "sent: true" not in source, "the stream marks a line it did not send"
