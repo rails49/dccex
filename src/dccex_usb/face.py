@@ -7,9 +7,12 @@ station talks to and the only thing it talks to: a command station is not a
 fact about a railroad, so there is no bus here to carry the question and no
 store to keep the answer (ADR-0001).
 
-**Three things are asked of it: what releases the source carries, that one of
-them be written onto the station, and the station's own conversation, both
-ways.** The second is what the face was wanted for. Writing means owning the
+**Four things are asked of it: what releases the source carries, that one of
+them be written onto the station, the station's own conversation, both ways,
+and how many clients are on the mirror's port.** The second is what the face
+was wanted for; the fourth is the one reading on the page that the station
+cannot say about itself, so it is this app's own business about itself
+(ADR-0008 d.4). Writing means owning the
 serial port, so the app that holds the device is the only thing that can do it
 (ADR-0065, `firmware.py`); what this adds is that whoever asked is told what
 happened, where a refusal used to be a line in a log addressed to nobody
@@ -164,6 +167,16 @@ already off it (ADR-0004). Opened by upgrading and read no other way: there is
 nothing here to fetch, because what it carries is what the station is saying
 now."""
 
+CLIENTS_PATH = "/clients"
+"""What how many clients are on the mirror's port is asked for at, with the
+door's prefix already off it (ADR-0004). A count and not a list: who is on
+2560 is a name the mirror does not have — clients are equal and it does not
+know which of them is which (CONTEXT.md) — and how many there are is what a
+page has to show."""
+
+CLIENTS = "clients"
+"""What the count goes back under."""
+
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
     # for a build (CONTEXT.md), and a body that names no tag asks nothing.
@@ -216,6 +229,20 @@ class Writes(Protocol):
     """
 
     async def wanted(self, tag: str) -> Wrote: ...
+
+
+class Counts(Protocol):
+    """What the face needs of the mirror to say how many clients are on its
+    port: the number, now.
+
+    `Station` satisfies it by having the member. Narrow for the reason
+    `Writes` above is narrow — the face is routing — and read rather than
+    kept: a count held here would be a second copy of what the fan-out
+    already knows, going stale between a client leaving and somebody asking.
+    """
+
+    @property
+    def clients(self) -> int: ...
 
 
 class Answered(NamedTuple):
@@ -316,9 +343,11 @@ class Face:
     gate reaches the release API, and with what writes a release onto the
     station, which is the app that holds the device.
 
-    The flasher has no default, because there is no sensible one: a face
-    served without the thing that holds the cable would answer a page that
-    everything was fine and write nothing.
+    Neither the flasher nor the mirror the count is read off has a default,
+    because there is no sensible one: a face served without the thing that
+    holds the cable would answer a page that everything was fine and write
+    nothing, and one served without the mirror would answer that nobody is on
+    a port it is not serving.
     """
 
     def __init__(
@@ -327,10 +356,12 @@ class Face:
         *,
         fetch: Fetch = fetch,
         flasher: Writes,
+        counts: Counts,
     ) -> None:
         self._releases = releases
         self._fetch = fetch
         self._flasher = flasher
+        self._counts = counts
 
     async def answer(
         self,
@@ -352,8 +383,8 @@ class Face:
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
         prefix is already off it: what the face answers is `/releases`,
-        `/flash` and `/stream`, and a prefix that arrived is a path this does
-        not answer (ADR-0004).
+        `/flash`, `/clients` and `/stream`, and a prefix that arrived is a
+        path this does not answer (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
@@ -396,6 +427,13 @@ class Face:
                     f"{asked} is asked for with POST, and this was {method}",
                 )
             return await self._writes(body)
+        if asked == CLIENTS_PATH:
+            if method != "GET":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET, and this was {method}",
+                )
+            return Answered(HTTPStatus.OK, {CLIENTS: self._counts.clients})
         if asked == STREAM_PATH:
             if method != "GET":
                 return refused(

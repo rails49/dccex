@@ -411,6 +411,39 @@ def test_a_serial_write_reaches_every_client(pty: Pty) -> None:
     asyncio.run(scenario())
 
 
+def test_the_mirror_says_how_many_clients_are_on_its_port(pty: Pty) -> None:
+    """The count a page is shown, which the face reads off the fan-out
+    (ADR-0008 d.4, `face.py`).
+
+    Nobody until somebody dials, one apiece while they are on, and back down
+    as they go. It is read where it is asked for rather than kept, so a
+    client that has left is not one a page goes on being shown.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        app = station(pty.path, log)
+        await app.start()
+        try:
+            assert app.clients == 0
+            _, first = await connect(app)
+            await log.wait_for_count("client connected", 1)
+            assert app.clients == 1
+            _, second = await connect(app)
+            await log.wait_for_count("client connected", 2)
+            assert app.clients == 2
+            first.close()
+            await log.wait_for_count("client disconnected", 1)
+            assert app.clients == 1
+            second.close()
+            await log.wait_for_count("client disconnected", 2)
+            assert app.clients == 0
+        finally:
+            await shut_down(app)
+
+    asyncio.run(scenario())
+
+
 def test_a_client_disconnecting_mid_message_leaves_the_device_untouched(
     pty: Pty,
 ) -> None:

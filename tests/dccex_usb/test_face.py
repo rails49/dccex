@@ -39,6 +39,7 @@ from dccex_usb.face import (
     HEAD_END,
     STATUS,
     Answered,
+    Counts,
     Ends,
     Face,
     Joins,
@@ -131,6 +132,18 @@ class Writing:
         return Wrote(None, f"flashed '{tag}'")
 
 
+class Counting:
+    """The mirror, faked: how many clients it says are on its port.
+
+    It is the whole of what the face needs to answer the count (`Counts`),
+    which is why a test can stand in for it: what makes a client one is
+    `test_station.py`'s, and what a page is told about them is this file's.
+    """
+
+    def __init__(self, clients: int = 0) -> None:
+        self.clients = clients
+
+
 def asking(tag: str = TAG) -> bytes:
     """A flash asked for, as the page's body says it: a tag and nothing else,
     because a tag is the only thing a caller names (CONTEXT.md)."""
@@ -141,18 +154,21 @@ def face(
     fetch: Source | None = None,
     releases: str = RELEASES,
     flasher: Writes | None = None,
+    counts: Counts | None = None,
 ) -> Face:
     """The face a test asks something of, built in one place.
 
     What it is configured with is the source of releases, what fetches a URL —
-    a fake, because nothing in the gate reaches the release API — and what
-    writes a release onto the station, which is a fake for the same reason:
-    the gate has no command station and runs no esptool.
+    a fake, because nothing in the gate reaches the release API — what writes
+    a release onto the station, which is a fake for the same reason (the gate
+    has no command station and runs no esptool), and the mirror the count of
+    clients is read off, which is a fake because no port is bound here.
     """
     return Face(
         releases,
         fetch=fetch if fetch is not None else Source(),
         flasher=flasher if flasher is not None else Writing(),
+        counts=counts if counts is not None else Counting(),
     )
 
 
@@ -260,6 +276,48 @@ def test_the_releases_are_read_and_not_written() -> None:
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert source.asked == []
+
+
+# -- the clients on the mirror's port -----------------------------------------
+
+
+def test_the_face_says_how_many_clients_are_on_the_mirror_s_port() -> None:
+    """The one reading on the page the station cannot say about itself, so it
+    is asked of the app that holds the port (ADR-0008 d.4)."""
+    answered = asyncio.run(face(counts=Counting(3)).answer("GET", "/clients", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"clients": 3}
+
+
+def test_the_count_is_read_when_it_is_asked_for_and_never_kept() -> None:
+    """A count held on the face would go stale between a client leaving and
+    somebody asking. It is the fan-out's number, read at the question."""
+    mirror = Counting(1)
+    asking_face = face(counts=mirror)
+
+    first = asyncio.run(asking_face.answer("GET", "/clients", b""))
+    mirror.clients = 2
+    second = asyncio.run(asking_face.answer("GET", "/clients", b""))
+
+    assert (first.body, second.body) == ({"clients": 1}, {"clients": 2})
+
+
+def test_nobody_on_the_port_is_a_count_and_not_a_refusal() -> None:
+    """An empty port is an answer: on the box this UI exists for, a page and
+    nothing else is the ordinary case (ADR-0008)."""
+    answered = asyncio.run(face(counts=Counting(0)).answer("GET", "/clients", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"clients": 0}
+
+
+def test_the_count_is_read_and_not_written() -> None:
+    """There is nothing here to change: who is on 2560 is decided by who
+    dialled it, and never by a request to this face."""
+    answered = asyncio.run(face().answer("POST", "/clients", b""))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 # -- the flash ---------------------------------------------------------------
