@@ -33,6 +33,13 @@ than writing a colour out. ADR-0003 leaves how a consumer expresses a value
 free; a second stylesheet the page already has is the cheapest form this one
 could take.
 
+A colour written out as a hex is what that rule looks like when it breaks, so
+the check looks for one in every file the page draws with: the component
+stylesheets, the plain ones beside them, and `ui/index.html`, where a `style`
+attribute or a `<style>` block paints as surely as a rule does. The `:root`
+block in `look.css` is the exception, being the one place a colour is meant to
+be written; a hex anywhere else in that file is a rule painting past it (#60).
+
 `--rail-turns` is the one value that cannot be read that way. A media query
 cannot read a custom property, so the height is written into the two sheets
 that turn — `dccex-app.styles.ts` gives the rail a row to lie in and
