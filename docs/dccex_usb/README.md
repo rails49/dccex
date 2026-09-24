@@ -476,6 +476,19 @@ too, so `docker inspect` still answers the question for one somebody renamed.
 is the thing that gets written onto the station, and the two sentences are one
 `docker` command apart on the same box ([CONTEXT.md](../../CONTEXT.md)).
 
+**What is under the name does not move either.** Both bases of
+`deploy/Dockerfile` are pinned by digest with the readable tag in front of it,
+so two builds of one commit a month apart are the same image and d.7's rebuild
+of an older commit resolves the bases that commit was written against (#96).
+The page's were pinned first and its image is where the argument is written,
+including what the pin costs — a pinned base takes no security update of its
+own until somebody moves the pin, and moving one is a commit here like any
+other ([the page's page](../ui/README.md), `deploy/ui.Dockerfile`). What the
+gate can hold is the shape and not the values, because resolving a tag needs a
+registry it has not got: `tests/deploy/test_stack.py` reads both `FROM` lines
+back and asks that neither names something that can be republished underneath
+it.
+
 **A deploy writes down what it replaced**, at
 `/var/lib/rails49/deploys/dccex`: one line per deploy, newest last, appended
 and never rewritten, plain text for somebody who has just been handed the box
