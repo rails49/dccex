@@ -8,7 +8,7 @@ keeps the next one from arriving quietly.
 
 The flasher is the one dependency and it is not imported: esptool is a
 subprocess with a timeout, which is what keeps its failures off the process
-every throttle depends on (ADR-0065).
+every throttle depends on (control ADR-0065).
 """
 
 import ast

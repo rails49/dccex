@@ -396,7 +396,7 @@ def test_the_page_asks_its_own_face_and_no_release_api() -> None:
 
 
 def test_the_source_cannot_be_named_by_the_page() -> None:
-    """Where releases are read from is a flag on the app (ADR-0042,
+    """Where releases are read from is a flag on the app (control ADR-0042,
     `firmware.py`). The page asks one path with nothing on it: a query the
     face would drop is still a page that thought it could choose, and this
     holds that nothing here ever grows one."""

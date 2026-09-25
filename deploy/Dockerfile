@@ -107,6 +107,6 @@ COPY --from=build /app/.venv /app/.venv
 # The flags are the command's, so `docker run dccex:<commit>` is the mirror on
 # its own defaults and the stack passes the device and the port it means
 # (`compose.box.yaml`). There is no bind address: both servers bind every
-# interface and what limits their reach is the LAN (ADR-0042).
+# interface and what limits their reach is the LAN (control ADR-0042).
 ENTRYPOINT ["python", "-m", "dccex_usb"]
 CMD ["--device", "/dev/dccex", "--port", "2560"]

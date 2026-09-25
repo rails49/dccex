@@ -238,10 +238,10 @@ def test_a_release_with_no_firmware_on_it_is_listed_and_says_so() -> None:
 
 def test_a_release_whose_firmware_reports_no_digest_is_not_flashable() -> None:
     """A firmware the source reports no digest for is one this app refuses to
-    write — unchecked is not written (`firmware.py`, ADR-0065 d.4) — so the
-    flag the page offers the row on says so. Otherwise the sequence stops the
-    locomotives and cuts track power for a write the mirror was never going to
-    accept (#81).
+    write — unchecked is not written (`firmware.py`, control ADR-0065 d.4) —
+    so the flag the page offers the row on says so. Otherwise the sequence
+    stops the locomotives and cuts track power for a write the mirror was never
+    going to accept (#81).
 
     Listed all the same, like a release with no asset at all: what the source
     carries is what the page is shown, and the sentence stays the mirror's to
@@ -297,7 +297,7 @@ def test_no_request_can_redirect_the_source() -> None:
     """The one thing the LAN's lack of authentication makes dangerous. A
     request that names a source — in the query, in the body, or both — is
     answered out of the configured one, because nothing reads either
-    (ADR-0042, firmware.py)."""
+    (control ADR-0042, firmware.py)."""
     source = Source()
 
     answered = asyncio.run(
@@ -431,7 +431,7 @@ def test_the_count_is_read_and_not_written() -> None:
 def test_a_named_tag_is_written_onto_the_station_and_the_caller_is_answered() -> None:
     """The gesture the face was written for (#13): the page names a release,
     the app that holds the device writes it, and whoever asked is told what
-    happened rather than sent to read a log on the box (ADR-0050)."""
+    happened rather than sent to read a log on the box (control ADR-0050)."""
     writing = Writing()
 
     answered = asyncio.run(face(flasher=writing).answer("POST", "/flash", asking()))
@@ -506,7 +506,8 @@ def test_what_a_flash_was_refused_for_is_a_status_and_a_reason(
 def test_a_body_that_names_no_tag_is_refused_before_the_device(body: bytes) -> None:
     """A tag is the one thing a flash is asked with, and it is read the way a
     payload is read — one field, and every shape it is not is a refusal —
-    because it arrives from a LAN with no authentication on it (ADR-0042)."""
+    because it arrives from a LAN with no authentication on it (control
+    ADR-0042)."""
     writing = Writing()
 
     answered = asyncio.run(face(flasher=writing).answer("POST", "/flash", body))
@@ -532,7 +533,7 @@ def test_no_request_can_redirect_the_source_a_flash_is_written_from() -> None:
     """The same rule as the releases, on the path where it costs the most: a
     body that names a source is written out of the configured one, because
     nothing reads one. A source on the wire would let anyone on the wifi have
-    the station run an arbitrary binary (ADR-0042, firmware.py)."""
+    the station run an arbitrary binary (control ADR-0042, firmware.py)."""
     writing = Writing()
 
     answered = asyncio.run(
@@ -667,7 +668,8 @@ def test_a_page_from_another_origin_may_not_open_the_stream() -> None:
 def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
     """`curl` on the box, and a page's own browser on a same-origin read: an
     origin is what a browser attaches, and holding a page to one is the whole
-    of what this check is. What limits the rest is the LAN (ADR-0042)."""
+    of what this check is. What limits the rest is the LAN (control
+    ADR-0042)."""
     answered = asyncio.run(face().answer("GET", "/releases", b"", host=LABEL))
 
     assert answered.status == HTTPStatus.OK
@@ -972,8 +974,8 @@ def test_a_caller_that_says_nothing_is_let_go_of() -> None:
 
 def test_a_source_that_cannot_be_reached_is_said_on_the_box_as_well() -> None:
     """The caller is told, and so is whoever is reading the app's log: a
-    release API that is away is not the caller's doing, and the page that
-    asked may be nobody's at the moment (ADR-0050). What the face refuses a
+    release API that is away is not the caller's doing, and the page that asked
+    may be nobody's at the moment (control ADR-0050). What the face refuses a
     caller for stays the caller's own to read."""
     said: list[str] = []
 
@@ -1019,7 +1021,7 @@ def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() ->
     What runs is a fake, because esptool cannot write a pty and nothing in the
     gate may need a command station — and it is what says the device was away
     while it ran, which is the one ordering that can leave the railroad with a
-    closed port and no firmware (ADR-0065).
+    closed port and no firmware (control ADR-0065).
     """
 
     async def scenario() -> None:

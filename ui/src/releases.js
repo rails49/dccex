@@ -20,9 +20,9 @@
  * is no host, no repository and no URL in this module or in the one that
  * fetches for it: a page that could name where releases are read from would be
  * a page that decides what the command station is offered to run, and the LAN
- * carries no authentication on purpose (ADR-0042, `firmware.py`). What the
- * browser asks is the mirror's face on its own origin, and the face asks the
- * source it was started with.
+ * carries no authentication on purpose (control ADR-0042, `firmware.py`).
+ * What the browser asks is the mirror's face on its own origin, and the face
+ * asks the source it was started with.
  *
  * **Nor does anything the face says name it.** The promise above is about
  * what these modules spell, and it would be worth little if a sentence
