@@ -164,11 +164,17 @@ const FLASHABLE = "flashable";
  *
  * **What it is handed is not called `document`.** A `releases` document is
  * what arrives, and the prose above says so, but that word is a browser's
- * global and it is the literal the sibling purity check greps `framing.js`
- * and `monitor.js` for, to hold them to the claim this module makes about
- * itself (`tests/ui/test_stream.py`, #120). So the parameter says what the
+ * global and it is one of the literals the purity checks grep a module for,
+ * to hold it to the claim this one makes about itself. This module is grepped
+ * for it too now, along with the rest of the list its siblings are held to
+ * (`tests/ui/test_releases.py`, #120, #122). So the parameter says what the
  * thing is — the face's answer — and no reader has to work out which
  * `document` a line means.
+ *
+ * The prose keeps the word because the check reads the code: the comments
+ * come off before the scan, so a sentence about a JSON body is not a page
+ * reaching for a DOM, and nothing above had to be reworded to be held to
+ * anything (`tests/ui/test_stream.py`'s `code()`).
  *
  * @param {unknown} answer what the face answered under `releases`
  * @returns {Carried[] | null} the releases, or nothing said
