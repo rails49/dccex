@@ -198,16 +198,23 @@ def test_a_build_the_source_does_not_carry_marks_nothing() -> None:
 
 
 @pytest.mark.node
-def test_a_release_with_no_firmware_on_it_is_distinguishable() -> None:
+def test_a_release_there_is_nothing_to_write_from_is_distinguishable() -> None:
     """A release exists whether or not anything can be written from it
     (CONTEXT.md), and a row that looked like the others would send an operator
-    to a tag the mirror would refuse (#8, `face.py`)."""
+    to a tag the mirror would refuse (#8, `face.py`).
+
+    The sentence says nothing about a firmware, because `flashable` stopped
+    being about one: it is false for a release with no `firmware.bin` on it
+    and for one whose `firmware.bin` the source reports no digest for, and the
+    face sends the one boolean for both (#81, #109, `face.py`'s `FLASHABLE`).
+    A row that named the first would be a page telling an operator something
+    untrue about the second."""
     bare = {**NEWEST, "tag": "v5.6.5-rails49.1", "flashable": False}
 
     listing = rows(carried=[bare, MIDDLE])
 
     assert [row["flashable"] for row in listing] == [False, True]
-    assert says()["NO_FIRMWARE"] == "no firmware to write"
+    assert says()["NO_FIRMWARE"] == "nothing here to write and check"
 
 
 @pytest.mark.node
