@@ -42,13 +42,24 @@ jobs:
       - name: the image, built and served
         run: uv run --frozen pytest -q -m docker
 
-  # The checks that need a node, which the gate does not collect either (#101).
-  # The five modules of the page written as JavaScript are run here rather than
+  # The checks that need a node, which the gate does not collect either (#101,
+  # #126). Two halves, and the split is what keeps `scripts/check.sh` runnable
+  # with no node at all.
+  #
+  # The seven modules of the page written as JavaScript are run rather than
   # read, and the runner's own node is what runs them: nothing is installed,
   # nothing is bundled and nothing is fetched. No node is set up on purpose —
-  # a missing one is an assertion failure inside these tests, which is what
-  # keeps a promised toolchain from turning into a skip. This job is required
-  # on the default branch beside `ci` and `docker`.
+  # a missing one is an assertion failure inside those tests, which is what
+  # keeps a promised toolchain from turning into a skip.
+  #
+  # The components are mounted and read back, which a bare node cannot do: Lit
+  # needs a DOM, so `vitest` and `happy-dom` are installed here from the lock
+  # file the image builds with (#126). That install is why this is the job they
+  # run in and not the gate — a component test that can pass while the rendered
+  # page is wrong is what reading the sources was, and the price of not reading
+  # them is one DOM in one job.
+  #
+  # This job is required on the default branch beside `ci` and `docker`.
   node:
     runs-on: ubuntu-latest
     env:
@@ -59,3 +70,11 @@ jobs:
       - run: uv sync
       - name: the page's own functions, run
         run: uv run --frozen pytest -q -m node
+      # `corepack` reads `packageManager`, so the pnpm that installs here is
+      # the pnpm the lock file was written by — the same line
+      # `deploy/ui.Dockerfile` runs for the same reason.
+      - run: corepack enable
+      - name: the page's components, mounted
+        run: |
+          pnpm --dir ui install --frozen-lockfile
+          pnpm --dir ui test
