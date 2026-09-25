@@ -463,8 +463,8 @@ this app rather than about a railroad. The page sequences what it can and
 confirms; what it cannot do is prevent, and none of the refusals above is a
 safety mechanism — they are about tags, sources, digests and devices. It is the
 rule cutting track power already has, on the other thing that stops a railroad
-(control ADR-0051, ADR-0062). Reading the dispatcher's state is the coupling
-this app has never had and the reason it is trustworthy.
+(control ADR-0051, control ADR-0062). Reading the dispatcher's state is the
+coupling this app has never had and the reason it is trustworthy.
 
 ## Deploying it, and going back
 
