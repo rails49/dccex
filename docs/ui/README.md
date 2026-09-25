@@ -341,7 +341,10 @@ shown and never hidden: a queue that quietly forgot what it was holding would
 be the page pretending the station was quiet
 ([ADR-0009](../adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
 Resuming appends the queue in the order it arrived and the usual capacity trim
-applies from there. **Clear** empties the conversation, and any queue behind
+applies from there. A line typed at the box while the view is held goes up the
+stream like any other and waits behind the pause with the rest: the view is one
+thing, and letting the operator's own line through would be the trim the pause
+exists to stop. **Clear** empties the conversation, and any queue behind
 it, and nothing else. Neither of them stops the stream, the polling or the
 tiles, and neither of them says anything to the station: they are the view and
 not the conversation, so the band and the tiles go on saying what the station

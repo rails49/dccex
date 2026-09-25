@@ -41,8 +41,10 @@
  * is queued out of sight with a count on the monitor, the cap it is dropped
  * past said rather than hidden. **Clear** empties the conversation and any
  * queue and nothing else. Neither stops the stream, the polling or the tiles:
- * they are the view and not the conversation. The queue and the counting are
- * `monitor.js`'s, run rather than read; the drawing is this component's.
+ * they are the view and not the conversation, and a line typed at the box
+ * while the view is held goes up the stream and waits behind the pause with
+ * the rest. The queue and the counting are `monitor.js`'s, run rather than
+ * read; the drawing is this component's.
  *
  * **And a burst of arrivals is one drawing of it** (#74). Lit batches what
  * changes within a task, and the frames a busy line arrives in are each their
