@@ -523,3 +523,20 @@ def test_nothing_rests_on_the_browser_s_scroll_anchoring() -> None:
     assert "overflow-anchor: none" in rule(
         STYLES.read_text(), ".lines"
     ), "the scroller leans on the browser's scroll anchoring"
+
+
+def test_the_lines_scroll_and_not_the_pane_they_are_in() -> None:
+    """The monitor's row in the work pane cannot grow with the conversation.
+
+    A bare `1fr` row grows to fit what is in it, so a long conversation made
+    the work pane scroll and left the lines' own scroller with nothing to do.
+    The row has a floor of its own instead of the content's height, so the
+    lines are what scrolls. This reads the rule rather than laying the page
+    out; #127 is where a browser checks it.
+    """
+    work = rule((UI / "src" / "ui" / "dccex-app.styles.ts").read_text(), ".work")
+    rows = re.search(r"grid-template-rows: ([^;]+);", work)
+    assert rows is not None, "the work pane does not say how its rows are sized"
+    assert re.search(
+        r"minmax\([^)]*\)$", rows.group(1)
+    ), "the monitor's row grows with the conversation"
