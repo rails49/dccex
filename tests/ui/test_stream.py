@@ -144,7 +144,7 @@ READ: dict[str, tuple[tuple[tuple[int, str], ...], str]] = {
     "nothing but a partial": ((), "<p1"),
     # Two of them, because two of them arrived. A serial port repeats itself
     # and a page that folded these into one row would be hiding what the
-    # station said (`Keyed`, `dccex-monitor.ts`).
+    # station said (`Line`, `monitor.js`).
     "the same line twice in one read": (((10, "<p1>"), (10, "<p1>")), ""),
 }
 

@@ -1,6 +1,6 @@
 /**
- * The **monitor**, mounted: a line the **decoder** knows, one it does not, and
- * the two controls pressed.
+ * The **monitor**, mounted: a line the **decoder** knows and one it does not,
+ * the page's own note among them, and the two controls pressed.
  *
  * Which lines carry a **gloss** and what each one says is the decoder's and is
  * run through it (`tests/ui/test_decoder.py`); what is asserted here is that
@@ -13,9 +13,10 @@
  * **And the controls are pressed** (#144). That the pause and the clear run
  * what they were handed, that the pause names what pressing it will do, and
  * what the count beside them reads were held against the source of this
- * component until here — which is the instrument #111 was filed to remove and
- * #126 retired for everything else a component draws. What a press does to a
- * conversation is the page's and is held where that is
+ * component until here — which is the instrument #111 was filed to remove,
+ * and is what let a resume that lost twelve lines and a pause that suppressed
+ * the line it dropped both read correctly (#142, #143). What the presses do
+ * to a conversation is the rules', run under a bare node
  * (`tests/ui/test_monitor.py`); this is a person's finger on the control.
  *
  * How loud the gloss is beside the bytes is the stylesheet's and stays there —
@@ -25,8 +26,8 @@
 import { expect, test } from "vitest";
 
 import { gloss } from "../src/decoder.js";
-import { type Behind } from "../src/monitor.js";
-import { DccexMonitor, type Keyed } from "../src/ui/dccex-monitor.js";
+import { type Behind, type Line, type Shown } from "../src/monitor.js";
+import { DccexMonitor } from "../src/ui/dccex-monitor.js";
 import { all, mounted, part, press, reads } from "./mounted.js";
 
 /** A line the decoder knows, and one it does not. */
@@ -38,13 +39,13 @@ const AT = new Date("2026-09-25T13:04:05.007Z");
 
 /** The conversation as the page hands it down: the station said both lines,
  *  and each was keyed when it was kept. */
-const SAID: Keyed[] = [
+const SAID: Shown[] = [
   { line: KNOWN, at: AT, sent: false, key: 1 },
   { line: UNKNOWN, at: AT, sent: false, key: 2 },
 ];
 
 /** The monitor, handed `said`. */
-async function monitor(said: Keyed[]): Promise<DccexMonitor> {
+async function monitor(said: Shown[]): Promise<DccexMonitor> {
   const drawn = new DccexMonitor();
   drawn.said = said;
   return await mounted(drawn);
@@ -99,11 +100,23 @@ test("a conversation nothing has been said in says so", async () => {
   expect(reads(drawn, ".quiet")).toBe("nothing said yet");
 });
 
+test("the page's own note is drawn as the page and not as the station", async () => {
+  const drawn = await monitor([
+    { note: "12 lines dropped while paused", key: 1 },
+    { line: KNOWN, at: AT, sent: false, key: 2 },
+  ]);
+  expect(all(drawn, ".note")).toStrictEqual(["12 lines dropped while paused"]);
+  expect(all(drawn, ".line")).toHaveLength(1);
+  const note = part(drawn, ".note");
+  expect(note.querySelector("time")).toBeNull();
+  expect(note.querySelector(".mark")).toBeNull();
+});
+
 /** The monitor with the two controls handed to it, and a count of what they
  *  are holding back. */
 async function controls(
   paused: boolean,
-  behind: Behind<Keyed> = { lines: [], dropped: 0 },
+  behind: Behind<Line> = { lines: [], dropped: 0 },
 ): Promise<{ drawn: DccexMonitor; pressed: string[] }> {
   const pressed: string[] = [];
   const drawn = new DccexMonitor();
@@ -140,7 +153,7 @@ test("the pause names what pressing it will do, either way round", async () => {
 });
 
 test("the count says what is waiting and what the queue dropped", async () => {
-  const waits: Keyed[] = Array.from({ length: 500 }, (_line, key) => ({
+  const waits: Line[] = Array.from({ length: 500 }, (_line, key) => ({
     line: KNOWN,
     at: AT,
     sent: false,

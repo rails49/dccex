@@ -21,7 +21,11 @@ import { css } from "lit";
  * **What this page sent is marked and coloured**, in a column the station's
  * lines leave empty. Two channels rather than one, because which lines this
  * page put on the railroad is the thing it must never be ambiguous about, and
- * a colour alone is nothing to a reader who does not see it.
+ * a colour alone is nothing to a reader who does not see it. **And what the
+ * page says in its own voice** — the note a resume leaves where a pause
+ * dropped lines — is drawn as the gloss is, in the page's own face and
+ * quieter, so that nothing in the monospaced column is read as bytes off the
+ * cable that never came off it.
  *
  * **The controls sit above the conversation.** A pause and a clear are
  * gestures about the view, so they are outside the scroller and stay where
@@ -149,6 +153,18 @@ export const monitorStyles = css`
      mark, so the two channels agree. */
   .sent .said {
     color: var(--sl-color-primary-700);
+  }
+
+  /* The page's own note among the lines: so far, the gap a pause left when
+     the queue behind it filled. In the page's own face and quieter
+     than the bytes, as a gloss is, because it is the page speaking and not
+     the station — a reader running down the monospaced column must not take
+     it for something that came off the cable. */
+  .note {
+    color: var(--sl-color-neutral-500);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-x-small);
+    font-style: italic;
   }
 
   /* Before the station has said anything. It is not an error and not a

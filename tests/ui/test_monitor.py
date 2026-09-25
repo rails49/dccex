@@ -1,15 +1,19 @@
 """The page the conversation is shown on.
 
 **What it works out without drawing is run.** Whether the reader is at the
-bottom, the time a line arrived, which repeats are worth showing and what
-waits behind a pause are `ui/src/monitor.js`'s — three numbers off a scroller,
-a `Date` and a list — and each is a pure function of what it is handed, so the
-pairs that matter go through the real rules under `node`, by way of
-`tests/ui/monitor.mjs` (#78, #125). The `node` marker is what asks for one: the
-gate does not collect these and the workflow runs them, where a node that is
-not there is red rather than skipped (`scripts/check.sh`, #101). The first two
-were read off their source for as long as there was no node to run them with,
-and reading is what a stamp an hour out would have walked past.
+bottom, the time a line arrived, which repeats are worth showing and the
+conversation itself — what is on screen, what waits behind a pause, and what a
+line arriving, a press of the pause and a press of the clear do to either —
+are `ui/src/monitor.js`'s, and each is a pure function of what it is handed, so
+the pairs that matter go through the real rules under `node`, by way of
+`tests/ui/monitor.mjs` (#78, #125, #144). The `node` marker is what asks for
+one: the gate does not collect these and the workflow runs them, where a node
+that is not there is red rather than skipped (`scripts/check.sh`, #101). The
+first two were read off their source for as long as there was no node to run
+them with, and reading is what a stamp an hour out would have walked past —
+and what the page's own keeping was read off its source for as long as it was
+written there, which is how a pause that suppressed the line it had dropped
+and a resume that left a silent gap were both walked past twice (#142, #143).
 
 **What it draws is mounted** (#126). A conversation handed to the component in
 happy-dom is read back off the rows: the line the **decoder** knows carrying its
@@ -326,11 +330,11 @@ def test_the_monitor_is_handed_its_lines_and_its_sending() -> None:
     """
     drawn = MONITOR.read_text()
     assert "new Stream(" not in drawn, "the monitor opens a stream of its own"
-    assert 'import { type Said } from "../framing.js"' in drawn
+    assert "said: readonly Shown[] = []" in drawn, "the lines are not handed down"
     assert "sends: (typed: string) => string | null" in drawn
     app = APP.read_text()
     assert "new Stream(" in app, "nothing on the page opens the stream"
-    assert ".said=${this.said}" in app
+    assert ".said=${this.conversation.said}" in app
     assert ".sends=${this.#sends}" in app
 
 
@@ -396,41 +400,23 @@ def test_the_rows_are_keyed_by_the_key_the_page_gave_each_line() -> None:
     ), "the conversation is drawn unkeyed"
     assert "this.said.map(" not in drawn, "the rows are still matched by position"
     assert (
-        re.search(r"repeat\(\s*this\.said,\s*\(said: Keyed\) => said\.key,", drawn)
+        re.search(r"repeat\(\s*this\.said,\s*\(said: Shown\) => said\.key,", drawn)
         is not None
-    ), "the conversation is not drawn keyed by the key the page assigned"
+    ), "the conversation is not drawn keyed by the key it was kept under"
 
 
 def test_two_identical_lines_in_the_same_millisecond_are_two_rows() -> None:
     """The key is assigned when a line is kept and is nothing the line carries.
 
     A line and the moment it arrived in are both ordinary to see twice on a
-    serial port, so a key made of either would draw two rows as one. It is the
-    page's to assign, because the page is what keeps the conversation.
+    serial port, so a key made of either would draw two rows as one. That no
+    two entries of a conversation are keyed the same is run rather than read,
+    below.
     """
     keying = MONITOR.read_text()
     keying = keying[keying.index("repeat(") : keying.index("const read = gloss(")]
     assert "said.at" not in keying, "the key is made of when the line arrived"
     assert "said.line" not in keying, "the key is made of what the line says"
-    app = APP.read_text()
-    keeping = app[app.index("#keep(said: Said[])") :]
-    assert "key: this.#keys++" in keeping, "the page numbers nothing it keeps"
-
-
-def test_a_key_is_assigned_once_and_never_reused() -> None:
-    """Stable for the life of a line, which is what makes the row the line's.
-
-    One counter, incremented in one place and never wound back: a page that
-    renumbered what it holds on a trim would hand the monitor the same shift it
-    was keyed to avoid.
-    """
-    app = APP.read_text()
-    assert (
-        app.count("this.#keys++") == 1
-    ), "the lines are numbered in more than one place"
-    assert (
-        app.count("#keys = 0") == 1
-    ), "the counter is wound back somewhere after it is declared"
 
 
 def test_several_frames_arriving_before_the_next_paint_are_one_update() -> None:
@@ -638,19 +624,22 @@ EMPTY: dict[str, Any] = {"lines": [], "dropped": 0}
 
 
 def queued(behind: dict[str, Any], said: list[str]) -> dict[str, Any]:
-    """The queue after `said` arrived behind a pause."""
+    """The queue after `said` arrived behind a pause, and what went to make
+    room for it."""
     answered: dict[str, Any] = run([{"queue": {"behind": behind, "said": said}}])[0]
     return answered
 
 
 @lru_cache(maxsize=1)
 def own() -> dict[str, Any]:
-    """The module's own two, asked of it rather than read off it: how many
-    lines the queue holds, and the queue with nothing in it.
+    """The module's own three, asked of it rather than read off it: how many
+    lines the page keeps, how many the queue holds, and the queue with nothing
+    in it.
 
-    The number is the module's to choose and this suite's to hold the shape
-    to: what is asserted below is that the oldest queued lines go past it and
-    are counted, at whatever it is.
+    The numbers are the module's to choose and this suite's to hold the shape
+    to: what is asserted below is that the oldest queued lines go past the cap
+    and are counted, and that the cap is a quarter of what is kept, at
+    whatever either of them is.
     """
     answered: dict[str, Any] = run([{"own": True}])[0]
     return answered
@@ -662,10 +651,40 @@ def cap() -> int:
     return held
 
 
+def kept() -> int:
+    """How many lines the page keeps."""
+    shown: int = own()["kept"]
+    return shown
+
+
 def says(behind: dict[str, Any]) -> str | None:
     """What the monitor says about a queue, or `None` where it says nothing."""
     said: str | None = run([{"waiting": behind}])[0]["says"]
     return said
+
+
+#: A press of the pause, and a press of the clear, as the runner takes them.
+HOLDS: dict[str, Any] = {"held": True}
+CLEARS: dict[str, Any] = {"cleared": True}
+
+
+def heard(lines: list[str]) -> dict[str, Any]:
+    """A step of a conversation: `lines`, arriving from the station."""
+    return {"said": [[line, False] for line in lines]}
+
+
+def keeping(steps: list[dict[str, Any]]) -> dict[str, Any]:
+    """The conversation `steps` leaves behind, from the one a page opens
+    with."""
+    answered: dict[str, Any] = run([{"keeping": steps}])[0]
+    return answered
+
+
+def lines(conversation: dict[str, Any]) -> list[str | None]:
+    """What the entries on screen say, in the order they are drawn. A note the
+    page put there says nothing the station said, and reads as `None`."""
+    said: list[dict[str, Any]] = conversation["said"]
+    return [entry.get("line") for entry in said]
 
 
 @pytest.mark.node
@@ -729,85 +748,233 @@ def test_a_queue_with_nothing_in_it_says_nothing() -> None:
     assert says(EMPTY) is None
 
 
-def test_the_pause_and_the_clear_are_the_page_s() -> None:
-    """The conversation is the page's, so what holds it still and what empties
-    it are the page's too (#125).
+@pytest.mark.node
+def test_what_the_queue_dropped_is_handed_back_and_not_only_counted() -> None:
+    """The caller has something to forget about a line that went (#142), so
+    the lines themselves come back beside the count."""
+    behind = queued(EMPTY, [f"<H {n} 1>" for n in range(cap() + 3)])
+    assert behind["went"] == ["<H 0 1>", "<H 1 1>", "<H 2 1>"]
+    assert queued(EMPTY, ["<X>"])["went"] == []
 
-    The monitor draws the two controls and is handed what they do, the way it
-    is handed its lines and its sending: a pane that kept a queue of its own
-    would be keeping part of the conversation where the band and the tiles
-    cannot see it.
+
+@pytest.mark.node
+def test_the_queue_is_a_quarter_of_what_the_page_keeps() -> None:
+    """One number and not two (#152). The queue is appended to the
+    conversation on a resume and the usual trim applies from there, so a queue
+    as long as the conversation would mean resuming replaced the whole of what
+    the pause was holding still. The quarter was prose in three places and
+    arithmetic in none, which is a quarter nothing kept true."""
+    assert cap() == kept() / 4
+
+
+@pytest.mark.node
+def test_nothing_on_screen_is_trimmed_while_the_view_is_held() -> None:
+    """Which is the whole of what a pause is for (#125).
+
+    Scrolling up already holds the view, but at capacity the page goes on
+    dropping the oldest lines and the reader loses the line they are reading.
+    So a conversation at capacity is paused here and fifty more lines arrive:
+    not one of the entries on screen moves, and the fifty wait behind the
+    pause.
+    """
+    full = [f"<H {n} 1>" for n in range(kept())]
+    more = [f"<H {n} 2>" for n in range(50)]
+    before = keeping([heard(full)])
+    after = keeping([heard(full), HOLDS, heard(more)])
+    assert len(before["said"]) == kept()
+    assert [entry["key"] for entry in after["said"]] == [
+        entry["key"] for entry in before["said"]
+    ], "the conversation moved under the reader while the view was held"
+    assert len(after["behind"]["lines"]) == 50, "the arrivals were not queued"
+
+
+@pytest.mark.node
+def test_resuming_appends_the_queue_in_arrival_order_and_trims_from_there() -> None:
+    """Through the one trim there is, so what a reader resumes into is trimmed
+    exactly as a line that arrived is (#125)."""
+    full = [f"<H {n} 1>" for n in range(kept())]
+    more = [f"<H {n} 2>" for n in range(50)]
+    after = keeping([heard(full), HOLDS, heard(more), HOLDS])
+    assert len(after["said"]) == kept(), "the resume was not trimmed"
+    assert lines(after)[-50:] == more, "the queue was not appended as it arrived"
+    assert after["behind"] == EMPTY, "the queue outlived the pause"
+    assert after["paused"] is False
+
+
+@pytest.mark.node
+def test_a_line_this_page_sent_waits_behind_the_pause_with_the_rest() -> None:
+    """The pause is the view, and the view is one thing.
+
+    A page that let the operator's own line through would be appending to the
+    conversation while it was held, which at capacity is a trim — the one
+    thing a pause promises there will not be. The line still went: the stream
+    is not paused, the send is not refused, and the count turning over is what
+    says so.
+    """
+    after = keeping([HOLDS, {"said": [["<s>", True], ["<X>", False]]}])
+    assert after["said"] == [], "the operator's own line went on the screen"
+    waits: list[dict[str, Any]] = after["behind"]["lines"]
+    assert [entry["line"] for entry in waits] == ["<s>", "<X>"]
+    assert [entry["sent"] for entry in waits] == [True, False]
+
+
+@pytest.mark.node
+def test_the_gap_a_full_queue_left_is_marked_where_it_is() -> None:
+    """A resume said how much went and then said nothing about it (#143).
+
+    The count the monitor was carrying — "500 waiting, 12 dropped" — goes away
+    with the pause that made it, so a reader came back to twelve lines of
+    conversation missing and nothing at all marking the place. One note goes
+    in where the gap is, ahead of the lines that survived, and it is trimmed
+    and cleared like any other entry.
+    """
+    arriving = [f"<H {n} 1>" for n in range(cap() + 12)]
+    after = keeping([HOLDS, heard(arriving), HOLDS])
+    said: list[dict[str, Any]] = after["said"]
+    assert len(said) == cap() + 1
+    assert said[0]["note"] == "12 lines dropped while paused"
+    assert "line" not in said[0], "the gap is drawn as something the station said"
+    assert lines(after)[1:] == arriving[12:], "the queue did not follow the note"
+
+
+@pytest.mark.node
+def test_a_resume_that_dropped_nothing_marks_nothing() -> None:
+    """There is no gap, so there is nothing to say about one: a note on every
+    resume would be the page talking about itself in a conversation about a
+    railroad."""
+    after = keeping([HOLDS, heard(["<X>", "<Y>"]), HOLDS])
+    assert lines(after) == ["<X>", "<Y>"]
+
+
+@pytest.mark.node
+def test_a_subject_the_queue_dropped_says_something_new_again() -> None:
+    """The pause suppressed the line it had thrown away (#142).
+
+    Paused, a `<p1>` is queued and then pushed off the front of a full queue —
+    so it never reached the conversation. It still stood for what the power
+    last said, and every later poll answering `<p1>` was left out as nothing
+    new, so the monitor never said the power came on. A line that went is
+    forgotten with it.
+    """
+    filling = [f"<H {n} 1>" for n in range(cap())]
+    after = keeping([HOLDS, heard(["<p1>"]), heard(filling), HOLDS, heard(["<p1>"])])
+    said: list[dict[str, Any]] = after["said"]
+    assert said[0]["note"] == "1 line dropped while paused"
+    assert said[-1].get("line") == "<p1>", "the power coming on was never shown"
+
+
+@pytest.mark.node
+def test_a_subject_the_queue_still_holds_is_not_forgotten() -> None:
+    """Only the line that went is forgotten, and only while it is still what
+    its subject last said.
+
+    `<p1>` and `<p0>` are one subject — the power — so a queue that dropped
+    the older of the two and forgot the subject would show the newer one twice.
+    """
+    filling = [f"<H {n} 1>" for n in range(cap() - 1)]
+    after = keeping(
+        [HOLDS, heard(["<p1>", "<p0>"]), heard(filling), HOLDS, heard(["<p0>"])]
+    )
+    assert lines(after)[1] == "<p0>", "the line that went was not the oldest"
+    assert lines(after)[-1] != "<p0>", "a repeat of what is on screen was shown"
+
+
+@pytest.mark.node
+def test_clearing_empties_the_conversation_and_the_queue_and_nothing_else() -> None:
+    """A clear is the reader emptying what is on screen, not the page
+    forgetting what the station has told it (#125).
+
+    What each subject last said stays, so a poll answered the same way after a
+    clear is still not news, and the view is still held if that is how the
+    reader left it.
+    """
+    emptied = keeping([heard(["<p1 A>"]), HOLDS, heard(["<X>"]), CLEARS])
+    assert emptied["said"] == [], "the conversation was not emptied"
+    assert emptied["behind"] == EMPTY, "a queue survived the clear"
+    assert emptied["paused"] is True, "the clear let the view go"
+    again = keeping(
+        [heard(["<p1 A>"]), HOLDS, heard(["<X>"]), CLEARS, HOLDS, heard(["<p1 A>"])]
+    )
+    assert again["said"] == [], "the clear forgot what the subject last said"
+
+
+@pytest.mark.node
+def test_a_key_is_assigned_once_and_never_reused() -> None:
+    """Stable for the life of an entry, which is what makes the row its own.
+
+    One counter, never wound back: a conversation that renumbered what it
+    holds on a trim or on a clear would hand the monitor the same shift the
+    keys are there to save it (#74).
+    """
+    steps = [heard(["<X>", "<X>"]), HOLDS, heard(["<Y>", "<Z>"])]
+    paused = keeping(steps)
+    waits: list[dict[str, Any]] = paused["behind"]["lines"]
+    keys = [entry["key"] for entry in paused["said"]] + [
+        entry["key"] for entry in waits
+    ]
+    assert keys == sorted(keys), "the entries are not keyed in the order they came"
+    assert len(set(keys)) == len(keys), "two entries are keyed the same"
+    after = keeping([*steps, HOLDS, CLEARS, heard(["<W>"])])
+    assert after["said"][0]["key"] > max(
+        keys
+    ), "a cleared entry's key was handed out again"
+
+
+def test_the_page_holds_the_conversation_and_the_rules_change_it() -> None:
+    """The conversation is the page's and what happens to it is the rules'
+    (#125, #144).
+
+    The page holds one value and calls three functions of it, and the monitor
+    draws the two controls and is handed what they do, the way it is handed
+    its lines and its sending: a pane that kept a queue of its own would be
+    keeping part of the conversation where the band and the tiles cannot see
+    it. That the controls are there and do what they are handed is read off a
+    mounted monitor (`ui/test/monitor.test.ts`); where the rules live is a
+    claim about the source, because a DOM cannot see which module worked an
+    answer out.
     """
     app = APP.read_text()
     assert 'from "../monitor.js"' in app
-    for handed in (".paused=${this.paused}", ".behind=${this.behind}"):
+    for calls in (
+        "arrived(this.conversation, said)",
+        "held(this.conversation)",
+        "cleared(this.conversation)",
+    ):
+        assert calls in app, f"the page does not call {calls}"
+    for handed in (
+        ".paused=${this.conversation.paused}",
+        ".behind=${this.conversation.behind}",
+    ):
         assert handed in app, f"the monitor is not handed {handed}"
     assert ".pauses=${this.#pauses}" in app
     assert ".clears=${this.#clears}" in app
     drawn = MONITOR.read_text()
-    assert "queued(" not in drawn, "the monitor keeps a queue of its own"
-
-
-def test_nothing_on_screen_is_trimmed_while_the_view_is_paused() -> None:
-    """Which is the whole of what a pause is for (#125).
-
-    Scrolling up already holds the view, but at capacity the page goes on
-    trimming the oldest lines and the reader loses the line they are reading.
-    Paused, what arrives goes to the queue and the conversation is not
-    appended to at all — so there is nothing for the trim to act on.
-    """
-    app = APP.read_text()
-    keeping = app[app.index("#keep(said: Said[])") :]
-    keeping = keeping[: keeping.index("\n  #append(")]
-    assert "queued(this.behind, keyed)" in keeping, "nothing is queued while paused"
-    assert keeping.index("this.paused") < keeping.index(
-        "this.#append(keyed)"
-    ), "the conversation is appended to before the pause is read"
-    assert (
-        "return;" in keeping[keeping.index("this.paused") :].split("this.#append")[0]
-    ), "a paused page appends what it queued as well"
+    for kept in ("queued(", "arrived(", "QUEUE ="):
+        assert kept not in drawn, f"the monitor keeps the conversation itself: {kept}"
 
 
 def test_a_pause_stops_neither_the_stream_the_polling_nor_the_tiles() -> None:
     """It is the view and not the conversation (#125).
 
-    Every line is still heard into the readings and the readings are still
-    worked out, so the band and the tiles go on saying what the station is
-    doing while a reader holds the monitor still. The stream and the two
-    intervals are never spoken to about it.
+    Every line is heard into the readings before the conversation is told
+    about it and whether the view is held or not, so the band and the tiles go
+    on saying what the station is doing while a reader holds the monitor
+    still. The page reads the pause nowhere: it hands every line it heard to
+    the rules and they decide what becomes of it. The stream and the two
+    intervals are never spoken to by either control.
     """
     app = APP.read_text()
     keeping = app[app.index("#keep(said: Said[])") :]
-    held = keeping.index("this.paused")
-    assert keeping.index("heard(this.#kept") < held, "a paused page hears nothing"
-    assert keeping.index("this.#now()") < held, "a paused page works out no readings"
-    for untouched in ("#stream", "setInterval(", "clearInterval("):
-        assert untouched not in keeping[held:], f"the pause reaches {untouched}"
-
-
-def test_resuming_appends_the_queue_in_arrival_order_and_trims_from_there() -> None:
-    """Through the one append the arrivals go through, so the usual capacity
-    trim applies to a resume exactly as it applies to a line (#125)."""
-    app = APP.read_text()
-    resuming = app[app.index("#pauses = ") :]
-    resuming = resuming[: resuming.index("};")]
-    assert "this.#append(this.behind.lines)" in resuming, "the queue is not appended"
-    assert "EMPTIED" in resuming, "the queue outlives the pause it was kept behind"
-    assert app.count("kept.slice(") == 1, "the conversation is trimmed in two places"
-    assert "#append(arriving: readonly Keyed[])" in app
-
-
-def test_clearing_empties_the_conversation_and_any_queue_and_nothing_else() -> None:
-    """Tiles, polling and the stream are untouched, and so is what each
-    subject last said: a clear is the reader emptying what is on screen, not
-    the page forgetting what the station has told it (#125)."""
-    app = APP.read_text()
-    clearing = app[app.index("#clears = ") :]
-    clearing = clearing[: clearing.index("};")]
-    assert "this.said = []" in clearing, "the conversation is not emptied"
-    assert "EMPTIED" in clearing, "a queue survives the clear"
-    for untouched in ("#kept", "#said", "#keys", "#stream", "readings"):
-        assert untouched not in clearing, f"the clear reaches {untouched}"
+    assert keeping.index("heard(this.#kept") < keeping.index(
+        "arrived(this.conversation"
+    ), "the conversation is told before the readings hear it"
+    assert "this.#now()" in keeping, "a paused page works out no readings"
+    assert "paused" not in keeping, "the page reads the pause itself"
+    for pressed in ("#pauses = ", "#clears = "):
+        body = app[app.index(pressed) :]
+        body = body[: body.index("};")]
+        for untouched in ("#stream", "setInterval(", "clearInterval(", "#kept"):
+            assert untouched not in body, f"{pressed.strip()} reaches {untouched}"
 
 
 def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
@@ -827,22 +994,13 @@ def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
     ), "the pause and the clear are drawn as loudly as the send"
 
 
-def test_a_line_this_page_sent_waits_behind_the_pause_with_the_rest() -> None:
-    """The pause is the view, and the view is one thing.
+def test_a_line_this_page_sent_goes_through_the_same_keeping() -> None:
+    """The line the operator typed is kept the way an arriving one is, which
+    is what puts it behind a pause with the rest (run above).
 
-    A monitor that let the operator's own line through would be appending to
-    the conversation while it was held, which at capacity is a trim — the one
-    thing a pause promises there will not be. The line still went: the stream
-    is not paused, the send is not refused, and the count turning over is what
-    says so.
+    The page has one way in for both, so there is nowhere for a sent line to
+    take a shorter road into a held conversation.
     """
     app = APP.read_text()
-    keeping = app[app.index("#keep(said: Said[])") :]
-    keeping = keeping[: keeping.index("\n  #append(")]
-    held = keeping.index("this.paused")
-    paused = keeping[held : keeping.index("return;", held)]
-    assert (
-        "sent" not in paused
-    ), "the pause reads which end of the conversation a line is"
     sending = app[app.index("#sends = ") :]
     assert "this.#keep(" in sending[: sending.index("};")], "a sent line skips the keep"
