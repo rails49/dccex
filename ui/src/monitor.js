@@ -1,25 +1,29 @@
 /**
- * The monitor's two rules that are not drawing: whether the reader is at the
- * bottom of the conversation, and the time a line arrived as a clock says it.
+ * The monitor's rules that are not drawing: whether the reader is at the
+ * bottom of the conversation, the time a line arrived as a clock says it,
+ * which of the station's repeats are worth showing, and what waits behind a
+ * pause.
  *
  * The page is `ui/src/ui/dccex-monitor.ts`, and everything about it that
- * needs a browser stays there — the rows, the box at the foot, the rectangles
- * a held row is measured with, and the view being put back. What is here is
- * what that component works out from numbers and a `Date`, which is what lets
- * both be run with the pairs that matter on a machine with no browser in it
+ * needs a browser stays there — the rows, the box at the foot, the controls,
+ * the rectangles a held row is measured with, and the view being put back.
+ * What is here is what that component and the page around it work out from
+ * numbers, a `Date` and a list, which is what lets every one of them be run
+ * with the pairs that matter on a machine with no browser in it
  * (`tests/ui/test_monitor.py`).
  *
- * Neither is a reading of the railroad. What the **band** and the **tile**s
- * show is `readings.js`'s and what a line means is the **decoder**'s; these two
- * are about a person reading a page — where they are in it, and the clock
- * beside what they are reading.
+ * None of them is a reading of the railroad. What the **band** and the
+ * **tile**s show is `readings.js`'s and what a line means is the
+ * **decoder**'s; these are about a person reading a page — where they are in
+ * it, the clock beside what they are reading, and what the page is holding
+ * back while they read (#125).
  *
  * It is JavaScript with its types in JSDoc, as `decoder.js`, `message.js`,
- * `readings.js`, `releases.js`, `flash.js` and `framing.js` are: the seven the
- * gate runs rather than reads. These two were read for as long as there was no
- * node to run them with, and a stamp an hour out leaves a source saying every
- * right word (#78, #101). `tsc` checks this file as strictly as it checks the
- * rest (`ui/tsconfig.json`).
+ * `readings.js`, `releases.js`, `flash.js` and `framing.js` are: the modules
+ * the gate runs rather than reads, listed in `tests/ui/test_decoder.py`. They
+ * were read for as long as there was no node to run them with, and a stamp an
+ * hour out leaves a source saying every right word (#78, #101). `tsc` checks
+ * this file as strictly as it checks the rest (`ui/tsconfig.json`).
  */
 
 /** How close to the bottom still counts as being at it, in CSS pixels. A
@@ -144,4 +148,91 @@ export function quieted(last, said) {
     return changed;
   });
   return { shown, last: now };
+}
+
+/**
+ * What is behind a pause: the lines that arrived while the monitor was
+ * holding, and how many were dropped off the front to make room for them.
+ *
+ * The lines are whatever the page keeps a conversation as — this module counts
+ * them and never reads one, so what a line is stays the page's business and
+ * the queue is a queue of anything.
+ *
+ * @template T
+ * @typedef {object} Behind
+ * @property {readonly T[]} lines what is waiting, oldest first
+ * @property {number} dropped how many went off the front because the queue was
+ *   full
+ */
+
+/**
+ * A queue with nothing in it and nothing dropped.
+ *
+ * What a monitor that is not paused holds, and what resuming and clearing
+ * leave behind. The lines it holds are of no type at all, which is what lets
+ * every queue start here whatever the page keeps a conversation as.
+ *
+ * @type {Behind<never>}
+ */
+export const EMPTIED = { lines: [], dropped: 0 };
+
+/**
+ * How many lines wait behind a pause before the oldest of them go.
+ *
+ * A quarter of what the page keeps (`KEPT`, `dccex-app.ts`), because the
+ * queue is appended to the conversation when the reader resumes and the usual
+ * capacity trim applies from there: a queue as long as the conversation would
+ * mean resuming replaced the whole of what the pause was holding still, which
+ * is the one thing a pause is for. At a quarter, a reader who resumes from a
+ * full queue still has three quarters of what they paused on above it.
+ *
+ * It is its own number and not the page's. What a pause promises is that
+ * nothing on screen is trimmed; what it cannot promise is that a station
+ * talking for an hour is all still there behind it.
+ */
+export const QUEUE = 500;
+
+/**
+ * The queue after `said` arrived behind a pause.
+ *
+ * Past the cap the oldest *queued* lines go, and every one of them is counted
+ * — for the whole of the pause and not for the last arrival, so what the
+ * monitor says is how much of the conversation went rather than how much went
+ * in the last read. Nothing on screen is touched: the lines a reader is
+ * looking at are what the pause is holding still.
+ *
+ * @template T
+ * @param {Behind<T>} behind what was waiting
+ * @param {readonly T[]} said what has just arrived, in the order it did
+ * @returns {Behind<T>}
+ */
+export function queued(behind, said) {
+  const lines = [...behind.lines, ...said];
+  const over = lines.length - QUEUE;
+  return over <= 0
+    ? { lines, dropped: behind.dropped }
+    : { lines: lines.slice(over), dropped: behind.dropped + over };
+}
+
+/**
+ * What the monitor says about `behind`, or `null` where it says nothing.
+ *
+ * A count rather than the lines, because the lines are what the pause is
+ * keeping out of sight. What was dropped is said beside it and is never left
+ * out: a queue that quietly forgot the oldest of what it was holding would
+ * have the page pretending the station was quiet, which is the observation
+ * nobody made (ADR-0009 d.2).
+ *
+ * Nothing waiting and nothing dropped reads as nothing at all, so a monitor
+ * nobody has paused does not carry a `0 waiting` for the whole of an evening.
+ *
+ * @param {Behind<unknown>} behind what is waiting
+ * @returns {string | null}
+ */
+export function waiting(behind) {
+  if (behind.lines.length === 0 && behind.dropped === 0) {
+    return null;
+  }
+  const said = `${behind.lines.length} waiting`;
+  return behind.dropped === 0 ? said : `${said}, ${behind.dropped} dropped`;
 }

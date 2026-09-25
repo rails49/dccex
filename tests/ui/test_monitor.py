@@ -1,14 +1,15 @@
 """The page the conversation is shown on.
 
-**Two of what it works out are run.** Whether the reader is at the bottom and
-the time a line arrived are `ui/src/monitor.js`'s — three numbers off a
-scroller, and a `Date` — and each is a pure function of what it is handed, so
-the pairs that matter go through the real rules under `node`, by way of
-`tests/ui/monitor.mjs` (#78). The `node` marker is what asks for one: the gate
-does not collect these and the workflow runs them, where a node that is not
-there is red rather than skipped (`scripts/check.sh`, #101). Both were read off
-their source for as long as there was no node to run them with, and reading is
-what a stamp an hour out would have walked past.
+**What it works out without drawing is run.** Whether the reader is at the
+bottom, the time a line arrived, which repeats are worth showing and what
+waits behind a pause are `ui/src/monitor.js`'s — three numbers off a scroller,
+a `Date` and a list — and each is a pure function of what it is handed, so the
+pairs that matter go through the real rules under `node`, by way of
+`tests/ui/monitor.mjs` (#78, #125). The `node` marker is what asks for one: the
+gate does not collect these and the workflow runs them, where a node that is
+not there is red rather than skipped (`scripts/check.sh`, #101). The first two
+were read off their source for as long as there was no node to run them with,
+and reading is what a stamp an hour out would have walked past.
 
 **The rest is read off its own sources**, as `tests/ui/test_stream.py` explains
 and with the same limit: there is no browser here to scroll, so what is held
@@ -36,8 +37,7 @@ STYLES = UI / "src" / "ui" / "dccex-monitor.styles.ts"
 #: The page the monitor is one pane of.
 APP = UI / "src" / "ui" / "dccex-app.ts"
 
-#: The two rules that are not drawing, which a bare node runs rather than
-#: reads.
+#: The rules that are not drawing, which a bare node runs rather than reads.
 RULES = UI / "src" / "monitor.js"
 
 #: What puts them through themselves.
@@ -92,9 +92,9 @@ CLOCK = re.compile(r"^\d{2}:\d{2}:\d{2}\.\d{3}$")
 
 
 def run(asks: list[dict[str, Any]], zone: str = "UTC") -> list[dict[str, Any]]:
-    """What the two rules answer for `asks`, in one running of them.
+    """What the rules answer for `asks`, in one running of them.
 
-    In a zone of this module's choosing, because one of the two is about the
+    In a zone of this module's choosing, because one of them is about the
     machine's own: a stamp is the operator's clock rather than UTC, and a check
     that ran in whatever zone the machine happened to be set to could not tell
     those two apart on a box in London.
@@ -188,7 +188,7 @@ def test_a_stamp_is_a_time_and_carries_no_date() -> None:
         assert CLOCK.match(drawn) is not None, f"{clock} is stamped {drawn!r}"
 
 
-def test_the_two_rules_hold_nothing() -> None:
+def test_the_rules_hold_nothing() -> None:
     """No state, no clock of their own and no DOM.
 
     Held against the source because it is the import that would bring one in.
@@ -636,3 +636,99 @@ def test_what_this_page_sent_is_always_shown_and_hides_nothing() -> None:
     answered = quiet(said, first["last"])
     assert answered["shown"] == [True, True]
     assert answered["last"] == first["last"]
+
+
+#: A queue with nothing in it and nothing dropped, as the runner takes one.
+EMPTY: dict[str, Any] = {"lines": [], "dropped": 0}
+
+
+def queued(behind: dict[str, Any], said: list[str]) -> dict[str, Any]:
+    """The queue after `said` arrived behind a pause."""
+    answered: dict[str, Any] = run([{"queue": {"behind": behind, "said": said}}])[0]
+    return answered
+
+
+@lru_cache(maxsize=1)
+def own() -> dict[str, Any]:
+    """The module's own two, asked of it rather than read off it: how many
+    lines the queue holds, and the queue with nothing in it.
+
+    The number is the module's to choose and this suite's to hold the shape
+    to: what is asserted below is that the oldest queued lines go past it and
+    are counted, at whatever it is.
+    """
+    answered: dict[str, Any] = run([{"own": True}])[0]
+    return answered
+
+
+def cap() -> int:
+    """How many lines wait behind a pause."""
+    held: int = own()["queue"]
+    return held
+
+
+def says(behind: dict[str, Any]) -> str | None:
+    """What the monitor says about a queue, or `None` where it says nothing."""
+    said: str | None = run([{"waiting": behind}])[0]["says"]
+    return said
+
+
+@pytest.mark.node
+def test_lines_that_arrive_while_paused_are_queued_in_arrival_order() -> None:
+    """Out of sight and in the order they came, so resuming appends the
+    conversation as the station held it."""
+    behind = queued(EMPTY, ["<p1 A>", "<p0 B>"])
+    assert behind["lines"] == ["<p1 A>", "<p0 B>"]
+    assert queued(behind, ["<X>"])["lines"] == ["<p1 A>", "<p0 B>", "<X>"]
+
+
+@pytest.mark.node
+def test_the_queue_has_a_cap_and_the_oldest_queued_lines_go_past_it() -> None:
+    """The oldest *queued* lines, and not the conversation on screen: what a
+    pause promises is that nothing the reader is looking at is trimmed, and
+    what it cannot promise is an unbounded queue behind it."""
+    behind = queued(EMPTY, [f"<H {n} 1>" for n in range(cap() + 5)])
+    assert len(behind["lines"]) == cap()
+    assert behind["lines"][0] == "<H 5 1>", "the newest queued lines went"
+    assert behind["dropped"] == 5
+
+
+@pytest.mark.node
+def test_what_was_dropped_is_counted_across_arrivals() -> None:
+    """The count is of the whole pause and not of the last arrival: a reader
+    coming back to a monitor that has been full for a minute is owed how much
+    of the conversation went, not how much went in the last read."""
+    full = queued(EMPTY, [f"<H {n} 1>" for n in range(cap())])
+    assert full["dropped"] == 0
+    assert queued(queued(full, ["<X>"]), ["<Y>", "<Z>"])["dropped"] == 3
+
+
+@pytest.mark.node
+def test_a_monitor_that_is_not_paused_holds_an_empty_queue() -> None:
+    """The one the page starts at, and the one resuming and clearing leave
+    behind: nothing waiting and nothing dropped."""
+    assert own()["emptied"] == EMPTY
+
+
+@pytest.mark.node
+def test_the_count_says_how_many_lines_are_waiting() -> None:
+    """A reader who has paused a busy station is told what is piling up behind
+    it, so the pause is a decision they can take back knowingly."""
+    assert says(queued(EMPTY, [f"<H {n} 1>" for n in range(137)])) == "137 waiting"
+    assert says(queued(EMPTY, ["<X>"])) == "1 waiting"
+
+
+@pytest.mark.node
+def test_what_the_queue_dropped_is_said_and_not_hidden() -> None:
+    """A gap is shown, never hidden: a queue that quietly forgot the oldest of
+    what it was holding would have the page pretending the station was quiet
+    (ADR-0009 d.2)."""
+    full = queued(EMPTY, [f"<H {n} 1>" for n in range(cap() + 12)])
+    assert says(full) == f"{cap()} waiting, 12 dropped"
+
+
+@pytest.mark.node
+def test_a_queue_with_nothing_in_it_says_nothing() -> None:
+    """Nothing is waiting, so there is no count to read — an empty monitor
+    does not carry a `0 waiting` for the whole of an evening."""
+    assert says(EMPTY) is None

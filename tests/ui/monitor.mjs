@@ -25,6 +25,20 @@
 //
 //     {"quiet": {"last": {"p A": "<p1 A>"}, "said": [["<p1 A>", false]]}}
 //
+// or lines arriving behind a pause, with what was already waiting:
+//
+//     {"queue": {"behind": {"lines": [], "dropped": 0}, "said": ["<p1 A>"]}}
+//
+// or the module's own two: how many lines the queue holds, and the queue with
+// nothing in it and nothing dropped, which is what a monitor that is not
+// paused holds:
+//
+//     {"own": true}
+//
+// or what the monitor says about a queue:
+//
+//     {"waiting": {"lines": ["<p1 A>"], "dropped": 0}}
+//
 // The day an instant falls on is the machine's business and not the stamp's:
 // what comes back is a time and no date, which is what a person reading a
 // conversation as it arrives is correlating against.
@@ -34,7 +48,15 @@
 // and nothing else — no packages, no bundler, no DOM and no network. Stdin and
 // stdout are `tests/ui/each.mjs`'s.
 
-import { atBottom, quieted, stamped } from "../../ui/src/monitor.js";
+import {
+  EMPTIED,
+  QUEUE,
+  atBottom,
+  queued,
+  quieted,
+  stamped,
+  waiting,
+} from "../../ui/src/monitor.js";
 import { each } from "./each.mjs";
 
 // A day to hang a reading on. The stamp draws no date, so which one it is
@@ -46,6 +68,15 @@ const DAY = [2026, 0, 1];
 const answered = (ask) => {
   if ("scroller" in ask) {
     return { bottom: atBottom(ask.scroller) };
+  }
+  if ("own" in ask) {
+    return { queue: QUEUE, emptied: EMPTIED };
+  }
+  if ("waiting" in ask) {
+    return { says: waiting(ask.waiting) };
+  }
+  if ("queue" in ask) {
+    return queued(ask.queue.behind, ask.queue.said);
   }
   if ("quiet" in ask) {
     const said = ask.quiet.said.map(([line, sent]) => ({ line, sent }));
