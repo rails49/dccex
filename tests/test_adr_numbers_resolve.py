@@ -89,13 +89,16 @@ CONTROL_ADRS = "https://github.com/rails49/control/blob/main/docs/adr/"
 #: the backticks a repository gets in prose or without them, as the pages that
 #: cite it do both, and in the possessive where the sentence wants one; the
 #: organisation's and this repository's are the two phrases the module beside
-#: this one settled on. The owner is capitalised where it opens a sentence and
+#: this one settled on, and `org` is the short form of the organisation's the
+#: pages also write (#149). The owner is capitalised where it opens a sentence and
 #: reaches the number across a line break as readily as not — prose wraps
 #: where the width runs out. A wrapped line of a comment block opens with
 #: whatever the block is drawn with, which is `#` in a module and `*` on the
 #: page, so the owner is still beside the number.
 GAP = r"[\s*#]+"
-OWNER = rf"(?:`?control`?(?:'s)?|[Tt]he{GAP}organisation's|[Tt]his{GAP}repository's)"
+OWNER = (
+    rf"(?:`?control`?(?:'s)?|[Tt]he{GAP}organisation's|[Tt]his{GAP}repository's|\borg)"
+)
 
 #: A citation, with the owner in front of it where there is one. Four digits,
 #: because that is how every ADR on either side is numbered, and what follows
@@ -289,7 +292,10 @@ def test_an_owner_resolves_however_it_is_written() -> None:
     sometimes wants; the wrap `docs/ui/README.md` already carries between the
     owner and the number, and the one `station.py` carries inside a comment
     block, where the line under it opens with the `#` the block is drawn with;
-    and the phrase that names this repository. Any of the three owners
+    and the phrase that names this repository; and `org`, the short form the
+    repository writes the organisation's owner in, bare and as link text —
+    read as bare, `docs/ui/README.md`'s org ADR-0010 passed only because this
+    repository has an ADR-0010 of its own (#149). Any of these owners
     resolves the name; what is forbidden is none of them.
 
     The organisation's is wrapped the same way in `face.py` and is held to it
@@ -302,6 +308,9 @@ def test_an_owner_resolves_however_it_is_written() -> None:
         "anyone on the wifi choose what to run (control\nADR-0042)",
         "# not two that can drift apart (control\n# ADR-0066).",
         "superseding this repository's ADR-0002). The commit above",
+        "it is for (org ADR-0010).",
+        "([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-x.md)).",
+        "the cost org\nADR-0001 names",
     ):
         assert bare(written) == [], f"the owner was not read: {written!r}"
 
