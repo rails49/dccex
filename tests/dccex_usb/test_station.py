@@ -555,7 +555,7 @@ def test_what_a_client_sends_while_the_device_is_away_is_dropped(
     ramp to be at the ceiling, where one reopen is four. Flattened, a reopen
     is a backoff and the device is back with a whole one to spare; at the
     quick backoff this asked the device back within ten milliseconds of the
-    symlink and was green only on a machine that managed it (#118).
+    symlink and was green only on a machine that managed it.
     """
 
     async def scenario() -> None:
