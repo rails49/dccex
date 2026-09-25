@@ -133,18 +133,18 @@ marked as such, so being up to date is something to see rather than to work
 out. The list is collapsed under the tiles.
 
 **The app fetches and the browser does not.** A UI talks to the bus, the store
-and its own app's face and nothing else (ADR-0002), so the list is read by
-`dccex-usb` from its configured source and handed to the page, which asks its
-own face for it on its own origin. **Where releases are read from is that
-app's configuration and cannot be set from here**: the LAN carries no
-authentication on purpose, and a payload naming a repository would let anyone
-on the wifi choose what the command station is offered to run (control
+and its own app's face and nothing else (the organisation's ADR-0002), so the
+list is read by `dccex-usb` from its configured source and handed to the page,
+which asks its own face for it on its own origin. **Where releases are read
+from is that app's configuration and cannot be set from here**: the LAN carries
+no authentication on purpose, and a payload naming a repository would let
+anyone on the wifi choose what the command station is offered to run (control
 ADR-0042). No module of the page names a host, a repository or a query, and
 `tests/ui/test_releases.py` holds that shut. The sentences the face answers
 with name none either — this page shows a refusal word for word (#66), so one
 that spelled the source would be the URL on the page by another road; what a
-turned-down flash says is which thing went wrong and which **tag** it was,
-and where releases are read from is left on the box's log
+turned-down flash says is which thing went wrong and which **tag** it was, and
+where releases are read from is left on the box's log
 (`tests/dccex_usb/test_firmware.py`, #94).
 
 It is asked for once, when the page opens, and not on the poll. What the
