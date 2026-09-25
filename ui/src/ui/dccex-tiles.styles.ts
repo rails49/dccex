@@ -1,18 +1,19 @@
 import { css } from "lit";
 
 /**
- * The tiles: four readings in a row across the top of the work pane, wrapping
- * onto a second line at the width of a phone.
+ * The tiles: the link's light, the build and one per track in use, in a row
+ * across the top of the work pane, wrapping onto a second line at the width of
+ * a phone.
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
  * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
  *
- * **A blank tile keeps its shape.** Three of the four blank together when the
- * link goes down, and a row that collapsed as it happened would move the
- * monitor under the reader's thumb at the moment the station went away. The
- * reading's line holds its height whether there is anything in it or not, so
- * what changes is the reading and never the layout.
+ * **A blank tile keeps its shape.** The build and the tracks blank together
+ * when the link goes down, and a row that collapsed as it happened would move
+ * the monitor under the reader's thumb at the moment the station went away.
+ * The reading's line holds its height whether there is anything in it or not,
+ * so what changes is the reading and never the layout.
  */
 export const tilesStyles = css`
   :host {
@@ -24,8 +25,8 @@ export const tilesStyles = css`
   }
 
   /* One reading: what it is called, and what it reads under it. It takes an
-     equal share of the width and may shrink, so four tiles are one row on a
-     laptop and two on a phone rather than a row that runs off the side. */
+     equal share of the width and may shrink, so a handful of tiles are one row
+     on a laptop and two on a phone rather than a row that runs off the side. */
   .tile {
     display: flex;
     flex: 1 1 8rem;
@@ -40,7 +41,7 @@ export const tilesStyles = css`
   }
 
   /* What the reading is called. Quieter and smaller than the reading itself:
-     the label says which of the four this is, and the answer is what is being
+     the label says which reading this is, and the answer is what is being
      read. */
   .of {
     color: var(--sl-color-neutral-500);
