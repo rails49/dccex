@@ -32,5 +32,9 @@
     "useDefineForClassFields": false,
     "noEmit": true
   },
-  "include": ["src", "vite.config.ts"]
+  // The page, the two configs and the checks that mount a component. The
+  // checks are in it for the reason the JavaScript modules above are: they are
+  // read by a person as the claim about what the page draws, and a claim that
+  // does not type-check is a claim about nothing (`ui/test/mounted.ts`, #126).
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
 }
