@@ -13,6 +13,12 @@ what the source owes a reader is the owner beside the number. The glossary
 carries the URL once (`CONTEXT.md`, **face**), which is where the name is
 resolved rather than only disambiguated.
 
+**A link is an owner too.** A citation written as the text of a link to one of
+the two files lands a reader on the decision itself, which is more than the
+owner beside the number gives them. The glossary, the root `README.md` and the
+mirror's page all cite it that way and none of them says an owner in words
+(#123).
+
 **The source is two trees.** The package is under `src/` and the page is not,
 so for as long as this read `src/` alone it was green while three bare
 citations sat in the newest code in the repository (#86).
@@ -40,12 +46,25 @@ ORG = (
     "0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md"
 )
 
+#: This repository's copy, which is superseded (ADR-0003), as a page links it:
+#: by path, and by a path relative to wherever that page sits. What says which
+#: file it is is the name on the end rather than the path in front of it.
+OURS = "0002-a-defect-in-copied-code-is-fixed-where-it-came-from.md"
+
 #: Whose the decision is, written before the number — across a line break as
 #: readily as not, because prose wraps. A wrapped line of the page's prose
 #: opens with the `*` its comment block is drawn with, so the break carries one
 #: and the owner is still beside the number. Either owner resolves the name;
 #: what is forbidden is neither.
 OWNED = re.compile(r"(the organisation's|this repository's)[\s*]+ADR-0002")
+
+#: A citation that is the text of a link to one of the two files. Following
+#: one resolves the number, so a link says whose it is without saying it in
+#: words. A link whose target is neither file says nothing a bare mention does
+#: not and is read as bare.
+LINKED = re.compile(
+    r"\[ADR-0002\]\((?:" + re.escape(ORG) + r"|[\w./-]*" + re.escape(OURS) + r")\)"
+)
 
 CITED = re.compile(r"ADR-0002")
 
@@ -70,7 +89,7 @@ def cited(text: str) -> list[str]:
     """Every mention of the number that does not say whose it is."""
     return [
         text[max(0, mention.start() - 40) : mention.end()]
-        for mention in CITED.finditer(OWNED.sub("", text))
+        for mention in CITED.finditer(LINKED.sub("", OWNED.sub("", text)))
     ]
 
 
@@ -125,6 +144,30 @@ def test_a_bare_citation_under_the_page_is_caught() -> None:
     loose = cited(written.replace(CITATION, STRUCK, 1))
     assert len(loose) == 1, f"the struck citation was not caught: {loose}"
     assert loose[0].endswith("what the page talks to (ADR-0002")
+
+
+def test_a_linked_citation_says_whose_it_is() -> None:
+    """A link to either file, which lands a reader on the decision itself.
+
+    The organisation's is linked at `ORG` wherever this repository links it at
+    all. This repository's is linked by path, from wherever the page doing the
+    linking sits, so both a page at the root and a page beside the file
+    resolve the number.
+    """
+    assert cited(f"its own app's face ([ADR-0002]({ORG})).") == []
+    assert cited(f"fixed where it came from ([ADR-0002](docs/adr/{OURS})).") == []
+    assert cited(f"the decision it supersedes ([ADR-0002](../adr/{OURS})).") == []
+
+
+def test_a_link_to_anything_else_is_not_an_owner() -> None:
+    """What resolves the number is where the link goes and not its text.
+
+    A link to some third page leaves a reader exactly where a bare mention
+    leaves them, so the scan reads it as one.
+    """
+    loose = cited("the decision ([ADR-0002](https://example.invalid/0002.md)).")
+    assert len(loose) == 1, f"a link to a third page was read as owned: {loose}"
+    assert loose[0].endswith("ADR-0002")
 
 
 def test_the_glossary_resolves_the_organisations_adr_0002() -> None:
