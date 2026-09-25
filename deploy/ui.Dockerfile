@@ -65,12 +65,14 @@ COPY ui/package.json ui/pnpm-lock.yaml ui/pnpm-workspace.yaml ./
 # `--frozen-lockfile`: the lock file is honoured rather than updated, so the
 # image is the versions this repository was checked at, and a lock file that
 # has drifted from `package.json` stops the build instead of being rewritten
-# inside it where nobody would see it. This is also the only place that
-# drift is caught: a node runs the page's own functions elsewhere in this
-# repository — the decoder's lines put through the real one
-# (`tests/ui/test_decoder.py`) — but those checks carry the `node` marker, the
-# gate does not collect them (`scripts/check.sh`), and none of them installs
-# anything.
+# inside it where nobody would see it. The workflow's `node` job installs from
+# this lock file the same way and catches the same drift, which it did not
+# before the components were mounted there (#126,
+# `.github/workflows/ci.yml`) — but the gate does not, so this is still where a
+# pull request that nothing else installed for goes red. The other half of that
+# job installs nothing at all: the page's own functions are run under a bare
+# node (`tests/ui/test_decoder.py`), and neither half is collected by
+# `scripts/check.sh`.
 RUN pnpm install --frozen-lockfile
 
 COPY ui/ ./
