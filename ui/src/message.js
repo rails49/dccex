@@ -23,12 +23,13 @@
  * makes the bytes a whole message at the device is the mirror's framing, which
  * every client of the port reaches the same way (ADR-0007 d.2).
  *
- * It is JavaScript with its types in JSDoc, as the decoder, the readings and
- * the listing are and for the same reason: the gate is Python and cannot run
- * a bundler, and a rule about what goes down a cable asserted against the
- * source that would produce it is not asserted. What a bare node can run, the
- * gate can put pairs through. `tsc` checks this file as it checks the rest
- * (`ui/tsconfig.json`).
+ * It is JavaScript with its types in JSDoc, as the page's other modules of
+ * that kind are — they are named in `tests/ui/test_decoder.py`'s docstring,
+ * which is where they are counted so that a header need not (#110) — and for
+ * the same reason: the gate is Python and cannot run a bundler, and a rule
+ * about what goes down a cable asserted against the source that would produce
+ * it is not asserted. What a bare node can run, the gate can put pairs
+ * through. `tsc` checks this file as it checks the rest (`ui/tsconfig.json`).
  */
 
 /** What the station wraps every message in. */
