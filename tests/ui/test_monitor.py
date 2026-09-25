@@ -540,3 +540,82 @@ def test_the_lines_scroll_and_not_the_pane_they_are_in() -> None:
     assert re.search(
         r"minmax\([^)]*\)$", rows.group(1)
     ), "the monitor's row grows with the conversation"
+
+
+#: One answer to `<s>`, as the station on the layout sent it (5.6.4, EX-CSB1,
+#: 2026-09-25).
+STATUS = [
+    "<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>",
+    "<p1 A>",
+    "<p1 B>",
+    "<p1 C>",
+    "<p1 D>",
+    "<p1>",
+    "<p1 MAIN>",
+    '<@ 0 2 "PWR On">',
+]
+
+
+def quiet(
+    said: list[tuple[str, bool]], last: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """What the monitor shows of `said`, given what each subject last said."""
+    ask = {"quiet": {"last": last or {}, "said": [list(line) for line in said]}}
+    answered: dict[str, Any] = run([ask])[0]
+    return answered
+
+
+def test_the_first_answer_to_a_poll_is_shown_whole() -> None:
+    """Nothing has been said about any of it yet, so all of it is news."""
+    assert quiet([(line, False) for line in STATUS])["shown"] == [True] * len(STATUS)
+
+
+def test_an_answer_that_repeats_the_last_one_is_not_shown() -> None:
+    """The log was a banner and seven power lines every five seconds, from
+    every open page. A second answer that says what the first said is left
+    out of the monitor."""
+    first = quiet([(line, False) for line in STATUS])
+    again = quiet([(line, False) for line in STATUS], first["last"])
+    assert again["shown"] == [False] * len(STATUS)
+
+
+def test_a_line_that_changed_is_shown_and_the_rest_are_not() -> None:
+    """Track B going off is the one thing in the answer worth reading."""
+    first = quiet([(line, False) for line in STATUS])
+    changed = [line.replace("<p1 B>", "<p0 B>") for line in STATUS]
+    shown = quiet([(line, False) for line in changed], first["last"])["shown"]
+    assert shown == [line == "<p0 B>" for line in changed]
+
+
+def test_each_track_is_its_own_subject() -> None:
+    """`<p1 A>` and `<p1 B>` in one answer are two readings, not a repeat."""
+    assert quiet([("<p1 A>", False), ("<p1 B>", False), ("<p1>", False)])["shown"] == [
+        True,
+        True,
+        True,
+    ]
+
+
+def test_currents_and_modes_are_shown_only_when_they_change() -> None:
+    """The per-track current and mode lines repeat on a poll the same way."""
+    said = [("<jI 13 2 0 0>", False), ("<= A MAIN>", False)]
+    first = quiet(said)
+    assert quiet(said, first["last"])["shown"] == [False, False]
+    assert quiet([("<jI 14 2 0 0>", False)], first["last"])["shown"] == [True]
+
+
+def test_a_line_that_is_not_a_status_line_is_always_shown() -> None:
+    """A turnout, a refusal, anything the monitor does not know: every time."""
+    said = [("<H 12 1>", False), ("<X>", False), ("<H 12 1>", False)]
+    assert quiet(said)["shown"] == [True, True, True]
+
+
+def test_what_this_page_sent_is_always_shown_and_hides_nothing() -> None:
+    """A line typed here is the operator's and is shown every time. It is not
+    the station speaking, so it does not count as the last thing a subject
+    said."""
+    first = quiet([("<= A MAIN>", False)])
+    said = [("<= A MAIN>", True), ("<= A MAIN>", True)]
+    answered = quiet(said, first["last"])
+    assert answered["shown"] == [True, True]
+    assert answered["last"] == first["last"]

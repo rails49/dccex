@@ -30,9 +30,9 @@
  * **translator** running to ask it anything. So this page asks, on its own
  * schedule, up its own stream, as a throttle would — and the **mirror** goes
  * on originating nothing, which is the whole of its correctness argument
- * (ADR-0010 d.2). The polls go up the way anything typed goes up, so they are
- * marked as this page's in the monitor and an operator can tell their own
- * traffic from the railroad's. The first one waits for the stream to say it is
+ * (ADR-0010 d.2). The polls go up the way anything typed goes up, but they
+ * are not written to the monitor, and the answers to them are shown only when
+ * they changed (ADR-0010 d.1, amended). The first one waits for the stream to say it is
  * open rather than for the schedule to come round: a poll written at a socket
  * that is still connecting is refused and goes nowhere, and a page that asked
  * there spent its first five seconds reporting a station that was answering as
@@ -55,6 +55,7 @@ import { LitElement, html, type TemplateResult } from "lit";
 
 import { clients, flash, releases } from "../face.js";
 import { type Said } from "../framing.js";
+import { quieted } from "../monitor.js";
 import {
   QUIET,
   asOf,
@@ -90,7 +91,8 @@ export const KEPT = 2000;
  * types most: the station answers it with the power state and its banner, and
  * those are the band's second reading and the **build** (ADR-0008 d.2, d.3).
  * It goes up as any typed message does, through the one rule about what a
- * whole message is (`message.js`).
+ * whole message is (`message.js`), but it is not written to the monitor: a
+ * line every five seconds that nobody typed is noise there.
  */
 const POLL = "<s>";
 
@@ -143,6 +145,10 @@ export class DccexApp extends LitElement {
    *  out of. It is not reactive: what a component draws is `readings`, and a
    *  second thing to draw would be a second answer to what the page knows. */
   #kept: Kept = QUIET;
+
+  /** What each status line's subject last said, so the monitor shows one only
+   *  when it changed (`quieted`, `monitor.js`). */
+  #said: Record<string, string> = {};
 
   /** What the next line kept is keyed by.
    *
@@ -266,7 +272,7 @@ export class DccexApp extends LitElement {
    * wants, whenever it arrives.
    */
   #ask(): void {
-    this.#sends(POLL);
+    this.#stream.send(POLL);
     const ask = ++this.#asks;
     void clients().then((count: number | null) => {
       if (ask !== this.#asks) {
@@ -301,6 +307,10 @@ export class DccexApp extends LitElement {
    * folding one in would be a page keeping its own link up by polling: the
    * band would then be saying that the page is running rather than that the
    * station is answering (ADR-0008, control ADR-0066).
+   *
+   * **A status line is kept only when it changed.** Every poll is answered
+   * with the same banner and power lines, and a monitor full of them hides
+   * what is new (`quieted`, `monitor.js`). The readings still hear every one.
    */
   #keep(said: Said[]): void {
     for (const line of said) {
@@ -309,7 +319,10 @@ export class DccexApp extends LitElement {
       }
     }
     this.#now();
-    const keyed = said.map((line: Said) => ({ ...line, key: this.#keys++ }));
+    const { shown, last } = quieted(this.#said, said);
+    this.#said = last;
+    const worth = said.filter((_line: Said, i: number) => shown[i]);
+    const keyed = worth.map((line: Said) => ({ ...line, key: this.#keys++ }));
     const kept = [...this.said, ...keyed];
     this.said = kept.length > KEPT ? kept.slice(kept.length - KEPT) : kept;
   }

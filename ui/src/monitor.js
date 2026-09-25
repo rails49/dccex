@@ -87,3 +87,51 @@ export function stamped(at) {
     `:${padded(at.getSeconds())}.${padded(at.getMilliseconds(), 3)}`
   );
 }
+
+/**
+ * What a status line is about, or `null` for a line that is not one.
+ *
+ * The station answers every poll with the same handful of lines: its banner,
+ * the power on each track, the power as a whole and the display. A line whose
+ * subject last said the same thing tells a reader nothing new, so the monitor
+ * shows one of these only when it changed. Every other line is always shown.
+ *
+ * @param {string} line a whole `<…>` message
+ * @returns {string | null}
+ */
+export function subject(line) {
+  const said =
+    /^<(?:p[01]( [A-Z]+)?|(i)DCC-EX\b.*|(@ \d+ \d+) .*|(j[A-Z]) .*|(= [A-Z]) .*)>$/.exec(
+      line,
+    );
+  if (said === null) {
+    return null;
+  }
+  const [, track, banner, display, currents, mode] = said;
+  return banner ?? display ?? currents ?? mode ?? `p${track ?? ""}`;
+}
+
+/**
+ * Which lines are worth showing, and what each subject last said.
+ *
+ * A line this page sent is always shown and is not the station saying
+ * anything, so it neither shows nor hides what the station says next.
+ *
+ * @param {Readonly<Record<string, string>>} last what each subject last said
+ * @param {readonly { line: string, sent: boolean }[]} said what arrived or
+ *   went, in order
+ * @returns {{ shown: boolean[], last: Record<string, string> }}
+ */
+export function quieted(last, said) {
+  const now = { ...last };
+  const shown = said.map(({ line, sent }) => {
+    const about = sent ? null : subject(line);
+    if (about === null) {
+      return true;
+    }
+    const changed = now[about] !== line;
+    now[about] = line;
+    return changed;
+  });
+  return { shown, last: now };
+}

@@ -60,6 +60,12 @@ own schedule, by sending whole `<…>` messages up its stream exactly as any
 client sends them — and it marks the lines it sent, so an operator can tell
 their own traffic from the railroad's.
 
+*Amended 2026-09-25:* the poll itself is no longer written to the monitor, and
+the station's answers to it are shown only when they changed. A `<s>` and eight
+unchanged lines every five seconds, from every open page, buried everything
+else. What an operator types is still marked as theirs. The poll still goes up
+the stream as any client's message does.
+
 **d.2** **The mirror originates nothing.** Every byte written to the device
 came from a client and arrived as a whole `<…>` message. Not on opening the
 device, not on reopening it after an outage, not on shutdown, not on a timer,

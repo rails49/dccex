@@ -20,6 +20,11 @@
 //
 //     {"at": 1767272645007}
 //
+// or lines to quiet, each with whether this page sent it, and what each
+// subject last said before they arrived:
+//
+//     {"quiet": {"last": {"p A": "<p1 A>"}, "said": [["<p1 A>", false]]}}
+//
 // The day an instant falls on is the machine's business and not the stamp's:
 // what comes back is a time and no date, which is what a person reading a
 // conversation as it arrives is correlating against.
@@ -29,7 +34,7 @@
 // and nothing else — no packages, no bundler, no DOM and no network. Stdin and
 // stdout are `tests/ui/each.mjs`'s.
 
-import { atBottom, stamped } from "../../ui/src/monitor.js";
+import { atBottom, quieted, stamped } from "../../ui/src/monitor.js";
 import { each } from "./each.mjs";
 
 // A day to hang a reading on. The stamp draws no date, so which one it is
@@ -41,6 +46,10 @@ const DAY = [2026, 0, 1];
 const answered = (ask) => {
   if ("scroller" in ask) {
     return { bottom: atBottom(ask.scroller) };
+  }
+  if ("quiet" in ask) {
+    const said = ask.quiet.said.map(([line, sent]) => ({ line, sent }));
+    return quieted(ask.quiet.last, said);
   }
   const at =
     "clock" in ask ? new Date(...DAY, ...ask.clock) : new Date(ask.at);

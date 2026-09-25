@@ -263,6 +263,11 @@ browser can hold:
 - the last two thousand lines are kept and the oldest are dropped. A monitor is
   what the station is saying now, and there is no history behind it to scroll
   into: the mirror keeps none (ADR-0010);
+- a status line — the banner, the power on a track or on all of them, the
+  display, a track's current or its mode — is shown only when it says
+  something different from the last one about the same thing. Every poll is
+  answered with the same eight lines, and every open page polls. The readings
+  still hear every line; it is only the monitor that leaves the repeats out;
 - a stream that closed is opened again after two seconds, because everything
   that ends one is something that ends — the cut-off, an outage past its grace,
   the app restarting (ADR-0007 d.2). Nothing is asked for on the new one and
@@ -412,8 +417,8 @@ tickets.
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
 else asks. So the page asks on its own schedule — `<s>` every five seconds, up
-the stream, through the same send an operator's typing goes through, so the
-polls are marked as this page's in the monitor — and the mirror goes on
+the stream, through the same send an operator's typing goes through, though
+the poll itself is not written to the monitor — and the mirror goes on
 originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
 Fifteen seconds without a word, which is three polls, and the **link** is down.
