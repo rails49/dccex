@@ -213,8 +213,8 @@ that did not go leaves the locomotives stopped and the power still on, which is
 a railroad nobody should walk up to thinking it is dead (#93).
 
 The control is on the release's own row and only on the releases that carry a
-firmware — a tag the mirror would refuse for having nothing to write is not a
-thing to offer. The warning opens under it and the yes is a press of its own
+firmware with a digest to check the write against (#81, #109) — a tag the
+mirror would refuse is not a thing to offer. The warning opens under it and the yes is a press of its own
 beside a cancel, because a sequence the operator declines is a flash that was
 not asked for rather than one that was refused. The step is drawn under the row
 rather than inside it, since the row can be shut while the station is away. And

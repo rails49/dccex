@@ -24,8 +24,8 @@ import { DccexReleases } from "../src/ui/dccex-releases.js";
 import { all, mounted, part, reads } from "./mounted.js";
 
 /** What the face answered: two releases with a firmware to write from and one
- *  published without one, newest last so that the ordering is drawn and not
- *  copied. */
+ *  with nothing here to write and check — no firmware, or none with a digest
+ *  (#81, #109) — newest last so that the ordering is drawn and not copied. */
 const CARRIED: Carried[] = [
   { tag: "v5.2.74", published: "2026-06-01T09:00:00Z", flashable: true },
   { tag: "v5.2.75", published: "2026-07-02T09:00:00Z", flashable: false },
