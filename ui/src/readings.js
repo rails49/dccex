@@ -5,9 +5,7 @@
  * Every reading about the station is the conversation, decoded on the page —
  * there is no second channel and nothing is inferred on one (ADR-0008 d.2) —
  * so what goes in here is lines and the moments they arrived, and what comes
- * out is the words on the chrome and on the tiles. The one reading that is not
- * the station's is how many **client**s are on the mirror's port, which is the
- * mirror's own business about itself and arrives from the **face** (d.4).
+ * out is the words on the chrome and on the tiles.
  *
  * **A pure function of what was said and of the moment it is asked for.** No
  * socket, no clock and no DOM: the page hands in its own clock, which is what
@@ -40,10 +38,36 @@ import { read } from "./decoder.js";
 export const SILENT_MS = 15000;
 
 /** What a tile reads where the page has no reading to put there. Blank rather
- *  than a dash or a zero: three of the tiles are the station talking, and a
- *  station that is not talking is an absence rather than a value (ADR-0008
- *  d.3, ADR-0009 d.2). */
+ *  than a dash or a zero: the tiles are the station talking, and a station
+ *  that is not talking is an absence rather than a value (ADR-0008 d.3,
+ *  ADR-0009 d.2). */
 const BLANK = "";
+
+/**
+ * How much of each new current reading goes into the one shown.
+ *
+ * The station's current sense is noisy at the low end, and a figure that
+ * jumps on every poll is hard to read. Each reading moves the shown value this
+ * fraction of the way towards it, so a steady draw settles in two or three
+ * polls and a single spike is halved.
+ */
+export const SMOOTHING = 0.5;
+
+/**
+ * What the page knows about one track.
+ *
+ * @typedef {object} Track
+ * @property {string | null} mode what the track is set to: MAIN, PROG, DC…
+ * @property {boolean | null} hot whether the track has power
+ * @property {number | null} milliamps the current it draws, smoothed
+ */
+
+/** A track nothing has been said about yet. */
+const UNKNOWN = /** @type {Track} */ ({ mode: null, hot: null, milliamps: null });
+
+/** The letters the station names its tracks with, in the order `<jI>` gives
+ *  their currents. */
+const LETTERS = "ABCDEFGH";
 
 /**
  * What the page has been told, and when — everything it keeps between one
@@ -58,20 +82,18 @@ const BLANK = "";
  *   the page's clock, in milliseconds
  * @property {boolean | null} hot whether the rails have power
  * @property {string | null} build what the station says it is running
- * @property {number | null} milliamps the current on the track
- * @property {number | null} clients how many are on the mirror's port, as the
- *   face last answered
+ * @property {Readonly<Record<string, Track>>} tracks each track the station
+ *   has said anything about, by its letter
  */
 
-/** A page that has just been opened: nothing said, and nothing asked of the
- *  face yet. The station is not called away — it is not called anything, which
- *  is what a link that is down says. */
+/** A page that has just been opened: nothing said yet. The station is not
+ *  called away — it is not called anything, which is what a link that is down
+ *  says. */
 export const QUIET = /** @type {Kept} */ ({
   spokeAt: null,
   hot: null,
   build: null,
-  milliamps: null,
-  clients: null,
+  tracks: {},
 });
 
 /**
@@ -82,10 +104,7 @@ export const QUIET = /** @type {Kept} */ ({
  * @property {boolean} answering whether the station is answering — the link
  * @property {boolean | null} hot whether the rails have power
  * @property {string | null} build what the station says it is running
- * @property {number | null} milliamps the current on the track
- * @property {number | null} clients how many are on the mirror's port
- * @property {number | null} quietFor how long since the station last said
- *   anything, in milliseconds
+ * @property {Readonly<Record<string, Track>>} tracks each track, by its letter
  */
 
 /**
@@ -98,6 +117,7 @@ export const QUIET = /** @type {Kept} */ ({
  * @typedef {object} Shown
  * @property {string} of which reading it is
  * @property {string} reads the words a person sees
+ * @property {boolean} [lit] for a light rather than words: whether it is on
  */
 
 /**
@@ -121,43 +141,42 @@ export const QUIET = /** @type {Kept} */ ({
  */
 export function heard(kept, line, at) {
   const reading = read(line);
+  const tracks = { ...kept.tracks };
+  if (reading?.track !== undefined) {
+    const track = tracks[reading.track] ?? UNKNOWN;
+    tracks[reading.track] = {
+      ...track,
+      mode: reading.mode ?? track.mode,
+      hot: reading.hot ?? track.hot,
+    };
+  }
+  reading?.currents?.forEach((milliamps, i) => {
+    const letter = LETTERS[i];
+    if (letter === undefined) {
+      return;
+    }
+    const track = tracks[letter] ?? UNKNOWN;
+    const was = track.milliamps;
+    tracks[letter] = {
+      ...track,
+      milliamps: was === null ? milliamps : was + SMOOTHING * (milliamps - was),
+    };
+  });
   return {
     ...kept,
     spokeAt: at,
-    hot: reading?.hot ?? kept.hot,
+    hot: reading?.track === undefined ? (reading?.hot ?? kept.hot) : kept.hot,
     build: reading?.build ?? kept.build,
-    milliamps: reading?.milliamps ?? kept.milliamps,
+    tracks,
   };
-}
-
-/**
- * How many clients the face says are on the mirror's port, folded in.
- *
- * It is kept apart from the station's own readings because it is a different
- * app answering about itself, and it is why the clients tile goes on reading
- * through an outage the other three blank in: a station that has stopped
- * talking says nothing about who is listening (ADR-0008 d.4).
- *
- * A face that could not be asked answers `null` and the tile blanks: a page
- * drawing `0` for an app it could not reach would be reporting an empty port
- * it never saw, and zero is what the face says when the port is empty
- * (`face.ts`, ADR-0009 d.2).
- *
- * @param {Kept} kept what the page had
- * @param {number | null} clients what the face answered, or nothing
- * @returns {Kept} what the page has now
- */
-export function counted(kept, clients) {
-  return { ...kept, clients };
 }
 
 /**
  * The readings as they stand at `now`.
  *
- * **Three of them blank together when the link goes down**, and that is the
- * correct reading rather than a gap: the build, the current and the last thing
- * said are all the station talking, and the station is not talking (ADR-0008
- * d.3). The build in particular is never held over — a build from before a
+ * **They all blank together when the link goes down**, and that is the
+ * correct reading rather than a gap: the build and the tracks are the station
+ * talking, and the station is not talking (ADR-0008 d.3). The build in particular is never held over — a build from before a
  * flash reported as the one on the board would be this page saying what it
  * cannot see — and it fills again by itself when the station comes back and
  * says which one it is running.
@@ -167,25 +186,10 @@ export function counted(kept, clients) {
  * @returns {Readings}
  */
 export function asOf(kept, now) {
-  const quietFor = kept.spokeAt === null ? null : now - kept.spokeAt;
-  const answering = quietFor !== null && quietFor <= SILENT_MS;
+  const answering = kept.spokeAt !== null && now - kept.spokeAt <= SILENT_MS;
   return answering
-    ? {
-        answering,
-        hot: kept.hot,
-        build: kept.build,
-        milliamps: kept.milliamps,
-        clients: kept.clients,
-        quietFor,
-      }
-    : {
-        answering,
-        hot: null,
-        build: null,
-        milliamps: null,
-        clients: kept.clients,
-        quietFor: null,
-      };
+    ? { answering, hot: kept.hot, build: kept.build, tracks: kept.tracks }
+    : { answering, hot: null, build: null, tracks: {} };
 }
 
 /**
@@ -217,46 +221,36 @@ export function band(readings) {
 }
 
 /**
- * What the tiles read: the station's four particulars, in the order they are
- * drawn.
+ * What the tiles read, in the order they are drawn: a light for the **link**,
+ * the **build**, then a tile per track.
  *
- * The **build** is a tile rather than a reading on the band because it is long
- * and because it belongs beside the releases it gets compared against. The
- * rails being hot is the band's for the opposite reason: it is true of the
- * whole system and short enough to live on the chrome (CONTEXT.md).
+ * The light is the link at a glance, green or red, where the band says it in
+ * words. The **build** is a tile rather than a reading on the band because it
+ * is long and because it belongs beside the releases it gets compared against.
+ *
+ * A track reads `off` when the station says its power is off, whatever
+ * current was last measured on it, and its current in milliamps otherwise. A
+ * track set to `NONE` is not in use and gets no tile.
  *
  * @param {Readings} readings
  * @returns {Shown[]}
  */
 export function tiles(readings) {
+  const tracks = Object.entries(readings.tracks)
+    .filter(([, track]) => track.mode !== "NONE")
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([letter, track]) => ({
+      of: track.mode === null ? `track ${letter}` : `track ${letter} · ${track.mode}`,
+      reads:
+        track.hot === false
+          ? "off"
+          : track.milliamps === null
+            ? BLANK
+            : `${Math.round(track.milliamps)} mA`,
+    }));
   return [
+    { of: "link", reads: BLANK, lit: readings.answering },
     { of: "build", reads: readings.build ?? BLANK },
-    {
-      of: "current",
-      reads: readings.milliamps === null ? BLANK : `${readings.milliamps} mA`,
-    },
-    {
-      of: "clients",
-      reads: readings.clients === null ? BLANK : `${readings.clients}`,
-    },
-    {
-      of: "last heard",
-      reads: readings.quietFor === null ? BLANK : ago(readings.quietFor),
-    },
+    ...tracks,
   ];
-}
-
-/**
- * How long ago something was said, in the words a person reads.
- *
- * Seconds and no further, because the link is down before a minute of it and
- * the tile blanks with the link: a unit this tile can never reach would be a
- * sentence nobody ever read.
- *
- * @param {number} ms
- * @returns {string}
- */
-function ago(ms) {
-  const seconds = Math.floor(ms / 1000);
-  return seconds === 0 ? "just now" : `${seconds}s ago`;
 }

@@ -4,10 +4,10 @@
  *
  * What it makes of a line is two things and they are one reading: the **gloss**
  * the monitor puts beside the bytes, and the fact the band and the tiles are
- * built out of — the rails hot, the **build** on the station, the milliamps on
- * a track. Both come off the same line and the same regular expression, so the
- * page cannot show a sentence it has not made a reading of or a reading it
- * cannot say (ADR-0008 d.2).
+ * built out of — the rails hot, the **build** on the station, each track's
+ * power, mode and milliamps. Both come off the same line and the same regular
+ * expression, so the page cannot show a sentence it has not made a reading of
+ * or a reading it cannot say (ADR-0008 d.2).
  *
  * A pure function of the line and nothing else (ADR-0009 d.1) — no socket, no
  * state carried between calls, no clock and no DOM — so what it makes of a
@@ -52,7 +52,9 @@ const CLOSE = ">";
  * @property {string} say the plain sentence the monitor shows beside the bytes
  * @property {boolean} [hot] whether the rails have power
  * @property {string} [build] what the station says it is running
- * @property {number} [milliamps] the current on a track
+ * @property {string} [track] which track, A to H, a power or mode line is about
+ * @property {string} [mode] what a track is set to: MAIN, PROG, DC and so on
+ * @property {number[]} [currents] the milliamps on each track, A first
  */
 
 /**
@@ -74,12 +76,14 @@ function power(rest) {
   }
   const hot = said[1] === "1";
   const state = hot ? "on" : "off";
+  const track = /^[A-H]$/.test(said[2] ?? "") ? { track: said[2] } : {};
   return {
     say:
       said[2] === undefined
         ? `track power is ${state}`
         : `${said[2]} track power is ${state}`,
     hot,
+    ...track,
   };
 }
 
@@ -145,7 +149,49 @@ function current(rest) {
   }
   return {
     say: `the ${said[1]} track is drawing ${said[2]} milliamps`,
-    milliamps: Number(said[2]),
+  };
+}
+
+/**
+ * The current on every track, as the station measures it: `<jI 13 2 0 0>`,
+ * in milliamps, track A first. `<JI>` asks for it.
+ *
+ * Only the `I` form is read. `<jG …>` is the same shape and is each track's
+ * limit rather than what it is drawing.
+ *
+ * @param {string} rest what follows the `j`
+ * @returns {Reading | null}
+ */
+function currents(rest) {
+  const said = /^I((?: -?\d+)+)$/.exec(rest);
+  if (said === null) {
+    return null;
+  }
+  const milliamps = said[1].trim().split(" ").map(Number);
+  return {
+    say: `the tracks are drawing ${milliamps.join(", ")} milliamps`,
+    currents: milliamps,
+  };
+}
+
+/**
+ * What a track is set to: `<= A MAIN>`. `<=>` asks for every track.
+ *
+ * A DC track carries its cab after the mode (`<= C DC 3>`); the mode is what
+ * is read, and the cab is left on the line.
+ *
+ * @param {string} rest what follows the `=`
+ * @returns {Reading | null}
+ */
+function mode(rest) {
+  const said = /^([A-H]) ([A-Z]+)(?: \d+)?$/.exec(rest);
+  if (said === null) {
+    return null;
+  }
+  return {
+    say: `track ${said[1]} is ${said[2]}`,
+    track: said[1],
+    mode: said[2],
   };
 }
 
@@ -169,6 +215,8 @@ const READS = {
   H: turnout,
   i: banner,
   c: current,
+  j: currents,
+  "=": mode,
   X: rejected,
 };
 

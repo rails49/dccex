@@ -67,6 +67,10 @@ CASES: dict[str, str] = {
     ),
     "<X>": "the station rejected that command",
     " <p0> ": "track power is off",
+    "<p0 B>": "B track power is off",
+    "<jI 13 2 0 0>": "the tracks are drawing 13, 2, 0, 0 milliamps",
+    "<= A MAIN>": "track A is MAIN",
+    "<= C DC 3>": "track C is DC",
 }
 
 #: The lines that carry a fact as well as a sentence, and the fact they carry.
@@ -78,7 +82,10 @@ FACTS: dict[str, dict[str, object]] = {
     "<p1 MAIN>": {"hot": True},
     " <p0> ": {"hot": False},
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>": {"build": "9db6d10"},
-    "<c CurrentMAIN 123 C Milli 0 0 4000 1000>": {"milliamps": 123},
+    "<p0 B>": {"hot": False, "track": "B"},
+    "<jI 13 2 0 0>": {"currents": [13, 2, 0, 0]},
+    "<= A MAIN>": {"track": "A", "mode": "MAIN"},
+    "<= C DC 3>": {"track": "C", "mode": "DC"},
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
@@ -95,6 +102,10 @@ SILENT: tuple[str, ...] = (
     "<H twelve 1>",
     "<X 1>",
     "<c CurrentMAIN>",
+    "<jG 1233 1233 1233 1233>",
+    "<jI>",
+    "<= Z MAIN>",
+    "<= A>",
     "<c CurrentMAIN 123 C Amps 0 0 4000 1000>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10",
@@ -200,7 +211,7 @@ def reads() -> set[str]:
     on (`READS`)."""
     table = re.search(r"const READS = \{(.*?)\n\};", DECODER.read_text(), re.DOTALL)
     assert table is not None, "the decoder has no table of what it knows"
-    return set(re.findall(r"^\s*(\S+):", table.group(1), re.MULTILINE))
+    return set(re.findall(r'^\s*"?([^\s"]+)"?:', table.group(1), re.MULTILINE))
 
 
 def test_every_line_the_page_glosses_has_a_case() -> None:

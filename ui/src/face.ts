@@ -31,47 +31,6 @@ import { carried, type Carried } from "./releases.js";
  *  a request (ADR-0004 d.2). */
 export const FACE = "/dccex-usb";
 
-/** Where how many **client**s are on the mirror's port is asked. It is the one
- *  reading on the page the station cannot make: a command station knows
- *  nothing about who is listening to it, and the app holding the port does
- *  (ADR-0008 d.4, `face.py`). */
-export const CLIENTS_PATH = `${FACE}/clients`;
-
-/** What the count comes back under. */
-const CLIENTS = "clients";
-
-/**
- * How many clients are on the mirror's port, or `null` where the face did not
- * say.
- *
- * **Nothing said is not nobody there.** A face that is away, an answer that is
- * not a count, a status that is not a 200 — all of them come back as `null`
- * and the tile blanks, because a page drawing `0` for an app it could not ask
- * would be reporting an empty port it never saw (ADR-0009 d.2). Zero is what
- * the face says when the port is empty, and on the box this UI exists for that
- * is the ordinary evening.
- *
- * It answers rather than raising for the same reason: this is one reading on a
- * page whose other readings are arriving on the stream, and a rejection left
- * loose would be a tile taking the rest of them down with it.
- */
-export async function clients(): Promise<number | null> {
-  try {
-    const answered = await fetch(CLIENTS_PATH);
-    if (!answered.ok) {
-      return null;
-    }
-    const said: unknown = await answered.json();
-    if (typeof said !== "object" || said === null) {
-      return null;
-    }
-    const count = (said as Record<string, unknown>)[CLIENTS];
-    return typeof count === "number" ? count : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Where the **release**s the configured source carries are asked for. The
  *  page asks its own app's face and never the release API: a UI talks to the
  *  bus, the store and its own app's face and nothing else (the organisation's
@@ -86,8 +45,8 @@ const RELEASES = "releases";
  * The releases the configured source carries, or `null` where the face did
  * not say.
  *
- * **Nothing said is not nothing published**, for the reason `clients` above
- * answers `null`: a face that is away, an answer that is not a list of
+ * **Nothing said is not nothing published**, so anything but an answer
+ * comes back as `null`: a face that is away, an answer that is not a list of
  * releases, a status that is not a 200 — an empty list drawn for any of them
  * would be this page reporting a source it never read, and would send somebody
  * to a release API that is perfectly well (ADR-0009 d.2). The source carrying
@@ -162,7 +121,7 @@ const REASON = "reason";
  * What this page says instead is `UNANSWERED`, and only where there was no
  * answer to read.
  *
- * It answers rather than raising, as `clients` and `releases` above do: a
+ * It answers rather than raising, as `releases` above does: a
  * rejection left loose would be a sequence that stopped with nothing said.
  */
 export async function flash(tag: string): Promise<Wrote> {
