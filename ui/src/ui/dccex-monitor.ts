@@ -136,7 +136,7 @@ export interface Keyed extends Said {
  *  where in the view that row sat.
  *
  *  Not a number of pixels from the top of the conversation. The page drops the
- *  oldest lines at capacity (`KEPT`, `dccex-app.ts`), so what a trim takes is
+ *  oldest lines at capacity (`KEPT`, `monitor.js`), so what a trim takes is
  *  the top of that list, and a view left at the same `scrollTop` is looking at
  *  a different line afterwards. A row is not moved out from under a reader by
  *  that — it is carried up along with everything below what went — so putting
