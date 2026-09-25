@@ -263,15 +263,17 @@ Which of them is newest is the page's question rather than this app's: the
 dates go back as the source stamped them and the ordering is done where the
 list is drawn (docs/ui/README.md).
 
-The third is how many **client**s are on 2560 at the moment it is asked, and
-it is the one reading on the page that is not the station talking: a command
+The third is how many **client**s are on 2560 at the moment it is asked, and it
+was the one reading the page drew that is not the station talking: a command
 station knows nothing about who is listening to it, and the app holding the
 port does ([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
-d.4, #7). A count and not a list — clients are equal here and the mirror does
-not know which of them is which (CONTEXT.md) — read off the fan-out at the
-question rather than kept, so a throttle that has gone is not one a page goes
-on being shown. Nobody on the port is `0` and an answer like any other: on the
-box this UI exists for, a page and nothing else is the ordinary evening.
+d.4, #7). The page no longer draws it and this face still answers it (#111,
+docs/ui/README.md). A count and not a list — clients are equal here and the
+mirror does not know which of them is which (CONTEXT.md) — read off the fan-out
+at the question rather than kept, so a throttle that has gone is not one a
+caller is answered with. Nobody on the port is `0` and an answer like any
+other: on the box this UI exists for, a page and nothing else is the ordinary
+evening.
 
 The second is [the flash](#writing-the-firmware), and the answer comes back
 when it is over: a minute or two, because that is how long writing four

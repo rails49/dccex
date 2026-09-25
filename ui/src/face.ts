@@ -14,13 +14,12 @@
  * them would follow.
  *
  * **Every address here is built from that prefix and carries nothing on it.**
- * The two things the page asks — how many **client**s are on the mirror's
- * port, and what **release**s the configured source carries — are questions
- * about the app rather than questions with parameters, and the one thing it
- * asks *for* names a **tag** and nothing else: where releases are read from is
- * that app's own configuration, and a page that could name it would be a page
- * deciding what the command station is offered to run (ADR-0042,
- * `firmware.py`).
+ * The one thing the page asks — what **release**s the configured source
+ * carries — is a question about the app rather than a question with
+ * parameters, and the one thing it asks *for* names a **tag** and nothing
+ * else: where releases are read from is that app's own configuration, and a
+ * page that could name it would be a page deciding what the command station is
+ * offered to run (ADR-0042, `firmware.py`).
  */
 
 import { UNANSWERED, WROTE, type Wrote } from "./flash.js";
