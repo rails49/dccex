@@ -616,6 +616,16 @@ def test_the_deploy_writes_down_what_it_replaced_and_keeps_it() -> None:
     assert "prune" not in ran and "--rmi" not in ran, "the deploy prunes something"
 
 
+def test_the_rollback_never_builds() -> None:
+    """ADR-0005 d.7 as amended for #41: with the old image pruned, a plain
+    `up -d` builds the current checkout under the older commit's name."""
+    for page in (DEPLOY, ROOT / "docs" / "dccex_usb" / "README.md"):
+        said = page.read_text()
+        assert "--env-file .env up -d --no-build" in said, page.name
+        bare = re.search(r"--env-file \.env up -d$", said, re.MULTILINE)
+        assert not bare, page.name
+
+
 def test_the_gate_is_still_one_command_with_one_exit_code() -> None:
     """The check that starts the built image needs a daemon and the page's
     JavaScript modules need a node, so each carries a marker and the gate
