@@ -28,8 +28,9 @@ from typing import Any
 
 import pytest
 
-from tests.ui.node import ran
+from tests.ui.node import HELD, ran
 from tests.ui.test_look import UI
+from tests.ui.test_stream import code
 
 #: The readings, and the module they are the whole of.
 READINGS = UI / "src" / "readings.js"
@@ -317,10 +318,19 @@ def test_the_readings_hold_no_clock_and_no_socket() -> None:
     Held against the source because those are the reaches that would end it:
     a module that read the clock itself could not be asked what the page shows
     fifteen seconds from now, which is the whole of what is asserted above.
+
+    The whole of `HELD` rather than the five names this module was written
+    with. A DOM and a `fetch` would spoil it exactly as a clock would, and a
+    list that named only some of them held this module to less than its
+    siblings for no reason anybody wrote down (#122).
+
+    The one `import` is the **decoder**, and it is the point: a reading is the
+    conversation decoded on the page (ADR-0008 d.2), so the module that folds
+    the lines in is the module that asks what they mean.
     """
-    source = READINGS.read_text()
+    source = code(READINGS.read_text())
     assert 'from "./decoder.js"' in source, "the readings read a line themselves"
-    for held in ("Date", "setTimeout", "setInterval", "window", "WebSocket"):
+    for held in HELD:
         assert held not in source, f"the readings reach {held}"
 
 
