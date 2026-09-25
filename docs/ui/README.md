@@ -262,8 +262,8 @@ foot.
   said, so an operator can tell their own traffic from the railroad's.
 - It follows the newest line while the view is at the bottom and stays put once
   it has been scrolled up, so reading back does not fight the stream — including
-  across a trim, where the lines it is measured from are the ones that go. It
-  can be paused, and it can be cleared.
+  across a trim, where the lines it is measured from are the ones that go. A
+  pause and a clear are still to come, each under its own ticket.
 
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
