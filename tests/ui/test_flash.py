@@ -307,7 +307,7 @@ def test_a_release_is_chosen_once_at_a_time() -> None:
 
 def test_the_page_hands_the_row_its_stream_and_its_face() -> None:
     """A pane holding a counterparty of its own would be a second answer to
-    what the page talks to (ADR-0002).
+    what the page talks to (the organisation's ADR-0002).
 
     The stop and the cut go up the same `send` an operator's typing goes up, so
     they are marked as this page's in the monitor and an operator can see what
@@ -336,10 +336,10 @@ def test_the_sequence_reaches_nothing_of_its_own() -> None:
 
 def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
     """A UI talks to the bus, the store and its own app's face and nothing
-    else (ADR-0002), and what a caller may name is a **tag**: where releases
-    are read from is the app's configuration, and a body that named a source
-    would let anyone on the wifi choose what the command station is offered to
-    run (ADR-0042, `firmware.py`)."""
+    else (the organisation's ADR-0002), and what a caller may name is a
+    **tag**: where releases are read from is the app's configuration, and a
+    body that named a source would let anyone on the wifi choose what the
+    command station is offered to run (ADR-0042, `firmware.py`)."""
     asking = code(FACE.read_text())
     assert "FLASH_PATH = `${FACE}/flash`" in asking, "the page builds no address"
     writing = asking[asking.index("export async function flash(") :]
