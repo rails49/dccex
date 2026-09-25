@@ -129,7 +129,7 @@ const PUBLISHED = "published";
 const FLASHABLE = "flashable";
 
 /**
- * The releases in `document`, as the page reads what the face answered, or
+ * The releases in `answer`, as the page reads what the face answered, or
  * `null` where it is not a list of releases at all.
  *
  * **This is `face.py`'s `carried()` at the other end of the wire.** Both read
@@ -162,15 +162,23 @@ const FLASHABLE = "flashable";
  * one rather than by reading the module that would (`tests/ui/test_releases.py`,
  * ADR-0009 d.3). What is left in `face.ts` is the asking.
  *
- * @param {unknown} document what the face answered under `releases`
+ * **What it is handed is not called `document`.** A `releases` document is
+ * what arrives, and the prose above says so, but that word is a browser's
+ * global and it is the literal the sibling purity check greps `framing.js`
+ * and `monitor.js` for, to hold them to the claim this module makes about
+ * itself (`tests/ui/test_stream.py`, #120). So the parameter says what the
+ * thing is — the face's answer — and no reader has to work out which
+ * `document` a line means.
+ *
+ * @param {unknown} answer what the face answered under `releases`
  * @returns {Carried[] | null} the releases, or nothing said
  */
-export function carried(document) {
-  if (!Array.isArray(document)) {
+export function carried(answer) {
+  if (!Array.isArray(answer)) {
     return null;
   }
   /** @type {unknown[]} */
-  const listed = document;
+  const listed = answer;
   const found = listed.flatMap((entry) => {
     if (typeof entry !== "object" || entry === null) {
       return [];
