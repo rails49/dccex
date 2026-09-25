@@ -28,42 +28,87 @@ question.** A citation can resolve to a file in `docs/adr/` and still leave a
 reader on the wrong decision: there is one numbered 0002 here and another in
 `rails49/.github`, and the organisation's ADR-0002 is cited here often enough
 that the number owes a reader an owner of its own. Holding it to one is
-`tests/test_citations_resolve.py`, over a wider reach than this one, and a
-citation of that number saying neither owner is red there rather than here.
+`tests/test_citations_resolve.py`, over the same trees as this one since #150,
+and a citation of that number saying neither owner is red there rather than
+here.
 
-**What is read.** `CONTEXT.md`, the package under `src/` with the provenance
-note beside it, and every page of `docs/`. That is where the unqualified
-citations were found and it is what #128 asked for. The page under `ui/src/`
-and the checks under `tests/` cite `control`'s numbers bare in places too;
-bringing them into reach is a change of its own, the way each widening of the
-module beside this one was (#86, #117, #123).
+**What is read.** Every tree a reader of this repository reads: the two pages
+at the root, the package under `src/` with the provenance note beside it,
+every page of `docs/`, the page's own modules and the stylesheets beside them
+under `ui/src/`, the suites that mount its components under `ui/test/`, the
+page beside the look rules' copy, every check under `tests/` and the node
+runners among them, and what the box is built and served from under `deploy/`.
+The same trees the module beside this one reads, so a number owes a reader an
+owner in the same places whichever half of the rule is asking (#150).
 
-**What is deliberately not.** `docs/adr/`. An ADR is a record of what was
-decided at the time and is not edited to satisfy a check (#123): each one
-names `control`'s repository in its **Related:** links and then uses the
-number alone in the prose below it, which is a shorthand that reads inside
-one page. This module is not read either, for want of being under a tree this
-reads at all — the bare citations in it are what the scan is run over.
+Each widening came of bare citations sitting where nothing was looking. #128
+found the ones under `CONTEXT.md`, `src/` and `docs/`, which is what this
+module was written for; thirty-six more sat under `ui/`, `tests/` and
+`deploy/` for as long as it read those three alone, one of them in the image
+the box runs (#150, #151).
+
+**What is deliberately not.** `docs/adr/` and this module, each written out
+beside `PROSE` with its reason. An ADR is a record of what was decided at the
+time and is not edited to satisfy a check (#123): each one names `control`'s
+repository in its **Related:** links and then uses the number alone in the
+prose below it, which is a shorthand that reads inside one page. The bare
+citations in this module are what the scan is run over.
+
+`ui/look/tokens.css` is not read either, and is not globbed rather than
+excluded: it is `rails49/.github`'s file, copied verbatim and pinned to the
+commit it was taken at, and the two bare citations in it are that
+repository's prose read in that repository. Qualifying them here would be an
+edit to a copy whose whole use is diffing clean against its source
+(`ui/look/README.md`).
+
+**Three trees are left for the next widening**, and are named here rather than
+left to be rediscovered: the compose files and `scripts/` at the root, and
+`ui`'s own configuration beside the page. Each carries citations, the one live
+violation among them is already fixed by hand (`compose.box.yaml`, #150), and
+the globs a `.yaml`, a `.sh` and a `.json` need are a change of its own — the
+way each widening before it was (#86, #117, #123, #150).
 """
 
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+#: This module, which is not read. `tests/` is read now (#150), so the
+#: exclusion has to be written down: the bare citations here are the scan's
+#: own test data and a scan that read this file would be red on them.
+SELF = Path(__file__).resolve()
+
+ROOT = SELF.parent.parent
 
 #: The records, which are not read, for the reason written above them.
 ADRS = ROOT / "docs" / "adr"
 
-#: What this scan reads, tree by tree and with the depth in the glob: the
-#: glossary, the package's prose and the provenance note beside it, and the
-#: pages under `docs/`. The root is named file by file rather than globbed —
-#: `README.md` at the root is the page's business and is read by the module
-#: beside this one, which owns the number both repositories carry.
+#: What this scan reads, tree by tree and with the depth in the glob: the two
+#: pages at the root, the package's prose and the provenance note beside it,
+#: the pages under `docs/`, the page's modules and the stylesheets beside them,
+#: the suites that mount its components, the page beside the look rules' copy,
+#: the checks under `tests/` with the node runners among them, and what the box
+#: is built and served from. The root is read flat — everything below it worth
+#: reading is a tree of its own here, and the rest is what a build, an
+#: environment or a package manager left there.
+#:
+#: `ui/look/` is read for its README alone. `tokens.css` beside it is another
+#: repository's file, copied verbatim and pinned to a commit so that diffing
+#: the two is a diff of the same thing, and its prose is that repository's to
+#: qualify.
 PROSE = {
-    ROOT: ("CONTEXT.md",),
+    ROOT: ("*.md",),
     ROOT / "src": ("**/*.py", "**/*.md"),
     ROOT / "docs": ("**/*.md",),
+    ROOT / "ui" / "src": ("**/*.ts", "**/*.js", "**/*.css", "**/*.md"),
+    ROOT / "ui" / "test": ("**/*.ts",),
+    ROOT / "ui" / "look": ("*.md",),
+    ROOT / "tests": ("**/*.py", "**/*.mjs"),
+    ROOT / "deploy": ("*Dockerfile", "*.conf"),
 }
+
+#: The two things under those trees that are not read, each for the reason
+#: written above it.
+NOT_READ = (ADRS, SELF)
 
 #: `control`'s decisions as this repository cites them, and what each one
 #: decided. Written out rather than read off the links that carry them, for
@@ -123,7 +168,7 @@ def prose() -> list[Path]:
         for tree, kinds in PROSE.items()
         for kind in kinds
         for page in tree.glob(kind)
-        if not any(spot == page or spot in page.parents for spot in (ADRS,))
+        if not any(spot == page or spot in page.parents for spot in NOT_READ)
     )
 
 
@@ -190,6 +235,30 @@ def struck(page: Path, citation: str) -> str:
     return written.replace(citation, citation.replace("control ", ""), 1)
 
 
+#: A bare citation of a decision that is `control`'s, for planting in a page
+#: the scan is shown reaching. The number is one of `CONTROL`'s, so both halves
+#: of the rule catch it: `unresolved()` because `docs/adr/` holds no 0042, and
+#: `borrowed()` whatever `docs/adr/` comes to hold.
+PLANT = "both servers bind every interface (ADR-0042)"
+
+
+def planted(page: Path) -> str:
+    """The page's text with a bare citation of `control`'s written after it.
+
+    Planted rather than struck, because two of the three trees #150 brought
+    into reach carry no citation of `control`'s to strike an owner off. What is
+    held either way is the reach and not the pattern: a page nothing reads is a
+    page a bare citation can sit in for good.
+
+    The plant goes on the text the scan read rather than on the file, so a run
+    that dies leaves the tree as it found it, and that the page is read is
+    asserted first — a tree that moved would otherwise leave a caller passing
+    on a page the scan never looks at.
+    """
+    assert page in prose(), f"{page.relative_to(ROOT)} is not read"
+    return f"{page.read_text()}\n{PLANT}\n"
+
+
 def test_every_bare_citation_names_a_decision_that_is_here() -> None:
     loose = {
         page.relative_to(ROOT).as_posix(): where
@@ -217,11 +286,20 @@ def test_no_decision_of_controls_is_cited_bare() -> None:
 def test_the_prose_cites_controls_decisions_at_all() -> None:
     """Named so the check above cannot pass by looking at nothing.
 
-    Every page that leans on a decision made in `control`: the six modules of
-    the package that came across with its prose, the glossary, and the two
-    READMEs that say what the mirror and the page do. `firmware.py` cites five
-    of the seven, which is the file whose whole subject — writing a build onto
-    the station the mirror is holding — was settled over there.
+    Every page that leans on a decision made in `control`, over every tree the
+    scan reads: the glossary and the root page; the two READMEs that say what
+    the mirror and the page do; the six modules of the package that came across
+    with its prose and five of the six suites that check them; the check that
+    holds the package to importing nothing, and four of the page's suites; four
+    of the page's own modules and two of its components; and the `Dockerfile`
+    the box runs the mirror from. `firmware.py` cites five of the seven
+    numbers, which is the file whose whole subject — writing a build onto the
+    station the mirror is holding — was settled over there.
+
+    Written out rather than counted, so that a tree falling out of `PROSE` is
+    red here as well as quiet above. Eighteen of these are pages only #150
+    brought into reach; before it the set was the nine under `CONTEXT.md`,
+    `src/` and `docs/`.
     """
     said = {
         page.relative_to(ROOT).as_posix()
@@ -233,6 +311,8 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
     }
     assert said == {
         "CONTEXT.md",
+        "README.md",
+        "deploy/Dockerfile",
         "docs/dccex_usb/README.md",
         "docs/ui/README.md",
         "src/dccex_usb/__main__.py",
@@ -241,6 +321,22 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
         "src/dccex_usb/framing.py",
         "src/dccex_usb/station.py",
         "src/dccex_usb/stream.py",
+        "tests/dccex_usb/test_face.py",
+        "tests/dccex_usb/test_firmware.py",
+        "tests/dccex_usb/test_main.py",
+        "tests/dccex_usb/test_station.py",
+        "tests/dccex_usb/test_stream.py",
+        "tests/test_nothing_reaches_in.py",
+        "tests/ui/test_flash.py",
+        "tests/ui/test_page.py",
+        "tests/ui/test_readings.py",
+        "tests/ui/test_releases.py",
+        "ui/src/face.ts",
+        "ui/src/flash.js",
+        "ui/src/readings.js",
+        "ui/src/releases.js",
+        "ui/src/ui/dccex-app.ts",
+        "ui/src/ui/dccex-releases.ts",
     }
 
 
@@ -270,6 +366,47 @@ def test_a_struck_owner_under_the_docs_is_caught() -> None:
     assert len(unresolved(text)) == 1, unresolved(text)
     assert borrowed(text) == unresolved(text)
     assert unresolved(text)[0].endswith("read a\nlog on the box (ADR-0050")
+
+
+def test_a_bare_citation_under_the_pages_own_suites_is_caught() -> None:
+    """A plant in `ui/test/`, where `vitest` mounts the components (#126).
+
+    The suites there cite this repository's ADR-0008 and ADR-0009 and none of
+    `control`'s, so there is no owner in the tree to strike: what is planted is
+    the bare citation itself, and what it holds is that the tree is read at
+    all. Before #150 nothing under `ui/` was read, and the assertion in
+    `planted()` is the one that would have failed.
+    """
+    text = planted(ROOT / "ui" / "test" / "monitor.test.ts")
+    assert len(unresolved(text)) == 1, unresolved(text)
+    assert borrowed(text) == unresolved(text)
+    assert unresolved(text)[0].endswith("bind every interface (ADR-0042")
+
+
+def test_a_bare_citation_beside_the_look_rules_copy_is_caught() -> None:
+    """A plant in `ui/look/`, on the page that says where the copy came from.
+
+    The copy itself is not globbed, for the reason written beside `PROSE`. The
+    page beside it is this repository's own prose, and every citation on it is
+    one of the organisation's and says so (#150, #151).
+    """
+    text = planted(ROOT / "ui" / "look" / "README.md")
+    assert len(unresolved(text)) == 1, unresolved(text)
+    assert borrowed(text) == unresolved(text)
+
+
+def test_a_struck_owner_in_what_the_box_runs_is_caught() -> None:
+    """`deploy/`, where the image the LAN reaches the mirror over is built.
+
+    This tree has an owner to strike rather than needing a plant: the
+    `Dockerfile` says that both servers bind every interface and that what
+    limits their reach is the LAN, which is `control` ADR-0042 and is the
+    citation #150 found bare here.
+    """
+    text = struck(ROOT / "deploy" / "Dockerfile", "control ADR-0042")
+    assert len(unresolved(text)) == 1, unresolved(text)
+    assert borrowed(text) == unresolved(text)
+    assert unresolved(text)[0].endswith("reach is the LAN (ADR-0042")
 
 
 def test_a_number_this_repository_reaches_is_still_controls() -> None:
@@ -345,19 +482,24 @@ def test_a_bare_citation_is_reported_where_it_sits() -> None:
     assert loose[0][1].endswith("It is fixed at the hardware (ADR-0050"), loose[0]
 
 
-def test_the_records_are_not_read_and_are_carrying_what_they_would_be_red_on() -> None:
-    """The one exclusion, and that there is something behind it.
+def test_the_exclusions_are_not_read_and_carry_what_they_would_be_red_on() -> None:
+    """The two exclusions, and that each is carrying something to exclude.
 
     An exclusion with nothing behind it is an exclusion nobody would notice
     going wrong. ADR-0004 names `control` ADR-0042 in its **Related:** links
     and then writes the number alone five times in the prose under them, which
-    is the shorthand a record is allowed and a docstring is not.
+    is the shorthand a record is allowed and a docstring is not. This module's
+    own bare citations are the scan's test data, and they only needed excluding
+    once `tests/` came into reach (#150).
     """
-    assert [page for page in prose() if ADRS in page.parents] == []
+    read = prose()
+    assert [page for page in read if ADRS in page.parents] == []
+    assert SELF not in read
     door = (
         ADRS / "0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md"
     )
     assert len(borrowed(door.read_text())) == 4, borrowed(door.read_text())
+    assert borrowed(SELF.read_text()), "nothing bare left in this module"
 
 
 def test_the_borrowed_numbers_are_what_this_repository_links() -> None:
