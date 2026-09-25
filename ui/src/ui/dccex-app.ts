@@ -84,18 +84,31 @@ import "./dccex-tiles.js";
  */
 export const KEPT = 2000;
 
-/** What the page asks the station with.
+/** What the page asks the station for every poll: the current on every track.
+ *
+ * One short line back (`<jI 4 8 0 0>`), so asking every second costs every
+ * client on the port about fifteen bytes a second. It is also what keeps the
+ * **link** fresh, since any answer is the station speaking.
+ */
+const CURRENTS = "<JI>";
+
+/** What the page asks the station for every `SLOW_EVERY` polls.
  *
  * The status request, which is what a throttle asks with and what an operator
  * types most: the station answers it with the power state and its banner, and
  * those are the band's second reading, each track's power and the **build**
- * (ADR-0008 d.2, d.3). `<JI>` asks for the current on every track and `<=>`
- * for what each track is set to. They go up as any typed message does,
- * through the one rule about what a whole message is (`message.js`), but they
- * are not written to the monitor: lines every five seconds that nobody typed
- * are noise there.
+ * (ADR-0008 d.2, d.3). `<=>` asks what each track is set to. The answer to
+ * `<s>` is eight lines and every client on the port receives it, so it is not
+ * asked every second.
+ *
+ * All of them go up as any typed message does, through the one rule about
+ * what a whole message is (`message.js`), but they are not written to the
+ * monitor: lines nobody typed, every second, are noise there.
  */
-const POLLS = ["<s>", "<JI>", "<=>"];
+const POLLS = ["<s>", "<=>"];
+
+/** How many polls go by between one status request and the next. */
+const SLOW_EVERY = 5;
 
 /** How often the page asks.
  *
@@ -105,18 +118,17 @@ const POLLS = ["<s>", "<JI>", "<=>"];
  * from DecoderPro. Two pages open means two pollers, as two throttles mean
  * two, and nothing deduplicates them.
  *
- * `SILENT_MS` is three of these, so one answer lost on a busy line is not an
- * outage on the chrome (`readings.js`).
+ * `SILENT_MS` is five of these, so an answer or two lost on a busy line is
+ * not an outage on the chrome (`readings.js`).
  */
-export const POLL_MS = 5000;
+export const POLL_MS = 1000;
 
 /** How often the readings are worked out again with nothing having arrived.
  *
  * The **link** going down is the absence of a line, so it is a thing that
  * happens on the clock rather than on the stream: a page that only recomputed
  * when the station spoke would say a station was answering for as long as it
- * stayed silent. It is also what moves the last-heard tile along a second at
- * a time.
+ * stayed silent.
  */
 const TICK_MS = 1000;
 
@@ -172,9 +184,14 @@ export class DccexApp extends LitElement {
       this.#keep(said);
     },
     () => {
+      this.#polls = 0;
       this.#ask();
     },
   );
+
+  /** How many times the page has asked since the stream last opened. A
+   *  stream that has just opened is asked everything at once. */
+  #polls = 0;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -249,8 +266,11 @@ export class DccexApp extends LitElement {
    * and that is what a client does (ADR-0007 d.2, ADR-0010 d.1).
    */
   #ask(): void {
-    for (const poll of POLLS) {
-      this.#stream.send(poll);
+    this.#stream.send(CURRENTS);
+    if (this.#polls++ % SLOW_EVERY === 0) {
+      for (const poll of POLLS) {
+        this.#stream.send(poll);
+      }
     }
   }
 

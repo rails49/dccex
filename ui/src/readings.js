@@ -29,13 +29,13 @@ import { read } from "./decoder.js";
 /**
  * How long the station may say nothing before the **link** is down.
  *
- * Three polls' worth, so one answer lost on a busy line is not an outage on
- * the chrome, and a station that has genuinely gone is called gone inside
- * quarter of a minute. It is the page's own number rather than a rule about
+ * Five polls' worth, so an answer or two lost on a busy line is not an
+ * outage on the chrome, and a station that has genuinely gone is called gone
+ * within a few seconds. It is the page's own number rather than a rule about
  * the hardware: what it is measuring is the schedule the page polls on
  * (`dccex-app.ts`, ADR-0010 d.1).
  */
-export const SILENT_MS = 15000;
+export const SILENT_MS = 5000;
 
 /** What a tile reads where the page has no reading to put there. Blank rather
  *  than a dash or a zero: the tiles are the station talking, and a station
@@ -44,14 +44,14 @@ export const SILENT_MS = 15000;
 const BLANK = "";
 
 /**
- * How much of each new current reading goes into the one shown.
+ * How many current readings the shown one is the median of.
  *
- * The station's current sense is noisy at the low end, and a figure that
- * jumps on every poll is hard to read. Each reading moves the shown value this
- * fraction of the way towards it, so a steady draw settles in two or three
- * polls and a single spike is halved.
+ * The station's current sense is noisy, and a figure that jumps on every poll
+ * is hard to read. A median of three drops a single spike altogether, shows a
+ * real step after two readings, and shows a steady draw as it is, where a
+ * running average would lag behind all three.
  */
-export const SMOOTHING = 0.5;
+export const MEDIAN_OF = 3;
 
 /**
  * What the page knows about one track.
@@ -59,11 +59,32 @@ export const SMOOTHING = 0.5;
  * @typedef {object} Track
  * @property {string | null} mode what the track is set to: MAIN, PROG, DC…
  * @property {boolean | null} hot whether the track has power
- * @property {number | null} milliamps the current it draws, smoothed
+ * @property {number | null} milliamps the current it draws: the median of
+ *   `recent` once there are `MEDIAN_OF` of them, the latest until then
+ * @property {readonly number[]} recent the latest readings, oldest first
  */
 
 /** A track nothing has been said about yet. */
-const UNKNOWN = /** @type {Track} */ ({ mode: null, hot: null, milliamps: null });
+const UNKNOWN = /** @type {Track} */ ({
+  mode: null,
+  hot: null,
+  milliamps: null,
+  recent: [],
+});
+
+/**
+ * The current to show, from the latest readings.
+ *
+ * @param {readonly number[]} recent at least one reading, oldest first
+ * @returns {number}
+ */
+function median(recent) {
+  if (recent.length < MEDIAN_OF) {
+    return recent[recent.length - 1];
+  }
+  const sorted = [...recent].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
 
 /** The letters the station names its tracks with, in the order `<jI>` gives
  *  their currents. */
@@ -156,11 +177,8 @@ export function heard(kept, line, at) {
       return;
     }
     const track = tracks[letter] ?? UNKNOWN;
-    const was = track.milliamps;
-    tracks[letter] = {
-      ...track,
-      milliamps: was === null ? milliamps : was + SMOOTHING * (milliamps - was),
-    };
+    const recent = [...track.recent, milliamps].slice(-MEDIAN_OF);
+    tracks[letter] = { ...track, recent, milliamps: median(recent) };
   });
   return {
     ...kept,

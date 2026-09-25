@@ -45,9 +45,8 @@ def test_the_page_polls_the_station_on_its_own_schedule() -> None:
     its one sentence: every byte that reached the device came from a client.
     """
     page = APP.read_text()
-    assert (
-        'const POLLS = ["<s>", "<JI>", "<=>"];' in page
-    ), "the page asks the station nothing"
+    assert 'const POLLS = ["<s>", "<=>"];' in page, "the page asks the station nothing"
+    assert 'const CURRENTS = "<JI>";' in page, "the page does not ask for the current"
     assert re.search(r"POLL_MS\s*=\s*\d+", page) is not None, "there is no schedule"
     assert "setInterval(" in page, "the page asks once and never again"
     assert "this.#stream.send(poll)" in page, "the poll does not go up the stream"
@@ -59,12 +58,13 @@ def test_the_poll_goes_up_the_way_anything_typed_does() -> None:
     The page is one more client of the mirror's port and is subject to every
     rule that port has (ADR-0007 d.2), so its own polls go through the same
     `Stream.send` an operator's typing goes through. They skip `#sends`, which
-    is what writes a line to the monitor: a poll every five seconds that
-    nobody typed is noise there (ADR-0010 d.1, amended).
+    is what writes a line to the monitor: a poll every second that nobody
+    typed is noise there (ADR-0010 d.1, amended).
     """
     page = APP.read_text()
     asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
     assert "this.#stream.send(poll)" in asking, "the poll does not go up the stream"
+    assert "this.#stream.send(CURRENTS)" in asking, "the current is never asked"
     assert "this.#sends(" not in asking, "the poll is written to the monitor"
 
 
