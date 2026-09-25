@@ -206,10 +206,10 @@ export const monitorStyles = css`
      size whatever the width, because each of the three is something a thumb
      has to hit on a phone held at the layout.
 
-     `.controls button` above is the more specific of the two rules and says
-     nothing about size on purpose: a `min-height` there would win and take
+     The .controls button rule above is the more specific of the two and says
+     nothing about size on purpose: a min-height there would win and take
      the two controls below a thumb. Both halves of that are held in
-     `tests/ui/test_monitor.py`. */
+     tests/ui/test_monitor.py. */
   button {
     flex: none;
     box-sizing: border-box;
