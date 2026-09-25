@@ -33,7 +33,16 @@
  * moves the rows it already drew. The key is the page's to assign, because the
  * page is what keeps the conversation (`Keyed`, `dccex-app.ts`).
  *
- * The pause and the clear are the page's under their own tickets.
+ * **And it can be paused and cleared** (stories 12 and 13). The two controls
+ * are drawn here and what they do is the page's, handed down the way the
+ * sending is: **pause** holds the view, so that nothing on screen is trimmed
+ * while a reader reads it — which is what scrolling up cannot do, since at
+ * capacity the oldest lines go on being dropped — and what arrives behind it
+ * is queued out of sight with a count on the monitor, the cap it is dropped
+ * past said rather than hidden. **Clear** empties the conversation and any
+ * queue and nothing else. Neither stops the stream, the polling or the tiles:
+ * they are the view and not the conversation. The queue and the counting are
+ * `monitor.js`'s, run rather than read; the drawing is this component's.
  *
  * **And a burst of arrivals is one drawing of it** (#74). Lit batches what
  * changes within a task, and the frames a busy line arrives in are each their
@@ -59,12 +68,13 @@
  * is best-effort and off in cases of its own — and the one thing the monitor
  * promises a reader who has scrolled up (#4) does not rest on it.
  *
- * **Two of what it works out are run rather than read** (#78). Whether the
- * reader is at the bottom and the time a line arrived are `monitor.js`'s,
- * which is JavaScript so that a bare node can put the pairs that matter
- * through them. What is left here needs a browser — the rows, the box at the
- * foot, the rectangles a held row is measured with — and a gate with no
- * browser in it can read that and cannot scroll it.
+ * **What it works out without drawing is run rather than read** (#78).
+ * Whether the reader is at the bottom, the time a line arrived and what waits
+ * behind a pause are `monitor.js`'s, which is JavaScript so that a bare node
+ * can put the pairs that matter through them. What is left here needs a
+ * browser — the rows, the box at the foot, the controls, the rectangles a held
+ * row is measured with — and a gate with no browser in it can read that and
+ * cannot scroll it.
  */
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
@@ -72,7 +82,13 @@ import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
 import { type Said } from "../framing.js";
-import { atBottom, stamped } from "../monitor.js";
+import {
+  EMPTIED,
+  type Behind,
+  atBottom,
+  stamped,
+  waiting,
+} from "../monitor.js";
 import { monitorStyles } from "./dccex-monitor.styles.js";
 
 /** What marks a line this page sent, in the column the station's lines leave
@@ -85,6 +101,17 @@ const SENT_MARK = "»";
 /** What the box says before anything is typed into it. The shortest whole
  *  message there is, which is also the one an operator types most. */
 const PLACEHOLDER = "<s>";
+
+/** What the control that holds the view says, and what it says while it is
+ *  holding. One control and not two, named for what pressing it will do, so a
+ *  reader on a busy station is never working out which state they are in. */
+const PAUSES = "pause";
+const RESUMES = "resume";
+
+/** What the control that empties the conversation says. It empties what is on
+ *  screen and any queue behind it, and nothing else — the station is not
+ *  spoken to and the readings are not touched. */
+const EMPTIES = "clear";
 
 /** A line as the page hands it down: what arrived, and the key the page gave
  *  it when it kept it.
@@ -147,6 +174,10 @@ export class DccexMonitor extends LitElement {
   static override readonly properties = {
     said: { attribute: false },
     sends: { attribute: false },
+    paused: { attribute: false },
+    behind: { attribute: false },
+    pauses: { attribute: false },
+    clears: { attribute: false },
   };
 
   /** The conversation to draw, oldest first, as the page hands it down. */
@@ -161,6 +192,27 @@ export class DccexMonitor extends LitElement {
    *  page, which is what a line drawn for it would have claimed. */
   sends: (typed: string) => string | null = () => null;
 
+  /** Whether the view is held, as the page hands it down. */
+  paused = false;
+
+  /** What is waiting behind the pause, as the page hands it down: the count
+   *  this draws is read off it and the lines in it are not this pane's to
+   *  draw — they are out of sight until the reader resumes, which is what
+   *  being paused means. */
+  behind: Behind<Keyed> = EMPTIED;
+
+  /** What holds the view and lets it go, as the page hands it down.
+   *
+   *  A monitor nobody handed one to holds nothing, for the reason `sends`
+   *  gives: the conversation is the page's, and a pane that queued for itself
+   *  would be keeping part of it where the band and the tiles cannot see
+   *  it. */
+  pauses: () => void = () => {};
+
+  /** What empties the conversation and any queue, as the page hands it
+   *  down. */
+  clears: () => void = () => {};
+
   /** Whether the reader was at the bottom when the lines last changed. */
   #following = true;
 
@@ -170,7 +222,19 @@ export class DccexMonitor extends LitElement {
   #held: Held | null = null;
 
   override render(): TemplateResult {
+    const waits = waiting(this.behind);
     return html`
+      <div class="controls">
+        <button type="button" class="hold" @click=${this.pauses}>
+          ${this.paused ? RESUMES : PAUSES}
+        </button>
+        <button type="button" class="empty" @click=${this.clears}>
+          ${EMPTIES}
+        </button>
+        ${waits === null
+          ? nothing
+          : html`<span class="waiting">${waits}</span>`}
+      </div>
       <div class="lines">
         ${this.said.length === 0
           ? html`<div class="quiet">nothing said yet</div>`

@@ -23,12 +23,20 @@ import { css } from "lit";
  * page put on the railroad is the thing it must never be ambiguous about, and
  * a colour alone is nothing to a reader who does not see it.
  *
+ * **The controls sit above the conversation.** A pause and a clear are
+ * gestures about the view, so they are outside the scroller and stay where
+ * they are as the conversation moves under them, and they are drawn quieter
+ * than the send at the foot: what is typed there is what goes on the
+ * railroad, and holding a view still or emptying it never leaves the page.
+ * Beside them is what the pause is holding back, as a count rather than as
+ * lines.
+ *
  * **The box at the foot is sized for a thumb.** `--rail-button` is the look
  * rules' minimum for one and it is a size rather than a colour — the chrome's
  * six colours stay on the chrome — so it is the value a box meant to be typed
- * at on a phone held at the layout asks for. The field takes what is left of
- * the width and may shrink to nothing, so a long command never pushes the send
- * off the side.
+ * at on a phone held at the layout asks for, and the value the controls above
+ * are sized by too. The field takes what is left of the width and may shrink
+ * to nothing, so a long command never pushes the send off the side.
  */
 export const monitorStyles = css`
   :host {
@@ -37,6 +45,38 @@ export const monitorStyles = css`
     box-sizing: border-box;
     height: 100%;
     padding: 0.5rem;
+  }
+
+  /* The monitor's two controls and what the pause is holding back, above the
+     conversation and outside the scroller so that they do not move with it.
+     They are drawn quieter than the send at the foot: what is typed there
+     goes on the railroad, and holding a view still or emptying it does not
+     leave the page. */
+  .controls {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .controls button {
+    background: var(--sl-color-neutral-100);
+    color: var(--sl-color-neutral-700);
+    border: 1px solid var(--sl-color-neutral-300);
+    font-size: var(--sl-font-size-small);
+  }
+
+  /* How many lines are waiting behind the pause, and how many of those went
+     when the queue filled. It is a count and not the lines: the lines are
+     what the pause is keeping out of sight. Tabular, because it is a number
+     that changes under the eye and a count that jitters is a count nobody can
+     read. */
+  .waiting {
+    color: var(--sl-color-neutral-500);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-x-small);
+    font-variant-numeric: tabular-nums;
   }
 
   /* The one thing that scrolls. It is given the height and the overflow so

@@ -813,3 +813,72 @@ def test_clearing_empties_the_conversation_and_any_queue_and_nothing_else() -> N
     assert "EMPTIED" in clearing, "a queue survives the clear"
     for untouched in ("#kept", "#said", "#keys", "#stream", "readings"):
         assert untouched not in clearing, f"the clear reaches {untouched}"
+
+
+def test_the_monitor_draws_a_pause_and_a_clear() -> None:
+    """Two controls, and what each of them does is handed down (#125).
+
+    The pause is one control and not two: it says what pressing it will do, so
+    a reader holding a busy station still is never guessing which state they
+    are in.
+    """
+    drawn = MONITOR.read_text()
+    assert 'class="controls"' in drawn, "there is nowhere for the controls to be"
+    assert "@click=${this.pauses}" in drawn, "nothing holds the view"
+    assert "@click=${this.clears}" in drawn, "nothing empties the conversation"
+    assert (
+        "this.paused ? RESUMES : PAUSES" in drawn
+    ), "the pause does not say what pressing it does"
+    assert drawn.count("@click=${this.pauses}") == 1, "the view is held in two places"
+
+
+def test_the_pause_and_the_clear_say_what_they_do_in_the_page_s_own_words() -> None:
+    """Named for the gesture, as the flash's controls are (`flash.js`)."""
+    drawn = MONITOR.read_text()
+    for label, said in (
+        ("PAUSES", '"pause"'),
+        ("RESUMES", '"resume"'),
+        ("EMPTIES", '"clear"'),
+    ):
+        assert f"const {label} = {said};" in drawn, f"{label} is not {said}"
+
+
+def test_the_monitor_says_how_many_lines_are_waiting() -> None:
+    """The count is the rules' and the drawing is the component's, as the
+    gloss is (#125). A queue with nothing in it says nothing, so an unpaused
+    monitor carries no count at all."""
+    drawn = MONITOR.read_text()
+    assert 'from "../monitor.js"' in drawn
+    assert "waiting(this.behind)" in drawn, "nothing says what is waiting"
+    assert (
+        re.search(r"waits === null\s*\?\s*nothing", drawn) is not None
+    ), "a queue with nothing in it is drawn as something"
+
+
+def test_a_monitor_nobody_handed_the_controls_to_holds_nothing() -> None:
+    """The same rule as the sending: a pane that was handed nothing does
+    nothing, rather than reaching for a queue of its own."""
+    drawn = MONITOR.read_text()
+    assert "paused = false" in drawn, "the monitor starts paused"
+    assert "behind: Behind<Keyed> = EMPTIED" in drawn, "the monitor starts with a queue"
+    for handed in ("pauses", "clears"):
+        assert f"{handed}: () => void = () => {{}}" in drawn, f"{handed} is not handed"
+    for held in ("queued(", "QUEUE"):
+        assert held not in drawn, f"the monitor keeps the queue itself: {held}"
+
+
+def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
+    """Above the lines and out of the scroller, so they do not move with the
+    conversation, and quieter than the send: what is typed is what goes on the
+    railroad, and holding the view is not."""
+    drawn = MONITOR.read_text()
+    assert drawn.index('class="controls"') < drawn.index(
+        'class="lines"'
+    ), "the controls are inside or below the conversation"
+    styles = STYLES.read_text()
+    controls = rule(styles, ".controls")
+    assert "flex: none" in controls, "the controls grow with the conversation"
+    quieter = rule(styles, ".controls button")
+    assert (
+        "background:" in quieter and "primary" not in quieter
+    ), "the pause and the clear are drawn as loudly as the send"
