@@ -3,11 +3,11 @@
 The firmware is built elsewhere, against the station's own source, and that
 does not change; what this makes is the writing of a released build onto the
 box something the running system does on a gesture, rather than something a
-person does from a checkout (ADR-0065). The gesture names one thing, a `tag`,
-and **this app is the only thing that can answer it**: flashing means owning
-the serial port, the mirror holds it for as long as the railroad is up, and no
-container can stop a sibling without handing a process the Docker daemon's
-socket.
+person does from a checkout (control ADR-0065). The gesture names one thing, a
+`tag`, and **this app is the only thing that can answer it**: flashing means
+owning the serial port, the mirror holds it for as long as the railroad is up,
+and no container can stop a sibling without handing a process the Docker
+daemon's socket.
 
 **Nothing outside this process can make the gesture.** It arrived on a bus in
 `control` and it arrives at this app's own face now (ADR-0001, #13), which is
@@ -16,12 +16,13 @@ is a call: there is no topic, no second port and no command-line option that
 reaches it.
 
 **The gesture names a tag and never a source.** The LAN is the trust boundary
-and carries no authentication on purpose (ADR-0042), so an ask that said where
-to fetch from would let anyone on the wifi have the station fetch and run an
-arbitrary binary. Where releases are read from is a flag on this app, and a tag
-can only choose among the builds already published there. `latest` is not a tag
-either: it names a different build depending on when it is read, and the point
-of the gesture is to be able to say afterwards what was written.
+and carries no authentication on purpose (control ADR-0042), so an ask that
+said where to fetch from would let anyone on the wifi have the station fetch
+and run an arbitrary binary. Where releases are read from is a flag on this
+app, and a tag can only choose among the builds already published there.
+`latest` is not a tag either: it names a different build depending on when it
+is read, and the point of the gesture is to be able to say afterwards what was
+written.
 
 **The order is the point.** The release is resolved, the binary fetched and
 its digest checked *before* the device is let go. A network failure then costs
@@ -40,11 +41,11 @@ depend on being up.
 **What became of the gesture is answered, and there is still no progress.**
 `wanted` comes back with a `Wrote` — what it was refused for, or nothing where
 the build was written, and the sentence that says which — so whoever asked is
-told rather than sent to read a log on the box (ADR-0050). Every refusal is
-still said on the box as well, because the device is the railroad's and what
-was done to it is the box's record. What a flash is *doing* meanwhile is read
-off the station itself and not from here: the link goes down while it is
-written and comes back carrying the `build` it now reports.
+told rather than sent to read a log on the box (control ADR-0050). Every
+refusal is still said on the box as well, because the device is the railroad's
+and what was done to it is the box's record. What a flash is *doing* meanwhile
+is read off the station itself and not from here: the link goes down while it
+is written and comes back carrying the `build` it now reports.
 
 **The refusals are this file's terms and not a protocol's.** A `Refusal` says
 what went wrong with a station and a release; the status that carries it to a
@@ -86,7 +87,7 @@ RELEASES = "https://api.github.com/repos/rails49/CommandStation-EX/releases"
 installation's fork of the command station's source, whose releases carry a
 `firmware.bin` and a digest for it. Configuration rather than payload, which
 is the whole of what keeps the gesture from naming what the station runs
-(ADR-0042, ADR-0065)."""
+(control ADR-0042, control ADR-0065)."""
 
 ASSET = "firmware.bin"
 """The release asset that is written to the station."""
@@ -176,7 +177,7 @@ class Refusal(enum.Enum):
 
     NO_DIGEST = enum.auto()
     """The release reports no digest for its firmware, so what was fetched
-    cannot be checked, and unchecked is not written (ADR-0065)."""
+    cannot be checked, and unchecked is not written (control ADR-0065)."""
 
     NOT_PUBLISHED = enum.auto()
     """What was fetched is not what the release says it published."""
@@ -198,7 +199,8 @@ class Wrote(NamedTuple):
     build was written, and the sentence that says which.
 
     One sentence, because what is on the other end is a person: it is the line
-    the box's log gets and the reason whoever asked is given (ADR-0050).
+    the box's log gets and the reason whoever asked is given (control
+    ADR-0050).
     """
 
     refusal: Refusal | None
@@ -235,9 +237,9 @@ def release_url(releases: str, tag: str) -> str:
     """Where the release API is asked about one tag.
 
     The tag is **escaped whole**: it arrives from a caller on a LAN with no
-    authentication on it (ADR-0042), and a tag that kept its slashes would name
-    a path of the caller's choosing under the host this app was configured
-    with.
+    authentication on it (control ADR-0042), and a tag that kept its slashes
+    would name a path of the caller's choosing under the host this app was
+    configured with.
     """
     return f"{releases.rstrip('/')}/tags/{quote(tag, safe='')}"
 
@@ -294,7 +296,7 @@ def matches(binary: bytes, digest: str) -> bool:
 
     A digest this cannot read matches nothing: the check is the whole reason a
     tag chosen at runtime is safe to write, so an unchecked binary is refused
-    rather than written (ADR-0065, decision 4).
+    rather than written (control ADR-0065, decision 4).
     """
     if not digest.lower().startswith(SHA256):
         return False
@@ -390,7 +392,8 @@ class Flasher:
     safe to reset the station is not a thing this reads, and neither is
     anything else about the railroad: that guarantee lives in the client
     written to honour it, which is where the one about cutting track power
-    lives too (ADR-0051, ADR-0062, ADR-0065, ADR-0006).
+    lives too (control ADR-0051, control ADR-0062, control ADR-0065,
+    ADR-0006).
     """
 
     def __init__(
@@ -507,9 +510,9 @@ class Flasher:
     async def _written(self, tag: str) -> Wrote:
         """The build written, or why it was not.
 
-        The order is ADR-0065's and the whole of the care in this file: the
-        release is resolved, fetched and checked while the mirror still holds
-        the device, and only then is the device let go.
+        The order is control ADR-0065's and the whole of the care in this file:
+        the release is resolved, fetched and checked while the mirror still
+        holds the device, and only then is the device let go.
         """
         url = release_url(self._releases, tag)
         try:

@@ -1,10 +1,10 @@
 """The framing rule: a client's bytes become whole `<…>` messages.
 
 The command station delimits a message with `<` and `>`, and this app reads
-nothing else of the protocol (ADR-0043). Several clients share one device, so
-a message reaches it whole or not at all: bytes arrive from a client in
-whatever chunks TCP hands over and are held here until the `>` that ends the
-message.
+nothing else of the protocol (control ADR-0043). Several clients share one
+device, so a message reaches it whole or not at all: bytes arrive from a
+client in whatever chunks TCP hands over and are held here until the `>` that
+ends the message.
 
 Bytes outside a message are dropped. Before a `<` there is nothing for them
 to belong to, and after a `>` the same. A `<` inside a message starts the

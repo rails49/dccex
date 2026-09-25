@@ -2,8 +2,8 @@
 
 The command station is reached over USB only and one process can own the
 device, so that process is this app and everything else is a client of the
-port it serves (ADR-0043): the translator, JMRI, hand-held throttles. They
-coexist, and DecoderPro keeps working with every app of ours down.
+port it serves (control ADR-0043): the translator, JMRI, hand-held throttles.
+They coexist, and DecoderPro keeps working with every app of ours down.
 
 It is a mirror, not a protocol. Every byte read from the device is written to
 every connected client unchanged, because one serial stream cannot say who
@@ -27,8 +27,8 @@ command station too. Once more than `MAX_OUTSTANDING_BYTES` is outstanding to
 one, its connection is closed and the log says why. Not a bounded buffer that
 discards: this direction is unframed, so dropping from the middle hands the
 client half a message it reads as garbage, and not silence either: a peer that
-has gone is reported rather than absorbed (ADR-0050). It may reconnect and
-pick the live conversation up.
+has gone is reported rather than absorbed (control ADR-0050). It may reconnect
+and pick the live conversation up.
 
 **While the device is away a client's messages are dropped**, not queued. A
 command is honored now or ignored: a queue that flushes on reconnect is a
@@ -48,30 +48,30 @@ outlives all of them.
 **An outage that outlasts the grace takes the clients with it.** A client
 cannot tell an away device from a quiet one, and this port has no way to
 tell it: the socket closing is the whole signal, and it is the one that ends
-the translator's session and lowers `device/link` (ADR-0066). So a device
-still away two reopens in has every connected client disconnected. The
-connection is aborted rather than closed politely — here, at the cut-off,
-when the app itself is shutting down, and in the handler every client leaves
-by however it came to go, which are the four places one is let go of:
-closing waits for what is outstanding to reach the client first, so for the
-client that has stopped reading the signal never arrives and the wait never
-ends. The handler's is the abort a client that was reading meets, and it
-costs that client nothing, or the tail of one fan-out it had not taken on
-its way out. Inside the grace nothing changes — a blip the first reopen
-recovers costs no throttle a reconnect, which is what the grace is for. The
-grace is the outage's and not each client's: one that connects while an
-outage is being waited out leaves with the rest, however briefly it has been
-there, and one that connects after an outage has already taken its clients
-starts the next grace and gets all of it.
+the translator's session and lowers `device/link` (control ADR-0066). So a
+device still away two reopens in has every connected client disconnected.
+The connection is aborted rather than closed politely — here, at the
+cut-off, when the app itself is shutting down, and in the handler every
+client leaves by however it came to go, which are the four places one is let
+go of: closing waits for what is outstanding to reach the client first, so
+for the client that has stopped reading the signal never arrives and the
+wait never ends. The handler's is the abort a client that was reading meets,
+and it costs that client nothing, or the tail of one fan-out it had not
+taken on its way out. Inside the grace nothing changes — a blip the first
+reopen recovers costs no throttle a reconnect, which is what the grace is
+for. The grace is the outage's and not each client's: one that connects
+while an outage is being waited out leaves with the rest, however briefly it
+has been there, and one that connects after an outage has already taken its
+clients starts the next grace and gets all of it.
 
 There is no client limit beyond the OS's and no authentication: the LAN is
-the trust boundary (ADR-0042), and the port is published to it by the
+the trust boundary (control ADR-0042), and the port is published to it by the
 container. The server binds every interface for the same reason.
 
 **The device is let go on demand and taken back after**, which is `released()`
 and the one thing here that is not the mirror's own business: writing the
 station's flash means owning the port, and the process holding it is the only
-one that can hand it over (ADR-0065). What is done with it meanwhile is
+one that can hand it over (control ADR-0065). What is done with it meanwhile is
 `firmware.py`'s; this class still speaks no bus topic and reads no payload.
 """
 
@@ -87,8 +87,8 @@ from dccex_usb.framing import frame
 
 # Every interface: the container publishes the port and JMRI reaches it by
 # the service name, so what limits the reach is the LAN, not a bind address
-# (ADR-0042). One socket rather than one per address family, so the port the
-# OS chooses when asked for 0 is one port.
+# (control ADR-0042). One socket rather than one per address family, so the
+# port the OS chooses when asked for 0 is one port.
 HOST = "0.0.0.0"
 
 BAUD = termios.B115200
@@ -106,8 +106,8 @@ MAX_BACKOFF_S = 8.0
 # How long a client waits on an away device before it is disconnected, in
 # reopens at the first backoff: about a second, past the first retry and far
 # inside a flash. Counted off the backoff rather than kept as a number of its
-# own, so there is one number here and not two that can drift apart
-# (ADR-0066).
+# own, so there is one number here and not two that can drift apart (control
+# ADR-0066).
 GRACE_REOPENS = 2
 
 # How far behind a client may fall before it is cut off. The device speaks at
@@ -451,16 +451,16 @@ class Station:
         The device is **closed before the block runs** and is reopened by the
         existing path after it, however the block ended: two openers fight
         over the line discipline and the reset lines, so a flash needs the
-        mirror off the port entirely (ADR-0065).
+        mirror off the port entirely (control ADR-0065).
 
         What clients see is an outage like any other — what they send is
-        dropped, the app says so once (ADR-0050), and the grace disconnects
-        them because a flash lasts tens of seconds — since for the length of
-        it the device genuinely is away. The grace hangs off the device
-        being closed rather than off the watcher, so this path needs no rule
-        of its own. Taking it back is the watcher started again, so a station
-        that is still rebooting is waited for on the ordinary backoff rather
-        than specially.
+        dropped, the app says so once (control ADR-0050), and the grace
+        disconnects them because a flash lasts tens of seconds — since for
+        the length of it the device genuinely is away. The grace hangs off
+        the device being closed rather than off the watcher, so this path
+        needs no rule of its own. Taking it back is the watcher started
+        again, so a station that is still rebooting is waited for on the
+        ordinary backoff rather than specially.
 
         **A handover that ends on a closed station takes nothing back.**
         `close()` can run while the block is still going — a signal mid-flash
@@ -600,8 +600,8 @@ class Station:
         to an outage with no grace running — the first client into one, or
         the first after a grace has already taken its clients. A client that
         arrives while one is running joins it and leaves on its deadline: the
-        grace is the outage's, not the client's (ADR-0066). Nothing starts
-        for an outage nobody is connected to: what the grace ends is
+        grace is the outage's, not the client's (control ADR-0066). Nothing
+        starts for an outage nobody is connected to: what the grace ends is
         connections, and there are none to end.
         """
         if self._grace is not None or self._open is not None or not self._clients:
@@ -618,11 +618,11 @@ class Station:
         """Wait out the grace and drop what is still connected.
 
         Aborted rather than closed, as in `_cut_off`: the socket closing is
-        the whole signal that the device is away (ADR-0066), and a close
-        waits for what is outstanding to drain first, which is a signal that
-        never arrives for the client whose window is shut. What the abort
-        costs is bytes from before an outage that has already outlasted its
-        grace, to a client that is about to be told the device is gone.
+        the whole signal that the device is away (control ADR-0066), and a
+        close waits for what is outstanding to drain first, which is a signal
+        that never arrives for the client whose window is shut. What the
+        abort costs is bytes from before an outage that has already outlasted
+        its grace, to a client that is about to be told the device is gone.
 
         Each client leaves by its handler, which is where a disconnect is
         logged, so the line here says what this did and the lines under it
