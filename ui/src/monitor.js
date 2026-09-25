@@ -177,20 +177,37 @@ export function quieted(last, said) {
 export const EMPTIED = { lines: [], dropped: 0 };
 
 /**
+ * How many lines the page keeps.
+ *
+ * A page left open on a busy railroad is handed every byte of an evening, and
+ * a monitor is what the station is saying now: the oldest lines are dropped
+ * rather than held until the browser cannot draw the page. Nothing was lost by
+ * the mirror doing it — it keeps no history either (ADR-0010) — and this is
+ * the page saying how much of the conversation it can show, which is its own
+ * business.
+ *
+ * It is here rather than on the page because the queue below is a quarter of
+ * it: the number was `dccex-app.ts`'s and the quarter was written out beside
+ * this sentence, so the two could part with every word of both still reading
+ * true (#152).
+ */
+export const KEPT = 2000;
+
+/**
  * How many lines wait behind a pause before the oldest of them go.
  *
- * A quarter of what the page keeps (`KEPT`, `dccex-app.ts`), because the
- * queue is appended to the conversation when the reader resumes and the usual
- * capacity trim applies from there: a queue as long as the conversation would
- * mean resuming replaced the whole of what the pause was holding still, which
- * is the one thing a pause is for. At a quarter, a reader who resumes from a
- * full queue still has three quarters of what they paused on above it.
+ * A quarter of what the page keeps, because the queue is appended to the
+ * conversation when the reader resumes and the usual capacity trim applies
+ * from there: a queue as long as the conversation would mean resuming
+ * replaced the whole of what the pause was holding still, which is the one
+ * thing a pause is for. At a quarter, a reader who resumes from a full queue
+ * still has three quarters of what they paused on above it.
  *
- * It is its own number and not the page's. What a pause promises is that
- * nothing on screen is trimmed; what it cannot promise is that a station
- * talking for an hour is all still there behind it.
+ * It is the quarter as arithmetic rather than as prose. What a pause promises
+ * is that nothing on screen is trimmed; what it cannot promise is that a
+ * station talking for an hour is all still there behind it.
  */
-export const QUEUE = 500;
+export const QUEUE = KEPT / 4;
 
 /**
  * The queue after `said` arrived behind a pause.

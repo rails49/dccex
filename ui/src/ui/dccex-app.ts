@@ -69,7 +69,7 @@ import { LitElement, html, type TemplateResult } from "lit";
 
 import { flash, releases } from "../face.js";
 import { type Said } from "../framing.js";
-import { EMPTIED, type Behind, queued, quieted } from "../monitor.js";
+import { EMPTIED, KEPT, type Behind, queued, quieted } from "../monitor.js";
 import {
   QUIET,
   asOf,
@@ -86,17 +86,6 @@ import "./dccex-monitor.js";
 import "./dccex-rail.js";
 import "./dccex-releases.js";
 import "./dccex-tiles.js";
-
-/** How many lines the page keeps.
- *
- * A page left open on a busy railroad is handed every byte of an evening, and
- * a monitor is what the station is saying now: the oldest lines are dropped
- * rather than held until the browser cannot draw the page. Nothing was lost by
- * the mirror doing it — it keeps no history either (ADR-0010) — and this is the
- * page saying how much of the conversation it can show, which is its own
- * business.
- */
-export const KEPT = 2000;
 
 /** What the page asks the station for every poll: the current on every track.
  *
