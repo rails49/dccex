@@ -1,13 +1,16 @@
 """What the **tile**s draw, and what they blank.
 
 Which words appear for a set of facts is asserted by running the real
-functions (`tests/ui/test_readings.py`): hand them what a page would hand them
-and read the four tiles back, blanks and all. What is held here is the rest —
-that the component draws those readings and works none out, where the tiles
-sit, and that a blank tile keeps its shape.
+functions (`tests/ui/test_readings.py`), and that they blank together on a
+page is asserted by mounting the component and reading the row back
+(`ui/test/tiles.test.ts`, #126). What is held here is the rest — that the tiles
+work no reading out of their own, where they sit, and that a blank tile keeps
+its shape.
 
-Read off the sources, for the reason `tests/ui/test_stream.py` gives: there is
-no browser in a Python gate to mount a Lit component in.
+Read off the sources, because these are claims a mounted component cannot
+answer: happy-dom does no layout, so a `min-height` is not a thing to assert
+there, and a component that worked the reading out again would draw the same
+words.
 """
 
 import re
@@ -25,13 +28,17 @@ STYLES = UI / "src" / "ui" / "dccex-tiles.styles.ts"
 APP = UI / "src" / "ui" / "dccex-app.ts"
 
 
-def test_the_tiles_draw_the_readings_the_page_hands_them() -> None:
+def test_the_reading_is_the_module_s_and_the_page_hands_it_down() -> None:
     """The reading is the readings module's — a pure function of what the
     station said and of the moment it is asked for (ADR-0008 d.2) — and the
-    drawing is this component's."""
+    drawing is this component's.
+
+    What the tiles read is asserted by mounting them; where the facts came
+    from is not visible there, because tiles that worked them out again would
+    draw the same words until the two answers parted.
+    """
     drawn = TILES.read_text()
     assert 'from "../readings.js"' in drawn, "the tiles work a reading out themselves"
-    assert "tiles(this.readings)" in drawn
     assert "<dccex-tiles .readings=${this.readings}>" in APP.read_text()
 
 
