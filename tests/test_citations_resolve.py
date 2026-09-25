@@ -52,11 +52,15 @@ ORG = (
 OURS = "0002-a-defect-in-copied-code-is-fixed-where-it-came-from.md"
 
 #: Whose the decision is, written before the number — across a line break as
-#: readily as not, because prose wraps. A wrapped line of the page's prose
-#: opens with the `*` its comment block is drawn with, so the break carries one
-#: and the owner is still beside the number. Either owner resolves the name;
-#: what is forbidden is neither.
-OWNED = re.compile(r"(the organisation's|this repository's)[\s*]+ADR-0002")
+#: readily as not, and at either break the phrase has, because prose wraps
+#: wherever the width runs out. A wrapped line of the page's prose opens with
+#: the `*` its comment block is drawn with, so the break carries one and the
+#: owner is still beside the number. The owner is capitalised where it opens a
+#: sentence, which is how the page's README and ADR-0008 write it. Either
+#: owner resolves the name; what is forbidden is neither.
+OWNED = re.compile(
+    r"(?:[Tt]he[\s*]+organisation's|[Tt]his[\s*]+repository's)[\s*]+ADR-0002"
+)
 
 #: A citation that is the text of a link to one of the two files. Following
 #: one resolves the number, so a link says whose it is without saying it in
@@ -144,6 +148,25 @@ def test_a_bare_citation_under_the_page_is_caught() -> None:
     loose = cited(written.replace(CITATION, STRUCK, 1))
     assert len(loose) == 1, f"the struck citation was not caught: {loose}"
     assert loose[0].endswith("what the page talks to (ADR-0002")
+
+
+def test_an_owner_resolves_wherever_the_line_broke_and_however_it_opened() -> None:
+    """The phrase wraps at either of its breaks, and opens a sentence.
+
+    Prose wraps where the width runs out rather than where a pattern would
+    like it to, and a line of the page's comment prose opens with the `*` the
+    block is drawn with. A sentence that opens on the owner capitalises it,
+    which is how `docs/ui/README.md` and ADR-0008 write it — a form the
+    pattern could not read for as long as it read `src/` and `ui/src/` alone,
+    where no citation opens one (#123).
+    """
+    for written in (
+        "about the app rather than about a railroad (the\norganisation's ADR-0002)",
+        " *  the store and its own app's face (the organisation's\n *  ADR-0002)",
+        "The organisation's ADR-0002 permits all three.",
+        "This repository's ADR-0002 is superseded.",
+    ):
+        assert cited(written) == [], f"the owner was not read: {written!r}"
 
 
 def test_a_linked_citation_says_whose_it_is() -> None:
