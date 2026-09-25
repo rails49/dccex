@@ -42,11 +42,12 @@
  * A pure function of what the face said and of what the station said, so the
  * whole of it — the order, the dates, the mark — is asserted on a machine with
  * nothing plugged in and no network in reach (`tests/ui/test_releases.py`). It
- * is the fourth module of the page written as JavaScript with its types in
- * JSDoc, for the reason the other three are: the gate is Python with a bare
- * node in it, and a list an operator reads asserted against the source that
- * would produce it is not asserted. `tsc` checks it as it checks the rest
- * (`ui/tsconfig.json`).
+ * is one of the modules of the page written as JavaScript with its types in
+ * JSDoc — they are named in `tests/ui/test_decoder.py`'s docstring, which is
+ * where they are counted so that a header need not (#110) — for the reason the
+ * rest are: the gate is Python with a bare node in it, and a list an operator
+ * reads asserted against the source that would produce it is not asserted.
+ * `tsc` checks it as it checks the rest (`ui/tsconfig.json`).
  */
 
 /**

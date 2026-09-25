@@ -35,12 +35,13 @@
  * the face to write and what shows a step are handed in, so the whole
  * sequence — what goes down the cable, in what order, and what is said at each
  * step — is run on a machine with no command station, no browser and no
- * network in reach (`tests/ui/test_flash.py`). It is the fifth module of the
- * page written as JavaScript with its types in JSDoc, for the reason the other
- * four are: the gate is Python with a bare node in it, and a rule about what
- * goes down a cable to a command station asserted against the source that
- * would produce it is not asserted. `tsc` checks it as it checks the rest
- * (`ui/tsconfig.json`).
+ * network in reach (`tests/ui/test_flash.py`). It is one of the modules of the
+ * page written as JavaScript with its types in JSDoc — they are named in
+ * `tests/ui/test_decoder.py`'s docstring, which is where they are counted so
+ * that a header need not (#110) — for the reason the rest are: the gate is
+ * Python with a bare node in it, and a rule about what goes down a cable to a
+ * command station asserted against the source that would produce it is not
+ * asserted. `tsc` checks it as it checks the rest (`ui/tsconfig.json`).
  */
 
 /** What stops the locomotives: the emergency stop, which halts everything
