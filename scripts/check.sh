@@ -23,7 +23,7 @@
 # is what `tests/ui/test_page_serves.py` did in every run recorded before this.
 #
 # A `node` marker is the same mechanism for the same reason, and this script
-# does not collect it either (`-m "not docker and not node"`). Five modules of
+# does not collect it either (`-m "not docker and not node"`). Seven modules of
 # the page are written as JavaScript so a bare node can run them, and what
 # they assert is put through the real function rather than read off the source
 # that would produce it — worth a node somewhere, and not worth a node on

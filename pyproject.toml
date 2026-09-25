@@ -25,7 +25,7 @@ testpaths = ["tests"]
 #
 # `docker` is a daemon. `node` is a node on `PATH` and no more than that — no
 # packages are installed, nothing is bundled and nothing is fetched — and what
-# needs it is the five modules of the page written as JavaScript so their real
+# needs it is the seven modules of the page written as JavaScript so their real
 # functions can be run rather than read (`tests/ui/test_decoder.py`).
 markers = [
   "docker: needs a Docker daemon",
