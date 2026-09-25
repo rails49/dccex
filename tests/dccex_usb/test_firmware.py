@@ -65,6 +65,11 @@ REFUSED = "refused: "
 nobody to publish one to (ADR-0001); what there is besides the line is the
 answer to whoever asked (#13)."""
 
+PAGE = Path(__file__).resolve().parents[2] / "docs" / "ui" / "README.md"
+"""The account of the page an operator reads a refusal on. It quotes the
+sentence a source that is away is turned down with, and a quotation drifts
+from what it quotes without anything going red (#67)."""
+
 
 def refusals(log: Log) -> list[str]:
     """What the flasher refused, in its own words and in order."""
@@ -427,6 +432,26 @@ def test_a_source_that_cannot_be_reached_is_refused_as_the_source() -> None:
         assert flash.refusals == [wrote.said]
         assert flash.device.order == []
         assert flash.device.held, "the device is not let go"
+
+    asyncio.run(scenario())
+
+
+def test_the_page_quotes_the_sentence_a_source_that_is_away_is_refused_with() -> None:
+    """The page tells a reader what the operator is told when the source is
+    away, so that they know a good tag is not the thing to go and retype
+    (#46). It said *the releases could not be read* — the page's own sentence
+    for a face it could not ask — where this one says *the release source*
+    (#67). Read the sentence off the refusal rather than write it down twice.
+    """
+
+    async def scenario() -> None:
+        away = urllib.error.URLError(ConnectionRefusedError("Connection refused"))
+        flash = Flash(fetch=FakeFetch(document=away))
+
+        wrote = await flash.wants()
+
+        said = wrote.said.split(", so ")[0]
+        assert said in PAGE.read_text(), f"the page does not quote {said!r}"
 
     asyncio.run(scenario())
 
