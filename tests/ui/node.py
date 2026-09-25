@@ -14,6 +14,11 @@ gate needs is (`scripts/check.sh`, #101). A runner that exited non-zero is red
 with its stderr in the message, because a JSDoc type error or a bad import is
 what comes out on that stream and a reader of the failure needs it.
 
+`HELD` is here for the same reason and not because it runs anything: what a
+module must not reach is the condition for a bare node being able to run it at
+all, and it was two lists short of covering the modules this file exists for
+(#122).
+
 The `node` marker is not here. It is on the tests, where a machine without one
 deselects them (`pyproject.toml`); this is what runs once the marker has
 already let a test through. Every module keeps its own runner, its own cases,
@@ -26,6 +31,34 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+
+#: What a module a bare node runs must not reach.
+#:
+#: The union of the lists the per-module checks grew one at a time — the
+#: browser's globals and the clock — written once because the two that were
+#: never held to it are held to the whole of it rather than to a list of their
+#: own (#122). The five that had one keep it: each says what its own module
+#: would be spoiled by, and pulling them onto this tuple would turn five
+#: readable claims into one (`tests/ui/test_decoder.py`,
+#: `tests/ui/test_message.py`, `tests/ui/test_flash.py`,
+#: `tests/ui/test_monitor.py`, `tests/ui/test_stream.py`).
+#:
+#: These are substrings and not identifiers, so they are matched against a
+#: module with its comments off — `tests/ui/test_stream.py`'s `code()` — and
+#: never against the whole file: a page says in prose what it is *not* doing,
+#: and `releases.js` says *document* where it means the JSON body the face
+#: answers with (#120).
+HELD = (
+    "Date",
+    "setTimeout",
+    "setInterval",
+    "Math.random",
+    "window",
+    "document",
+    "querySelector",
+    "fetch",
+    "WebSocket",
+)
 
 
 def ran(runner: Path, asks: Any, what: str, *, zone: str | None = None) -> Any:
