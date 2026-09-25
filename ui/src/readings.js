@@ -29,7 +29,7 @@ import { read } from "./decoder.js";
 /**
  * How long the station may say nothing before the **link** is down.
  *
- * Five polls' worth, so an answer or two lost on a busy line is not an
+ * Twenty polls' worth, so a few answers lost on a busy line are not an
  * outage on the chrome, and a station that has genuinely gone is called gone
  * within a few seconds. It is the page's own number rather than a rule about
  * the hardware: what it is measuring is the schedule the page polls on
@@ -44,14 +44,16 @@ export const SILENT_MS = 5000;
 const BLANK = "";
 
 /**
- * How many current readings the shown one is the median of.
+ * How many current readings the shown one is the mean of: two seconds' worth
+ * at four polls a second.
  *
- * The station's current sense is noisy, and a figure that jumps on every poll
- * is hard to read. A median of three drops a single spike altogether, shows a
- * real step after two readings, and shows a steady draw as it is, where a
- * running average would lag behind all three.
+ * The station reports one instantaneous ADC sample per track. With a loco
+ * running at constant speed those samples scatter between under 20 and over
+ * 100 mA (measured 2026-09-25), while the real current, behind the motor's
+ * inductance, changes far more slowly. The mean of the scatter is the current
+ * worth showing; a median would pick one end of it or the other.
  */
-export const MEDIAN_OF = 3;
+export const MEAN_OF = 8;
 
 /**
  * What the page knows about one track.
@@ -59,8 +61,8 @@ export const MEDIAN_OF = 3;
  * @typedef {object} Track
  * @property {string | null} mode what the track is set to: MAIN, PROG, DC…
  * @property {boolean | null} hot whether the track has power
- * @property {number | null} milliamps the current it draws: the median of
- *   `recent` once there are `MEDIAN_OF` of them, the latest until then
+ * @property {number | null} milliamps the current it draws: the mean of
+ *   `recent`
  * @property {readonly number[]} recent the latest readings, oldest first
  */
 
@@ -75,15 +77,11 @@ const UNKNOWN = /** @type {Track} */ ({
 /**
  * The current to show, from the latest readings.
  *
- * @param {readonly number[]} recent at least one reading, oldest first
+ * @param {readonly number[]} recent at least one reading
  * @returns {number}
  */
-function median(recent) {
-  if (recent.length < MEDIAN_OF) {
-    return recent[recent.length - 1];
-  }
-  const sorted = [...recent].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
+function mean(recent) {
+  return recent.reduce((sum, milliamps) => sum + milliamps, 0) / recent.length;
 }
 
 /** The letters the station names its tracks with, in the order `<jI>` gives
@@ -177,8 +175,8 @@ export function heard(kept, line, at) {
       return;
     }
     const track = tracks[letter] ?? UNKNOWN;
-    const recent = [...track.recent, milliamps].slice(-MEDIAN_OF);
-    tracks[letter] = { ...track, recent, milliamps: median(recent) };
+    const recent = [...track.recent, milliamps].slice(-MEAN_OF);
+    tracks[letter] = { ...track, recent, milliamps: mean(recent) };
   });
   return {
     ...kept,
