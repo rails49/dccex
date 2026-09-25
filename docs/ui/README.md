@@ -607,7 +607,11 @@ did not start is not its to do. The other guard — that nothing left in a shell
 can point those commands at a project nobody here named — is a `monkeypatch`
 over the environment the commands are run in and needs no daemon at all, so it
 is asserted in `tests/ui/test_commands_run_clean.py`, which the gate does
-collect (#112).
+collect (#112). That environment is on every command the check runs and not
+only on the `docker compose` ones: the plain `docker` helper the two checks
+share takes an environment, the compose check hands it one at each call, and
+the same daemonless module holds that what the helper is handed is what the
+process it starts runs in (#113).
 
 ## What is not on it
 
