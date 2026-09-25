@@ -1,7 +1,7 @@
 /**
- * The releases: every **release** the box is configured to read, in a row that
- * opens under the tiles, and the one place on the page one is written onto the
- * **station**.
+ * The releases: every **release** the **mirror** is configured to read, in a
+ * row that opens under the tiles, and the one place on the page one is written
+ * onto the **station**.
  *
  * Newest first, each with the day it was published, the one that is on the
  * station now marked as such, and a release there is nothing to write from —
