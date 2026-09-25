@@ -292,10 +292,14 @@ def test_the_cutovers_stop_is_bounded_by_a_clock_and_not_by_the_grace() -> None:
     The step was written against Docker's ten seconds, which this container
     has not had since the grace landed: a mirror that hangs on shutdown is not
     killed at ten seconds any more, it is waited out for five and a half
-    minutes and then exits `0`. So the page states a wall clock a healthy stop
-    meets and a hung one misses, times the stop to read it, and says what the
-    330 seconds are instead — all three asserted here, because a page that
-    dropped any of them is a check that passes either way.
+    minutes and then killed, and comes back dead of `137` (#114, and
+    `docs/cutover.md` beside it). The exit status does tell a hung stop from a
+    healthy one — only not until those five and a half minutes are up, and
+    nobody has to stand there for them. So the page states a wall clock a
+    healthy stop meets and a hung one misses, times the stop to read the same
+    fault straight away, and says what the 330 seconds are instead — all three
+    asserted here, because a page that dropped any of them is a check that
+    passes either way.
     """
     said = check_six()
     assert "time docker stop" in said, "the stop is not timed"
