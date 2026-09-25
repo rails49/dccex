@@ -76,7 +76,7 @@ services:
     # 2560 on the LAN, raw. It is what it has always been: JMRI, a hand-held
     # throttle and the translator are programs on the wifi holding a serial
     # conversation, what limits them is the network they are on, and there is
-    # no other way in for DecoderPro (ADR-0042, ADR-0004 d.5).
+    # no other way in for DecoderPro (control ADR-0042, ADR-0004 d.5).
     #
     # **The face's port is published by nothing.** It answers on 8080 inside
     # the container and reaches a browser through the door or not at all
