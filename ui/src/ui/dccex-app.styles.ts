@@ -32,11 +32,16 @@ export const appStyles = css`
   /* Where everything the page is about goes: the tiles across the top, the
      releases under them, and the monitor under those, which takes the rest of
      it and scrolls its own lines. The first two take what they need and the
-     pane scrolls once there is more in it than fits. */
+     pane scrolls once there is more in it than fits.
+
+     The monitor's row is minmax(12rem, 1fr) rather than 1fr. A bare 1fr
+     grows to fit what is in it, so a long conversation made the pane scroll
+     instead of the lines. The floor keeps a few lines in view on a short
+     screen, where the pane scrolls to reach it. */
   .work {
     display: grid;
     grid-area: work;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto minmax(12rem, 1fr);
     min-height: 0;
     overflow: auto;
     background: var(--sl-color-neutral-0);
