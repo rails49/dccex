@@ -76,8 +76,12 @@ DOWN_SECONDS = 180
 
 #: What is dropped from the environment every command below runs in, so that a
 #: machine that has any of them set — a development box, a shell left over from
-#: a deploy — runs the same check a clean clone does. Two reasons a name is on
-#: this list, and they are no longer the same job.
+#: a deploy — runs the same check a clean clone does. Every command, and the
+#: sentence is meant as written: `compose()` puts this environment on the
+#: `docker compose` ones, and the plain `docker` ones are handed it where they
+#: are called, because the helper they go through is the page-serves check's
+#: and that check has no environment of its own (#113). Two reasons a name is
+#: on this list, and they are no longer the same job.
 #:
 #: The first three are what the file substitutes into itself: a value left in a
 #: shell would move the commit the image is named by, the port the check asks
@@ -190,11 +194,18 @@ def published(env: dict[str, str]) -> int:
     return int(match.group(1))
 
 
-def labels(container: str) -> dict[str, str]:
-    """Every label on the running container, as a door would read them."""
+def labels(container: str, env: dict[str, str]) -> dict[str, str]:
+    """Every label on the running container, as a door would read them.
+
+    The environment is the one the project was brought up with, for the reason
+    `compose()` takes one: what this file drops is dropped from every command
+    it runs, `docker` as well as `docker compose` (#113).
+    """
     return cast(
         dict[str, str],
-        json.loads(docker("inspect", "--format", "{{json .Config.Labels}}", container)),
+        json.loads(
+            docker("inspect", "--format", "{{json .Config.Labels}}", container, env=env)
+        ),
     )
 
 
@@ -292,7 +303,10 @@ def test_the_project_comes_up_and_serves_the_page(up: Up) -> None:
 
 def test_the_image_is_named_by_the_commit_it_was_built_from(up: Up) -> None:
     """`dccex-ui:<commit>`, and the name never moves (ADR-0005 d.1)."""
-    assert docker("inspect", "--format", "{{.Config.Image}}", up.container) == up.image
+    named = docker(
+        "inspect", "--format", "{{.Config.Image}}", up.container, env=up.environment
+    )
+    assert named == up.image
 
 
 def test_the_project_gives_the_commit_to_the_build_and_not_only_to_the_name(
@@ -306,7 +320,7 @@ def test_the_project_gives_the_commit_to_the_build_and_not_only_to_the_name(
     builds the name from into the build, and what comes out carries it: this
     is that value, off the daemon, which is where a person on the box asks.
     """
-    assert labels(up.container)[REVISION] == up.commit
+    assert labels(up.container, up.environment)[REVISION] == up.commit
 
 
 def test_a_clone_that_names_no_commit_builds_dev(up: Up) -> None:
@@ -328,7 +342,7 @@ def test_the_running_container_carries_the_route_the_door_reads(up: Up) -> None:
     """
     on_it = {
         name: value
-        for name, value in labels(up.container).items()
+        for name, value in labels(up.container, up.environment).items()
         if name.startswith("traefik.")
     }
     assert on_it == ROUTE
@@ -340,7 +354,7 @@ def test_the_container_is_the_project_the_file_pins(up: Up) -> None:
     A clone that lost the pin would be named after its directory, and the
     commands above would be resolving a project this line does not know.
     """
-    on_it = labels(up.container)
+    on_it = labels(up.container, up.environment)
     assert on_it["com.docker.compose.project"] == PROJECT
     assert on_it["com.docker.compose.service"] == SERVICE
 
@@ -369,9 +383,15 @@ def test_the_project_comes_down_and_leaves_nothing(up: Up) -> None:
     """
     down(up.environment)
     assert compose("ps", "-aq", env=up.environment) == "", "a container is still here"
-    assert docker("image", "ls", "-q", up.image) == "", f"{up.image} is still here"
+    left_image = docker("image", "ls", "-q", up.image, env=up.environment)
+    assert left_image == "", f"{up.image} is still here"
     for kind in ("volume", "network"):
         left = docker(
-            kind, "ls", "-q", "--filter", f"label=com.docker.compose.project={PROJECT}"
+            kind,
+            "ls",
+            "-q",
+            "--filter",
+            f"label=com.docker.compose.project={PROJECT}",
+            env=up.environment,
         )
         assert left == "", f"the project left a {kind} behind: {left}"
