@@ -1,6 +1,6 @@
 /**
- * The **monitor**, mounted, with a line the **decoder** knows and one it does
- * not.
+ * The **monitor**, mounted: a line the **decoder** knows, one it does not, and
+ * the two controls pressed.
  *
  * Which lines carry a **gloss** and what each one says is the decoder's and is
  * run through it (`tests/ui/test_decoder.py`); what is asserted here is that
@@ -10,6 +10,14 @@
  * source-text check is worst at: a template that drew an empty sentence and
  * one that drew none read the same off the source (#126).
  *
+ * **And the controls are pressed** (#144). That the pause and the clear run
+ * what they were handed, that the pause names what pressing it will do, and
+ * what the count beside them reads were held against the source of this
+ * component until here — which is the instrument #111 was filed to remove and
+ * #126 retired for everything else a component draws. What a press does to a
+ * conversation is the page's and is held where that is
+ * (`tests/ui/test_monitor.py`); this is a person's finger on the control.
+ *
  * How loud the gloss is beside the bytes is the stylesheet's and stays there —
  * happy-dom does no layout and has no cascade to ask.
  */
@@ -17,8 +25,9 @@
 import { expect, test } from "vitest";
 
 import { gloss } from "../src/decoder.js";
+import { type Behind } from "../src/monitor.js";
 import { DccexMonitor, type Keyed } from "../src/ui/dccex-monitor.js";
-import { all, mounted, part, reads } from "./mounted.js";
+import { all, mounted, part, press, reads } from "./mounted.js";
 
 /** A line the decoder knows, and one it does not. */
 const KNOWN = "<p1>";
@@ -88,4 +97,68 @@ test("a conversation nothing has been said in says so", async () => {
   const drawn = await monitor([]);
   expect(all(drawn, ".line")).toStrictEqual([]);
   expect(reads(drawn, ".quiet")).toBe("nothing said yet");
+});
+
+/** The monitor with the two controls handed to it, and a count of what they
+ *  are holding back. */
+async function controls(
+  paused: boolean,
+  behind: Behind<Keyed> = { lines: [], dropped: 0 },
+): Promise<{ drawn: DccexMonitor; pressed: string[] }> {
+  const pressed: string[] = [];
+  const drawn = new DccexMonitor();
+  drawn.said = SAID;
+  drawn.paused = paused;
+  drawn.behind = behind;
+  drawn.pauses = (): void => {
+    pressed.push("pauses");
+  };
+  drawn.clears = (): void => {
+    pressed.push("clears");
+  };
+  return { drawn: await mounted(drawn), pressed };
+}
+
+test("pressing the pause runs what the page handed it", async () => {
+  const { drawn, pressed } = await controls(false);
+  press(drawn, ".hold");
+  expect(pressed).toStrictEqual(["pauses"]);
+});
+
+test("pressing the clear runs what the page handed it", async () => {
+  const { drawn, pressed } = await controls(false);
+  press(drawn, ".empty");
+  expect(pressed).toStrictEqual(["clears"]);
+});
+
+test("the pause names what pressing it will do, either way round", async () => {
+  const { drawn: holding } = await controls(false);
+  expect(reads(holding, ".hold")).toBe("pause");
+  const { drawn: held } = await controls(true);
+  expect(reads(held, ".hold")).toBe("resume");
+  expect(reads(held, ".empty")).toBe("clear");
+});
+
+test("the count says what is waiting and what the queue dropped", async () => {
+  const waits: Keyed[] = Array.from({ length: 500 }, (_line, key) => ({
+    line: KNOWN,
+    at: AT,
+    sent: false,
+    key,
+  }));
+  const { drawn } = await controls(true, { lines: waits, dropped: 12 });
+  expect(reads(drawn, ".waiting")).toBe("500 waiting, 12 dropped");
+});
+
+test("a monitor with nothing waiting carries no count at all", async () => {
+  const { drawn } = await controls(false);
+  expect(reads(drawn, ".waiting")).toBeNull();
+});
+
+test("a monitor nobody handed the controls to does nothing when pressed", async () => {
+  const drawn = await monitor(SAID);
+  press(drawn, ".hold");
+  press(drawn, ".empty");
+  expect(all(drawn, ".line")).toHaveLength(2);
+  expect(reads(drawn, ".hold")).toBe("pause");
 });
