@@ -108,7 +108,7 @@ const CURRENTS = "<JI>";
 const POLLS = ["<s>", "<=>"];
 
 /** How many polls go by between one status request and the next. */
-const SLOW_EVERY = 5;
+const SLOW_EVERY = 15;
 
 /** How often the page asks.
  *
