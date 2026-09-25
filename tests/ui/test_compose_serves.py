@@ -26,6 +26,12 @@ runs it in a job of its own that the pull request requires (#54, #56). Where it
 runs, a missing daemon is a **failure**; run by hand on a machine with no
 daemon it skips and says why.
 
+That marker is on the module, so what `environment()` drops is asserted from
+`tests/ui/test_commands_run_clean.py` rather than from here: it is a
+`monkeypatch` and needs no daemon, and a daemonless check under this marker is
+one the gate never runs (#112). The function stays here, with the commands it
+is for.
+
 It builds a second time where `test_page_serves.py` has already built, which is
 a layer cache hit and not a second build on any machine that keeps one.
 """
