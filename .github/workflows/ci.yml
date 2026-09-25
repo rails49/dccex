@@ -74,7 +74,11 @@ jobs:
       # the pnpm the lock file was written by — the same line
       # `deploy/ui.Dockerfile` runs for the same reason.
       - run: corepack enable
+      # Run from `ui/`: corepack reads `packageManager` from the working
+      # directory, and at the root there is none, so it would fetch the newest
+      # pnpm, which then refuses the pinned one.
       - name: the page's components, mounted
+        working-directory: ui
         run: |
-          pnpm --dir ui install --frozen-lockfile
-          pnpm --dir ui test
+          pnpm install --frozen-lockfile
+          pnpm test

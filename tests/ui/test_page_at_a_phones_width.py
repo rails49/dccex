@@ -59,8 +59,9 @@ from tests.ui.test_page_serves import (
 
 pytestmark = pytest.mark.docker
 
-#: The browser, and the machine it needs, in one image: Chromium, its
-#: libraries and the `playwright` package that drives it. It is pinned by tag
+#: The browser, and the machine it needs, in one image: Chromium and its
+#: libraries. The `playwright` package that drives it is not in the image and
+#: is installed at the tag's version on each run (`DRIVE`). It is pinned by tag
 #: rather than by digest — unlike the two bases `deploy/ui.Dockerfile` pins,
 #: because nothing ships out of this one and a republished tag here changes
 #: what a check ran in rather than what a box serves. Moving it is the same
@@ -70,6 +71,13 @@ pytestmark = pytest.mark.docker
 #: are not resolved either: that needs a registry. A name that is not there
 #: is this check failing where it runs, with what the daemon said.
 PLAYWRIGHT = "mcr.microsoft.com/playwright/python:v1.49.0-noble"
+
+#: Install the package that matches the image's browsers, then run the driver
+#: with the arguments that follow it: `$0` is the driver, `$@` the rest.
+DRIVE = (
+    f"pip install -q --break-system-packages playwright=={PLAYWRIGHT.split(':v')[1].split('-')[0]}"
+    ' && exec python -c "$0" "$@"'
+)
 
 #: Where the page is, from inside the browser's container. It shares the page
 #: container's network namespace (`--network=container:…`), so the server is on
@@ -304,8 +312,9 @@ def drawn() -> Iterator[dict[str, Any]]:
             "--ipc=host",
             f"--network=container:{container}",
             PLAYWRIGHT,
-            "python",
+            "sh",
             "-c",
+            DRIVE,
             DRIVER,
             PAGE,
             RELEASES,
