@@ -25,12 +25,13 @@ the digest the release API reports before the device is let go, and a second
 flash refused rather than queued (`tests/dccex_usb/test_firmware.py`,
 `tests/dccex_usb/test_face.py`).
 
-What cannot be run here is Lit. The gate is Python and the node beside it is a
-bare one with no packages, so nothing in either can mount a component and press
-a button: the
-words and the ordering are asserted here and the drawing of them is held
-against the component's source below, which is the cost `tests/ui/test_look.py`
-already names.
+**And the gesture is pressed rather than read** (#126). The words and the
+ordering are asserted here; that an operator choosing a release is warned,
+presses again and then reads the three steps in the order the sequence runs
+them is asserted by mounting the row in happy-dom and pressing it
+(`ui/test/flash.test.ts`). What is still held against the source below is what
+a press does not reach: the one place a second sequence is refused after the
+controls have already gone dead.
 """
 
 from functools import lru_cache
@@ -221,51 +222,6 @@ def test_the_yes_is_a_press_of_its_own() -> None:
 # -- what the row draws -------------------------------------------------------
 
 
-def test_a_release_is_chosen_on_the_row_it_is_listed_on() -> None:
-    """The one control on the page that writes a station, and it is on the row
-    where the releases are (#9, docs/ui/README.md).
-
-    Only on the ones that carry a firmware: a release the mirror would refuse
-    for having no asset to write is not a thing to offer an operator, and the
-    row already says so of one (#8).
-    """
-    drawn = code(LIST.read_text())
-    assert "CHOOSES" in drawn, "there is nothing on the row to press"
-    assert "<button" in drawn and "@click=" in drawn
-    offered = drawn[drawn.index("release.flashable") :]
-    assert offered.index("<button") < offered.index(
-        "NO_FIRMWARE"
-    ), "a release with no firmware on it is offered all the same"
-
-
-def test_the_operator_is_warned_on_the_row_and_then_asked() -> None:
-    """The choice, the warning, and then the gesture (ADR-0006 d.2). The
-    warning opens under the release it is about, above the two presses that
-    answer it — a sentence beside a button is a sentence read after it — and it
-    is announced, because an operator reading the page with a screen reader is
-    the guard too.
-    """
-    drawn = code(LIST.read_text())
-    warning = drawn[drawn.index("#warning(tag: string)") :]
-    assert "WARNS" in warning and "CONFIRMS" in warning and "CANCELS" in warning
-    assert warning.index("WARNS") < warning.index(
-        "CONFIRMS"
-    ), "the yes is drawn above what it agrees to"
-    assert 'role="alert"' in warning, "the warning is drawn and never announced"
-
-
-def test_the_sequence_the_row_runs_is_the_module_s() -> None:
-    """A row with a stop and a cut of its own would be a second answer to what
-    a flash is, and the one above would stop holding (ADR-0009 d.1). It calls
-    the sequence and hands it the three things it needs."""
-    drawn = code(LIST.read_text())
-    assert 'from "../flash.js"' in drawn
-    assert "sequence(tag, {" in drawn, "the row writes the order out itself"
-    running = drawn[drawn.index("sequence(tag, {") :]
-    for handed in ("sends:", "writes:", "shows:"):
-        assert handed in running, f"the sequence is handed no {handed}"
-
-
 @pytest.mark.node
 def test_every_word_the_row_says_about_a_flash_is_the_sequence_s() -> None:
     """So that what an operator reads is asserted by running the sequence
@@ -276,29 +232,19 @@ def test_every_word_the_row_says_about_a_flash_is_the_sequence_s() -> None:
         assert literal not in sentences, f"the row writes {literal!r} out again"
 
 
-def test_the_step_is_drawn_where_a_shut_row_still_shows_it() -> None:
-    """The row is collapsed when nobody has asked about firmware and can be
-    shut while the station is being written, which is the minute or two a page
-    with nothing on it reads as a hang (#9)."""
-    drawn = code(LIST.read_text())
-    assert 'class="step"' in drawn, "the row shows no step"
-    assert drawn.index("</details>") < drawn.index(
-        'class="step"'
-    ), "the step is inside the row it can be hidden by"
-
-
-def test_a_release_is_chosen_once_at_a_time() -> None:
+def test_a_second_sequence_is_refused_after_the_controls_have_gone_dead() -> None:
     """A second flash is a second station reset, and what the mirror does with
     one asked for anyway is refuse it rather than queue it (`firmware.py`).
 
-    Twice over: there is nothing to press while a step is showing, and the
-    sequence is not started a second time if there is. The step is set before
-    the sequence's first `await`, so two presses in one turn cannot both pass
-    the check — the same reason the mirror reads its own flag where nothing is
-    awaited after it.
+    That there is nothing to press while a step is showing is the mounted
+    check's (`ui/test/flash.test.ts`). This is the belt under it: the step is
+    set before the sequence's first `await`, so two presses in one turn cannot
+    both pass the check — the same reason the mirror reads its own flag where
+    nothing is awaited after it. Two presses in one turn is not a gesture a
+    mounted check can make, because the first of them takes the control off
+    the page.
     """
     drawn = code(LIST.read_text())
-    assert "?disabled=${this.step !== null}" in drawn, "a second flash is pressable"
     flashing = drawn[drawn.index("async #flashes(") :]
     assert flashing.index("if (this.step !== null)") < flashing.index(
         "await sequence("
