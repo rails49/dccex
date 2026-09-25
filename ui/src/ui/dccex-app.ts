@@ -384,6 +384,12 @@ export class DccexApp extends LitElement {
    * conversation — and the trim below it never runs, which is the whole of
    * what a pause promises a reader: the line they are reading is not taken
    * off the front while they read it.
+   *
+   * **A line this page sent queues with the rest.** The view is one thing, and
+   * letting the operator's own line through would be appending to a held
+   * conversation — which at capacity is the trim a pause exists to stop. The
+   * line still went: the stream was never paused and the send was never
+   * refused, and the count turning over is what says so.
    */
   #keep(said: Said[]): void {
     for (const line of said) {

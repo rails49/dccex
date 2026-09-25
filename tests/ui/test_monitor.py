@@ -882,3 +882,24 @@ def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
     assert (
         "background:" in quieter and "primary" not in quieter
     ), "the pause and the clear are drawn as loudly as the send"
+
+
+def test_a_line_this_page_sent_waits_behind_the_pause_with_the_rest() -> None:
+    """The pause is the view, and the view is one thing.
+
+    A monitor that let the operator's own line through would be appending to
+    the conversation while it was held, which at capacity is a trim — the one
+    thing a pause promises there will not be. The line still went: the stream
+    is not paused, the send is not refused, and the count turning over is what
+    says so.
+    """
+    app = APP.read_text()
+    keeping = app[app.index("#keep(said: Said[])") :]
+    keeping = keeping[: keeping.index("\n  #append(")]
+    held = keeping.index("this.paused")
+    paused = keeping[held : keeping.index("return;", held)]
+    assert (
+        "sent" not in paused
+    ), "the pause reads which end of the conversation a line is"
+    sending = app[app.index("#sends = ") :]
+    assert "this.#keep(" in sending[: sending.index("};")], "a sent line skips the keep"
