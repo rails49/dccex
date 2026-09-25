@@ -25,19 +25,31 @@
 //
 //     {"quiet": {"last": {"p A": "<p1 A>"}, "said": [["<p1 A>", false]]}}
 //
-// or lines arriving behind a pause, with what was already waiting:
+// or lines arriving behind a pause, with what was already waiting — answered
+// with the queue and what went off the front of it to make room:
 //
 //     {"queue": {"behind": {"lines": [], "dropped": 0}, "said": ["<p1 A>"]}}
 //
-// or the module's own two: how many lines the queue holds, and the queue with
-// nothing in it and nothing dropped, which is what a monitor that is not
-// paused holds:
+// or the module's own three: how many lines the page keeps, how many the queue
+// holds, and the queue with nothing in it and nothing dropped, which is what a
+// monitor that is not paused holds:
 //
 //     {"own": true}
 //
 // or what the monitor says about a queue:
 //
 //     {"waiting": {"lines": ["<p1 A>"], "dropped": 0}}
+//
+// or a conversation, kept: a run of what happens to one, from the conversation
+// a page opens with, answered with the conversation the run left. A step is
+// lines arriving, each with whether this page sent it, or a press of the
+// pause, or a press of the clear:
+//
+//     {"keeping": [{"said": [["<p1 A>", false]]}, {"held": true},
+//                  {"said": [["<X>", false]]}, {"cleared": true}]}
+//
+// The moment a line arrived is the page's and the rules never read one, so a
+// step names none and every line in a run is stamped the same.
 //
 // The day an instant falls on is the machine's business and not the stamp's:
 // what comes back is a time and no date, which is what a person reading a
@@ -50,8 +62,13 @@
 
 import {
   EMPTIED,
+  KEPT,
+  OPENED,
   QUEUE,
+  arrived,
   atBottom,
+  cleared,
+  held,
   queued,
   quieted,
   stamped,
@@ -65,18 +82,40 @@ import { each } from "./each.mjs";
 // is.
 const DAY = [2026, 0, 1];
 
+// The stamp every line in a kept conversation carries. The rules copy it and
+// never read it, so one for all of them says as much as one each would.
+const ARRIVED = new Date(...DAY, 13, 4, 5, 7);
+
+// The conversation `steps` leaves behind, from the one a page opens with.
+const keeping = (steps) =>
+  steps.reduce((conversation, step) => {
+    if ("said" in step) {
+      const said = step.said.map(([line, sent]) => ({
+        line,
+        at: ARRIVED,
+        sent,
+      }));
+      return arrived(conversation, said);
+    }
+    return "held" in step ? held(conversation) : cleared(conversation);
+  }, OPENED);
+
 const answered = (ask) => {
   if ("scroller" in ask) {
     return { bottom: atBottom(ask.scroller) };
   }
   if ("own" in ask) {
-    return { queue: QUEUE, emptied: EMPTIED };
+    return { kept: KEPT, queue: QUEUE, emptied: EMPTIED };
   }
   if ("waiting" in ask) {
     return { says: waiting(ask.waiting) };
   }
+  if ("keeping" in ask) {
+    return keeping(ask.keeping);
+  }
   if ("queue" in ask) {
-    return queued(ask.queue.behind, ask.queue.said);
+    const { behind, went } = queued(ask.queue.behind, ask.queue.said);
+    return { ...behind, went };
   }
   if ("quiet" in ask) {
     const said = ask.quiet.said.map(([line, sent]) => ({ line, sent }));

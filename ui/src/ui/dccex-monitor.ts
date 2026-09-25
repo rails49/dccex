@@ -30,8 +30,14 @@
  * drops the oldest, so at capacity every arriving line shifts the whole
  * conversation up by one — and an unkeyed list, which Lit matches by position,
  * re-commits every binding on all two thousand rows for it. Keyed, the shift
- * moves the rows it already drew. The key is the page's to assign, because the
- * page is what keeps the conversation (`Keyed`, `dccex-app.ts`).
+ * moves the rows it already drew. The key is assigned where the conversation
+ * is kept, which is the rules' (`Line`, `monitor.js`).
+ *
+ * **And one row is the page's own note.** A resume that dropped lines
+ * puts one in where the gap is, saying how many went; it is drawn as the page
+ * speaking and not as anything the station said — no stamp, no mark and no
+ * **gloss**, because none of those would be true of it. What it says is the
+ * rules' and this draws it, as the count beside the controls is.
  *
  * **And it can be paused and cleared** (stories 12 and 13). The two controls
  * are drawn here and what they do is the page's, handed down the way the
@@ -83,10 +89,11 @@ import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
-import { type Said } from "../framing.js";
 import {
   EMPTIED,
   type Behind,
+  type Line,
+  type Shown,
   atBottom,
   stamped,
   waiting,
@@ -115,28 +122,11 @@ const RESUMES = "resume";
  *  spoken to and the readings are not touched. */
 const EMPTIES = "clear";
 
-/** A line as the page hands it down: what arrived, and the key the page gave
- *  it when it kept it.
- *
- *  The key is what the row is drawn under, so that a line falling off the
- *  front of the conversation moves the rows above it rather than re-committing
- *  every binding on all of them. Nothing the line carries would do: a line and
- *  the millisecond it arrived in are both ordinary to see twice on a serial
- *  port, and two rows keyed the same are one row.
- *
- *  It is the page's to assign, because the page is what keeps the conversation
- *  (`dccex-app.ts`). */
-export interface Keyed extends Said {
-  /** What this line is keyed by: assigned once when it was kept, never reused,
-   *  and read for nothing else. */
-  readonly key: number;
-}
-
 /** Where a reader who has scrolled up is, kept across an update: a row, and
  *  where in the view that row sat.
  *
- *  Not a number of pixels from the top of the conversation. The page drops the
- *  oldest lines at capacity (`KEPT`, `monitor.js`), so what a trim takes is
+ *  Not a number of pixels from the top of the conversation. The oldest lines
+ *  are dropped at capacity (`KEPT`, `monitor.js`), so what a trim takes is
  *  the top of that list, and a view left at the same `scrollTop` is looking at
  *  a different line afterwards. A row is not moved out from under a reader by
  *  that — it is carried up along with everything below what went — so putting
@@ -182,8 +172,9 @@ export class DccexMonitor extends LitElement {
     clears: { attribute: false },
   };
 
-  /** The conversation to draw, oldest first, as the page hands it down. */
-  said: Keyed[] = [];
+  /** The conversation to draw, oldest first, as the page hands it down: the
+   *  lines, and the page's own notes among them. */
+  said: readonly Shown[] = [];
 
   /** What sends a typed command, as the page hands it down: the message that
    *  went back, or `null` where nothing did.
@@ -201,7 +192,7 @@ export class DccexMonitor extends LitElement {
    *  this draws is read off it and the lines in it are not this pane's to
    *  draw — they are out of sight until the reader resumes, which is what
    *  being paused means. */
-  behind: Behind<Keyed> = EMPTIED;
+  behind: Behind<Line> = EMPTIED;
 
   /** What holds the view and lets it go, as the page hands it down.
    *
@@ -242,8 +233,11 @@ export class DccexMonitor extends LitElement {
           ? html`<div class="quiet">nothing said yet</div>`
           : repeat(
               this.said,
-              (said: Keyed) => said.key,
-              (said: Keyed) => {
+              (said: Shown) => said.key,
+              (said: Shown) => {
+                if ("note" in said) {
+                  return html`<div class="note">${said.note}</div>`;
+                }
                 const read = gloss(said.line);
                 return html`
                   <div class=${said.sent ? "line sent" : "line"}>
