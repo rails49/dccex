@@ -89,11 +89,23 @@ def prose() -> list[Path]:
     )
 
 
+def spent(pattern: re.Pattern[str], text: str) -> str:
+    """The text with every match of the pattern blanked and nothing moved.
+
+    A citation that says whose it is has been read and is done with, but
+    deleting it would slide everything after it along, and what `cited()`
+    hands back is the forty characters in front of a bare one — cut out of the
+    text the file holds, so that a page carrying a whole citation ahead of a
+    bare one is reported at the bare one rather than forty characters early.
+    """
+    return pattern.sub(lambda said: " " * len(said.group()), text)
+
+
 def cited(text: str) -> list[str]:
     """Every mention of the number that does not say whose it is."""
     return [
         text[max(0, mention.start() - 40) : mention.end()]
-        for mention in CITED.finditer(LINKED.sub("", OWNED.sub("", text)))
+        for mention in CITED.finditer(spent(LINKED, spent(OWNED, text)))
     ]
 
 
@@ -167,6 +179,21 @@ def test_an_owner_resolves_wherever_the_line_broke_and_however_it_opened() -> No
         "This repository's ADR-0002 is superseded.",
     ):
         assert cited(written) == [], f"the owner was not read: {written!r}"
+
+
+def test_a_bare_citation_is_reported_where_it_sits() -> None:
+    """The context a bare citation comes back with, on a page holding both.
+
+    Every file the check read until #123 held one citation or several of one
+    kind, so nothing showed that a whole citation ahead of a bare one moved
+    what the bare one was reported with. `docs/ui/README.md` holds one of
+    each, and a reader given the wrong forty characters would go looking on
+    the wrong line.
+    """
+    written = "it permits all three (the organisation's ADR-0002). It is ADR-0002."
+    loose = cited(written)
+    assert len(loose) == 1, f"the whole citation was read as bare too: {loose}"
+    assert loose[0].endswith("). It is ADR-0002"), loose[0]
 
 
 def test_a_linked_citation_says_whose_it_is() -> None:
