@@ -184,15 +184,30 @@ def test_a_track_whose_mode_is_not_known_yet_is_still_drawn() -> None:
 
 
 @pytest.mark.node
-def test_the_current_is_smoothed_across_polls() -> None:
-    """Each reading moves the one shown half the way towards it, so a single
-    spike is halved and a steady draw settles in a few polls."""
-    said = [("<jI 100>", NOW - 20), ("<jI 300>", NOW - 10)]
-    assert tiles(said=said, now=NOW)["track A"] == "200 mA"
-    twice = [("<jI 100>", NOW - 9), ("<jI 100>", NOW - 8)]
-    assert tiles(said=[*said, *twice], now=NOW)["track A"] == "125 mA"
-    steady = [("<jI 100>", NOW - 8 + i) for i in range(8)]
-    assert tiles(said=[*said, *steady], now=NOW)["track A"] == "100 mA"
+def current(*milliamps: int) -> str:
+    """What track A's tile reads after these readings, one a second."""
+    said = [(f"<jI {ma}>", NOW - 10 + i) for i, ma in enumerate(milliamps)]
+    return tiles(said=said, now=NOW)["track A"]
+
+
+def test_the_current_is_the_median_of_the_last_three_readings() -> None:
+    """A single spike is dropped altogether rather than averaged in."""
+    assert current(100, 900, 100) == "100 mA"
+    assert current(100, 100, 900) == "100 mA"
+
+
+def test_a_step_in_the_current_shows_after_two_readings() -> None:
+    """A real change is two readings in a row, and shows at once as its own
+    value, not a value on the way to it."""
+    assert current(100, 100, 100, 300) == "100 mA"
+    assert current(100, 100, 100, 300, 300) == "300 mA"
+
+
+def test_the_first_readings_are_shown_as_they_are() -> None:
+    """Before there are three there is nothing to take the median of, and a
+    blank tile until the third second would be a reading withheld."""
+    assert current(40) == "40 mA"
+    assert current(40, 60) == "60 mA"
 
 
 @pytest.mark.node

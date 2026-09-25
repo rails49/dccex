@@ -103,9 +103,9 @@ the work pane because the band keeps to the look rules' four colours.
 `<= A MAIN>`). A track set to `NONE` gets no tile. A track reads `off` when the
 station says its power is off (`<p0 A>`), whatever current was last measured
 on it, and its current otherwise. The current is the station's own measure
-(`<JI>` → `<jI 120 2 0 0>`, A first), smoothed: each poll moves the shown
-value half the way to the new reading, because the current sense is noisy at
-the low end. A track the station has named but not measured reads blank, not
+(`<JI>` → `<jI 120 2 0 0>`, A first), asked every second and shown as the
+median of the last three readings: the current sense is noisy, a median drops
+a single spike altogether, and a real step shows after two readings. A track the station has named but not measured reads blank, not
 `0 mA`.
 
 The build and the tracks go together when the link goes down, which is correct
@@ -425,12 +425,13 @@ tickets.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
-else asks. So the page asks on its own schedule — `<s>`, `<JI>` and `<=>` every five seconds, up
-the stream, through the same send an operator's typing goes through, though
+else asks. So the page asks on its own schedule — `<JI>` every second, and
+`<s>` and `<=>` every fifth second, because every client on the port receives
+the eight lines `<s>` is answered with — up the stream, through the same send an operator's typing goes through, though
 the poll itself is not written to the monitor — and the mirror goes on
 originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
-Fifteen seconds without a word, which is three polls, and the **link** is down.
+Five seconds without a word, which is five polls, and the **link** is down.
 The readings are worked out again on a one-second tick as well, because the
 link going down is the absence of a line rather than the arrival of one; and a
 page that has left stops asking, because a conversation that is quiet when

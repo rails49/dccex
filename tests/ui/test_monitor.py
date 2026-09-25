@@ -614,6 +614,13 @@ def test_currents_and_limits_are_never_shown() -> None:
     assert quiet(said)["shown"] == [False, False, False]
 
 
+def test_the_loco_slot_count_is_shown_only_when_it_changes() -> None:
+    """Another client asks `<#>` every thirty seconds and every client sees
+    the answer, `<# 120>`, which does not change."""
+    said = [("<# 120>", False), ("<# 120>", False), ("<# 50>", False)]
+    assert quiet(said)["shown"] == [True, False, True]
+
+
 def test_a_line_that_is_not_a_status_line_is_always_shown() -> None:
     """A turnout, a refusal, anything the monitor does not know: every time."""
     said = [("<H 12 1>", False), ("<X>", False), ("<H 12 1>", False)]

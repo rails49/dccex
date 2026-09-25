@@ -95,7 +95,9 @@ const MEASURED = new Set(["jI", "jG"]);
  * What a status line is about, or `null` for a line that is not one.
  *
  * The station answers every poll with the same handful of lines: its banner,
- * the power on each track, the power as a whole and the display. A line whose
+ * the power on each track, the power as a whole and the display. Another
+ * client asking `<#>` every thirty seconds gets `<# 120>`, how many locos the
+ * station can hold, and every client sees that too. A line whose
  * subject last said the same thing tells a reader nothing new, so the monitor
  * shows one of these only when it changed. Every other line is always shown.
  *
@@ -107,14 +109,16 @@ const MEASURED = new Set(["jI", "jG"]);
  */
 export function subject(line) {
   const said =
-    /^<(?:p[01]( [A-Z]+)?|(i)DCC-EX\b.*|(@ \d+ \d+) .*|(j[A-Z]) .*|(= [A-Z]) .*)>$/.exec(
+    /^<(?:p[01]( [A-Z]+)?|(i)DCC-EX\b.*|(@ \d+ \d+) .*|(j[A-Z]) .*|(= [A-Z]) .*|(#) \d+)>$/.exec(
       line,
     );
   if (said === null) {
     return null;
   }
-  const [, track, banner, display, currents, mode] = said;
-  return banner ?? display ?? currents ?? mode ?? `p${track ?? ""}`;
+  const [, track, banner, display, currents, mode, slots] = said;
+  return (
+    banner ?? display ?? currents ?? mode ?? slots ?? `p${track ?? ""}`
+  );
 }
 
 /**
