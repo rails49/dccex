@@ -28,6 +28,12 @@ is written: a substitution that silently found nothing would run a script that
 refuses at its first guard and prove nothing. That these three are the ones
 written down is `test_stack.py`'s claim and stays there.
 
+**What the clone's own origin says before the run is this module's to vary.**
+A clone with no remote named `origin` is the one `git remote set-url` fails on
+(#119), and a clone somebody repointed by hand is the one the setting is there
+for at all, so `Remote` below names the three boxes deployed onto here and the
+end state each reaches is asserted rather than read off the script.
+
 **What is not held here** is the exit status reaching the person who typed the
 command: `ssh` carries it back from a box and the fake one does not, so what is
 asserted is that the program exits non-zero, which is the half of it that is
@@ -38,6 +44,7 @@ import os
 import stat
 import subprocess
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from tests.deploy.test_stack import DECLARATION, DEPLOY, ORIGIN, RECORD
@@ -50,6 +57,24 @@ RUNNING = "8f2c1d4bd9a0e6c5f3a71b28e40d9c6b5a3f7e11"
 #: What the fake `docker` says when it is the one that fails. The deploy's own
 #: sentence has to be findable underneath compose's.
 DAEMON = "the daemon has gone away"
+
+
+class Remote(Enum):
+    """What the clone's `origin` says before the deploy is run."""
+
+    #: Pointed at the origin this module made, which is where `git clone` left
+    #: it and what every check that is not about the origin deploys onto.
+    AS_CLONED = "as cloned"
+
+    #: Pointed somewhere else by hand, which is the clone the origin is set
+    #: rather than believed for (control#541). It is a path on this machine
+    #: that does not exist, so a deploy that fetched from it instead of
+    #: correcting it fails here rather than reaching the network.
+    REPOINTED = "repointed by hand"
+
+    #: No remote named `origin` at all, which `git remote set-url` fails on and
+    #: `set -e` stopped the deploy over (#119).
+    MISSING = "no origin"
 
 
 @dataclass(frozen=True)
@@ -65,6 +90,10 @@ class Box:
     #: The commit the deploy was bringing up: the clone's `HEAD`.
     commit: str
 
+    #: What stands in for the script's own `ORIGIN` in the program that ran:
+    #: the bare repository under `tmp_path` a clone here can fetch from.
+    points_at: str
+
     #: What `.env` said when compose was called, saved by the fake `docker`.
     told: str | None
 
@@ -79,6 +108,18 @@ class Box:
         """What `.env` says now, or `None` where there is no such file."""
         env = self.clone / ".env"
         return env.read_text() if env.exists() else None
+
+    @property
+    def origin(self) -> str | None:
+        """What the clone's remote named `origin` is now, or `None` where the
+        clone has no such remote."""
+        got = subprocess.run(
+            ("git", "-C", str(self.clone), "remote", "get-url", "origin"),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return got.stdout.strip() if got.returncode == 0 else None
 
     @property
     def lines(self) -> list[str]:
@@ -120,12 +161,19 @@ def a_clone(tmp_path: Path, home: Path) -> str:
     return str(origin)
 
 
-def deployed(tmp_path: Path, *, env: str | None, comes_up: bool) -> Box:
+def deployed(
+    tmp_path: Path,
+    *,
+    env: str | None,
+    comes_up: bool,
+    remote: Remote = Remote.AS_CLONED,
+) -> Box:
     """The deploy, run against a box made here.
 
     `env` is what `.env` says before the run, or `None` for a box that has
     never had one — the first deploy onto a fresh box. `comes_up` is whether
-    the `up` succeeds.
+    the `up` succeeds. `remote` is what the clone's `origin` says before the
+    run.
     """
     home = tmp_path / "home"
     home.mkdir()
@@ -133,6 +181,23 @@ def deployed(tmp_path: Path, *, env: str | None, comes_up: bool) -> Box:
     binaries.mkdir()
     origin = a_clone(tmp_path, home)
     clone = home / "dccex"
+    if remote is Remote.REPOINTED:
+        subprocess.run(
+            (
+                "git",
+                "-C",
+                str(clone),
+                "remote",
+                "set-url",
+                "origin",
+                str(tmp_path / "somebody-elses.git"),
+            ),
+            check=True,
+        )
+    elif remote is Remote.MISSING:
+        subprocess.run(
+            ("git", "-C", str(clone), "remote", "remove", "origin"), check=True
+        )
     if env is not None:
         (clone / ".env").write_text(env)
 
@@ -193,6 +258,7 @@ def deployed(tmp_path: Path, *, env: str | None, comes_up: bool) -> Box:
     return Box(
         clone=clone,
         record=record,
+        points_at=origin,
         commit=subprocess.run(
             ("git", "-C", str(clone), "rev-parse", "HEAD"),
             capture_output=True,
@@ -307,3 +373,40 @@ def test_a_first_deploy_that_comes_up_records_that_it_replaced_nothing(
     assert box.ran.returncode == 0
     assert box.env == f"DCCEX_COMMIT={box.commit}\n"
     assert box.lines[0].split()[1:] == ["none", "->", f"dccex:{box.commit}"]
+
+
+def test_a_clone_with_no_origin_is_given_one_and_the_deploy_goes_on(
+    tmp_path: Path,
+) -> None:
+    """The bug (#119). `git remote set-url` fails on a clone with no remote
+    named `origin`, and `set -e` stopped the deploy there — on git's terse
+    message rather than on one of this script's own sentences, which is what
+    every other guard in it is written to give.
+
+    Nothing is wrong with such a clone, so nothing is said about it: it is
+    given the origin the script names and the deploy carries on. What the `up`
+    was told is asserted with the origin, because a program that stopped at the
+    fetch or the fast-forward would never have reached compose and would leave
+    the origin right anyway.
+    """
+    box = deployed(tmp_path, env=None, comes_up=True, remote=Remote.MISSING)
+    assert box.ran.returncode == 0, box.ran.stderr
+    assert box.origin == box.points_at
+    assert box.told == f"DCCEX_COMMIT={box.commit}\n"
+
+
+def test_a_clone_somebody_repointed_by_hand_ends_at_the_scripts_origin(
+    tmp_path: Path,
+) -> None:
+    """The case the setting is there for (control#541), and the one the
+    fallback above must not have taken over: an origin that is somebody else's
+    is set to the script's rather than left and pulled from.
+
+    The clone is pointed at a path that does not exist, so a deploy that
+    believed it would fail at the fetch instead of quietly bringing up
+    somebody else's commits.
+    """
+    box = deployed(tmp_path, env=None, comes_up=True, remote=Remote.REPOINTED)
+    assert box.ran.returncode == 0, box.ran.stderr
+    assert box.origin == box.points_at
+    assert box.told == f"DCCEX_COMMIT={box.commit}\n"
