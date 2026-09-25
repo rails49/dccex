@@ -314,7 +314,7 @@ def test_the_page_hands_the_row_its_stream_and_its_face() -> None:
     the sequence did; the face is asked by the page's own `flash`.
     """
     app = code(APP.read_text())
-    assert 'import { clients, flash, releases } from "../face.js";' in app
+    assert 'import { flash, releases } from "../face.js";' in app
     assert ".sends=${this.#sends}" in app, "the row is handed no stream"
     assert ".writes=${flash}" in app, "the row is handed no face"
 

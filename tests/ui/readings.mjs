@@ -5,10 +5,9 @@
 // of what a page would be drawing on stdout, in the order they came.
 //
 // A scenario is what a page would have: the lines the station said and when,
-// how many clients the face last answered with, and the moment on the page's
-// clock the readings are wanted for.
+// and the moment on the page's clock the readings are wanted for.
 //
-//     {"said": [["<p1>", 0]], "clients": 2, "now": 1000}
+//     {"said": [["<p1>", 0]], "now": 1000}
 //
 // What comes back is the readings themselves and the two things drawn out of
 // them — the band's readings and the tiles', each as what it is called and
@@ -26,7 +25,6 @@ import {
   QUIET,
   asOf,
   band,
-  counted,
   heard,
   tiles,
 } from "../../ui/src/readings.js";
@@ -36,9 +34,6 @@ const drawn = (scenario) => {
   let kept = QUIET;
   for (const [line, at] of scenario.said ?? []) {
     kept = heard(kept, line, at);
-  }
-  if ("clients" in scenario) {
-    kept = counted(kept, scenario.clients);
   }
   const readings = asOf(kept, scenario.now ?? 0);
   return { readings, band: band(readings), tiles: tiles(readings) };

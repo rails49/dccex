@@ -88,27 +88,34 @@ went. 560px is this page's own number rather than a look rule, written in
 
 ### The tiles
 
-Four readings of the station's particulars, at the top of the work pane (#7):
+The station's particulars, at the top of the work pane (#7):
 
 | Tile | What it reads | While the link is down |
 | --- | --- | --- |
+| link | a light: green while the station answers, red when it does not | red |
 | build | the `G-` field of the station's banner | blank |
-| current | the milliamps on `<c …>` | blank |
-| clients | how many are on the mirror's port | still read — it is the face's |
-| last heard | how long ago the station last said anything | blank |
+| track A · MAIN, … | the track's current in mA, or `off` | gone |
 
-Three of the four blank together, which is correct rather than a gap: three of
-them are the station talking and the station is not talking. The **build**
-clears with the link and fills again by itself when the station comes back and
+The light is the band's **link** reading made visible at a glance; it is in
+the work pane because the band keeps to the look rules' four colours.
+
+**A tile per track the station uses**, by letter, with its mode (`<=>` →
+`<= A MAIN>`). A track set to `NONE` gets no tile. A track reads `off` when the
+station says its power is off (`<p0 A>`), whatever current was last measured
+on it, and its current otherwise. The current is the station's own measure
+(`<JI>` → `<jI 120 2 0 0>`, A first), smoothed: each poll moves the shown
+value half the way to the new reading, because the current sense is noisy at
+the low end. A track the station has named but not measured reads blank, not
+`0 mA`.
+
+The build and the tracks go together when the link goes down, which is correct
+rather than a gap: they are the station talking and the station is not
+talking. The **build** fills again by itself when the station comes back and
 says which one it is running, so a build from before a flash is never reported
-as the one on the board (ADR-0008 d.3). A blank tile keeps its height — three
-of them blanking at once is exactly when somebody is looking, and a row that
-collapsed as it happened would move the monitor under their thumb.
+as the one on the board (ADR-0008 d.3).
 
-The count of clients is the one reading that is not the station talking, and a
-face that could not be asked says nothing rather than nobody: `0` is what the
-face answers when the port is empty, and a page drawing `0` for an app it could
-not reach would be reporting an empty port nobody saw.
+The page no longer shows how many **client**s are on the mirror's port. The
+face still answers that at `/dccex-usb/clients`.
 
 ### The releases
 
@@ -264,8 +271,10 @@ browser can hold:
   what the station is saying now, and there is no history behind it to scroll
   into: the mirror keeps none (ADR-0010);
 - a status line — the banner, the power on a track or on all of them, the
-  display, a track's current or its mode — is shown only when it says
-  something different from the last one about the same thing. Every poll is
+  display, a track's mode — is shown only when it says something different
+  from the last one about the same thing. The measured currents (`<jI …>`,
+  `<jG …>`) are never shown: they move on nearly every poll, and the tiles are
+  where they are read. Every poll is
   answered with the same eight lines, and every open page polls. The readings
   still hear every line; it is only the monitor that leaves the repeats out;
 - a stream that closed is opened again after two seconds, because everything
@@ -416,7 +425,7 @@ tickets.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
-else asks. So the page asks on its own schedule — `<s>` every five seconds, up
+else asks. So the page asks on its own schedule — `<s>`, `<JI>` and `<=>` every five seconds, up
 the stream, through the same send an operator's typing goes through, though
 the poll itself is not written to the monitor — and the mirror goes on
 originating nothing

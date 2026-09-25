@@ -53,13 +53,12 @@
 
 import { LitElement, html, type TemplateResult } from "lit";
 
-import { clients, flash, releases } from "../face.js";
+import { flash, releases } from "../face.js";
 import { type Said } from "../framing.js";
 import { quieted } from "../monitor.js";
 import {
   QUIET,
   asOf,
-  counted,
   heard,
   type Kept,
   type Readings,
@@ -89,12 +88,14 @@ export const KEPT = 2000;
  *
  * The status request, which is what a throttle asks with and what an operator
  * types most: the station answers it with the power state and its banner, and
- * those are the band's second reading and the **build** (ADR-0008 d.2, d.3).
- * It goes up as any typed message does, through the one rule about what a
- * whole message is (`message.js`), but it is not written to the monitor: a
- * line every five seconds that nobody typed is noise there.
+ * those are the band's second reading, each track's power and the **build**
+ * (ADR-0008 d.2, d.3). `<JI>` asks for the current on every track and `<=>`
+ * for what each track is set to. They go up as any typed message does,
+ * through the one rule about what a whole message is (`message.js`), but they
+ * are not written to the monitor: lines every five seconds that nobody typed
+ * are noise there.
  */
-const POLL = "<s>";
+const POLLS = ["<s>", "<JI>", "<=>"];
 
 /** How often the page asks.
  *
@@ -159,20 +160,6 @@ export class DccexApp extends LitElement {
    * the shift the keys are there to save it (#74).
    */
   #keys = 0;
-
-  /** Which ask an answer has to be from to be read: how many times the page
-   *  has asked, counted up before each one goes.
-   *
-   * The count of clients is the one reading here that could go backwards.
-   * Every other one is monotonic — a line that arrived has arrived, and the
-   * clock only goes forward — but this one is a request, and which order a
-   * browser hands back the answers to a dozen of them in is the browser's
-   * business. During a flash it is a dozen: the face is inside esptool for the
-   * length of a write, the schedule goes on firing, and an answer from the
-   * first ask arriving last would put a count from a minute ago on the tile
-   * and leave it there until another answer happened to arrive in order (#88).
-   */
-  #asks = 0;
 
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
@@ -256,31 +243,15 @@ export class DccexApp extends LitElement {
     return sent;
   };
 
-  /** Ask the station how it is, and the face how many are on its port.
+  /** Ask the station how it is.
    *
-   * Two counterparties and one schedule. The station is asked up the stream,
-   * because the page is one more client of the mirror's port and that is what
-   * a client does (ADR-0007 d.2, ADR-0010 d.1); the face is asked about
-   * itself, because who is listening to a command station is not something a
-   * command station knows (ADR-0008 d.4).
-   *
-   * **The face's answer is read only if it is the newest ask's** (`#asks`,
-   * #88). An older one is dropped where it arrives, the way `Stream` drops a
-   * socket that closed after it stopped being the stream's. Nothing is
-   * cancelled by that: a face that is answering slowly is not a request to
-   * abort, and the count the newest ask answers with is the one the tile
-   * wants, whenever it arrives.
+   * Up the stream, because the page is one more client of the mirror's port
+   * and that is what a client does (ADR-0007 d.2, ADR-0010 d.1).
    */
   #ask(): void {
-    this.#stream.send(POLL);
-    const ask = ++this.#asks;
-    void clients().then((count: number | null) => {
-      if (ask !== this.#asks) {
-        return;
-      }
-      this.#kept = counted(this.#kept, count);
-      this.#now();
-    });
+    for (const poll of POLLS) {
+      this.#stream.send(poll);
+    }
   }
 
   /** The readings as they stand, on the page's own clock. */

@@ -88,6 +88,9 @@ export function stamped(at) {
   );
 }
 
+/** The subjects the monitor never shows: see `subject`. */
+const MEASURED = new Set(["jI", "jG"]);
+
 /**
  * What a status line is about, or `null` for a line that is not one.
  *
@@ -95,6 +98,9 @@ export function stamped(at) {
  * the power on each track, the power as a whole and the display. A line whose
  * subject last said the same thing tells a reader nothing new, so the monitor
  * shows one of these only when it changed. Every other line is always shown.
+ *
+ * The measured currents (`<jI …>`) and limits (`<jG …>`) are never shown: the
+ * current moves on nearly every poll, and the tiles are where it is read.
  *
  * @param {string} line a whole `<…>` message
  * @returns {string | null}
@@ -129,7 +135,7 @@ export function quieted(last, said) {
     if (about === null) {
       return true;
     }
-    const changed = now[about] !== line;
+    const changed = !MEASURED.has(about) && now[about] !== line;
     now[about] = line;
     return changed;
   });

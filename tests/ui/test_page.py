@@ -45,10 +45,12 @@ def test_the_page_polls_the_station_on_its_own_schedule() -> None:
     its one sentence: every byte that reached the device came from a client.
     """
     page = APP.read_text()
-    assert 'const POLL = "<s>";' in page, "the page asks the station nothing"
+    assert (
+        'const POLLS = ["<s>", "<JI>", "<=>"];' in page
+    ), "the page asks the station nothing"
     assert re.search(r"POLL_MS\s*=\s*\d+", page) is not None, "there is no schedule"
     assert "setInterval(" in page, "the page asks once and never again"
-    assert "this.#stream.send(POLL)" in page, "the poll does not go up the stream"
+    assert "this.#stream.send(poll)" in page, "the poll does not go up the stream"
 
 
 def test_the_poll_goes_up_the_way_anything_typed_does() -> None:
@@ -62,7 +64,7 @@ def test_the_poll_goes_up_the_way_anything_typed_does() -> None:
     """
     page = APP.read_text()
     asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
-    assert "this.#stream.send(POLL)" in asking, "the poll does not go up the stream"
+    assert "this.#stream.send(poll)" in asking, "the poll does not go up the stream"
     assert "this.#sends(" not in asking, "the poll is written to the monitor"
 
 
@@ -146,72 +148,6 @@ def test_the_link_can_go_down_with_nothing_arriving() -> None:
     page = APP.read_text()
     assert re.search(r"TICK_MS\s*=\s*\d+", page) is not None, "the readings never tick"
     assert "asOf(this.#kept, Date.now())" in page, "the readings are never worked out"
-
-
-def test_the_count_of_clients_comes_off_the_face() -> None:
-    """The one reading that is not the station talking (ADR-0008 d.4), asked
-    for on the page's own origin under the prefix the door strips."""
-    assert "CLIENTS_PATH = `${FACE}/clients`" in FACE.read_text()
-    assert "clients().then(" in APP.read_text(), "the page never asks the face"
-
-
-def test_a_face_that_did_not_answer_says_nothing_rather_than_nobody() -> None:
-    """A face that is away, a status that is not a 200, an answer that is not
-    a count: `null`, and the tile blanks. Drawing `0` for an app the page
-    could not ask would be reporting an empty port nobody saw (ADR-0009
-    d.2).
-
-    Read over the count alone. The other thing asked of the face answers the
-    same way for the same reason and is held where it is drawn
-    (`tests/ui/test_releases.py`).
-    """
-    asking = FACE.read_text()
-    counting = asking[
-        asking.index("export async function clients(") : asking.index(
-            "export const RELEASES_PATH"
-        )
-    ]
-    assert "Promise<number | null>" in asking
-    assert counting.count("return null;") == 3, "a way of not knowing reads as a count"
-    assert "} catch {" in counting, "a face that is away takes the page with it"
-
-
-def test_an_answer_from_an_older_ask_does_not_change_the_count() -> None:
-    """The count is the one reading on the page that could go backwards (#88).
-
-    Every other one is monotonic: a line that arrived has arrived, and the
-    clock only goes forward. The count is a request, and which order a browser
-    hands back the answers to a dozen requests in is the browser's business.
-    During a flash that is a dozen — the face is inside esptool for the length
-    of a write, the poll goes on firing every five seconds, the asks stack up,
-    and an answer from the first of them arriving last would put a count from a
-    minute ago on the tile and leave it there until another answer happened to
-    arrive in order.
-
-    So the asks are numbered, and an answer that is not the newest ask's is
-    dropped where it arrives — the shape `stream.ts` drops a socket that closed
-    after it stopped being the stream's with. Nothing is cancelled by that: a
-    face that is answering slowly is not a request to abort, and the count the
-    newest ask answers with is the one the tile wants, whenever it arrives.
-
-    Read off the source rather than run, for the reason this module opens with.
-    What a reader of it can be held to is the guard: the number taken before the
-    ask goes, the comparison in the answer, and nothing between that comparison
-    and the readings.
-    """
-    page = APP.read_text()
-    asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
-    assert "++this.#asks" in asking, "the asks are not numbered"
-    numbered = asking.index("++this.#asks")
-    answer = asking.index(".then(")
-    assert numbered < answer, "the ask is numbered after its answer could arrive"
-
-    answering = asking[answer:]
-    assert "this.#asks" in answering, "the answer is read whichever ask it is from"
-    assert answering.count("return;") == 1, "the answer is dropped on something else"
-    dropped = answering.index("return;")
-    read = answering.index("counted(")
-    assert dropped < read, "an answer from an older ask reaches the readings"
 
 
 def test_nothing_on_the_page_commands_track_power() -> None:

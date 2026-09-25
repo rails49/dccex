@@ -596,12 +596,22 @@ def test_each_track_is_its_own_subject() -> None:
     ]
 
 
-def test_currents_and_modes_are_shown_only_when_they_change() -> None:
-    """The per-track current and mode lines repeat on a poll the same way."""
-    said = [("<jI 13 2 0 0>", False), ("<= A MAIN>", False)]
-    first = quiet(said)
-    assert quiet(said, first["last"])["shown"] == [False, False]
-    assert quiet([("<jI 14 2 0 0>", False)], first["last"])["shown"] == [True]
+def test_modes_are_shown_only_when_they_change() -> None:
+    """The per-track mode lines repeat on a poll the same way."""
+    first = quiet([("<= A MAIN>", False)])
+    assert quiet([("<= A MAIN>", False)], first["last"])["shown"] == [False]
+    assert quiet([("<= A PROG>", False)], first["last"])["shown"] == [True]
+
+
+def test_currents_and_limits_are_never_shown() -> None:
+    """The measured current moves on nearly every poll, so showing it when it
+    changed would be showing it every time. The tiles are where it is read."""
+    said = [
+        ("<jI 13 2 0 0>", False),
+        ("<jG 1233 1233>", False),
+        ("<jI 14 2 0 0>", False),
+    ]
+    assert quiet(said)["shown"] == [False, False, False]
 
 
 def test_a_line_that_is_not_a_status_line_is_always_shown() -> None:

@@ -52,6 +52,28 @@ export const tilesStyles = css`
      number that changes under the eye, and tabular so that a column of
      milliamps does not jitter. It keeps its height while it is blank, so the
      row does not collapse when the link goes. */
+  /* The link as a light: a tile only as wide as its label, so it takes no
+     share of the row. */
+  .light {
+    flex: none;
+    align-items: center;
+  }
+
+  .dot {
+    width: 1rem;
+    height: 1rem;
+    margin: 0.25rem 0;
+    border-radius: 50%;
+  }
+
+  .dot.on {
+    background: var(--sl-color-success-600);
+  }
+
+  .dot.off {
+    background: var(--sl-color-danger-600);
+  }
+
   .reads {
     min-height: 1.5rem;
     overflow-wrap: anywhere;

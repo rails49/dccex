@@ -229,11 +229,10 @@ second thing).
 
 ## tile
 
-One reading of the station's particulars on the page's work pane. There are
-four — the **build**, the current on the track, how many **clients** are on
-the mirror's port, and how long ago the station last said anything — and three
-of them blank together when the **link** goes down, because three of them are
-the station talking.
+One reading of the station's particulars on the page's work pane: a light for
+the **link**, the **build**, and one per track in use, reading its current or
+`off`. The build and the tracks blank together when the **link** goes down,
+because they are the station talking.
 
 **Not:** *card*, *widget*, *panel*, *badge*, *stat*, *metric*, *gauge*.
 

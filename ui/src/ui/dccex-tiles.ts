@@ -41,12 +41,24 @@ export class DccexTiles extends LitElement {
   override render(): TemplateResult {
     return html`
       ${tiles(this.readings).map(
-        (shown: Shown) => html`
-          <div class="tile">
-            <span class="of">${shown.of}</span>
-            <span class="reads">${shown.reads}</span>
-          </div>
-        `,
+        (shown: Shown) =>
+          shown.lit === undefined
+            ? html`
+                <div class="tile">
+                  <span class="of">${shown.of}</span>
+                  <span class="reads">${shown.reads}</span>
+                </div>
+              `
+            : html`
+                <div class="tile light">
+                  <span class="of">${shown.of}</span>
+                  <span
+                    class="dot ${shown.lit ? "on" : "off"}"
+                    role="img"
+                    aria-label=${shown.lit ? "answering" : "not answering"}
+                  ></span>
+                </div>
+              `,
       )}
     `;
   }
