@@ -14,9 +14,9 @@ was wanted for; the fourth is the one reading on the page that the station
 cannot say about itself, so it is this app's own business about itself
 (ADR-0008 d.4). Writing means owning the
 serial port, so the app that holds the device is the only thing that can do it
-(ADR-0065, `firmware.py`); what this adds is that whoever asked is told what
-happened, where a refusal used to be a line in a log addressed to nobody
-(ADR-0001 d.2, ADR-0050).
+(control ADR-0065, `firmware.py`); what this adds is that whoever asked is
+told what happened, where a refusal used to be a line in a log addressed to
+nobody (ADR-0001 d.2, control ADR-0050).
 
 **The third is the monitor's stream, and it is one more client of the mirror
 and not a second mirror** (ADR-0007, #14). A browser opens it by upgrading a
@@ -43,11 +43,11 @@ token answers it, and the socket that then carries the conversation is the
 server's (`Monitor`).
 
 **The source of releases is configuration and never payload.** The LAN carries
-no authentication on purpose (ADR-0042), so a request that could name where to
-read releases from would be a request that decides what the station is offered
-to run. The face is constructed with the source the app was started with, and
-a request cannot reach it: a query string is not read, and a body is not read
-for one either.
+no authentication on purpose (control ADR-0042), so a request that could name
+where to read releases from would be a request that decides what the station
+is offered to run. The face is constructed with the source the app was started
+with, and a request cannot reach it: a query string is not read, and a body is
+not read for one either.
 
 **A browser reaches this through the door and never the LAN** (ADR-0004). The
 page is served at the box's `dccex` label and the face is the same label under
@@ -108,7 +108,7 @@ mirror's own rule (`Monitor`)."""
 MAX_BODY_BYTES = 1 << 16
 """How much body the face reads. What a page asks this app is a tag and a
 gesture; anything larger is not a question this answers, and reading it would
-be a buffer somebody else decides the size of (ADR-0042)."""
+be a buffer somebody else decides the size of (control ADR-0042)."""
 
 CRLF = "\r\n"
 HEAD_END = b"\r\n\r\n"
@@ -185,8 +185,8 @@ and a page that reloaded one would write the station twice."""
 ASKED_TAG = "tag"
 """What the body of a flash names the release to write. A tag and nothing
 else — the source is this app's configuration and no request can reach it
-(ADR-0042), so a body that named one is written out of the configured source
-just the same, because nothing here looks for one."""
+(control ADR-0042), so a body that named one is written out of the configured
+source just the same, because nothing here looks for one."""
 
 FLASHED = "flashed"
 """What an answer says a build was written under. The tag goes back with it,
@@ -216,7 +216,7 @@ STATUS: Mapping[Refusal, HTTPStatus] = {
     # again when it is over, which is what this says and 400 does not.
     Refusal.IN_FLIGHT: HTTPStatus.CONFLICT,
     # Nothing is wrong with the request: the cable is out or the station is
-    # off, and it is fixed at the hardware (ADR-0050).
+    # off, and it is fixed at the hardware (control ADR-0050).
     Refusal.NO_STATION: HTTPStatus.SERVICE_UNAVAILABLE,
     # The source carries no release by that name. The tags it does carry are
     # one GET away, which is what the other route is for.
@@ -364,9 +364,9 @@ def named(body: bytes) -> str | None:
 
     Read the way a document from somewhere else is read — one field, and every
     shape it is not is None rather than an exception — because this arrives
-    from a LAN with no authentication on it (ADR-0042). One field is also the
-    whole of what is read: a body that also named where to fetch from is
-    written out of the configured source, because nothing here goes looking.
+    from a LAN with no authentication on it (control ADR-0042). One field is
+    also the whole of what is read: a body that also named where to fetch from
+    is written out of the configured source, because nothing here goes looking.
     """
     try:
         document = json.loads(body)
@@ -383,17 +383,17 @@ def elsewhere(origin: str, host: str) -> bool:
     request was addressed to.
 
     **The host and nothing else.** The door terminates TLS and the face is
-    behind it (ADR-0042, ADR-0004), so a page served over `https` asks a face
-    spoken to over plain HTTP: the scheme a browser names is never the scheme
-    this is reached on, and a port the door answered on is not the port this
-    binds. What the two can be held to is the name they share, which is the
-    box's `dccex` label.
+    behind it (control ADR-0042, ADR-0004), so a page served over `https` asks
+    a face spoken to over plain HTTP: the scheme a browser names is never the
+    scheme this is reached on, and a port the door answered on is not the port
+    this binds. What the two can be held to is the name they share, which is
+    the box's `dccex` label.
 
     **A request with no origin on it is not a page from another one.** An
     origin is what a browser attaches, and holding a page to what its browser
     says is the whole of what this is: `curl` on the box names none, and
     neither does a browser reading the same origin it is on. What limits the
-    rest is the LAN (ADR-0042).
+    rest is the LAN (control ADR-0042).
     """
     if not origin:
         return False
@@ -585,7 +585,7 @@ def refused(status: HTTPStatus, reason: str) -> Answered:
 
     One field and one sentence: what is on the other end is a page, and a
     caller that cannot say what went wrong makes a person go and read a log on
-    a box (ADR-0050).
+    a box (control ADR-0050).
     """
     return Answered(status, {REASON: reason})
 
@@ -883,8 +883,8 @@ class Server:
 
         Every interface, for the reason the mirror's port is: the container
         publishes what the door reaches, and what limits the reach is the LAN
-        (ADR-0042). A port already taken raises out of here, which is a
-        process that ends rather than one that is up with a face nobody can
+        (control ADR-0042). A port already taken raises out of here, which is
+        a process that ends rather than one that is up with a face nobody can
         reach (#526).
         """
         self._server = await asyncio.start_server(self._asked, HOST, self._port)
@@ -965,7 +965,7 @@ class Server:
             # The one answer worth a line on the box, and the reason it is:
             # what went wrong is not the caller's doing, and the caller is a
             # page that may be nobody's at the moment. What the face refuses a
-            # caller for is the caller's own to read (ADR-0050).
+            # caller for is the caller's own to read (control ADR-0050).
             self._log(f"face: {answered.body.get(REASON, answered.status.phrase)}")
         if joined is None:
             await asyncio.wait_for(self._taken(writer, answered), self._patience_s)

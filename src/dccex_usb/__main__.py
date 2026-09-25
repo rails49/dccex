@@ -1,12 +1,13 @@
 """`python -m dccex_usb` — the command line the container runs.
 
 The device to open and the port to serve it on are the mirror's own two flags
-and the whole of what it was for a while (ADR-0043). What the others are for
-is the one thing this app does that is not mirroring: writing a released build
-onto the command station, which only the process holding the device can do
-(ADR-0065, `firmware.py`), and the face that is asked about it (`face.py`).
-There is still no bind address, because both servers bind every interface and
-what limits their reach is the LAN (ADR-0042).
+and the whole of what it was for a while (control ADR-0043). What the others
+are for is the one thing this app does that is not mirroring: writing a
+released build onto the command station, which only the process holding the
+device can do (control ADR-0065, `firmware.py`), and the face that is asked
+about it (`face.py`). There is still no bind address, because both servers
+bind every interface and what limits their reach is the LAN (control
+ADR-0042).
 
 - `--device <path>`, the serial device to open.
 - `--port <n>`, the TCP port to mirror it on.
