@@ -393,9 +393,9 @@ is not written a second time here: the page writes one message in one frame and
 the mirror reads for the `>`, exactly as it does for JMRI and a throttle
 (ADR-0007 d.2, `framing.py`).
 
-**The pairs are run rather than read.** The rest of the checks of the page
-here read its sources, because the gate is Python and there is no browser in
-it. These cannot: a sentence an operator is shown is worth nothing asserted
+**The pairs are run rather than read.** What is still read off the sources is
+read there because the gate is Python and has no browser in it. These cannot
+be: a sentence an operator is shown is worth nothing asserted
 against the source that would produce it — and so is a rule about what goes
 down a cable to a command station, and so is what the band says about the
 railroad's power, and so is the order the releases an operator picks from come
@@ -444,13 +444,24 @@ out to `ui/src/releases.js` for that reason: which of two sentences an answer
 gets is a rule, and a rule is worth nothing asserted against the module that
 would apply it (#95).
 
-**What no check here reaches is Lit.** A bare node with no packages cannot
-mount a component, so what the band, the tiles and the release rows *draw* is
-asserted as the words those modules produce and the drawing is held against the
-components' sources (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
-`tests/ui/test_releases.py`). That is the same
-cost the look values check names: the page is checked in a Python gate, and
-that gate has no browser in it.
+**And the components are mounted** (#126). What the band, the tiles, the
+release rows and the monitor *draw* was read off their sources for as long as
+there was nothing here to mount them in — and a source-text check passes on a
+page that never rendered and goes red on a harmless rename, which is the
+opposite of what a check is for. So `vitest` and `happy-dom` are dev
+dependencies of `ui/`, the five cases #1 named are asserted against a DOM
+(`ui/test/band.test.ts`, `ui/test/tiles.test.ts`, `ui/test/releases.test.ts`,
+`ui/test/flash.test.ts`, `ui/test/monitor.test.ts`), and each source-text check
+they replace went with them. **That DOM is not in the gate.** It is an install,
+and `scripts/check.sh` runs with no node on the machine at all; these run in the
+workflow's `node` job beside the modules a bare node runs, which is the same
+split and the same reason (#101, `.github/workflows/ci.yml`).
+
+What a mounted component still cannot answer is layout: happy-dom draws no
+boxes. So the widths the band drops a reading at, the `min-height` a blank tile
+keeps and how loud a **gloss** is beside the bytes are held against the
+stylesheets as before (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
+`tests/ui/test_monitor.py`), which is the same cost the look values check names.
 
 **Sending is held at the other end too.** What a page types is one more
 client's bytes on the mirror's port, so two monitors typing at once is the
@@ -463,7 +474,9 @@ the same place: what the queue holds, what it drops and what it says are run
 under a node (`ui/src/monitor.js`, `tests/ui/monitor.mjs`), and that the page
 queues rather than trims while it is paused, that resuming appends through the
 one trim there is, and that a clear reaches nothing else are read off
-`ui/src/ui/dccex-app.ts` — there is no browser here to press a button in.
+`ui/src/ui/dccex-app.ts`. A press is a thing a check can make now (#126), but
+what it would be pressing there is the whole page and its stream; what is
+mounted is one component at a time, handed the facts a page would hand it.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
@@ -673,7 +686,9 @@ Two things the prototype left open and the tickets settle while building:
   the release rows wrap, the flash's warning takes its own line above the two
   presses that answer it, and the command box is thumb-sized with a field that
   shrinks rather than pushing the send button off the side — and nobody has
-  held a phone up to them.
+  held a phone up to them. Mounting the components did not settle it and could
+  not: happy-dom does no layout, so the rules are still only written down
+  (#126).
 
 What each tile reads while the link is down was the third and is settled above,
 by ADR-0008 d.3.

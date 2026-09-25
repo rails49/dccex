@@ -17,6 +17,14 @@ It is a `pytest` rather than a test in the UI's own toolchain because
 ADR-0010 asks for is that the check runs in the consumer's gate, and it needs
 no node on the machine it runs on — which is the box's property too, node
 building the page inside the image and nowhere else (`deploy/ui.Dockerfile`).
+
+**There is a UI toolchain now and this does not move into it** (#126). `vitest`
+and `happy-dom` mount the components and read back what they drew
+(`ui/test/`), but they run in the workflow's `node` job and not in the gate, and
+a value that drifted here has to go red in the gate. happy-dom would not answer
+it anyway: it does no layout and has no cascade, so a token nothing asks for
+and a colour written past the block above it are both invisible to a mounted
+component and both plain in the text of the file.
 """
 
 import re
