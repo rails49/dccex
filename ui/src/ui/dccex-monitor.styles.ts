@@ -5,7 +5,7 @@ import { css } from "lit";
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
  * theme tokens and it follows the system's light or dark setting (LOOK.md,
- * `theme.ts`). The chrome's four values are `look.css`'s and none of them
+ * `theme.ts`). The chrome's six colours are `look.css`'s and none of them
  * belongs on a pane.
  *
  * A **gloss** is beside the line and never instead of it: the bytes stay
@@ -25,7 +25,7 @@ import { css } from "lit";
  *
  * **The box at the foot is sized for a thumb.** `--rail-button` is the look
  * rules' minimum for one and it is a size rather than a colour — the chrome's
- * four colours stay on the chrome — so it is the value a box meant to be typed
+ * six colours stay on the chrome — so it is the value a box meant to be typed
  * at on a phone held at the layout asks for. The field takes what is left of
  * the width and may shrink to nothing, so a long command never pushes the send
  * off the side.

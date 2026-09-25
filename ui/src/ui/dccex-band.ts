@@ -10,17 +10,18 @@
  * `layout` checks the railroad is drained before anything reaches the wire,
  * and this page is on no bus for anything to check, so a press here would go
  * down the cable with nothing behind it having checked (ADR-0008 d.5). There
- * is no button on this band and no emergency stop on this chrome, which is why
- * the red token LOOK.md reserves for the first UI to draw one stays unclaimed.
- * The one place a command is typed at the station is the box at the foot of
- * the monitor, and that is an operator typing rather than the chrome
- * commanding a railroad.
+ * is no button on this band and no emergency stop on this chrome. The one
+ * place a command is typed at the station is the box at the foot of the
+ * monitor, and that is an operator typing rather than the chrome commanding a
+ * railroad.
  *
  * **The link says so when the station stops answering**, rather than leaving
  * the page looking merely idle — which is the difference between a dead
  * station and a quiet one, and the reason any of this exists. The rails go to
  * `unknown` with it: what the station last said about power is not a reading
- * once the station has stopped talking.
+ * once the station has stopped talking. The link is drawn on the look rules'
+ * `--stop` while it is down, because that is a fault, and the words stay
+ * (issue 138).
  */
 
 import { LitElement, html, type TemplateResult } from "lit";
@@ -55,7 +56,7 @@ export class DccexBand extends LitElement {
       <div class="readings">
         ${band(this.readings).map(
           (shown: Shown) => html`
-            <span class="reading ${shown.of}">
+            <span class="reading ${shown.of} ${shown.fault ? "fault" : ""}">
               <span class="of">${shown.of}</span>
               <span class="reads">${shown.reads}</span>
             </span>

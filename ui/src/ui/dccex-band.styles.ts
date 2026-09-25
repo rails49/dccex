@@ -9,11 +9,10 @@ import { css } from "lit";
  * button at least, which is what keeps the two pieces of chrome reading as one
  * edge on a phone.
  *
- * **Nothing on it is red.** The look rules reserve red on the chrome for stop
- * or a fault, and no UI has claimed it yet because none has drawn an emergency
- * stop; this one draws no control at all (ADR-0008 d.5). The two readings are
- * words in the band's own ink, and a link that is down says so in words rather
- * than in a colour a reader may not see.
+ * **The one red on it is a fault.** The look rules reserve red on the chrome
+ * for stop or a fault. This band draws no control at all (ADR-0008 d.5), so
+ * no stop, but a link that is down is a fault and wears `--stop` (issue 138).
+ * It still says so in words, because a reader may not see the colour.
  */
 export const bandStyles = css`
   :host {
@@ -55,7 +54,7 @@ export const bandStyles = css`
   /* What the reading is called, quieter than the reading itself: the word is
      there to say which of the two this is, and the answer is what is being
      read. Quieter by transparency rather than by a second colour, because the
-     chrome holds four values and none of them is a dimmer ink. */
+     chrome holds six colours and none of them is a dimmer ink. */
   .of {
     opacity: 0.75;
     font-size: 0.8em;
@@ -63,6 +62,15 @@ export const bandStyles = css`
 
   .reads {
     font-weight: 600;
+  }
+
+  /* A reading that is a fault: today only a link that is down. The padding
+     keeps the words off the edge of the red. */
+  .fault {
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: var(--stop);
+    color: var(--stop-ink);
   }
 
   /* Below the width at which the band cannot carry both readings, the one

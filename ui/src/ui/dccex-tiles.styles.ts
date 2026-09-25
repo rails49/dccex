@@ -6,7 +6,7 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's four values stay on the chrome.
+ * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
  *
  * **A blank tile keeps its shape.** Three of the four blank together when the
  * link goes down, and a row that collapsed as it happened would move the

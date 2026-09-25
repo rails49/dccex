@@ -1,6 +1,6 @@
 """The values the page draws with, against the copy they came from.
 
-Four colours and two sizes are one system across rails49's UIs, and they
+Six colours and two sizes are one system across rails49's UIs, and they
 travel as a file rather than a package: `ui/look/tokens.css` is a verbatim copy
 of `docs/tokens.css` in `rails49/.github`, pinned to the commit it was taken at
 (org ADR-0005, `ui/look/README.md`). The copy is inert — nothing imports it and
@@ -163,7 +163,7 @@ def test_the_values_the_page_draws_with_are_the_copys() -> None:
     assert declarations(DRAWN.read_text()) == declarations(COPY.read_text())
 
 
-def test_the_copy_holds_the_six_the_look_rules_bind() -> None:
+def test_the_copy_holds_the_eight_the_look_rules_bind() -> None:
     """The dcc-ex UI's row in LOOK.md is *everything*: both pieces of chrome
     are drawn here, so no token is one this page has nothing to spend it on."""
     assert sorted(declarations(COPY.read_text())) == [
@@ -173,6 +173,8 @@ def test_the_copy_holds_the_six_the_look_rules_bind() -> None:
         "--rail-button",
         "--rail-group",
         "--rail-turns",
+        "--stop",
+        "--stop-ink",
     ]
 
 

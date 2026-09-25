@@ -137,6 +137,8 @@ export const QUIET = /** @type {Kept} */ ({
  * @property {string} of which reading it is
  * @property {string} reads the words a person sees
  * @property {boolean} [lit] for a light rather than words: whether it is on
+ * @property {boolean} [fault] whether the reading is a fault, which the band
+ * draws in the look rules' red
  */
 
 /**
@@ -222,12 +224,17 @@ export function asOf(kept, now) {
  * would be showing a power state nothing has confirmed for a quarter of a
  * minute (`dccex-band.styles.ts`).
  *
+ * A link that is down is a **fault**, and the only one on the band: the rails
+ * reading `cold` or `unknown` is a reading, not a fault (#138).
+ *
  * @param {Readings} readings
  * @returns {Shown[]}
  */
 export function band(readings) {
   return [
-    { of: "link", reads: readings.answering ? "answering" : "not answering" },
+    readings.answering
+      ? { of: "link", reads: "answering" }
+      : { of: "link", reads: "not answering", fault: true },
     {
       of: "rails",
       reads:

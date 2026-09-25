@@ -102,8 +102,9 @@ UI rather than inside it.
 - Three tiles blank together when the link drops, and that is the correct
   reading rather than a gap: the build, the current and the last thing said are
   all the station talking, and the station is not talking.
-- The red token LOOK.md reserves for an emergency stop stays unclaimed by this
-  UI. The first UI to draw one is still the first.
+- This UI draws no emergency stop. When LOOK.md widened red on the chrome to
+  stop or a fault, the band's link took `--stop` while the station is not
+  answering, since that is a fault (#138). Nothing else here is red.
 - If `control` ever removes the optional `build` from `device/link` on a
   different schedule than expected, nothing here changes. This page never read
   it.
