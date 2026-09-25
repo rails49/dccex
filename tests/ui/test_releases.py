@@ -8,9 +8,9 @@ asserted on a machine with nothing plugged in.
 
 **Listing reaches no network here and none in a browser either.** The
 scenarios are the face's answer already: the release API is read by the app
-from its configured source and the page is handed what it carries
-(ADR-0002, `face.py`), so there is nothing for this suite to reach and nothing
-for a browser to. What holds that on the page's side is
+from its configured source and the page is handed what it carries (the
+organisation's ADR-0002, `face.py`), so there is nothing for this suite to
+reach and nothing for a browser to. What holds that on the page's side is
 `test_the_page_asks_its_own_face_and_no_release_api` below, and on the app's
 side `tests/dccex_usb/test_face.py`.
 
@@ -295,7 +295,8 @@ def test_the_list_is_collapsed_under_the_tiles() -> None:
 def test_the_row_holds_no_counterparty_of_its_own() -> None:
     """Choosing a release flashes it as of #9, and what it is flashed with is
     handed down: the **stream** the stop and the cut go up and the **face**
-    that is asked to write are the page's (ADR-0002, `dccex-app.ts`).
+    that is asked to write are the page's (the organisation's ADR-0002,
+    `dccex-app.ts`).
 
     What the gesture does is held where the sequence is run
     (`tests/ui/test_flash.py`); what is held here is that this pane reaches for
@@ -346,9 +347,9 @@ def test_the_row_is_the_work_pane_s_and_not_the_chrome_s() -> None:
 
 def test_the_page_asks_its_own_face_and_no_release_api() -> None:
     """A UI talks to the bus, the store and its own app's face, and nothing
-    else (ADR-0002). The releases are read by the app from its configured
-    source and handed on; the browser reaches the release API on no path
-    (#8)."""
+    else (the organisation's ADR-0002). The releases are read by the app from
+    its configured source and handed on; the browser reaches the release API on
+    no path (#8)."""
     asking = FACE.read_text()
     assert "RELEASES_PATH = `${FACE}/releases`" in asking
     assert "releases()" in APP.read_text(), "the page never asks the face"
