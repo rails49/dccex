@@ -91,7 +91,16 @@ cd "\$stack"
 # repointed by hand is a clone that deploys somebody else's commits, and the
 # origin is not a thing this script reads off the box — or off the shell it
 # was run from — and believes.
-git remote set-url origin "$ORIGIN"
+#
+# A clone with no remote named origin is given one instead of stopping the
+# deploy: \`set-url\` fails on such a clone and \`set -e\` aborted here on
+# git's terse message rather than on one of this script's own sentences, which
+# every other guard gives (#119). The state both lines reach is the one state
+# this cares about — the origin is the constant above — and \`set-url\`'s
+# complaint is dropped because a clone that has no origin yet is not a thing
+# gone wrong.
+git remote set-url origin "$ORIGIN" 2>/dev/null ||
+  git remote add origin "$ORIGIN"
 
 # No prompt, ever. A deploy that stops on a credential prompt stops holding
 # the terminal open with no terminal on the other end of it.

@@ -22,9 +22,9 @@ box's record, and neither is this suite's to make; the origin is this
 repository on GitHub, which the script writes down as a constant of its own and
 no variable can move (#102), and fetching from it would be a gate that reaches
 the network. So each is replaced in the saved program with something under
-`tmp_path` — the two paths once each, the origin in both places it is named —
-and every replacement is asserted to have matched as many times as it is
-written: a substitution that silently found nothing would run a script that
+`tmp_path` — the two paths once each, the origin in all three places it is
+named — and every replacement is asserted to have matched as many times as it
+is written: a substitution that silently found nothing would run a script that
 refuses at its first guard and prove nothing. That these three are the ones
 written down is `test_stack.py`'s claim and stays there.
 
@@ -173,7 +173,7 @@ def deployed(tmp_path: Path, *, env: str | None, comes_up: bool) -> Box:
     for named, times, stands_in in (
         (DECLARATION, 1, str(declaration)),
         (RECORD, 1, str(record)),
-        (ORIGIN, 2, origin),
+        (ORIGIN, 3, origin),
     ):
         assert here.count(named) == times, (
             f"{named} is named {here.count(named)} times in the program the box"
