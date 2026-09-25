@@ -201,8 +201,15 @@ export const monitorStyles = css`
     font-size: var(--sl-font-size-medium);
   }
 
-  /* Sent. It keeps its size whatever the width, because it is the one thing
-     on this pane a thumb has to hit. */
+  /* Every button on this pane — the send at the foot, and the pause and the
+     clear above it — sized for a thumb here and nowhere else. Each keeps its
+     size whatever the width, because each of the three is something a thumb
+     has to hit on a phone held at the layout.
+
+     `.controls button` above is the more specific of the two rules and says
+     nothing about size on purpose: a `min-height` there would win and take
+     the two controls below a thumb. Both halves of that are held in
+     `tests/ui/test_monitor.py`. */
   button {
     flex: none;
     box-sizing: border-box;
