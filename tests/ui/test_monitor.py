@@ -980,7 +980,16 @@ def test_a_pause_stops_neither_the_stream_the_polling_nor_the_tiles() -> None:
 def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
     """Above the lines and out of the scroller, so they do not move with the
     conversation, and quieter than the send: what is typed is what goes on the
-    railroad, and holding the view is not."""
+    railroad, and holding the view is not.
+
+    The size is the bare `button` rule's, which is every button on the pane —
+    the send, the pause and the clear — and `--rail-button` is the look rules'
+    minimum for a thumb. So the second half of the size is what the quieter
+    rule does *not* say: `.controls button` is the more specific of the two,
+    and a `min-height` on it would win and take the pause and the clear below
+    a thumb while the name of this test still promised they were above it
+    (#153).
+    """
     drawn = MONITOR.read_text()
     assert drawn.index('class="controls"') < drawn.index(
         'class="lines"'
@@ -988,10 +997,20 @@ def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
     styles = STYLES.read_text()
     controls = rule(styles, ".controls")
     assert "flex: none" in controls, "the controls grow with the conversation"
+    thumb = rule(styles, "button")
+    assert "min-width: var(--rail-button)" in thumb, "a button is narrower than a thumb"
+    assert "min-height: var(--rail-button)" in thumb, "a button is shorter than a thumb"
     quieter = rule(styles, ".controls button")
     assert (
         "background:" in quieter and "primary" not in quieter
     ), "the pause and the clear are drawn as loudly as the send"
+    sizing = ("min-width", "min-height", "width", "height", "padding")
+    undercut = [
+        asked
+        for asked in sizing
+        if re.search(rf"(?<![\w-]){re.escape(asked)}\s*:", quieter)
+    ]
+    assert not undercut, f"the controls set their own {', '.join(undercut)}"
 
 
 def test_a_line_this_page_sent_goes_through_the_same_keeping() -> None:
