@@ -46,8 +46,8 @@
  *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
- * fight the feed. Where they were is measured before the lines change, because
- * afterwards every view is at the bottom of what it was.
+ * fight the stream. Where they were is measured before the lines change,
+ * because afterwards every view is at the bottom of what it was.
  *
  * **And staying where they were survives a trim** (#75). At capacity the page
  * drops the oldest lines, so the pixels that go are the ones above the view: a
