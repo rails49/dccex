@@ -13,10 +13,10 @@ until somebody syncs; this one goes red on an edit here, which is the one thing
 it is for (org ADR-0010).
 
 It is a `pytest` rather than a test in the UI's own toolchain because
-`scripts/check.sh` is this repository's gate and that gate is Python. What
-ADR-0010 asks for is that the check runs in the consumer's gate, and it needs
-no node on the machine it runs on — which is the box's property too, node
-building the page inside the image and nowhere else (`deploy/ui.Dockerfile`).
+`scripts/check.sh` is this repository's gate and that gate is Python. What org
+ADR-0010 asks for is that the check runs in the consumer's gate, and it needs no
+node on the machine it runs on — which is the box's property too, node building
+the page inside the image and nowhere else (`deploy/ui.Dockerfile`).
 
 **There is a UI toolchain now and this does not move into it** (#126). `vitest`
 and `happy-dom` mount the components and read back what they drew
