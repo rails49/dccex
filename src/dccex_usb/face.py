@@ -10,9 +10,10 @@ store to keep the answer (ADR-0001).
 **Four things are asked of it: what releases the source carries, that one of
 them be written onto the station, the station's own conversation, both ways,
 and how many clients are on the mirror's port.** The second is what the face
-was wanted for; the fourth is the one reading on the page that the station
-cannot say about itself, so it is this app's own business about itself
-(ADR-0008 d.4). Writing means owning the
+was wanted for; the fourth is this app's own business about itself, and it is
+the one reading the page drew that the station could not say — which the page
+no longer draws, though the face still answers it (ADR-0008 d.4, #111,
+`docs/ui/README.md`). Writing means owning the
 serial port, so the app that holds the device is the only thing that can do it
 (control ADR-0065, `firmware.py`); what this adds is that whoever asked is
 told what happened, where a refusal used to be a line in a log addressed to
