@@ -603,7 +603,11 @@ no-daemon rule as the check above it. Two things it does not hold: what a route
 declared external in `compose.box.yaml` and deliberately not here, so that `up`
 works on a clean clone at all. A project already up under the name the file pins — `name: dccex`
 — fails the check with a sentence saying so, because taking down a project it
-did not start is not its to do.
+did not start is not its to do. The other guard — that nothing left in a shell
+can point those commands at a project nobody here named — is a `monkeypatch`
+over the environment the commands are run in and needs no daemon at all, so it
+is asserted in `tests/ui/test_commands_run_clean.py`, which the gate does
+collect (#112).
 
 ## What is not on it
 

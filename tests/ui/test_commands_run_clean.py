@@ -29,21 +29,24 @@ def test_the_shell_cannot_point_these_commands_at_another_project(
 ) -> None:
     """The variables that outrank what `arguments()` passes, set and gone.
 
-    The one above is the guard against acting on a project somebody else
-    brought up. This is the guard against acting on one nobody here named:
+    `test_a_project_already_up_is_refused_with_a_sentence`, beside the compose
+    check, is the guard against acting on a project somebody else brought up.
+    This is the guard against acting on one nobody named at all:
     `COMPOSE_PROJECT_NAME` beats the file's `name: dccex`, and `COMPOSE_FILE`
     and `COMPOSE_ENV_FILE` beat the `-f` and the `--env-file`. A shell left
     over from a deploy has them, and the tear-down is where it would tell —
-    `down --rmi all` against whatever else was named that, with this check's
-    own containers left standing.
+    `down --rmi all` against whatever else was named that, with the compose
+    check's own containers left standing.
 
-    It needs no daemon and asserts nothing about one. It sits here rather than
-    in a module the gate collects because what it is about is this module's own
-    `environment()`, and the docker job the workflow requires runs it.
+    What it is about is `environment()`, which is the compose check's; what it
+    needs is a `monkeypatch`, which is any machine's. So it is asserted from
+    here, where the gate collects it, against the function imported from
+    there (#112).
     """
     # The three are written out rather than read off `DROPPED`, for the reason
-    # `ROUTE` is written out: a check that took its list from the thing it is
-    # checking would pass on whatever that list happened to say.
+    # `ROUTE` is written out in `tests/ui/test_compose_serves.py`: a check that
+    # took its list from the thing it is checking would pass on whatever that
+    # list happened to say.
     overriding = ("COMPOSE_PROJECT_NAME", "COMPOSE_FILE", "COMPOSE_ENV_FILE")
     for name in (*DROPPED, *overriding):
         monkeypatch.setenv(name, "somebody-elses")
@@ -53,6 +56,6 @@ def test_the_shell_cannot_point_these_commands_at_another_project(
     assert [name for name in overriding if name in clean] == []
     assert [name for name in DROPPED if name in clean] == []
     assert "PATH" in clean, "the environment was emptied rather than cleaned"
-    # What the fixture sets is set after the cleaning, so a name on the list is
-    # still one this check can give a value to.
+    # What the compose check's `up` fixture sets is set after the cleaning, so
+    # a name on the list is still one that check can give a value to.
     assert environment(DCCEX_COMMIT="check-0")["DCCEX_COMMIT"] == "check-0"
