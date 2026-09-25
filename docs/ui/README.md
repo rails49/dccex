@@ -88,7 +88,9 @@ Below 560px the band drops the track reading and keeps the link. A station
 that is not answering makes the other reading meaningless, and a band that kept
 the rails instead would show a power state nothing has confirmed since the link
 went. 560px is this page's own number rather than a look rule, written in
-`dccex-band.styles.ts` beside the rule it is about.
+`dccex-band.styles.ts` beside the rule it is about, and a browser is what does
+it: `tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
+reads back a link with a size and a track reading with none (#127).
 
 ### The tiles
 
@@ -463,6 +465,16 @@ keeps and how loud a **gloss** is beside the bytes are held against the
 stylesheets as before (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
 `tests/ui/test_monitor.py`), which is the same cost the look values check names.
 
+**A browser answers it, for the width it matters at** (#127). The rules that
+are about a phone were written and never rendered, so the built page is loaded
+in a real Chromium at 375px and at a desktop width and measured there:
+`tests/ui/test_page_at_a_phones_width.py`, under the `docker` marker, in the
+job that already builds and serves that image. It is not a second toolchain
+here either — the browser is a container beside the page's, handed a driver,
+and nothing is added to `pyproject.toml` or installed on the machine. What it
+does not reach is what is not about a width: a stylesheet check is still where
+a rule is held as written, and this is where it is held as drawn.
+
 **Sending is held at the other end too.** What a page types is one more
 client's bytes on the mirror's port, so two monitors typing at once is the
 interleaving rule `tests/dccex_usb/test_face.py` runs against a pty — two whole
@@ -655,6 +667,23 @@ share takes an environment, the compose check hands it one at each call, and
 the same daemonless module holds that what the helper is handed is what the
 process it starts runs in (#113).
 
+**And it is laid out at a phone's width.** The page is read on a phone held at
+the layout, and until #127 nothing here had drawn it at one:
+`tests/ui/test_page_at_a_phones_width.py` runs the image this section is
+about, loads it in a Chromium at 375px and at 1280px, and holds five things
+there — no horizontal scroll at either width, the band keeping the **link** and
+dropping the track reading below 560px, the command box inside the viewport and
+a line typed into it coming back out of it, a release row with a long **tag**
+wrapping with nothing off the side of it, and the track reading back at a
+desktop width, which is what keeps the narrow claims from passing on a page
+that drew no band. There is no face behind the page in that job, so the
+**stream** never opens and the link reads as not answering — the state a page
+with nothing behind it draws, and enough for layout. The one thing stood up is
+the release list, because rows are what the wrap rule is about and that state
+has none: the browser answers that one request, and the rows go in through the
+page's own fetch. It carries the same `docker` marker and the same no-daemon
+rule as the two checks above it.
+
 ## What is not on it
 
 - **Anything about a railroad.** No turnout names, no roster, no run state —
@@ -681,13 +710,15 @@ Two things the prototype left open and the tickets settle while building:
 - whether the release list stays a collapsed row once it grows past four
   entries. It is a collapsed row as of #8, and what would change it is somebody
   reading a long one on the box;
-- narrow widths were never confirmed in a browser. The rules are written — the
-  band drops the track reading below 560px, the tiles wrap onto a second row,
-  the release rows wrap, the flash's warning takes its own line above the two
-  presses that answer it, and the command box is thumb-sized with a field that
-  shrinks rather than pushing the send button off the side — and nobody has
-  held a phone up to them. Mounting the components did not settle it and could
-  not: happy-dom does no layout, so the rules are still only written down
+- narrow widths are drawn in a browser as of #127, and not all of them are
+  asserted there. What is: no horizontal scroll, the band dropping the track
+  reading below 560px, the command box on screen and typed into, and a release
+  row wrapping rather than running off the side. What is not: the tiles onto a
+  second row, and the flash's warning taking its own line above the two presses
+  that answer it. And what the check drives is a Chromium at a phone's width
+  rather than a phone — a real one was considered for #127 and left out, so the
+  thing that is still open is somebody holding one up to it. Mounting the
+  components settled none of it and could not: happy-dom does no layout
   (#126).
 
 What each tile reads while the link is down was the third and is settled above,

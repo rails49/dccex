@@ -16,7 +16,9 @@
  * **There is no layout here.** happy-dom draws no boxes, so nothing in these
  * checks may assert a width, a wrap or a height; a rule that is about the
  * shape of the page is still held against the stylesheet it is written in
- * (`tests/ui/test_look.py`, `tests/ui/test_band.py`).
+ * (`tests/ui/test_look.py`, `tests/ui/test_band.py`), and the ones that are
+ * about a phone are drawn in a real browser against the built image instead
+ * (`tests/ui/test_page_at_a_phones_width.py`, #127).
  */
 
 import { type LitElement } from "lit";
