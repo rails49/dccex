@@ -63,9 +63,9 @@ def test_the_tiles_work_no_reading_out_of_their_own() -> None:
 
 
 def test_a_blank_tile_keeps_its_shape() -> None:
-    """Three of the four blank together when the link goes down (ADR-0008
-    d.3), and a row that collapsed as it happened would move the monitor under
-    the reader's thumb at the moment the station went away."""
+    """The build and the tracks blank together when the link goes down
+    (ADR-0008 d.3), and a row that collapsed as it happened would move the
+    monitor under the reader's thumb at the moment the station went away."""
     reads = rule(STYLES.read_text(), ".reads")
     assert "min-height:" in reads, "a tile with nothing in it collapses"
 
