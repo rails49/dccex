@@ -74,11 +74,21 @@ def no_daemon() -> str | None:
     return None
 
 
-def docker(*argument: str, seconds: int = 60) -> str:
-    """One `docker` command, carrying what it said if it failed."""
+def docker(*argument: str, seconds: int = 60, env: dict[str, str] | None = None) -> str:
+    """One `docker` command, carrying what it said if it failed.
+
+    `env` means what it means on the compose check's `compose()`, and is here
+    for the same caller: `None` inherits this process's environment, which is
+    what every command in this file and in the mirror-serves check runs in, and
+    a dict is the environment the command is started in instead. The compose
+    check passes its `environment()`, because the list it drops is what *every*
+    command it runs is supposed to be without and not only the `docker compose`
+    ones (#113).
+    """
     done = subprocess.run(
         ["docker", *argument],
         cwd=ROOT,
+        env=env,
         capture_output=True,
         text=True,
         timeout=seconds,
