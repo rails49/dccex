@@ -23,12 +23,13 @@ out of: a rule about which of two sentences a document gets is worth no more
 asserted against the module that would apply it, so the documents go through
 the reader the same way (#95).
 
-What cannot be run here is Lit. The gate is Python and the node beside it is a
-bare one with no packages, so nothing in either can mount a component and read
-the DOM back: the
-words are asserted here and the drawing of them is held against the
-component's source below, which is the cost `tests/ui/test_look.py` already
-names.
+**And the drawing is mounted rather than read** (#126). The words are asserted
+here and that they land on the row they are about is asserted by mounting the
+component in happy-dom and reading the list back (`ui/test/releases.test.ts`) —
+a check that the component says `ON_STATION` somewhere cannot say which release
+an operator reads it beside. What is still held against the source below is
+what a DOM does not answer: where the row sits on the page, what it holds none
+of, and the widths it wraps at.
 """
 
 import re
@@ -273,13 +274,17 @@ def test_the_listing_holds_nothing() -> None:
 # -- what the page draws ------------------------------------------------------
 
 
-def test_the_row_draws_the_listing_the_page_hands_it() -> None:
+def test_the_listing_is_the_module_s_and_the_page_hands_it_down() -> None:
     """The ordering, the dates and the mark are the module's — a pure function
     of what the face answered and what the station said — and the drawing is
-    this component's, as the tiles' is (`tests/ui/test_tiles.py`)."""
+    this component's, as the tiles' is (`tests/ui/test_tiles.py`).
+
+    What the row draws is asserted by mounting it; where the list came from is
+    not visible there, because a row that sorted and marked for itself would
+    draw the same list until the two answers parted.
+    """
     drawn = LIST.read_text()
     assert 'from "../releases.js"' in drawn, "the row works the listing out itself"
-    assert "listing(this.carried, this.build)" in drawn
     app = APP.read_text()
     assert "<dccex-releases" in app
     assert ".carried=${this.carried}" in app
@@ -287,12 +292,17 @@ def test_the_row_draws_the_listing_the_page_hands_it() -> None:
 
 
 @pytest.mark.node
-def test_the_row_says_which_release_is_on_the_station_in_the_module_s_words() -> None:
+def test_the_row_writes_none_of_the_module_s_sentences_out_again() -> None:
     """The two sentences a row can carry are the listing module's, so that
     what an operator reads is asserted by running it rather than by reading
-    the component (`tests/ui/test_readings.py`)."""
+    the component (`tests/ui/test_readings.py`).
+
+    That they reach the right row is the mounted check's
+    (`ui/test/releases.test.ts`); that there is no second copy of them here is
+    this one's, and a copy is exactly what a mounted check would go on passing
+    over.
+    """
     drawn = code(LIST.read_text())
-    assert "ON_STATION" in drawn and "NO_FIRMWARE" in drawn
     for sentence in says().values():
         assert sentence not in drawn, f"the row writes {sentence!r} out a second time"
 
