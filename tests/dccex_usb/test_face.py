@@ -110,7 +110,8 @@ def listing(tags: Sequence[str] = TAGS) -> bytes:
 
 CARRIED = [{"tag": tag, "published": PUBLISHED[tag], "flashable": True} for tag in TAGS]
 """What the face answers for `listing()`: each release as its **tag**, the
-moment it was published and whether there is a firmware on it to write (#8)."""
+moment it was published and whether it carries a firmware to write with a
+digest to check the write against (#8, #81)."""
 
 
 class Source:
@@ -384,8 +385,10 @@ def test_the_releases_are_read_and_not_written() -> None:
 
 
 def test_the_face_says_how_many_clients_are_on_the_mirror_s_port() -> None:
-    """The one reading on the page the station cannot say about itself, so it
-    is asked of the app that holds the port (ADR-0008 d.4)."""
+    """The app's own business about itself: what the station cannot say and the
+    app that holds the port can, so it is asked of that app (ADR-0008 d.4). It
+    is the one reading the page drew that way, and the page stopped drawing it
+    at #111; the face answers it still."""
     answered = asyncio.run(face(counts=Counting(3)).answer("GET", "/clients", b""))
 
     assert answered.status == HTTPStatus.OK
