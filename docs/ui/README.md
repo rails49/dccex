@@ -426,7 +426,7 @@ tickets.
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
 else asks. So the page asks on its own schedule — `<JI>` every second, and
-`<s>` and `<=>` every fifth second, because every client on the port receives
+`<s>` and `<=>` every fifteenth second, because every client on the port receives
 the eight lines `<s>` is answered with — up the stream, through the same send an operator's typing goes through, though
 the poll itself is not written to the monitor — and the mirror goes on
 originating nothing
