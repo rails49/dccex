@@ -25,7 +25,7 @@ changes go in one at a time.
 | --- | --- | --- |
 | 2560 | `control`'s mirror container | this repository's, from `dccex:<commit>` |
 | the translator | `control`'s, pointed at `control`'s mirror | pointed at this stack's, by control#567's repoint |
-| the face | nowhere | `https://dccex.$BOX_DOMAIN/dccex-usb/` ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
+| the face | nowhere | nowhere yet: the page's container comes up with the stack, and #40 makes it reachable ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
 
 The stack that runs it is this repository's own — `compose.yaml` with
 `compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the image
@@ -84,8 +84,10 @@ nothing stopped):
 
 1. **Not done.** There is no `~/dccex` on the box and so no image built there.
    What it waited on has landed: the mirror's image, the compose overlay and
-   the deploy are #15's and are in this repository. What is left is the clone
-   and one build on the box, which is this step and is a person's.
+   the deploy are #15's and are in this repository. What is left is the clone,
+   one build on the box, and the deploy record's directory, which does not
+   exist and needs somebody who can write `/var/lib` once:
+   `sudo install -d -o ttmetro -g ttmetro /var/lib/rails49/deploys`.
 2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and
    `control`'s `main` is 31 commits ahead of it — the store moving to loopback,
    broker-first startup, the store image's uid and table ownership, the stock
@@ -107,17 +109,19 @@ order is diagnosis: `control`'s delta and this repository's new stack are two
 unrelated bodies of change, and a railroad that misbehaves after both went in
 at once is a railroad with two suspects.
 
-1. `control`'s deploy, on the box, and **the railroad checked before the mirror
+1. **Done on 2026-09-24, days before the evening** (reported on #16).
+   `control`'s deploy, on the box, and **the railroad checked before the mirror
    moves**: the box comes up on `control`'s `main` with `control`'s own mirror
    gone and this stack not yet there. 2560 is dark at this point and that is
    expected. What is checked is everything that is not 2560 — the store
    answers, the apps stand, the door serves `control`'s UI. That check is what
    makes the next step's failures this repository's.
 2. **Check the old mirror container is gone and not merely stopped**, below.
-   Getting it wrong is invisible until a reboot.
+   Getting it wrong is invisible until a reboot. Checked on 2026-09-24:
+   `tc49-dccex-usb-1` was *Removed*, and only the translator is left.
 3. This stack's deploy: `scripts/deploy.sh`, which brings the project up from
    the clone against `/etc/rails49/box.env` (#15, ADR-0005 d.7). It takes 2560
-   and its face's port, and it appends what it replaced to
+   and brings the page's container up beside it, and it appends what it replaced to
    `/var/lib/rails49/deploys/dccex`.
 4. [The checks](#the-checks), in order, and then the physical acceptance,
    which is a person and a train and is #16's.
@@ -253,15 +257,9 @@ acceptance is about.
 4. **DecoderPro reconnects**, as a third client, and the translator reports the
    link up — which is the repoint having landed, not something this stack can
    report on its own behalf.
-5. **The face answers through the door**, from a browser on the page's origin:
-
-   ```
-   https://dccex.$BOX_DOMAIN/dccex-usb/releases   →   {"releases": [...]}
-   ```
-
-   The label, its `A` record and `BOX_UIS` are box steps and a person's
-   (ADR-0004 d.6). A face that does not answer is not a reason to go back on
-   2560: the port is the railroad and the face is a page.
+5. **The face is not checked here.** The page's container comes up with the
+   stack, but nothing reaches it until its `A` record and `BOX_UIS` entry
+   exist, and those are #40's. The port is the railroad and the face is a page.
 6. **A client that has stopped reading does not hold the app up.** After the
    swap, never before, because it stops and starts this stack's container. The
    container's log is opened first and left open beside the other two, because

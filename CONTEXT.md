@@ -265,18 +265,19 @@ container* (the container is one running of an image), *latest*.
 
 ## cutover
 
-The evening 2560 changes hands: `control`'s mirror container comes off the
-layout box, this repository's stack takes the port, and the translator is
-repointed by `control`'s own deploy in the same step. It happens once, it is
-followed from a page written beforehand
+The evening 2560 changes hands: this repository's stack takes the port on the
+layout box. `control`'s own deploy goes before it, and may go days before it:
+that deploy removes `control`'s mirror container and repoints the translator.
+It happens once, it is followed from a page written beforehand
 ([docs/cutover.md](docs/cutover.md), #16), and what ends it is a person
 accepting the railroad rather than a command returning.
 
 A **deploy** is the other thing and happens whenever somebody merges: both
 images of this repository replaced by others of its own, nobody watching a
 train, and one step back kept by the deploy's own rule (ADR-0005). Going back
-on a cutover is not that rollback — it puts `control`'s mirror back, named by
-a digest, because that image has no name that says what it is.
+on a cutover is not that rollback. It puts `control`'s mirror back by
+rebuilding a commit of `control` from before control#567; the image that last
+served 2560 is kept on the box as the faster way.
 
 **Not:** *migration*, *the switch*, *the swap* (the swap is one step of a
 cutover, the container coming off and this one going on), *the window* (the
