@@ -40,7 +40,9 @@ export async function mounted<T extends LitElement>(element: T): Promise<T> {
  *  took away is drawn with nothing in it (ADR-0009 d.2, ADR-0008 d.3). */
 export function reads(element: LitElement, selector: string): string | null {
   const drew = element.renderRoot.querySelector(selector);
-  return drew === null ? null : (drew.textContent ?? "").replace(/\s+/g, " ").trim();
+  return drew === null
+    ? null
+    : (drew.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /** What every part of `element` matching `selector` reads, in the order they

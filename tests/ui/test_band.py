@@ -1,15 +1,18 @@
 """What the **band** draws, and what it refuses to.
 
 The words it shows for a set of facts are asserted by running the real
-functions (`tests/ui/test_readings.py`): hand them what a page would hand them
-and read the band back. What is held here is the rest of it — that the
-component draws those readings and nothing of its own, that it presses
-nothing, that red reaches the chrome only for a fault, and which reading
-survives a band too narrow to carry both.
+functions (`tests/ui/test_readings.py`), and that they reach a page is
+asserted by mounting the component and reading them back
+(`ui/test/band.test.ts`, #126). What is held here is what neither of those can
+see: that the band works no reading out of its own, that it presses nothing,
+that red reaches the chrome only for a fault, and which reading survives a band
+too narrow to carry both.
 
-Read off the sources, for the reason `tests/ui/test_stream.py` gives: the gate
-is Python, the node beside it is a bare one with no packages, and nothing in
-either can mount a Lit component and read the DOM back.
+Read off the sources, because these are claims about the shape of the page
+rather than about what it says. happy-dom does no layout, so a width is not a
+thing a rendered check can assert; and a component that worked the reading out
+itself would draw exactly the same words, so the one place that shows is the
+source.
 """
 
 import re
@@ -27,20 +30,19 @@ STYLES = UI / "src" / "ui" / "dccex-band.styles.ts"
 APP = UI / "src" / "ui" / "dccex-app.ts"
 
 
-def test_the_band_draws_the_readings_the_page_hands_it() -> None:
+def test_the_band_works_no_reading_out_of_its_own() -> None:
     """The reading is the readings module's — a pure function of what the
     station said (ADR-0008 d.2) — and the drawing is this component's, which
-    is the same division the monitor has with the decoder."""
+    is the same division the monitor has with the decoder.
+
+    A band that worked it out again would draw the same words until the two
+    answers parted, so the rendered check cannot see this one and the source
+    can: the reading comes from the module, and the page is what hands the
+    facts down.
+    """
     drawn = BAND.read_text()
     assert 'from "../readings.js"' in drawn, "the band works a reading out itself"
-    assert "band(this.readings)" in drawn
     assert ".readings=${this.readings}" in APP.read_text(), "nothing hands it the facts"
-
-
-def test_a_band_nobody_handed_readings_to_reads_a_station_that_said_nothing() -> None:
-    """Not a blank band and not a hedge: before anything has arrived the link
-    is down and the rails are unknown, which is what is true."""
-    assert "readings: Readings = asOf(QUIET, 0);" in BAND.read_text()
 
 
 def test_the_band_presses_nothing() -> None:
@@ -84,22 +86,6 @@ def test_red_on_the_chrome_is_the_fault_and_nothing_else() -> None:
     assert "--stop" not in re.sub(
         r"/\*.*?\*/", "", without, flags=re.DOTALL
     ), "a rule other than the fault's asks for red"
-
-
-def test_the_band_marks_the_reading_that_is_a_fault() -> None:
-    """Whether a reading is a fault is the readings module's to say
-    (`tests/ui/test_readings.py`); the band draws the class it asks for."""
-    assert '${shown.fault ? "fault" : ""}' in BAND.read_text()
-
-
-def test_a_link_that_is_down_says_so_in_words() -> None:
-    """A distinction carried by colour alone is no distinction to a reader who
-    does not see it. The fault's red is drawn as well as the words, not
-    instead of them, and the words are also what lets it be asserted as a pair
-    (`tests/ui/test_readings.py`)."""
-    drawn = BAND.read_text()
-    assert "${shown.reads}" in drawn, "the band draws no words for a reading"
-    assert "${shown.of}" in drawn, "a reading is drawn without saying which it is"
 
 
 def test_the_narrow_band_keeps_the_link_and_drops_the_rails() -> None:
