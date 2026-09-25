@@ -5,7 +5,7 @@
  * across rails49's UIs — and `look/tokens.css` is the verbatim copy of what
  * they are, pinned to the commit it was taken at (org ADR-0005). That copy is
  * inert: nothing imports it and the page does not link it. This file is how
- * this UI expresses the same values, which ADR-0003 leaves free, and
+ * this UI expresses the same values, which org ADR-0003 leaves free, and
  * `tests/ui/test_look.py` asserts the two agree token for token.
  *
  * Every rule that paints chrome asks for one of these rather than writing a

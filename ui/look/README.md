@@ -14,7 +14,7 @@ there, and neither page restates the other.
 The commit is the pin: the one that last wrote the file, so that diffing this
 copy against it is a diff of the same thing. It is the pin a git dependency
 would have given, and it is here because nothing is installed
-([ADR-0005](https://github.com/rails49/.github/blob/main/docs/adr/0005-the-look-rules-travel-as-a-copied-file-not-a-package.md)):
+([org ADR-0005](https://github.com/rails49/.github/blob/main/docs/adr/0005-the-look-rules-travel-as-a-copied-file-not-a-package.md)):
 every consumer copies the file, records the commit, and keeps a check asserting
 that the values it draws with equal the copy's.
 
@@ -31,9 +31,9 @@ answering, which is a fault (#138).
 Nothing imports it, no build reads it and the page does not link it. The values
 the page draws with are `ui/src/look.css`, a `:root` block of this UI's own,
 and every rule that paints chrome asks for one of its custom properties rather
-than writing a colour out. ADR-0003 leaves how a consumer expresses a value
-free; a second stylesheet the page already has is the cheapest form this one
-could take.
+than writing a colour out. The organisation's ADR-0003 leaves how a consumer
+expresses a value free; a second stylesheet the page already has is the cheapest
+form this one could take.
 
 A colour written out as a hex is what that rule looks like when it breaks, so
 the check looks for one in every file the page draws with: the component
@@ -59,7 +59,7 @@ else**. A check that fetched the source would go red on somebody else's commit;
 this one goes red on an edit here, which is the one thing it is for. A check
 that reads only files in the repository it runs in runs in that repository's
 own gate
-([ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)),
+([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)),
 so it is red before an edit lands rather than after.
 
 It is a `pytest` and not a test in the UI's own toolchain, because
@@ -69,7 +69,7 @@ no node on the machine it runs on — the checks that do need one carry the
 the box has
 (`deploy/ui.Dockerfile` — node builds the page inside the image and the box
 carries none). `control` writes the same assertions in `vitest` because its
-gate is a node one; what ADR-0010 asks for is that the check runs in the
+gate is a node one; what org ADR-0010 asks for is that the check runs in the
 consumer's gate, and this is that gate.
 
 ## Taking a change
