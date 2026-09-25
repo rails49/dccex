@@ -190,24 +190,25 @@ def current(*milliamps: int) -> str:
     return tiles(said=said, now=NOW)["track A"]
 
 
-def test_the_current_is_the_median_of_the_last_three_readings() -> None:
-    """A single spike is dropped altogether rather than averaged in."""
-    assert current(100, 900, 100) == "100 mA"
-    assert current(100, 100, 900) == "100 mA"
+def test_the_current_is_the_mean_of_the_last_eight_readings() -> None:
+    """The station's samples scatter around the real current; their mean is
+    the reading. These are the first eight track A gave on 2026-09-25 with a
+    loco running at constant speed."""
+    assert current(120, 11, 64, 97, 64, 100, 62, 13) == "66 mA"
 
 
-def test_a_step_in_the_current_shows_after_two_readings() -> None:
-    """A real change is two readings in a row, and shows at once as its own
-    value, not a value on the way to it."""
-    assert current(100, 100, 100, 300) == "100 mA"
-    assert current(100, 100, 100, 300, 300) == "300 mA"
+def test_only_the_last_eight_readings_count() -> None:
+    """An old reading falls out of the mean, so a step is fully shown two
+    seconds after it happened."""
+    assert current(900, *[100] * 8) == "100 mA"
+    assert current(*[100] * 4, *[300] * 4) == "200 mA"
 
 
-def test_the_first_readings_are_shown_as_they_are() -> None:
-    """Before there are three there is nothing to take the median of, and a
-    blank tile until the third second would be a reading withheld."""
+def test_the_first_readings_are_averaged_as_they_come() -> None:
+    """Before there are eight, the mean is of what there is: a blank tile for
+    the first two seconds would be a reading withheld."""
     assert current(40) == "40 mA"
-    assert current(40, 60) == "60 mA"
+    assert current(40, 60) == "50 mA"
 
 
 @pytest.mark.node

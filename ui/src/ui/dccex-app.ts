@@ -86,8 +86,10 @@ export const KEPT = 2000;
 
 /** What the page asks the station for every poll: the current on every track.
  *
- * One short line back (`<jI 4 8 0 0>`), so asking every second costs every
- * client on the port about fifteen bytes a second. It is also what keeps the
+ * One short line back (`<jI 4 8 0 0>`), so asking four times a second costs
+ * every client on the port about sixty bytes a second. The station reports
+ * one instantaneous ADC sample per track, which scatters widely around the
+ * real current, so the page asks often and averages (`readings.js`). It is also what keeps the
  * **link** fresh, since any answer is the station speaking.
  */
 const CURRENTS = "<JI>";
@@ -103,12 +105,12 @@ const CURRENTS = "<JI>";
  *
  * All of them go up as any typed message does, through the one rule about
  * what a whole message is (`message.js`), but they are not written to the
- * monitor: lines nobody typed, every second, are noise there.
+ * monitor: lines nobody typed, several a second, are noise there.
  */
 const POLLS = ["<s>", "<=>"];
 
 /** How many polls go by between one status request and the next. */
-const SLOW_EVERY = 15;
+const SLOW_EVERY = 60;
 
 /** How often the page asks.
  *
@@ -118,10 +120,10 @@ const SLOW_EVERY = 15;
  * from DecoderPro. Two pages open means two pollers, as two throttles mean
  * two, and nothing deduplicates them.
  *
- * `SILENT_MS` is five of these, so an answer or two lost on a busy line is
+ * `SILENT_MS` is twenty of these, so a few answers lost on a busy line are
  * not an outage on the chrome (`readings.js`).
  */
-export const POLL_MS = 1000;
+export const POLL_MS = 250;
 
 /** How often the readings are worked out again with nothing having arrived.
  *
