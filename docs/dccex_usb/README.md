@@ -522,8 +522,12 @@ nothing is pulled, and no digest is recovered by hand.
 $ cd ~/dccex
 $ echo DCCEX_COMMIT=8f2c1d4… > .env
 $ docker compose -f compose.yaml -f compose.box.yaml \
-    --env-file /etc/rails49/box.env --env-file .env up -d
+    --env-file /etc/rails49/box.env --env-file .env up -d --no-build
 ```
+
+`--no-build` is there for the day the old image has been pruned after all.
+Without it, compose would build the checkout the clone is on and name it after
+the older commit; with it, the command fails and says the image is missing.
 
 The stack's `.env` holds that one line, because the commit is the one thing
 that differs between two deploys of this repository, and writing it there is

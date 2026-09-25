@@ -25,7 +25,7 @@
 #   tail -2 /var/lib/rails49/deploys/dccex
 #   echo DCCEX_COMMIT=<commit> > .env
 #   docker compose -f compose.yaml -f compose.box.yaml \
-#     --env-file /etc/rails49/box.env --env-file .env up -d
+#     --env-file /etc/rails49/box.env --env-file .env up -d --no-build
 
 set -euo pipefail
 

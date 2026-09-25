@@ -189,6 +189,15 @@ still `dev` where nobody named a commit, which is where `dev` is true — and
 what a built image carries is now run rather than read for both of them
 (`tests/deploy/test_mirror_serves.py`, `tests/ui/test_page_serves.py`).
 
+*Amended for [#41](https://github.com/rails49/dccex/issues/41), 2026-09-25:*
+
+**d.7's `up -d` is `up -d --no-build`.** Both services have a `build:`, so
+compose builds an image it cannot find rather than failing. If the image named
+on the line before has been pruned, a plain `up -d` builds whatever the clone
+has checked out and names it after the older commit, which is the lie d.4
+refuses. With `--no-build` it fails instead. The normal way back is still a
+revert and the next deploy; this command is for when that is not at hand.
+
 ## Consequences
 
 - #15 has a shape to build rather than `control`'s to inherit, and #16 cuts
