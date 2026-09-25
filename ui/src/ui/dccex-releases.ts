@@ -4,8 +4,12 @@
  * **station**.
  *
  * Newest first, each with the day it was published, the one that is on the
- * station now marked as such, and a release with no firmware on it saying so
- * (#8, docs/ui/README.md). The ordering, the dates and the mark are the
+ * station now marked as such, and a release there is nothing to write from —
+ * no firmware, or none with a digest to check it against — saying so (#8,
+ * #81, docs/ui/README.md; the issue that last changed these words is named
+ * there and in `releases.js` rather than here, because an issue number in the
+ * hundreds is three hex digits and `tests/ui/test_look.py`'s scan reads one
+ * in a component as a colour). The ordering, the dates and the mark are the
  * listing module's — a pure function of what the **face** answered and what
  * the station said (`releases.js`) — and this component is handed them and
  * draws them, as the tiles are handed their readings.
@@ -15,8 +19,8 @@
  * to go and look at, and a list that pushed the monitor down the screen would
  * cost every reader for the sake of the one asking.
  *
- * **And choosing one flashes it** (#9). A release that carries a firmware is
- * pressed, the operator is told what flashing does — the station resets, the
+ * **And choosing one flashes it** (#9). A release that carries a firmware
+ * with a digest to check it against is pressed, the operator is told what flashing does — the station resets, the
  * rails go dead, every throttle loses it, it takes a minute or two — and asked
  * to say so a second time; what follows is `flash.js`'s sequence, and this
  * component shows which step it is on. Nothing behind the page guards any of

@@ -170,9 +170,16 @@ Three things about the list are the page's own and are decided here:
   nothing either: that is a station running something nobody published here,
   which is a true thing to show and not an error.
 
-A release published with no firmware on it says so and is listed all the same:
-a release exists whether or not anything can be written from it, and a row that
-looked like the others would send an operator to a tag the mirror would refuse.
+A release there is nothing to write from says so — *nothing here to write and
+check* — and is listed all the same: a release exists whether or not anything
+can be written from it, and a row that looked like the others would send an
+operator to a tag the mirror would refuse. The row does not say which of the
+two it is, because the face does not: `flashable` is false for a release
+published with no firmware on it and for one whose firmware the source reports
+no digest for (#81), and one sentence that holds for both is what the page can
+say truthfully about either (#109). Whoever asks for the tag to be written
+anyway is told which by the mirror's refusal (`firmware.py`).
+
 A face that could not be asked says the releases could not be read, which is a
 different sentence from a source that has published nothing — nothing said is
 not nothing published (ADR-0009 d.2). An answer that carries entries and names

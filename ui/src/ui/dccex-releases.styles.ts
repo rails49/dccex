@@ -113,7 +113,8 @@ export const releasesStyles = css`
     font-weight: var(--sl-font-weight-semibold);
   }
 
-  /* A release published with no firmware on it. It is a statement about what
+  /* A release there is nothing to write from: no firmware on it, or none
+     with a digest to check it against (#81). It is a statement about what
      somebody else published and not a fault of this box's, so it is drawn as
      quietly as the date. */
   .bare {
@@ -124,8 +125,9 @@ export const releasesStyles = css`
   }
 
   /* What writes a release onto the station: one control to a row, on the
-     releases that carry a firmware. It keeps its size whatever the width,
-     because it is what a thumb has to hit. */
+     releases that carry a firmware with a digest to check the write against.
+     It keeps its size whatever the width, because it is what a thumb has to
+     hit. */
   button {
     flex: none;
     box-sizing: border-box;
