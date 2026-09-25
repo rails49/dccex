@@ -170,9 +170,11 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
     face, the module the page reaches a face through, the two components that
     say what the page talks to, the page's README and the two suites of the
     page's checks all mean the organisation's and say so in words; `SOURCE.md`
-    means this repository's, which is superseded and says so. `face.ts` is in
-    this set across a line break and the README's `:39` by opening a sentence,
-    which are the two wraps and the one capital the pattern allows for.
+    means this repository's, which is superseded and says so, and so does the
+    module that holds every other number to naming its repository (#128).
+    `face.ts` is in this set across a line break and the README's `:39` by
+    opening a sentence, which are the two wraps and the one capital the
+    pattern allows for.
 
     The other three say it by where the link goes, and the glossary is one of
     them — the place the name is resolved rather than only disambiguated.
@@ -182,6 +184,7 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
         "docs/ui/README.md",
         "src/SOURCE.md",
         "src/dccex_usb/face.py",
+        "tests/test_adr_numbers_resolve.py",
         "tests/ui/test_flash.py",
         "tests/ui/test_releases.py",
         "ui/src/face.ts",
