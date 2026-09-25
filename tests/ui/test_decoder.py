@@ -21,11 +21,24 @@ real function under `node`, by way of `tests/ui/gloss.mjs`.
 What that costs is a node, and no more than that: no packages are installed,
 nothing is bundled and nothing is fetched. It is why the decoder is written as
 JavaScript with its types in JSDoc rather than as TypeScript — `tsc` still
-checks it (`ui/tsconfig.json`), and a bare node can still run it. What the box at the foot sends, what the band and the
-tiles read, how the releases are listed and what is done to the railroad before
-one is written are the other four modules written that way, for the same reason
-(`tests/ui/test_message.py`, `tests/ui/test_readings.py`,
-`tests/ui/test_releases.py`, `tests/ui/test_flash.py`).
+checks it (`ui/tsconfig.json`), and a bare node can still run it.
+
+**This docstring is where they are listed, and the list is the canonical one.**
+Every module under `ui/src` written that way is named below, and a header
+elsewhere points here rather than counting: "the fifth module of the page" is a
+sentence that stops being true the day a sixth is added, and five of them were
+still saying five after #78 added two (#110). They are `ui/src/decoder.js`,
+what a line means; `ui/src/message.js`, what the box at the foot sends for what
+was typed; `ui/src/readings.js`, what the band and the tiles read;
+`ui/src/releases.js`, how the releases are listed; `ui/src/flash.js`, what is
+done to the railroad before one is written; `ui/src/framing.js`, where the
+stream is and where a line ends; and `ui/src/monitor.js`, what the monitor
+works out without drawing — seven, each run rather than read for the same
+reason this one is (`tests/ui/test_message.py`, `tests/ui/test_readings.py`,
+`tests/ui/test_releases.py`, `tests/ui/test_flash.py`,
+`tests/ui/test_stream.py`, `tests/ui/test_monitor.py`). Every other module
+under `ui/src` is TypeScript and needs a browser, which is what keeps it out of
+this list (`tests/ui/test_stream.py`).
 
 **The node is not asked of every machine the gate runs on.** These checks
 carry the `node` marker, `scripts/check.sh` does not collect them, and the
