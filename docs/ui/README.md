@@ -40,9 +40,11 @@ Not the bus and not the store. The organisation's ADR-0002 permits all three
 and this page uses the third, because its subject is a command station rather
 than a railroad — which is what makes it the same page on a box with a station
 and no layout as on the layout box, with no branch between them. Every reading
-about the station is made of what the station said on the **stream**; the one
-that is not is how many **client**s are on the mirror's port, which is the
-app's own business about itself.
+on the page is made of what the station said on the **stream**. How many
+**client**s are on the mirror's port was the one that was not, and the page no
+longer draws it, so what it asks the face for is the releases and a flash
+rather than a reading (#111). The count is still the app's own business about
+itself and the face still answers it at the address above.
 
 It calls no third-party service. The releases are read by the app from its
 configured source and handed on; the browser never reaches the release API, and
@@ -460,18 +462,19 @@ open like any other. The schedule is untouched and is started once, where the
 page joins the document, so a stream that drops and comes back leaves one
 poller and not two.
 
-**The count that reaches the tile is the newest ask's** (#88). The station is
-asked up the stream and the face is asked about itself in the same breath, and
-the second of those is a request whose answer can arrive after a later one —
-the one place on this page a reading could go backwards, since a line that
-arrived has arrived and the clock only goes forward. During a flash it does: the
-face sits inside esptool for the length of a write, the asks stack up, and an
-answer from the first one arriving last would put a count from a minute ago on
-the tile and leave it there until another happened to arrive in order. So the
-asks are numbered and an answer that is not the newest ask's is dropped where it
-arrives. Nothing is cancelled by that — a face that is answering slowly is not a
-request to abort — and the count the newest ask answers with is read whenever it
-comes.
+**No reading the poll feeds is a request** (#111). The count of **client**s
+was the one that was: it came off the face rather than off the stream, and
+which order a browser hands back the answers to a dozen requests in is the
+browser's, so an answer from an older ask could put a count from a minute ago
+on the tile and leave it there until another happened to arrive in order.
+During a flash it was a dozen — the face sits inside esptool for the length of
+a write while the schedule goes on firing. The asks were numbered for it and an
+answer that was not the newest ask's was dropped where it arrived (#88). The
+page stopped drawing that count and the numbering went with the ask it
+guarded: every reading here is now made of lines off the stream and of the
+clock, and both of those only go forward. What the page asks the face for is
+the releases, once where it joins the document, and a flash, on a press —
+neither of them on the schedule (`tests/ui/test_releases.py`).
 
 **Nothing typed is held for it.** A message an operator typed while the stream
 was down is a command to a command station, and one arriving seconds later,
