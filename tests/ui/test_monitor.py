@@ -11,10 +11,18 @@ not there is red rather than skipped (`scripts/check.sh`, #101). The first two
 were read off their source for as long as there was no node to run them with,
 and reading is what a stamp an hour out would have walked past.
 
+**What it draws is mounted** (#126). A conversation handed to the component in
+happy-dom is read back off the rows: the line the **decoder** knows carrying its
+**gloss**, the line it does not carrying nothing at all, the stamp on every row
+and the mark on the ones this page sent (`ui/test/monitor.test.ts`). An absence
+is what a source-text check was worst at — a template drawing an empty sentence
+and one drawing none read the same off the source.
+
 **The rest is read off its own sources**, as `tests/ui/test_stream.py` explains
-and with the same limit: there is no browser here to scroll, so what is held
-that way is the shape the follow rule has to have, not that a view followed.
-What the stream carries and where it is opened is held over there.
+and with the same limit: happy-dom does no layout, so there is still no browser
+here to scroll, and what is held that way is the shape the follow rule has to
+have rather than that a view followed. What the stream carries and where it is
+opened is held over there.
 """
 
 import re
@@ -205,14 +213,6 @@ def test_the_rules_hold_nothing() -> None:
         assert held not in source, f"the rules reach {held}"
 
 
-def test_every_line_the_monitor_draws_carries_the_time_it_arrived() -> None:
-    """Drawn as the operator's own clock says it, with the instant itself on the
-    element, so nothing about when a line arrived is lost to the formatting."""
-    drawn = MONITOR.read_text()
-    assert "<time datetime=${" in drawn, "the time a line arrived is not drawn"
-    assert "stamped(said.at)" in drawn
-
-
 def test_the_view_is_measured_before_it_changes_and_followed_after() -> None:
     """Measured first, because afterwards every view is at the bottom of what it
     was.
@@ -253,26 +253,20 @@ def test_the_monitor_is_the_page_s_and_is_in_the_work_pane() -> None:
     assert 'customElements.define("dccex-monitor"' in MONITOR.read_text()
 
 
-def test_a_line_the_decoder_knows_carries_its_gloss() -> None:
-    """The reading is the decoder's and the drawing is the component's.
+def test_the_reading_a_line_carries_is_the_decoder_s() -> None:
+    """No protocol is known here, where a clock and a socket are in reach
+    (ADR-0009 d.1, d.3): the page asks the pure function what a line says and
+    puts the sentence beside it.
 
-    The page asks the pure function what a line says and puts the sentence
-    beside it; no protocol is known here, where a clock and a socket are in
-    reach (ADR-0009 d.1, d.3).
+    That the sentence reaches the row it is about, and that a line the decoder
+    said nothing about gets none, is the mounted check's
+    (`ui/test/monitor.test.ts`). A monitor that knew the protocol itself would
+    draw the same sentences until the two readings parted, which is what this
+    one is for.
     """
-    drawn = MONITOR.read_text()
-    assert 'from "../decoder.js"' in drawn, "the monitor reads lines itself"
-    assert "gloss(said.line)" in drawn
-
-
-def test_a_line_with_no_gloss_is_drawn_raw_with_nothing_beside_it() -> None:
-    """Nothing in the gloss column, rather than a hedge or an empty sentence
-    (ADR-0009 d.2). The absence is the page saying it does not know."""
-    drawn = MONITOR.read_text()
-    assert drawn.count('class="gloss"') == 1, "the gloss is drawn in more than one way"
     assert (
-        re.search(r"===?\s*null\s*\?\s*nothing", drawn) is not None
-    ), "a line the decoder said nothing about is not drawn as nothing"
+        'from "../decoder.js"' in MONITOR.read_text()
+    ), "the monitor reads lines itself"
 
 
 def rule(css: str, selector: str) -> str:
@@ -351,16 +345,15 @@ def test_the_box_clears_only_for_what_left_the_page() -> None:
     ), "the box is cleared before it is known that anything was sent"
 
 
-def test_a_line_this_page_sent_is_drawn_differently_from_one_the_station_said() -> None:
+def test_the_colour_a_sent_line_is_drawn_in_is_not_the_whole_distinction() -> None:
     """A mark and a colour, not a colour alone.
 
     Which lines this page put on the railroad is the one thing the monitor must
     not be ambiguous about, and a distinction carried by colour alone is no
-    distinction to a reader who does not see it.
+    distinction to a reader who does not see it. The mark is read off a mounted
+    row (`ui/test/monitor.test.ts`); the colour beside it and the column the
+    mark sits in are the stylesheet's, which happy-dom has no cascade to ask.
     """
-    drawn = MONITOR.read_text()
-    assert 'said.sent ? "line sent" : "line"' in drawn, "a sent line is not marked"
-    assert "said.sent ? SENT_MARK : nothing" in drawn
     styles = STYLES.read_text()
     said = rule(styles, ".said")
     sent = rule(styles, ".sent .said")
