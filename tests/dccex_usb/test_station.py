@@ -135,6 +135,7 @@ def station(
     log: Log,
     *,
     backoff_s: float = QUICK_BACKOFF_S,
+    max_backoff_s: float | None = None,
     max_outstanding_bytes: int = BEHIND_BYTES,
 ) -> Station:
     """A station on an OS-chosen port, with outages measured in milliseconds.
@@ -143,13 +144,21 @@ def station(
     bound, so a test can put one behind by not reading for a moment. The
     backoff is the grace as well — two reopens of it — so an outage is over,
     and the clients of one are gone, in milliseconds too.
+
+    The ceiling the retries ramp to is four of the backoff, as the app's own
+    is a multiple of its own first, and a test that needs a device back
+    *inside* a grace passes its own: a ramp that has reached four of the
+    backoff waits longer for one reopen than the grace waits for two, so the
+    device can come back after the clients of the outage have already gone.
+    Flattening it — a ceiling equal to the backoff — makes a reopen a reopen
+    and is what such a test asks for.
     """
     return Station(
         device,
         0,
         log=log,
         first_backoff_s=backoff_s,
-        max_backoff_s=4 * backoff_s,
+        max_backoff_s=4 * backoff_s if max_backoff_s is None else max_backoff_s,
         max_outstanding_bytes=max_outstanding_bytes,
     )
 
@@ -538,12 +547,26 @@ def test_what_a_client_sends_while_the_device_is_away_is_dropped(
     clients are gone, so the grace it meets is the one its own arrival starts.
     What it meets meanwhile is the outage itself: its bytes dropped, because a
     command is honored now or ignored.
+
+    A grace the test stays inside, and a flat reopen to stay inside it with.
+    This client's grace starts where it connects, which is where the device is
+    made to appear, so the reopen that finds it has to land inside two
+    backoffs — and by here the watcher has been retrying long enough for its
+    ramp to be at the ceiling, where one reopen is four. Flattened, a reopen
+    is a backoff and the device is back with a whole one to spare; at the
+    quick backoff this asked the device back within ten milliseconds of the
+    symlink and was green only on a machine that managed it (#118).
     """
 
     async def scenario() -> None:
         log = Log()
         absent = tmp_path / "dccex"
-        app = station(str(absent), log)
+        app = station(
+            str(absent),
+            log,
+            backoff_s=PATIENT_BACKOFF_S,
+            max_backoff_s=PATIENT_BACKOFF_S,
+        )
         await app.start()
         try:
             _, early = await connect(app)
@@ -559,7 +582,11 @@ def test_what_a_client_sends_while_the_device_is_away_is_dropped(
 
             assert await nothing_arriving(pty.master) == b""
 
-            # And the client is still connected, so what it sends now arrives.
+            # And the client is still connected — the only grace that has run
+            # is the first outage's, and the open stopped this one's — so what
+            # it sends now arrives. Said here rather than left to the read
+            # below, which reports a client the grace took as silence.
+            assert len(log.said("client disconnected")) == 1, log.lines
             await send(writer, b"<a 12 1>")
             assert await arriving(pty.master, len(b"<a 12 1>")) == b"<a 12 1>"
         finally:
