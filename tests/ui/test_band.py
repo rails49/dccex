@@ -10,9 +10,16 @@ too narrow to carry both.
 
 Read off the sources, because these are claims about the shape of the page
 rather than about what it says. happy-dom does no layout, so a width is not a
-thing a rendered check can assert; and a component that worked the reading out
+thing a mounted check can assert; and a component that worked the reading out
 itself would draw exactly the same words, so the one place that shows is the
 source.
+
+What the last of them is about *is* a width, and a browser now draws it:
+`tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
+reads back a link with a size and a track reading with none (#127). It stays
+here as well, and the two are not the same claim — this one says which reading
+the rule names and that it is not the link, which a measurement of a band that
+drew one reading cannot say.
 """
 
 import re
@@ -95,6 +102,10 @@ def test_the_narrow_band_keeps_the_link_and_drops_the_rails() -> None:
     A station that is not answering makes the other reading meaningless, and a
     band that kept the rails instead would show a power state nothing has
     confirmed since the link went.
+
+    The rule as it is written: which reading the media query names, and that it
+    is not the link. That a browser does it is
+    `tests/ui/test_page_at_a_phones_width.py`'s (#127).
     """
     styles = STYLES.read_text()
     narrow = re.search(
