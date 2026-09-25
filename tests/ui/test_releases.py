@@ -119,9 +119,9 @@ def says() -> dict[str, str]:
 
 @pytest.mark.node
 def test_the_releases_are_listed_newest_first_each_with_its_date() -> None:
-    """The whole of what the row is for: every release the box is configured
-    to read, in the order that puts the one to flash at the top, each with the
-    day it was published (#8).
+    """The whole of what the row is for: every release the mirror is
+    configured to read, in the order that puts the one to flash at the top,
+    each with the day it was published (#8).
 
     The order is the page's own. The face passes the source's list on as it
     came, because which one is newest is a question about the dates.
