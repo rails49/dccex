@@ -1,15 +1,15 @@
-"""A citation of ADR-0002 in the source says which repository's it is.
+"""A citation of ADR-0002 in this repository's prose says whose it is.
 
 There are two decisions with that number and they are not related. The
 organisation's, in `rails49/.github`, is that a UI talks to the bus, the store
 and its own app's face; this repository's is that a defect in copied code is
 fixed where it came from, and it is superseded (ADR-0003). A reader who
-follows a bare "ADR-0002" out of the source lands on whichever one they
-happened to look in, and ADR-0006 d.4 already records the collision: "neither
+follows a bare "ADR-0002" out of a page lands on whichever one they happened
+to look in, and ADR-0006 d.4 already records the collision: "neither
 ADR-0002 is available to carry it".
 
 Nothing can be renamed to end it — one of the two is another repository's — so
-what the source owes a reader is the owner beside the number. The glossary
+what a page owes a reader is the owner beside the number. The glossary
 carries the URL once (`CONTEXT.md`, **face**), which is where the name is
 resolved rather than only disambiguated.
 
@@ -19,25 +19,53 @@ owner beside the number gives them. The glossary, the root `README.md` and the
 mirror's page all cite it that way and none of them says an owner in words
 (#123).
 
-**The source is two trees.** The package is under `src/` and the page is not,
-so for as long as this read `src/` alone it was green while three bare
-citations sat in the newest code in the repository (#86).
+**What is read.** The package under `src/`, the page under `ui/src/`, the
+two pages at the root, every page of `docs/` and every module of `tests/`.
+Each widening came of bare citations sitting where nothing was looking: three
+in the newest code in the repository while this read `src/` alone (#86), and
+six across `docs/` and `tests/` while it read those two trees (#117, #123).
+
+**What is deliberately not.** `docs/adr/` and this module, each written out
+beside `PROSE` with its reason. Both carry bare citations and neither is
+edited to end them: an ADR is a record of what was decided at the time, and
+the bare citation here is what the scan is run over.
 """
 
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+#: This module, which is not read. The citations in it are what the scan is
+#: run over below — a bare one to catch, and an owner to strike off a whole
+#: one — so a scan that read this file would be red on its own test data.
+SELF = Path(__file__).resolve()
+
+ROOT = SELF.parent.parent
 
 CONTEXT = ROOT / "CONTEXT.md"
 
-#: What a reader of the code reads, tree by tree: the package's prose and the
-#: provenance note beside it, the page's modules and any note left among them.
-#: Anything else under either is something a build left there.
+#: The records, which are not read. An ADR is accepted as it was written and
+#: is not edited to satisfy a check; ADR-0003 and ADR-0006 cite this
+#: repository's ADR-0002 bare, where an owner is not what a reader is missing,
+#: and ADR-0001 and ADR-0008 write the organisation's as `org ADR-0002` (#123).
+ADRS = ROOT / "docs" / "adr"
+
+#: What a reader of this repository reads, tree by tree and with the depth in
+#: the glob: the package's prose and the provenance note beside it, the page's
+#: modules and any note left among them, the pages under `docs/`, the checks
+#: under `tests/`, and the two pages at the root. The root is read flat —
+#: everything below it worth reading is a tree of its own here, and the rest
+#: is what a build, an environment or a package manager left there.
 PROSE = {
-    ROOT / "src": ("*.py", "*.md"),
-    ROOT / "ui" / "src": ("*.ts", "*.js", "*.md"),
+    ROOT: ("*.md",),
+    ROOT / "src": ("**/*.py", "**/*.md"),
+    ROOT / "ui" / "src": ("**/*.ts", "**/*.js", "**/*.md"),
+    ROOT / "docs": ("**/*.md",),
+    ROOT / "tests": ("**/*.py",),
 }
+
+#: The two things under those trees that are not read, each for the reason
+#: written above it.
+NOT_READ = (ADRS, SELF)
 
 #: The organisation's copy, at the address the rest of the repository links it
 #: at — the mirror's page, ADR-0001 and ADR-0004 all use this one.
@@ -73,19 +101,21 @@ LINKED = re.compile(
 CITED = re.compile(r"ADR-0002")
 
 #: A citation as `dccex-app.ts` writes it, and the same citation with the owner
-#: struck off: what a bare one added under `ui/src` looks like, for the scan to
-#: be run over below.
+#: struck off: what a bare one added to a file the scan reads looks like. The
+#: page's README and the flash's checks write it the same way, so one strike
+#: serves all three trees the scan is shown catching one in.
 CITATION = "(the organisation's ADR-0002)"
 STRUCK = "(ADR-0002)"
 
 
 def prose() -> list[Path]:
-    """Every file of the source a reader of the code reads, both trees."""
+    """Every page of the repository the scan reads, minus the two it does not."""
     return sorted(
         page
         for tree, kinds in PROSE.items()
         for kind in kinds
-        for page in tree.rglob(kind)
+        for page in tree.glob(kind)
+        if not any(spot == page or spot in page.parents for spot in NOT_READ)
     )
 
 
@@ -109,7 +139,22 @@ def cited(text: str) -> list[str]:
     ]
 
 
-def test_no_citation_of_adr_0002_in_the_source_is_bare() -> None:
+def struck(page: Path) -> list[str]:
+    """What the scan makes of a page with the owner struck off its citation.
+
+    The strike goes on the text the scan read rather than on the file, so a
+    run that dies leaves the tree as it found it. That the page is read and
+    that there was a citation on it to strike are asserted first — a tree that
+    moved or prose that moved would otherwise leave a caller passing on a
+    substitution that never happened.
+    """
+    assert page in prose(), f"{page.relative_to(ROOT)} is not read"
+    written = page.read_text()
+    assert CITATION in written, f"no {CITATION} in {page.name} to strike"
+    return cited(written.replace(CITATION, STRUCK, 1))
+
+
+def test_no_citation_of_adr_0002_in_the_prose_is_bare() -> None:
     bare = {
         str(page.relative_to(ROOT)): loose
         for page in prose()
@@ -118,26 +163,35 @@ def test_no_citation_of_adr_0002_in_the_source_is_bare() -> None:
     assert bare == {}, f"ADR-0002 cited without saying whose it is: {bare}"
 
 
-def test_the_source_cites_adr_0002_at_all() -> None:
+def test_the_prose_cites_adr_0002_at_all() -> None:
     """Named so the check above cannot pass by looking at nothing.
 
-    The mirror's face, the module the page reaches a face through and the two
-    components that say what the page talks to all mean the organisation's;
-    `SOURCE.md` means this repository's, which is superseded and says so.
-    `face.ts` is in this set across a line break, which is the wrap the
-    pattern allows for.
+    Both ways of saying whose it is, over the tree as it stands. The mirror's
+    face, the module the page reaches a face through, the two components that
+    say what the page talks to, the page's README and the two suites of the
+    page's checks all mean the organisation's and say so in words; `SOURCE.md`
+    means this repository's, which is superseded and says so. `face.ts` is in
+    this set across a line break and the README's `:39` by opening a sentence,
+    which are the two wraps and the one capital the pattern allows for.
+
+    The other three say it by where the link goes, and the glossary is one of
+    them — the place the name is resolved rather than only disambiguated.
     """
-    owned = {
-        page.relative_to(ROOT).as_posix()
-        for page in prose()
-        if OWNED.search(page.read_text())
-    }
-    assert owned == {
+    read = [(page.relative_to(ROOT).as_posix(), page.read_text()) for page in prose()]
+    assert {name for name, text in read if OWNED.search(text)} == {
+        "docs/ui/README.md",
         "src/SOURCE.md",
         "src/dccex_usb/face.py",
+        "tests/ui/test_flash.py",
+        "tests/ui/test_releases.py",
         "ui/src/face.ts",
         "ui/src/ui/dccex-app.ts",
         "ui/src/ui/dccex-releases.ts",
+    }
+    assert {name for name, text in read if LINKED.search(text)} == {
+        "CONTEXT.md",
+        "README.md",
+        "docs/dccex_usb/README.md",
     }
 
 
@@ -146,20 +200,53 @@ def test_a_bare_citation_under_the_page_is_caught() -> None:
 
     What this holds is the reach and not the pattern: before #86 the check
     read `src/` alone, so the module below was not among the files it reads
-    and the first assertion is the one that would have failed.
-
-    The strike goes on the text the scan read rather than on the file, so a
-    run that dies leaves the tree as it found it. That there was a citation to
-    strike is asserted first — prose that moved would otherwise leave this
-    passing on a substitution that never happened.
+    and `struck()`'s first assertion is the one that would have failed.
     """
-    page = ROOT / "ui" / "src" / "ui" / "dccex-app.ts"
-    assert page in prose(), f"{page.name} is not read"
-    written = page.read_text()
-    assert CITATION in written, f"no {CITATION} in the module to strike"
-    loose = cited(written.replace(CITATION, STRUCK, 1))
+    loose = struck(ROOT / "ui" / "src" / "ui" / "dccex-app.ts")
     assert len(loose) == 1, f"the struck citation was not caught: {loose}"
     assert loose[0].endswith("what the page talks to (ADR-0002")
+
+
+def test_a_bare_citation_in_the_docs_is_caught() -> None:
+    """The same strike on a page under `docs/`, which #123 brought into reach.
+
+    This is the one the triage of #117 was about: the bare citation it found
+    had sat on this very page, and the check was green because nothing under
+    `docs/` was read.
+    """
+    loose = struck(ROOT / "docs" / "ui" / "README.md")
+    assert len(loose) == 1, f"the struck citation was not caught: {loose}"
+    assert loose[0].endswith("face and nothing else (ADR-0002")
+
+
+def test_a_bare_citation_in_a_test_module_is_caught() -> None:
+    """The same strike on a module under `tests/`, which #123 also brought in.
+
+    `tests/` is read apart from this module, so a docstring here owes a reader
+    the owner exactly as the code it is about does — which is what #117 had to
+    fix by hand in two suites of the page's checks.
+    """
+    loose = struck(ROOT / "tests" / "ui" / "test_flash.py")
+    assert len(loose) == 1, f"the struck citation was not caught: {loose}"
+    assert loose[0].endswith("what the page talks to (ADR-0002")
+
+
+def test_the_records_and_this_module_are_not_read() -> None:
+    """The two exclusions, and that each is carrying something to exclude.
+
+    An exclusion that has nothing behind it is an exclusion nobody would
+    notice going wrong, so the bare citations are asserted as well as the
+    absence: `docs/adr/` because an ADR is a record of what was decided at the
+    time, and this module because its bare citation is the scan's test data.
+    """
+    read = prose()
+    assert [
+        page.relative_to(ROOT).as_posix() for page in read if ADRS in page.parents
+    ] == []
+    assert SELF not in read
+    superseding = ADRS / "0003-the-copy-has-no-original-left-and-is-fixed-here.md"
+    assert cited(superseding.read_text()), f"nothing bare left in {superseding.name}"
+    assert cited(SELF.read_text()), "nothing bare left in this module"
 
 
 def test_an_owner_resolves_wherever_the_line_broke_and_however_it_opened() -> None:
