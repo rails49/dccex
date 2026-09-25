@@ -261,7 +261,7 @@ foot.
 - The lines this page sent are marked differently from the lines the station
   said, so an operator can tell their own traffic from the railroad's.
 - It follows the newest line while the view is at the bottom and stays put once
-  it has been scrolled up, so reading back does not fight the feed — including
+  it has been scrolled up, so reading back does not fight the stream — including
   across a trim, where the lines it is measured from are the ones that go. It
   can be paused, and it can be cleared.
 
