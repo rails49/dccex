@@ -66,6 +66,11 @@ def band(**scenario: Any) -> dict[str, str]:
     return {shown["of"]: shown["reads"] for shown in drawn(**scenario)["band"]}
 
 
+def faults(**scenario: Any) -> list[str]:
+    """The band's readings that are a fault, by name."""
+    return [shown["of"] for shown in drawn(**scenario)["band"] if shown.get("fault")]
+
+
 def tiles(**scenario: Any) -> dict[str, str]:
     """What the tiles read, by the name of each."""
     return {shown["of"]: shown["reads"] for shown in drawn(**scenario)["tiles"]}
@@ -229,6 +234,17 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     assert band(now=NOW) == {"link": "not answering", "rails": "unknown"}
     assert tiles(now=NOW) == {"link": "", "build": ""}
     assert light(now=NOW) is False
+
+
+@pytest.mark.node
+def test_a_link_that_is_down_is_the_one_fault_on_the_band() -> None:
+    """A station that is not answering is a fault, and the band draws it on
+    the look rules' `--stop` (#138). Nothing else on the band is one: rails
+    that are cold or unknown are a reading, not a fault."""
+    assert faults(now=NOW) == ["link"]
+    assert faults(said=list(TALKING), now=NOW + silent_ms()) == ["link"]
+    assert faults(said=list(TALKING), now=NOW) == []
+    assert faults(said=[("<p0>", NOW - 10)], now=NOW) == []
 
 
 @pytest.mark.node

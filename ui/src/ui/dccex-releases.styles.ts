@@ -5,7 +5,7 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's four values stay on the chrome.
+ * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
  *
  * **A release wraps rather than running off the side.** The phone at the
  * layout is where this is read and a **tag** is long: the date and what is
@@ -18,7 +18,7 @@ import { css } from "lit";
  * all the same — the same rule the monitor marks the page's own lines by.
  *
  * **The controls are sized for a thumb.** `--rail-button` is the look rules'
- * minimum for one and it is a size rather than a colour — the chrome's four
+ * minimum for one and it is a size rather than a colour — the chrome's six
  * colours stay on the chrome — so it is the value a control meant to be pressed
  * on a phone held at the layout asks for, as the command box's send is
  * (`dccex-monitor.styles.ts`).
@@ -27,8 +27,7 @@ import { css } from "lit";
  * in the theme's own warning ink: this is the one gesture on the page that
  * stops a railroad, and nothing behind the page guards it (ADR-0006). They are
  * Shoelace's `danger` and `warning`, which the work pane follows the theme for;
- * the red the look rules reserve for the first UI to draw an emergency stop is
- * the chrome's and stays unclaimed.
+ * the look rules' `--stop` is the chrome's, and means a fault or a stop there.
  */
 export const releasesStyles = css`
   :host {

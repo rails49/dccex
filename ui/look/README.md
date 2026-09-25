@@ -8,8 +8,8 @@ token means and who is bound by it is
 there, and neither page restates the other.
 
     source   rails49/.github, docs/tokens.css
-    commit   c91e9bea6680808edab65675998ab49ea6309cd3
-    copied   2026-09-23, from that repository at 2e74fba6
+    commit   eead9fc5afb75a971acb1d3979aad83802a14f16
+    copied   2026-09-25, from that repository at eead9fc5
 
 The commit is the pin: the one that last wrote the file, so that diffing this
 copy against it is a diff of the same thing. It is the pin a git dependency
@@ -20,9 +20,11 @@ that the values it draws with equal the copy's.
 
 ## What this UI takes
 
-Everything — four colours and two sizes — which is the dcc-ex UI's row in
+Everything — six colours and two sizes — which is the dcc-ex UI's row in
 LOOK.md. The **band** across the top and the rail down the left are both drawn
 here, so every token has something on the page that is its colour or its size.
+`--stop` and `--stop-ink` are the band's link reading while the station is not
+answering, which is a fault (#138).
 
 ## The copy is inert
 

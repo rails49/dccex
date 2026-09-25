@@ -77,8 +77,10 @@ power is the flash sequence, which cuts it as its own step and asks the
 operator first. The command box can still type `<0>`, which is what a raw
 monitor is.
 
-No emergency stop is drawn on the chrome, so the red token LOOK.md reserves for
-the first UI to draw one stays unclaimed.
+No emergency stop is drawn on the chrome. The one red on it is the link while
+the station is not answering: LOOK.md keeps red on the chrome for stop or a
+fault, and that is a fault. It wears `--stop` and `--stop-ink` and still says
+`not answering` in words (#138).
 
 Below 560px the band drops the track reading and keeps the link. A station
 that is not answering makes the other reading meaningless, and a band that kept
@@ -97,7 +99,8 @@ The station's particulars, at the top of the work pane (#7):
 | track A · MAIN, … | the track's current in mA, or `off` | gone |
 
 The light is the band's **link** reading made visible at a glance; it is in
-the work pane because the band keeps to the look rules' four colours.
+the work pane because the chrome's red means a fault and nothing else, and a
+green light has no token there.
 
 **A tile per track the station uses**, by letter, with its mode (`<=>` →
 `<= A MAIN>`). A track set to `NONE` gets no tile. A track reads `off` when the
@@ -599,8 +602,8 @@ did not start is not its to do.
   `control`'s UI, which is next door on the layout box.
 - **Commanding track power**, beyond the flash sequence's own step. The band
   presses nothing — there is no button on it, nothing listening for a press and
-  no form — and no emergency stop is drawn on the chrome, so the red the look
-  rules reserve for the first UI to draw one stays unclaimed.
+  no form — and no emergency stop is drawn on the chrome. Its one red is the
+  link while the station is not answering, which is a fault (#138).
 - **Station configuration.** There is none at runtime: the fork sets
   `DISABLE_EEPROM` so the station persists nothing, the translator drives
   points with raw accessory packets so the station holds no definitions, and

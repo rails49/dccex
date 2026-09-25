@@ -4,8 +4,8 @@ The words it shows for a set of facts are asserted by running the real
 functions (`tests/ui/test_readings.py`): hand them what a page would hand them
 and read the band back. What is held here is the rest of it — that the
 component draws those readings and nothing of its own, that it presses
-nothing, that no red reaches the chrome, and which reading survives a band too
-narrow to carry both.
+nothing, that red reaches the chrome only for a fault, and which reading
+survives a band too narrow to carry both.
 
 Read off the sources, for the reason `tests/ui/test_stream.py` gives: the gate
 is Python, the node beside it is a bare one with no packages, and nothing in
@@ -57,26 +57,46 @@ def test_the_band_presses_nothing() -> None:
         assert pressed not in drawn, f"the band carries a {pressed}"
 
 
-def test_no_red_is_drawn_on_the_chrome() -> None:
-    """The look rules keep red on the chrome for stop or a fault, and no UI
-    has claimed it: this one draws no emergency stop, so the token stays
-    unclaimed (ADR-0008 d.5).
+def test_red_on_the_chrome_is_the_fault_and_nothing_else() -> None:
+    """The look rules keep red on the chrome for stop or a fault (#138). This
+    page draws no emergency stop, so the one red it draws is the fault: a link
+    that is down.
 
     What the sheet may ask for is the chrome's own values and sizes. A colour
     of its own — a hex, or one of Shoelace's theme colours borrowed onto the
-    chrome — is what would put red there, and neither is here.
+    chrome — would put a red there that means something else, and neither is
+    here. The stop tokens are asked for by the fault's rule and by no other.
     """
     styles = STYLES.read_text()
     assert not HEX.findall(styles), "the band writes a colour out"
     asked = set(re.findall(r"var\((--[a-z0-9-]+)\)", styles))
-    assert asked == {"--band", "--band-ink", "--rail-button"}, f"the band asks {asked}"
+    assert asked == {
+        "--band",
+        "--band-ink",
+        "--rail-button",
+        "--stop",
+        "--stop-ink",
+    }, f"the band asks {asked}"
+    fault = rule(styles, ".fault")
+    assert "background: var(--stop)" in fault
+    assert "color: var(--stop-ink)" in fault
+    without = styles.replace(fault, "")
+    assert "--stop" not in re.sub(
+        r"/\*.*?\*/", "", without, flags=re.DOTALL
+    ), "a rule other than the fault's asks for red"
+
+
+def test_the_band_marks_the_reading_that_is_a_fault() -> None:
+    """Whether a reading is a fault is the readings module's to say
+    (`tests/ui/test_readings.py`); the band draws the class it asks for."""
+    assert '${shown.fault ? "fault" : ""}' in BAND.read_text()
 
 
 def test_a_link_that_is_down_says_so_in_words() -> None:
     """A distinction carried by colour alone is no distinction to a reader who
-    does not see it — and this page has no second colour on the chrome to
-    carry one with. What the band says it says in words, which is also what
-    lets it be asserted as a pair (`tests/ui/test_readings.py`)."""
+    does not see it. The fault's red is drawn as well as the words, not
+    instead of them, and the words are also what lets it be asserted as a pair
+    (`tests/ui/test_readings.py`)."""
     drawn = BAND.read_text()
     assert "${shown.reads}" in drawn, "the band draws no words for a reading"
     assert "${shown.of}" in drawn, "a reading is drawn without saying which it is"

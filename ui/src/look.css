@@ -1,7 +1,7 @@
 /*
  * The values this page draws with, and the only place it holds them.
  *
- * They are the look rules' — four colours and two sizes that are one system
+ * They are the look rules' — six colours and two sizes that are one system
  * across rails49's UIs — and `look/tokens.css` is the verbatim copy of what
  * they are, pinned to the commit it was taken at (org ADR-0005). That copy is
  * inert: nothing imports it and the page does not link it. This file is how
@@ -27,4 +27,6 @@
   --rail-group: #059669;
   --rail-button: 44px;
   --rail-turns: 640px;
+  --stop: #f7dcdf;
+  --stop-ink: #cc2936;
 }
