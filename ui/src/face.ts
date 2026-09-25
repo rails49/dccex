@@ -19,7 +19,7 @@
  * parameters, and the one thing it asks *for* names a **tag** and nothing
  * else: where releases are read from is that app's own configuration, and a
  * page that could name it would be a page deciding what the command station is
- * offered to run (ADR-0042, `firmware.py`).
+ * offered to run (control ADR-0042, `firmware.py`).
  */
 
 import { UNANSWERED, WROTE, type Wrote } from "./flash.js";
@@ -34,7 +34,7 @@ export const FACE = "/dccex-usb";
  *  page asks its own app's face and never the release API: a UI talks to the
  *  bus, the store and its own app's face and nothing else (the organisation's
  *  ADR-0002), and where releases are read from is a flag on that app rather
- *  than anything a browser can name (ADR-0042, `face.py`). */
+ *  than anything a browser can name (control ADR-0042, `face.py`). */
 export const RELEASES_PATH = `${FACE}/releases`;
 
 /** What the list comes back under. */
@@ -104,7 +104,7 @@ const REASON = "reason";
  * **It names a tag and nothing else.** Where releases are read from is the
  * app's configuration and no request can reach it, so a body that named a
  * source would be a page choosing what the command station is offered to run
- * on a LAN that carries no authentication (ADR-0042, `firmware.py`).
+ * on a LAN that carries no authentication (control ADR-0042, `firmware.py`).
  *
  * **It waits for the write.** The face answers when esptool has finished,
  * which is a minute or two: what the caller asked is whether the station now
@@ -116,9 +116,9 @@ const REASON = "reason";
  * says what it turned a flash down for — a tag with no release, a source that
  * could not be asked, a release with no asset or no digest, a station that is
  * not there, a flash already in flight — and a page that wrote its own
- * sentence over that would be guessing at an answer it was given (ADR-0050).
- * What this page says instead is `UNANSWERED`, and only where there was no
- * answer to read.
+ * sentence over that would be guessing at an answer it was given (control
+ * ADR-0050). What this page says instead is `UNANSWERED`, and only where there
+ * was no answer to read.
  *
  * It answers rather than raising, as `releases` above does: a
  * rejection left loose would be a sequence that stopped with nothing said.

@@ -281,7 +281,7 @@ def test_a_mirror_that_serves_is_watched_until_stop() -> None:
 def test_a_flash_in_flight_is_waited_out_before_the_mirror_is_cancelled() -> None:
     """The one thing the teardown is for: the mirror gives the device back
     when the flash is done with it, so ending in the middle of one leaves the
-    station half written (ADR-0065)."""
+    station half written (control ADR-0065)."""
 
     async def flashing() -> Endless:
         station = Endless()
@@ -304,7 +304,7 @@ def test_a_flash_in_flight_is_waited_out_before_the_mirror_is_cancelled() -> Non
 def test_a_port_already_in_use_exits_non_zero() -> None:
     """The whole of it as the container runs it. What the box does with the
     exit is the deploy's business; what this app owes it is a process that is
-    gone and a reason on stderr (ADR-0050).
+    gone and a reason on stderr (control ADR-0050).
 
     The port is held on `HOST` and not on loopback, which is what the app asks
     for: asyncio binds with `SO_REUSEADDR`, and BSD lets a wildcard bind walk

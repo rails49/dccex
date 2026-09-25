@@ -230,8 +230,8 @@ def test_a_releases_url_with_a_trailing_slash_is_the_same_url() -> None:
 
 def test_a_tag_cannot_walk_out_of_the_releases_it_was_configured_with() -> None:
     """A tag arrives from a caller on a LAN with no authentication on it
-    (ADR-0042), so it is escaped whole: nothing in it names a path of its own
-    choosing."""
+    (control ADR-0042), so it is escaped whole: nothing in it names a path of
+    its own choosing."""
     asked = release_url(RELEASES, "../../../other/releases/tags/v1")
 
     assert asked.startswith(f"{RELEASES}/tags/")
@@ -288,7 +288,8 @@ def test_the_digest_is_what_says_the_bytes_are_the_published_ones() -> None:
 
 
 def test_a_digest_in_a_form_this_cannot_read_matches_nothing() -> None:
-    """An unchecked binary is refused rather than written (ADR-0065)."""
+    """An unchecked binary is refused rather than written (control
+    ADR-0065)."""
     assert not matches(BINARY, "")
     assert not matches(BINARY, hashlib.sha256(BINARY).hexdigest())
     assert not matches(BINARY, f"md5:{hashlib.md5(BINARY).hexdigest()}")
@@ -329,7 +330,7 @@ def test_what_a_flash_came_to_is_answered_to_whoever_asked() -> None:
     """The gesture has a caller now (#13), so what became of it is a value and
     not only a line on the box: the face turns it into a status and a reason
     for whoever asked, and a refusal written to nobody is the thing the face
-    was for (ADR-0001, ADR-0050)."""
+    was for (ADR-0001, control ADR-0050)."""
 
     async def scenario() -> None:
         flash = Flash()
@@ -360,9 +361,9 @@ def test_the_release_is_written_to_the_station_and_nothing_is_refused() -> None:
 
 
 def test_the_device_is_let_go_before_esptool_and_taken_back_after() -> None:
-    """The one ordering that can break the railroad (ADR-0065): two openers
-    fight over the line discipline, and a flash that ran with the mirror on
-    the port would leave the railroad with neither."""
+    """The one ordering that can break the railroad (control ADR-0065): two
+    openers fight over the line discipline, and a flash that ran with the
+    mirror on the port would leave the railroad with neither."""
 
     async def scenario() -> None:
         flash = Flash()
@@ -534,7 +535,7 @@ def test_a_release_that_carries_no_firmware_is_refused() -> None:
 
 def test_a_release_the_api_reports_no_digest_for_is_refused() -> None:
     """Unchecked is not written: the per-asset digest is what makes a tag
-    chosen at the moment of the gesture safe (ADR-0065, decision 4).
+    chosen at the moment of the gesture safe (control ADR-0065, decision 4).
 
     The whole sentence, because the face now lists such a release as not
     flashable (#81) and this refusal is what is left for a caller that named
@@ -704,7 +705,7 @@ def test_a_caller_that_goes_away_does_not_take_the_flash_with_it() -> None:
 
 def test_latest_is_not_a_build() -> None:
     """It names a different build depending on when it is read, and what was
-    written has to be sayable afterwards (ADR-0065)."""
+    written has to be sayable afterwards (control ADR-0065)."""
 
     async def scenario() -> None:
         flash = Flash()
@@ -841,8 +842,9 @@ def test_the_mirror_is_off_the_port_while_esptool_runs() -> None:
 
     The fake runner is called with the device closed and the mirror has it
     again afterwards — the one ordering that can leave the railroad with a
-    closed port and no firmware (ADR-0065). esptool cannot write a pty, which
-    is why what runs is a fake and what is asserted is the handover.
+    closed port and no firmware (control ADR-0065). esptool cannot write a
+    pty, which is why what runs is a fake and what is asserted is the
+    handover.
     """
 
     async def scenario() -> None:

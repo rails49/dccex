@@ -699,13 +699,14 @@ def test_the_dropped_notice_is_said_again_in_a_later_outage(
 
 def test_the_device_is_let_go_for_the_block_and_taken_back_after(pty: Pty) -> None:
     """The handover a flash needs: nothing of the mirror's is on the port
-    while the block runs, and the device is open again after it (ADR-0065).
+    while the block runs, and the device is open again after it (control
+    ADR-0065).
 
     What a client sees inside it is the ordinary outage — what it sends
     dropped, and its connection closed once the grace passes — because for
     that while the device genuinely is away, and a flash lasts tens of
     seconds. The flash path drops its clients by the rule every outage drops
-    them by and has no rule of its own (ADR-0066).
+    them by and has no rule of its own (control ADR-0066).
     """
 
     async def scenario() -> None:
@@ -747,7 +748,8 @@ def test_a_device_away_past_the_grace_disconnects_every_client(
     A client cannot tell an away device from a quiet one, so one held through
     an outage is a translator publishing `device/link: up` over a railroad
     that cannot move. The socket closing is the whole signal: the translator's
-    session ends the way it already ends and the row goes `down` (ADR-0066).
+    session ends the way it already ends and the row goes `down` (control
+    ADR-0066).
 
     Both clients here are on the outage before its grace begins, and both
     leave on the one deadline: the grace is the outage's, not each client's.
@@ -780,8 +782,9 @@ def test_a_client_that_takes_nothing_leaves_when_the_grace_ends_too(
     """The grace ends every client on the outage, reading or not.
 
     The socket closing is the whole signal that the device is away
-    (ADR-0066), and a client that has stopped reading is the one that most
-    needs telling — a sleeping laptop wakes to a session it thinks is live.
+    (control ADR-0066), and a client that has stopped reading is the one that
+    most needs telling — a sleeping laptop wakes to a session it thinks is
+    live.
     Closing it politely waits for bytes it is not taking, so the signal
     never reaches it and it lingers on a port with no device behind it until
     the device comes back and the traffic that follows puts it far enough
@@ -818,7 +821,7 @@ def test_a_client_that_takes_nothing_leaves_when_the_grace_ends_too(
 def test_a_client_arriving_into_a_running_grace_leaves_with_it(
     tmp_path: Path,
 ) -> None:
-    """The grace is the outage's, not each client's (ADR-0066).
+    """The grace is the outage's, not each client's (control ADR-0066).
 
     The late client here arrives half a grace into one already being waited
     out, and is disconnected on that deadline rather than on one of its own:

@@ -134,7 +134,7 @@ export function writing(tag) {
  *
  * One sentence, because what is on the other end is a person — the same shape
  * the mirror answers a gesture with, for the same reason (`firmware.py`,
- * ADR-0050).
+ * control ADR-0050).
  *
  * @typedef {object} Wrote
  * @property {boolean} flashed whether the release was written

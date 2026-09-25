@@ -181,7 +181,8 @@ def test_a_flash_that_cannot_start_says_why() -> None:
     """The face answers a refusal with a sentence — a tag with no release, a
     source that could not be asked, a release with no asset or no digest, a
     station that is not there, a flash already in flight — and the page says
-    that sentence rather than one of its own (#9, `face.py`, ADR-0050)."""
+    that sentence rather than one of its own (#9, `face.py`, control
+    ADR-0050)."""
     refused = {"flashed": False, "says": "a flash is already under way"}
 
     assert flashed(tag=TAG, wrote=refused)["wrote"] == refused
@@ -285,7 +286,7 @@ def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
     else (the organisation's ADR-0002), and what a caller may name is a
     **tag**: where releases are read from is the app's configuration, and a
     body that named a source would let anyone on the wifi choose what the
-    command station is offered to run (ADR-0042, `firmware.py`)."""
+    command station is offered to run (control ADR-0042, `firmware.py`)."""
     asking = code(FACE.read_text())
     assert "FLASH_PATH = `${FACE}/flash`" in asking, "the page builds no address"
     writing = asking[asking.index("export async function flash(") :]
@@ -301,7 +302,7 @@ def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
 def test_a_flash_the_face_refused_is_said_in_the_face_s_own_words() -> None:
     """The mirror says what it turned a flash down for, and a page that wrote
     its own sentence over that would be guessing at an answer it was given
-    (ADR-0050, `face.py`)."""
+    (control ADR-0050, `face.py`)."""
     asking = code(FACE.read_text())
     writing = asking[asking.index("export async function flash(") :]
     assert "REASON" in writing, "the refusal the face gave is dropped"

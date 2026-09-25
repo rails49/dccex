@@ -131,7 +131,7 @@ export class DccexReleases extends LitElement {
 
   /** What became of the last flash, or `null` where none has been asked for.
    *  The sentence is the sequence's or the face's and never this component's
-   *  (`flash.js`, ADR-0050). */
+   *  (`flash.js`, control ADR-0050). */
   wrote: Wrote | null = null;
 
   override render(): TemplateResult {
@@ -181,7 +181,8 @@ export class DccexReleases extends LitElement {
    *
    * The sentence is the sequence's or the face's own — a page that wrote its
    * own over a refusal it was given would be guessing at an answer it has
-   * (ADR-0050) — and what is here is which of the two it is drawn as. */
+   * (control ADR-0050) — and what is here is which of the two it is drawn
+   * as. */
   #became(wrote: Wrote): TemplateResult {
     return html`<p class=${wrote.flashed ? "became wrote" : "became refused"}>
       ${wrote.says}
