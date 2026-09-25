@@ -61,7 +61,10 @@
  *   caller ever names one with
  * @property {string} published when the source published it, as the source
  *   stamped it, or `""` where it stamped none
- * @property {boolean} flashable whether it carries a firmware to write
+ * @property {boolean} flashable whether it carries a firmware to write with
+ *   a digest to check it against — false where it carries no firmware, and
+ *   false where it carries one the source reports no digest for (#81,
+ *   `face.py`'s `FLASHABLE`)
  */
 
 /**
@@ -73,7 +76,9 @@
  *   reads, or `""` where the source named none
  * @property {boolean} onStation whether this is the release the station is
  *   running now
- * @property {boolean} flashable whether it carries a firmware to write
+ * @property {boolean} flashable whether there is a firmware on it to write
+ *   and a digest to check the write against, which is the one thing the face
+ *   says about both of the releases there is nothing to write from (#81)
  */
 
 /**
@@ -91,11 +96,21 @@
  *  (docs/ui/README.md). */
 export const ON_STATION = "on the station now";
 
-/** What is said of a release published with no firmware on it. A release
- *  exists whether or not anything can be written from it (CONTEXT.md), and a
- *  row that looked like the others would send an operator to a **tag** the
- *  mirror would refuse (`face.py`). */
-export const NO_FIRMWARE = "no firmware to write";
+/** What is said of a release there is nothing to write from: no firmware, or
+ *  none with a digest to check it against. A release exists whether or not
+ *  anything can be written from it (CONTEXT.md), and a row that looked like
+ *  the others would send an operator to a **tag** the mirror would refuse
+ *  (`face.py`).
+ *
+ *  **One sentence for two releases, because the face sends one boolean.**
+ *  `flashable` is false for a release published with no `firmware.bin` and
+ *  for one whose `firmware.bin` the source reports no digest for (#81,
+ *  `face.py`'s `FLASHABLE`), and the wire says which of those it is nowhere.
+ *  So the row says what is true of both — there is nothing here to write and
+ *  nothing to check it against — rather than naming the first and being wrong
+ *  about the second (#109). Which one it is, is on the mirror's refusal for
+ *  whoever asks it to write the tag anyway (`firmware.py`). */
+export const NO_FIRMWARE = "nothing here to write and check";
 
 /** What is said where the face could not be asked. **Nothing said is not
  *  nothing published**: an empty list drawn for a face that did not answer
