@@ -38,6 +38,20 @@
  * there spent its first five seconds reporting a station that was answering as
  * one that was not (#82).
  *
+ * **Holding the view still and emptying it are the page's**, because the
+ * conversation is. **Paused**, what arrives is queued out of sight and
+ * nothing on screen is trimmed — which is what scrolling up cannot do, since
+ * at capacity the line a reader is reading goes off the front while they read
+ * it (#75, #4). The stream, the polls and the readings are untouched: it is
+ * the view and not the conversation, so the band and the tiles go on saying
+ * what the station is doing. Resuming appends the queue in arrival order and
+ * the usual trim applies from there. **Cleared**, the conversation and any
+ * queue are empty and nothing else is: not the readings, not the schedule,
+ * not what each subject last said. What the queue holds and what it says it
+ * dropped are `monitor.js`'s, run rather than read
+ * (`tests/ui/test_monitor.py`), and the monitor draws the two controls and is
+ * handed what they do the way it is handed its lines and its sending.
+ *
  * **The releases are asked for once and not on the poll** (#8). What the
  * station is doing changes under the eye, which is what the schedule above is
  * for; what the configured source carries changes when somebody publishes, and
@@ -55,7 +69,7 @@ import { LitElement, html, type TemplateResult } from "lit";
 
 import { flash, releases } from "../face.js";
 import { type Said } from "../framing.js";
-import { quieted } from "../monitor.js";
+import { EMPTIED, type Behind, queued, quieted } from "../monitor.js";
 import {
   QUIET,
   asOf,
@@ -141,6 +155,8 @@ export class DccexApp extends LitElement {
     said: { state: true },
     readings: { state: true },
     carried: { state: true },
+    paused: { state: true },
+    behind: { state: true },
   };
 
   /** The conversation: what the station has said and what this page sent,
@@ -155,6 +171,26 @@ export class DccexApp extends LitElement {
    *  not answered — which is also where it has not been asked yet, and the
    *  list says the releases could not be read until it has. */
   carried: Carried[] | null = null;
+
+  /** Whether the view is held.
+   *
+   *  It is the view and not the conversation: the stream stays open, the page
+   *  goes on polling and the readings go on being worked out, so the band and
+   *  the tiles say what the station is doing while a reader holds the monitor
+   *  still. What being paused changes is one thing — nothing on screen is
+   *  trimmed — which is what scrolling up cannot do on a busy station, where
+   *  the line a reader is reading goes off the front while they read it (#75,
+   *  #4). */
+  paused = false;
+
+  /** What arrived while the view was held, and how much of it went.
+   *
+   *  It is the page's rather than the monitor's, because the conversation is:
+   *  a pane keeping part of it behind a pause of its own would be keeping it
+   *  where the band and the tiles cannot see it. Resuming appends it and
+   *  clearing throws it away, and both leave `EMPTIED` behind
+   *  (`monitor.js`). */
+  behind: Behind<Keyed> = EMPTIED;
 
   /** What the station and the face have said, which the readings are worked
    *  out of. It is not reactive: what a component draws is `readings`, and a
@@ -241,6 +277,10 @@ export class DccexApp extends LitElement {
         <dccex-monitor
           .said=${this.said}
           .sends=${this.#sends}
+          .paused=${this.paused}
+          .behind=${this.behind}
+          .pauses=${this.#pauses}
+          .clears=${this.#clears}
         ></dccex-monitor>
       </div>
     `;
@@ -260,6 +300,40 @@ export class DccexApp extends LitElement {
       this.#keep([{ at: new Date(), line: sent, sent: true }]);
     }
     return sent;
+  };
+
+  /** Hold the view, or let it go and append what waited.
+   *
+   * Resuming appends the queue in the order it arrived and through the one
+   * append an arrival goes through, so the usual capacity trim applies from
+   * there: a reader who paused a busy station for a minute comes back to the
+   * conversation as it stands, and not to a second rule about how much of it
+   * is kept.
+   *
+   * Nothing else is spoken to. The stream was never stopped, the polls were
+   * never held and the readings were worked out all along, so there is
+   * nothing to start again.
+   */
+  readonly #pauses = (): void => {
+    if (this.paused) {
+      this.#append(this.behind.lines);
+      this.behind = EMPTIED;
+    }
+    this.paused = !this.paused;
+  };
+
+  /** Empty the conversation, and any queue with it.
+   *
+   * And nothing else. The tiles, the polling and the stream are untouched —
+   * a clear is a reader emptying what is on screen, not the page forgetting
+   * what the station has told it — and so is what each subject last said, so
+   * a poll answered the same way after a clear is still not news. The keys go
+   * on where they were: a key is assigned once and never reused, and winding
+   * the counter back would draw the next line on a row a cleared one had.
+   */
+  readonly #clears = (): void => {
+    this.said = [];
+    this.behind = EMPTIED;
   };
 
   /** Ask the station how it is.
@@ -304,6 +378,12 @@ export class DccexApp extends LitElement {
    * **A status line is kept only when it changed.** Every poll is answered
    * with the same banner and power lines, and a monitor full of them hides
    * what is new (`quieted`, `monitor.js`). The readings still hear every one.
+   *
+   * **A paused page queues what is worth showing and appends nothing.**
+   * The hearing above it is untouched — a pause is the view and not the
+   * conversation — and the trim below it never runs, which is the whole of
+   * what a pause promises a reader: the line they are reading is not taken
+   * off the front while they read it.
    */
   #keep(said: Said[]): void {
     for (const line of said) {
@@ -316,7 +396,21 @@ export class DccexApp extends LitElement {
     this.#said = last;
     const worth = said.filter((_line: Said, i: number) => shown[i]);
     const keyed = worth.map((line: Said) => ({ ...line, key: this.#keys++ }));
-    const kept = [...this.said, ...keyed];
+    if (this.paused) {
+      this.behind = queued(this.behind, keyed);
+      return;
+    }
+    this.#append(keyed);
+  }
+
+  /** Put `arriving` on the end of the conversation and drop the oldest past
+   *  capacity.
+   *
+   * The one place the trim is, so what a reader resumes into is appended
+   * exactly as a line that arrived is.
+   */
+  #append(arriving: readonly Keyed[]): void {
+    const kept = [...this.said, ...arriving];
     this.said = kept.length > KEPT ? kept.slice(kept.length - KEPT) : kept;
   }
 }

@@ -732,3 +732,84 @@ def test_a_queue_with_nothing_in_it_says_nothing() -> None:
     """Nothing is waiting, so there is no count to read — an empty monitor
     does not carry a `0 waiting` for the whole of an evening."""
     assert says(EMPTY) is None
+
+
+def test_the_pause_and_the_clear_are_the_page_s() -> None:
+    """The conversation is the page's, so what holds it still and what empties
+    it are the page's too (#125).
+
+    The monitor draws the two controls and is handed what they do, the way it
+    is handed its lines and its sending: a pane that kept a queue of its own
+    would be keeping part of the conversation where the band and the tiles
+    cannot see it.
+    """
+    app = APP.read_text()
+    assert 'from "../monitor.js"' in app
+    for handed in (".paused=${this.paused}", ".behind=${this.behind}"):
+        assert handed in app, f"the monitor is not handed {handed}"
+    assert ".pauses=${this.#pauses}" in app
+    assert ".clears=${this.#clears}" in app
+    drawn = MONITOR.read_text()
+    assert "queued(" not in drawn, "the monitor keeps a queue of its own"
+
+
+def test_nothing_on_screen_is_trimmed_while_the_view_is_paused() -> None:
+    """Which is the whole of what a pause is for (#125).
+
+    Scrolling up already holds the view, but at capacity the page goes on
+    trimming the oldest lines and the reader loses the line they are reading.
+    Paused, what arrives goes to the queue and the conversation is not
+    appended to at all — so there is nothing for the trim to act on.
+    """
+    app = APP.read_text()
+    keeping = app[app.index("#keep(said: Said[])") :]
+    keeping = keeping[: keeping.index("\n  #append(")]
+    assert "queued(this.behind, keyed)" in keeping, "nothing is queued while paused"
+    assert keeping.index("this.paused") < keeping.index(
+        "this.#append(keyed)"
+    ), "the conversation is appended to before the pause is read"
+    assert (
+        "return;" in keeping[keeping.index("this.paused") :].split("this.#append")[0]
+    ), "a paused page appends what it queued as well"
+
+
+def test_a_pause_stops_neither_the_stream_the_polling_nor_the_tiles() -> None:
+    """It is the view and not the conversation (#125).
+
+    Every line is still heard into the readings and the readings are still
+    worked out, so the band and the tiles go on saying what the station is
+    doing while a reader holds the monitor still. The stream and the two
+    intervals are never spoken to about it.
+    """
+    app = APP.read_text()
+    keeping = app[app.index("#keep(said: Said[])") :]
+    held = keeping.index("this.paused")
+    assert keeping.index("heard(this.#kept") < held, "a paused page hears nothing"
+    assert keeping.index("this.#now()") < held, "a paused page works out no readings"
+    for untouched in ("#stream", "setInterval(", "clearInterval("):
+        assert untouched not in keeping[held:], f"the pause reaches {untouched}"
+
+
+def test_resuming_appends_the_queue_in_arrival_order_and_trims_from_there() -> None:
+    """Through the one append the arrivals go through, so the usual capacity
+    trim applies to a resume exactly as it applies to a line (#125)."""
+    app = APP.read_text()
+    resuming = app[app.index("#pauses = ") :]
+    resuming = resuming[: resuming.index("};")]
+    assert "this.#append(this.behind.lines)" in resuming, "the queue is not appended"
+    assert "EMPTIED" in resuming, "the queue outlives the pause it was kept behind"
+    assert app.count("kept.slice(") == 1, "the conversation is trimmed in two places"
+    assert "#append(arriving: readonly Keyed[])" in app
+
+
+def test_clearing_empties_the_conversation_and_any_queue_and_nothing_else() -> None:
+    """Tiles, polling and the stream are untouched, and so is what each
+    subject last said: a clear is the reader emptying what is on screen, not
+    the page forgetting what the station has told it (#125)."""
+    app = APP.read_text()
+    clearing = app[app.index("#clears = ") :]
+    clearing = clearing[: clearing.index("};")]
+    assert "this.said = []" in clearing, "the conversation is not emptied"
+    assert "EMPTIED" in clearing, "a queue survives the clear"
+    for untouched in ("#kept", "#said", "#keys", "#stream", "readings"):
+        assert untouched not in clearing, f"the clear reaches {untouched}"
