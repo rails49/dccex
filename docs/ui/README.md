@@ -262,8 +262,8 @@ foot.
   said, so an operator can tell their own traffic from the railroad's.
 - It follows the newest line while the view is at the bottom and stays put once
   it has been scrolled up, so reading back does not fight the stream — including
-  across a trim, where the lines it is measured from are the ones that go. A
-  pause and a clear are still to come, each under its own ticket.
+  across a trim, where the lines it is measured from are the ones that go. It
+  can be paused, and it can be cleared.
 
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
@@ -328,6 +328,28 @@ cases of its own, and the monitor turns it off on the scroller rather than rest
 a promise on it (`overflow-anchor`, `ui/src/ui/dccex-monitor.styles.ts`). The
 measuring is the monitor's and not the page's: the page decides how much
 conversation to keep and the monitor is what has a viewport.
+
+**And it can be held still, and emptied** (#125, stories 12 and 13). Scrolling
+up already holds the view, but at capacity the page goes on dropping the oldest
+lines, so on a busy station the line a reader is reading goes off the front
+while they read it. **Pause** is what scrolling cannot do: while it is held
+nothing on screen is trimmed. What arrives goes to a queue out of sight, with a
+count on the monitor — "137 waiting" — and the queue has a cap of its own,
+five hundred, a quarter of what is kept. Past it the oldest *queued* lines go
+and the count says how many — "500 waiting, 12 dropped" — because a gap is
+shown and never hidden: a queue that quietly forgot what it was holding would
+be the page pretending the station was quiet
+([ADR-0009](../adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
+Resuming appends the queue in the order it arrived and the usual capacity trim
+applies from there. **Clear** empties the conversation, and any queue behind
+it, and nothing else. Neither of them stops the stream, the polling or the
+tiles, and neither of them says anything to the station: they are the view and
+not the conversation, so the band and the tiles go on saying what the station
+is doing while a reader holds the monitor still. The queue and the counting are
+`ui/src/monitor.js`'s and are run rather than read; what holds them is the
+page, because the conversation is the page's, and the monitor draws the two
+controls and is handed what they do the way it is handed its lines and its
+sending.
 
 **And what the page understood is beside it** (#5). A line the **decoder**
 recognises whole carries one plain sentence, drawn quieter and smaller than the
@@ -433,8 +455,12 @@ interleaving rule `tests/dccex_usb/test_face.py` runs against a pty — two whol
 messages at the device, in one order or the other, on a machine with no command
 station attached.
 
-The pause and the clear are the rest of the monitor and land under their own
-tickets.
+The pause, the clear and the queue behind a pause are held the same way and in
+the same place: what the queue holds, what it drops and what it says are run
+under a node (`ui/src/monitor.js`, `tests/ui/monitor.mjs`), and that the page
+queues rather than trims while it is paused, that resuming appends through the
+one trim there is, and that a clear reaches nothing else are read off
+`ui/src/ui/dccex-app.ts` — there is no browser here to press a button in.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
