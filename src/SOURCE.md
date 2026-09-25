@@ -129,6 +129,17 @@ a reader sorting the diff is told which side of it is ours:
   made in `control` names `control` now, in the five modules that were
   carrying one; the citations that are this repository's are left bare, which
   is what a bare number means here. `tests/test_adr_numbers_resolve.py` holds
-  the rule over this package, the glossary and the pages of `docs/`.
-  Docstrings and comments only: nothing in any file's code moved, and no
-  decision says anything different than it did.
+  the rule over this package, the glossary and the pages of `docs/`, which is
+  as far as it read until #150. Docstrings and comments only: nothing in any
+  file's code moved, and no decision says anything different than it did.
+- **#150** — the suites' prose alone: the same defect one tree over. #128 fixed
+  the package, and the check it left behind did not read `tests/`, so four of
+  the suites that came across with the package went on citing `control`'s
+  decisions bare, the way #128 found the package citing them — eight citations
+  in `test_face.py`, seven in `test_firmware.py`, five in `test_station.py` and
+  two in `test_main.py`. `test_stream.py`'s two already named `control` and
+  `test_framing.py` cites nothing; both are untouched. Each of the twenty-two
+  names `control` now, and `tests/test_adr_numbers_resolve.py` reads `tests/`
+  along with every other tree a reader reads, so the next one is red in the
+  gate rather than found by a range review. Docstrings only: nothing in any file's
+  code moved, and no decision says anything different than it did.
