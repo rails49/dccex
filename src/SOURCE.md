@@ -121,3 +121,14 @@ a reader sorting the diff is told which side of it is ours:
   on its own schedule
   ([ADR-0010](../docs/adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
   No behaviour, and nothing in the file's code moved.
+- **#128** — the package's prose alone: it came across citing `control`'s
+  decisions the way prose in `control` cites them, bare, and this repository
+  has decisions of its own numbered from 0001. A reader following a bare
+  number landed on a file that is not here, and would land on the wrong
+  decision the day this repository reaches 0042. Every citation of a decision
+  made in `control` names `control` now, in the five modules that were
+  carrying one; the citations that are this repository's are left bare, which
+  is what a bare number means here. `tests/test_adr_numbers_resolve.py` holds
+  the rule over this package, the glossary and the pages of `docs/`.
+  Docstrings and comments only: nothing in any file's code moved, and no
+  decision says anything different than it did.
