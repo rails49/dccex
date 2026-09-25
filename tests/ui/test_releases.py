@@ -37,7 +37,7 @@ from typing import Any
 
 import pytest
 
-from tests.ui.node import ran
+from tests.ui.node import HELD, ran
 from tests.ui.test_look import HEX, ROOT, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import NAMED, code, quoted
@@ -245,6 +245,29 @@ def test_a_list_with_releases_on_it_says_nothing_instead() -> None:
     """The sentence is what stands in for the rows and not a caption over
     them."""
     assert listed(carried=CARRIED)["says"] == ""
+
+
+def test_the_listing_holds_nothing() -> None:
+    """No socket, no state, no clock and no DOM, as every other module a bare
+    node runs is held to (`tests/ui/test_decoder.py`,
+    `tests/ui/test_message.py`, `tests/ui/test_flash.py`,
+    `tests/ui/test_monitor.py`, `tests/ui/test_stream.py`).
+
+    The module claims it in its own header — that is why reading the face's
+    answer sits here rather than beside the `fetch` — and a claim no check
+    holds is a claim that lasts until somebody is in a hurry. It is the union
+    of the siblings' lists, because this one says what all of them say.
+
+    **Read off the code and not off the file.** The prose here says *document*
+    where it means the JSON body the face answers with, so a substring check
+    like the decoder's would go red on the sentences rather than on the
+    module: `code()` takes the comments off first and what is left is what a
+    browser would run (#122). The prose word stays where it is (#120).
+    """
+    source = code(RELEASES.read_text())
+    assert "import " not in source, "the listing imports something"
+    for held in HELD:
+        assert held not in source, f"the listing reaches {held}"
 
 
 # -- what the page draws ------------------------------------------------------
