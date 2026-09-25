@@ -336,11 +336,13 @@ up already holds the view, but at capacity the page goes on dropping the oldest
 lines, so on a busy station the line a reader is reading goes off the front
 while they read it. **Pause** is what scrolling cannot do: while it is held
 nothing on screen is trimmed. What arrives goes to a queue out of sight, with a
-count on the monitor — "137 waiting" — and the queue has a cap of its own,
-five hundred, a quarter of what is kept. Past it the oldest *queued* lines go
-and the count says how many — "500 waiting, 12 dropped" — because a gap is
-shown and never hidden: a queue that quietly forgot what it was holding would
-be the page pretending the station was quiet
+count on the monitor — "137 waiting" — and the queue has a cap of its own, a
+quarter of what is kept, which is five hundred because two thousand are kept:
+the quarter is arithmetic in the one module both numbers live in rather than a
+sentence in three places and a sum nowhere (#152). Past it the oldest *queued*
+lines go and the count says how many — "500 waiting, 12 dropped" — because a
+gap is shown and never hidden: a queue that quietly forgot what it was holding
+would be the page pretending the station was quiet
 ([ADR-0009](../adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
 Resuming appends the queue in the order it arrived and the usual capacity trim
 applies from there. A line typed at the box while the view is held goes up the
@@ -350,11 +352,31 @@ exists to stop. **Clear** empties the conversation, and any queue behind
 it, and nothing else. Neither of them stops the stream, the polling or the
 tiles, and neither of them says anything to the station: they are the view and
 not the conversation, so the band and the tiles go on saying what the station
-is doing while a reader holds the monitor still. The queue and the counting are
-`ui/src/monitor.js`'s and are run rather than read; what holds them is the
-page, because the conversation is the page's, and the monitor draws the two
-controls and is handed what they do the way it is handed its lines and its
-sending.
+is doing while a reader holds the monitor still.
+
+Two things a full queue is owed, and did not get until #144. **A line the
+queue drops is forgotten as well as counted.** A status line is shown only when
+it says something new, and one that was pushed off the front of the queue never
+reached the conversation at all — so a `<p1>` dropped while the view was held
+left every later answer about the power looking like a repeat, and the monitor
+never said the power came on (#142). What went is forgotten, and the next poll
+that answers for that subject is news again. **And the gap is marked where it
+is.** The "500 waiting, 12 dropped" count goes away with the pause that made
+it, so a resume used to leave twelve lines missing out of the middle of a
+conversation with nothing at all saying so; now one note goes in where the gap
+is — *12 lines dropped while paused* — ahead of the lines that survived. It is
+the page's own note and is drawn as such, in the page's face and with no stamp,
+no mark and no gloss, because none of those would be true of it; it is trimmed
+and cleared like any other entry, and a resume that dropped nothing adds none.
+
+The conversation is the page's — the band and the tiles are made of the same
+bytes — and everything that happens to it is `ui/src/monitor.js`'s: what is on
+screen, what waits behind a pause, what the queue dropped and what each subject
+last said are one value there, and a line arriving, a press of the pause and a
+press of the clear are three pure functions of it, run rather than read (#144).
+The page holds the value, hears every line into the readings whether the view
+is held or not, and calls them; the monitor draws the two controls and is
+handed what they do the way it is handed its lines and its sending.
 
 **And what the page understood is beside it** (#5). A line the **decoder**
 recognises whole carries one plain sentence, drawn quieter and smaller than the
@@ -418,9 +440,11 @@ went down the cable, in what order, and what the page said while it did
 (`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
 and a conversation arriving on the socket through the rules that answer where
 the stream is and where a line ends (`tests/ui/framing.mjs`), and
-`tests/ui/test_monitor.py` puts a scroller and a time through the rules that
-answer whether the reader is at the bottom and what the stamp beside a line
-reads (`tests/ui/monitor.mjs`). The last two cannot either, and were read off
+`tests/ui/test_monitor.py` puts a scroller, a time and whole conversations —
+lines arriving, a pause, a resume, a clear — through the rules that answer
+whether the reader is at the bottom, what the stamp beside a line reads and
+what is on the screen afterwards (`tests/ui/monitor.mjs`). The last two cannot
+either, and were read off
 their sources only for as long as there was no node here to run them with: a
 framing that kept its delimiter, a scheme picked the wrong way round and a
 stamp an hour out all leave a module saying every right word, which is what
@@ -482,13 +506,16 @@ messages at the device, in one order or the other, on a machine with no command
 station attached.
 
 The pause, the clear and the queue behind a pause are held the same way and in
-the same place: what the queue holds, what it drops and what it says are run
-under a node (`ui/src/monitor.js`, `tests/ui/monitor.mjs`), and that the page
-queues rather than trims while it is paused, that resuming appends through the
-one trim there is, and that a clear reaches nothing else are read off
-`ui/src/ui/dccex-app.ts`. A press is a thing a check can make now (#126), but
-what it would be pressing there is the whole page and its stream; what is
-mounted is one component at a time, handed the facts a page would hand it.
+the same place: what the queue holds, what it drops and what it says, that the
+page queues rather than trims while it is paused, that resuming appends through
+the one trim there is and marks the gap a full queue left, and that a clear
+empties the conversation and the queue and forgets nothing else are all run
+under a node (`ui/src/monitor.js`, `tests/ui/monitor.mjs`). They were read off
+`ui/src/ui/dccex-app.ts` until #144, which is what let two of them be wrong in
+the source while every word of it read true. What is left to read there is
+where the rules live and what the two controls reach, which no DOM and no
+conversation can answer; the controls themselves are pressed on a mounted
+monitor (`ui/test/monitor.test.ts`), handed the facts a page would hand it.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
