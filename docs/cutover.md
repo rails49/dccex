@@ -303,6 +303,12 @@ acceptance is about.
    so the window between starting the deaf client and the `docker stop` is far
    longer than it. Read the step through and then run it — it is not a race.
 
+   **Stop only after the deaf client prints `full`.** Until then it may not
+   be connected at all. On 2026-09-25 the Python `uv` manages was refused the
+   LAN by macOS ("Network is unreachable", while `nc` reached 2560), the
+   client never connected, and the first timed stop proved nothing.
+   `/usr/bin/python3` reached it, and filled in 57 seconds.
+
    **If the cut-off comes first, the check proved nothing.** The mirror writes
    this line when it drops such a client, the pair in it being the laptop's
    address and the port it dialled from, as the mirror prints them:
@@ -357,6 +363,20 @@ Acceptance:
 ```
 
 Filed as [control#578](https://github.com/rails49/control/issues/578).
+
+## What happened, 2026-09-25
+
+- `control`'s half went in on 2026-09-24, so the evening was this stack alone.
+- `main` had moved past the clone the page was checked against: `86ea539`
+  (#40) gave the face its door route. That is what was deployed. The face has
+  no `A` record yet, so no browser reaches it by name.
+- The deploy record's directory needed the one `sudo` above.
+- Checks 1–4 and 6 passed. Check 6: full after 57 s, `docker stop` in 0.26 s,
+  exit 0. The banner read `V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874
+  G-v5.6.4-rails49.1`.
+- From the laptop the broker answered at `192.168.178.56` and not at
+  `gleis49.org`, which gave "no route to host".
+- A person connected on 2560 and drove a locomotive.
 
 ## Not on this page
 
