@@ -143,9 +143,8 @@ CONTROL_ADRS = "https://github.com/rails49/control/blob/main/docs/adr/"
 #: whatever the block is drawn with, which is `#` in a module and `*` on the
 #: page, so the owner is still beside the number.
 GAP = r"[\s*#]+"
-OWNER = (
-    rf"(?:`?control`?(?:'s)?|[Tt]he{GAP}organisation's|[Tt]his{GAP}repository's|\borg)"
-)
+ORGANISATION = rf"[Tt]he{GAP}organisation's|\borg"
+OWNER = rf"(?:`?control`?(?:'s)?|[Tt]his{GAP}repository's|{ORGANISATION})"
 
 #: A citation, with the owner in front of it where there is one. Four digits,
 #: because that is how every ADR on either side is numbered, and what follows
@@ -222,9 +221,8 @@ def borrowed(text: str) -> list[str]:
     return [where for number, where in bare(text) if number in CONTROL]
 
 
-#: Where the organisation's records are, and the two owners that name it.
+#: Where the organisation's records are.
 ORG_ADRS = "https://github.com/rails49/.github/blob/main/docs/adr/"
-ORG = re.compile(rf"[Tt]he{GAP}organisation's|org")
 
 #: A citation that is the text of a link into the organisation's records, and
 #: one that is the text of a link into this repository's own, from the root,
@@ -247,7 +245,7 @@ def ambiguous(text: str) -> list[str]:
     theirs = {
         said.group("number")
         for said in CITED.finditer(text)
-        if said.group("owner") and ORG.fullmatch(said.group("owner"))
+        if said.group("owner") and re.fullmatch(ORGANISATION, said.group("owner"))
     } | {said.group("number") for said in ORG_LINKED.finditer(text)}
     followed = text
     for linked in (ORG_LINKED, OURS_LINKED):
@@ -587,9 +585,9 @@ def test_a_bare_number_the_page_never_cites_as_the_organisations_passes() -> Non
 
 def test_a_link_into_our_records_says_whose_the_decision_is() -> None:
     org = "https://github.com/rails49/.github/blob/main/docs/adr/0008-x.md"
-    for ours in ("docs/adr/0008-x.md", "../adr/0008-x.md", "/docs/adr/0008-x.md"):
-        text = f"org ADR-0008 says one thing, [ADR-0008]({ours}) another."
-        assert ambiguous(text) == [], ours
+    for here in ("docs/adr/0008-x.md", "../adr/0008-x.md", "/docs/adr/0008-x.md"):
+        text = f"org ADR-0008 says one thing, [ADR-0008]({here}) another."
+        assert ambiguous(text) == [], here
     assert len(ambiguous(f"[ADR-0008]({org}) and ADR-0008.")) == 1
 
 
