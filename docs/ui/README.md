@@ -284,7 +284,7 @@ browser can hold:
   will;
 - the last two thousand lines are kept and the oldest are dropped. A monitor is
   what the station is saying now, and there is no history behind it to scroll
-  into: the mirror keeps none (ADR-0010);
+  into: the mirror keeps none (this repository's ADR-0010);
 - a status line — the banner, the power on a track or on all of them, the
   display, a track's mode — is shown only when it says something different
   from the last one about the same thing. The measured currents (`<jI …>`,
@@ -529,7 +529,8 @@ Five seconds without a word, which is twenty polls, and the **link** is down.
 The readings are worked out again on a one-second tick as well, because the
 link going down is the absence of a line rather than the arrival of one; and a
 page that has left stops asking, because a conversation that is quiet when
-nobody is watching is the correct conversation (ADR-0010 d.4).
+nobody is watching is the correct conversation (this repository's ADR-0010
+d.4).
 
 **The first one is asked when the stream is open, not when the page joins**
 (#82). Opening a stream dials a socket, and a socket that is connecting cannot

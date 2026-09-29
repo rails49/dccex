@@ -30,7 +30,9 @@ reader on the wrong decision: there is one numbered 0002 here and another in
 that the number owes a reader an owner of its own. Holding it to one is
 `tests/test_citations_resolve.py`, over the same trees as this one since #150,
 and a citation of that number saying neither owner is red there rather than
-here.
+here. Every other number is shared too, since both repositories number from
+0001; a bare one is red here only on a page that also cites the
+organisation's under the same number (`ambiguous()`, #159).
 
 **What is read.** Every tree a reader of this repository reads: the two pages
 at the root, the package under `src/` with the provenance note beside it,
@@ -218,6 +220,43 @@ def borrowed(text: str) -> list[str]:
     quiet about it and a reader starts landing on the wrong decision.
     """
     return [where for number, where in bare(text) if number in CONTROL]
+
+
+#: Where the organisation's records are, and the two owners that name it.
+ORG_ADRS = "https://github.com/rails49/.github/blob/main/docs/adr/"
+ORG = re.compile(rf"[Tt]he{GAP}organisation's|org")
+
+#: A citation that is the text of a link into the organisation's records, and
+#: one that is the text of a link into this repository's own, from the root,
+#: from the page's directory, or from beside `docs/adr/`.
+ORG_LINKED = re.compile(
+    rf"\[ADR-(?P<number>\d{{4}})\]\({re.escape(ORG_ADRS)}\d{{4}}-[a-z0-9-]+\.md\)"
+)
+OURS_LINKED = re.compile(
+    r"\[ADR-\d{4}\]\((?:/|(?:\.\./)*)(?:docs/)?adr/\d{4}-[a-z0-9-]+\.md\)"
+)
+
+
+def ambiguous(text: str) -> list[str]:
+    """Every bare citation of a number the same page cites as the organisation's.
+
+    Both repositories number from 0001, so on such a page a reader cannot tell
+    which one a bare number means (#159). Number 0002 is left to
+    `tests/test_citations_resolve.py`.
+    """
+    theirs = {
+        said.group("number")
+        for said in CITED.finditer(text)
+        if said.group("owner") and ORG.fullmatch(said.group("owner"))
+    } | {said.group("number") for said in ORG_LINKED.finditer(text)}
+    followed = text
+    for linked in (ORG_LINKED, OURS_LINKED):
+        followed = linked.sub(lambda said: " " * len(said.group()), followed)
+    return [
+        where
+        for number, where in bare(followed)
+        if number in theirs and number != "0002"
+    ]
 
 
 def struck(page: Path, citation: str) -> str:
@@ -522,3 +561,39 @@ def test_the_borrowed_numbers_are_what_this_repository_links() -> None:
     assert linked == {
         number: decided.replace(" ", "-").lower() for number, decided in CONTROL.items()
     }
+
+
+def test_no_number_the_page_cites_as_the_organisations_is_cited_bare() -> None:
+    loose = {
+        page.relative_to(ROOT).as_posix(): where
+        for page in prose()
+        if (where := ambiguous(page.read_text()))
+    }
+    assert loose == {}, f"cited bare beside the organisation's: {loose}"
+
+
+def test_a_bare_number_beside_the_organisations_is_caught() -> None:
+    """A plant in `ui/look/README.md`, which cites org ADR-0010 (#159)."""
+    page = ROOT / "ui" / "look" / "README.md"
+    assert ambiguous(page.read_text()) == []
+    text = f"{page.read_text()}\nthe page polls (ADR-0010)\n"
+    assert len(ambiguous(text)) == 1, ambiguous(text)
+    assert ambiguous(text)[0].endswith("the page polls (ADR-0010")
+
+
+def test_a_bare_number_the_page_never_cites_as_the_organisations_passes() -> None:
+    assert ambiguous("the image is named by its commit (ADR-0005).") == []
+
+
+def test_a_link_into_our_records_says_whose_the_decision_is() -> None:
+    org = "https://github.com/rails49/.github/blob/main/docs/adr/0008-x.md"
+    for ours in ("docs/adr/0008-x.md", "../adr/0008-x.md", "/docs/adr/0008-x.md"):
+        text = f"org ADR-0008 says one thing, [ADR-0008]({ours}) another."
+        assert ambiguous(text) == [], ours
+    assert len(ambiguous(f"[ADR-0008]({org}) and ADR-0008.")) == 1
+
+
+def test_the_number_the_module_beside_this_one_holds_is_left_to_it() -> None:
+    """Written with the number apart, as that module reads this one."""
+    number = "0002"
+    assert ambiguous(f"the organisation's ADR-{number} and ADR-{number}") == []
