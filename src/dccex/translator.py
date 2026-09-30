@@ -6,107 +6,50 @@ what each is observed to do — and below it is one TCP connection to
 `dccex-usb`, which owns the command station's serial device and serves it on
 port 2560 so that JMRI and hand-held throttles share the same command station.
 That mirror is the other app in this repository (`src/dccex_usb`) and this one
-is a client of its port beside the others; the USB device is never opened
-here.
-
-**The boundary this app exists to hold.** Every other component is oblivious
-to what powers the layout, and nothing above the layout interface expects
-this command station or any other — they are one family of devices among
-many. The `<…>` syntax is this app's private business: it appears on no bus
-topic, in no other package and in no normative document, and `docs/dccex/`
-is the only page in the repository that writes it down. A different command
-station gets a different translator, or reaches the system through JMRI, and
-nothing else moves.
+is a client of its port beside the others; the USB device is never opened here.
 
 *Subscribes* `tc49/layout/state/wanted/#`. *Publishes*
 `tc49/layout/state/device/track` and `tc49/layout/state/device/link/<id>`,
-where the id is the one this app is started with — the package's name where
-it is given no other, a value and not a contract (control ADR-0059).
+where the id is the one this app is started with (control ADR-0059).
+
+The `<…>` syntax is this app's private business — it appears on no bus topic,
+in no other package and in no normative document — and
+[docs/dccex/README.md](../../docs/dccex/README.md) is where it is written
+down. What each of the rules below is for is on that page and in the decision
+beside it; what is here is where in this module it is kept.
 
 **It acts on an address only if it recognises it**, and there is no ownership
-table anywhere: every point and signal address it hears, and every traction
-and function address, an address naming no system (control ADR-0059). What this
-station has no packet for — a turnout numbered outside the accessory range,
-say — falls away where the packet is built. An address nothing answers to does
-no harm, as a packet nobody picks up does.
+table anywhere (`_recognises`, control ADR-0059).
 
-**On connect it applies the retained desired state, power excepted.** The
-desired values are the whole picture, so there is no handshake and no session
-state to agree: whatever `layout` last wanted is waiting on those topics, and
-applying it is the whole of coming up. The power is left out of it — after a
-station or a translator restart the rails stay as the station reports them and
-come back when a person presses ON (ADR-0013 d.6) — and every other value
-replays through its handler.
+**On connect it applies the retained desired state, power excepted**
+(`_applied`, ADR-0013 d.6).
 
-**It runs one railroad's script.** `--store` is where `control`'s store
-serves the documents; the railroad is the one named on
-`tc49/layout/state/railroad`, and that railroad's script is fetched from the
-store and loaded at start (ADR-0015 d.2). A **handler** in it keyed on a
-desired value runs in place of the command this app would have sent, and one
-keyed on something the station reported runs after the fact. That is where
-this railroad's `<…>` that the bus has no word for is written: the mode each
-track is set to, the current each may draw, a track reversed when a turnout
-throws (ADR-0013).
+**It runs one railroad's script**: a handler keyed on a desired value runs in
+place of the command this app would have sent, one keyed on something the
+station reported runs after the fact, and a script that will not load is a
+railroad whose rails may not be made live (`_act`, `load`, ADR-0013,
+ADR-0015).
 
-**A script that does not load leaves the railroad dark.** No script at all is
-a railroad with the defaults, which is what this app sent before there were
-scripts. A script that raises on load, or a store that has not answered yet,
-is no handlers: OFF, STOP and speeds are carried out, power ON is refused, the
-link row says why, and it keeps asking (ADR-0015 d.4). Once a script is
-loaded a fetch that fails changes nothing.
+**A new script text ends the process** rather than being loaded in place
+(`following`, ADR-0015 d.3).
 
-**A new script text exits the process.** The script for the current railroad
-is fetched again every few seconds and compared with the one running; a text
-that differs stands the railroad down and ends the process, which compose
-restarts (ADR-0015 d.3). Nothing is reloaded in place.
+Two rules are not a row of the mapping table. **The stop is the one-shot, and
+no row of this app's holds it** — each translator implements `stopped` as well
+as its own hardware allows and never by removing power (`commands.track`,
+control ADR-0063 d.3). **An overload is polled for**, a district that trips
+being broadcast nowhere (`_poll`, `commands.STATUS`).
 
-Two rules are not a row of the mapping table:
+**A clean exit stands the railroad down**: zero to every locomotive this app
+has commanded, then the track off. Whoever constructs this app calls it before
+letting the loop go (`shutdown`, `__main__.py`).
 
-**The stop is the one-shot, and no row of this app's holds it.** `stopped`
-tells every decoder to stand with the track still live and holds nothing
-afterwards, so any throttle on the shared port may drive away from it. That
-is the operator's call to make — they are the one holding the layout.
-`device/track` is `on` and `off` (control ADR-0063): the observed supply goes back to
-`on` as soon as the broadcast is out, because the rails are live under a stop
-and there is nothing else the supply could truthfully read. The stop is not
-lost for going unobserved — `layout` holds the one it commanded and publishes
-`state/power: stopped` above this app until a person clears it. A station's
-emergency-stop *lock* would hold it in the hardware instead, which is the
-better answer where a station has one, and nothing has to be asked before
-using it: each translator implements `stopped` as well as its own hardware
-allows and never by removing power (control ADR-0063, decision 3). One product's
-firmware-branch command is dialect this app absorbs, not a word the bus
-learns (control ADR-0058, control#463, control#464).
+**No `device/point` is ever published**, this railroad's turnouts having no
+feedback and the station's answer to a throw being one it faked (`_reports`,
+control ADR-0022, control ADR-0050).
 
-**An overload is polled for.** A district that trips is not broadcast on TCP
-— the station cuts it and says so on its USB diagnostics only — so this app
-asks for the status on a cadence of its own, and `device/track` telling the
-truth does not depend on a person noticing.
-
-**A clean exit stands the railroad down**, `shutdown()`: zero to every
-locomotive this app has commanded, then the track off. The process ending is
-not by itself an instruction to the railroad — the station goes on running
-whatever it was last told — and a session that exits over a rolling
-locomotive leaves it rolling, which is not recoverable the way switching the
-power back on is. Whoever constructs this app calls it before letting the
-loop go (`__main__.py`).
-
-**No `device/point` is ever published.** This railroad's turnouts have no
-feedback and the station's answer to a throw is one it faked (control ADR-0022), so
-the row stays empty: a faked observation is worse than silence (control ADR-0050).
-
-**`device/link`** is `up` while the station is answering, `down` otherwise,
-with `detail` carrying what a person would want to read. It is the station
-answering and not the socket being open: the poll goes on asking for as long
-as the link lasts, and ten intervals of silence lower the row where the
-connection underneath is still there — a station switched off behind a mirror
-that holds its clients, a pulled cable, a wedged one. An answer afterwards
-raises it again, and nothing is torn down for it (control ADR-0066). That is where
-the physical link becomes visible at runtime, which is where verifying it
-belongs — not in a gate that would need a powered layout to pass. The same
-words go on `device/track` as its `reason` while the station is unreachable,
-so a person reading why the railroad is dark reads it off the supply itself
-rather than off a second row (control ADR-0059).
+**`device/link` is the station answering and not the socket being open**, so
+ten intervals of silence lower it with the connection still there
+(`_said_link`, `_lower_if_silent`, control ADR-0066).
 
 The framing and the mapping are pure and live in `replies` and `commands`;
 what is here is the connection and the state that a connection is made of.
@@ -513,17 +456,10 @@ class DccEx:
         """What one desired value asks of the station: the script's handlers
         for it, or this app's own command where the script has none.
 
-        A handler runs **in place of** the command (ADR-0013 d.2) and every
-        handler keyed on the event runs, in the order the script registered
-        them. The power is the row a handler runs on every value of — `on`,
-        `off` and the stop alike, which is what `t.desired("power")` is read
-        for; there is no transition kept here, and two ONs run the handler
-        twice (d.7).
-
-        **Power ON with no script is refused.** Track modes and current
-        limits are the script's, so a railroad whose script did not load is
-        one whose rails may not be made live: the OFF, the stop and the
-        speeds are carried out and the link row says why (ADR-0015 d.4).
+        Every handler keyed on the event runs, in the order the script
+        registered them, in place of that command; the power is the row a
+        handler runs on every value of (ADR-0013 d.2, d.7). Power ON with no
+        script is refused (ADR-0015 d.4).
 
         A locomotive is remembered as commanded whether a handler or this app
         sent the speed: what a clean exit sends zero to is every locomotive
@@ -566,13 +502,9 @@ class DccEx:
         """Run the handlers of one event, and send the default behind a
         handler that raised.
 
-        A handler is a person's Python on the far end of a document, so
-        anything at all comes out of it. What is done about that is the rule
-        broken hardware gets: it is logged, and the command the handler was
-        standing in for is sent unless the handler had already asked for it
-        (ADR-0013 d.8). A handler that raised has done something to the
-        station either way — the bytes it sent before it raised are on the
-        wire — so what is left is to not leave the value unapplied as well.
+        A handler is a person's Python, so anything at all comes out of it:
+        it is logged, and the command it was standing in for is sent unless it
+        had already asked for it (ADR-0013 d.8).
         """
         raised = False
         for handler in handlers:
@@ -592,14 +524,9 @@ class DccEx:
         """The desired picture in the order a fresh connection is handed it:
         every row but the power, in the order the topics were first heard.
 
-        **The power is not replayed.** After a station or a translator
-        restart the rails stay as the station reports them and come back when
-        a person presses ON, which is the one desired value a connect does
-        not carry out (ADR-0013 d.6). `layout` holds power as desired and
-        reads it off the supply, as it does for any report of off.
-
-        Every other value goes out through its handler, which is what makes a
-        connect the same path as a value arriving live.
+        The power is the one desired value a connect does not carry out
+        (ADR-0013 d.6). Every other value goes out through its handler, which
+        is what makes a connect the same path as a value arriving live.
         """
         return [w for w in self._wanted.values() if w.row != WANTED_TRACK]
 
@@ -775,13 +702,9 @@ class DccEx:
 
     async def shutdown(self) -> None:
         """Stand the railroad down: zero to every locomotive this app has
-        commanded, then the track off.
-
-        The zeros come first and are the same zeros a release sends, for the
-        same reason: the station keeps a speed per locomotive and resumes it,
-        so a slot left holding one is a train that rolls again the moment
-        somebody powers the rails. Cutting the supply over a held speed only
-        postpones the motion.
+        commanded, then the track off. The zeros come first because the
+        station keeps a speed per locomotive and resumes it
+        ([docs/dccex/README.md](../../docs/dccex/README.md)).
 
         Sent on whatever link is open and nothing at all where none is — a
         railroad this app cannot reach is one it was not driving — and
@@ -934,9 +857,8 @@ class DccEx:
         the fact.
 
         A report replaces nothing — the station has already done it — and
-        fires on a **change**: the poll makes the station restate every
-        track's power once a second, and a handler on every one of those
-        answers would be a handler on the clock (ADR-0013 d.3).
+        fires on a **change** rather than on every answer to the poll
+        (ADR-0013 d.3).
 
         Power is the word the bus uses for it, and a turnout's position is
         the two words a point is commanded with, so a script compares against
@@ -1063,12 +985,9 @@ class DccEx:
         goes on saying so, and *why* is what a person reads
         (control ADR-0050).
 
-        The word is the **station** answering and nothing else, because that
-        is what a link is (control ADR-0066): a script that will not load is
-        not the station being away. It rides on the detail instead, which is
-        where a person reading why the railroad will not come on reads it —
-        in `control`'s UI and in this app's log, and not on a page of this
-        repository's (ADR-0015, consequences).
+        The word is the **station** answering and nothing else, so a script
+        that will not load rides on the detail and leaves the word alone
+        (control ADR-0066, ADR-0015 d.4 and consequences).
         """
         up, detail = self._reached
         if self._trouble is not None:

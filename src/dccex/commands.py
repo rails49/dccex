@@ -162,11 +162,8 @@ def track(power: str) -> bytes:
     (control#463).
 
     A station's emergency-stop *lock* would make `stopped` a state rather than
-    an act, which is the better answer where a station has one and is not
-    asked for here: it is one product's firmware-branch command, and a
-    `stopped` that meant "under a lock" would put a station's private
-    vocabulary inside a bus word every railroad shares (control ADR-0043,
-    control ADR-0063, control#464).
+    an act, and is not asked for here (control ADR-0043, control ADR-0063,
+    control#464, [docs/dccex/README.md](../../docs/dccex/README.md)).
     """
     if power == ON:
         return b"<1>"
