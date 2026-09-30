@@ -10,7 +10,10 @@
  * source-text check is worst at: a template that drew an empty sentence and
  * one that drew none read the same off the source (#126).
  *
- * **And the controls are pressed** (#144). That the pause and the clear run
+ * **And the controls are drawn as icons and pressed** (#144, #167). Which
+ * shape each carries and the word it carries as a tooltip and as a label are
+ * read back off the mounted button; the shape itself is `dccex-icon`'s
+ * (`ui/test/icon.test.ts`). That the pause and the clear run
  * what they were handed, that the pause names what pressing it will do, and
  * what the count beside them reads were held against the source of this
  * component until here — which is the instrument #111 was filed to remove,
@@ -23,10 +26,12 @@
  * happy-dom does no layout and has no cascade to ask.
  */
 
+import { mdiNotificationClearAll, mdiPause, mdiPlay } from "@mdi/js";
 import { expect, test } from "vitest";
 
 import { gloss } from "../src/decoder.js";
 import { type Behind, type Line, type Shown } from "../src/monitor.js";
+import { type DccexIcon } from "../src/ui/dccex-icon.js";
 import { DccexMonitor } from "../src/ui/dccex-monitor.js";
 import { all, mounted, part, press, reads } from "./mounted.js";
 
@@ -144,12 +149,59 @@ test("pressing the clear runs what the page handed it", async () => {
   expect(pressed).toStrictEqual(["clears"]);
 });
 
+/** What `selector` is drawn as: the word it carries both ways, and the path
+ *  of the icon in it. */
+function control(
+  drawn: DccexMonitor,
+  selector: string,
+): { tooltip: string | null; label: string | null; path: string } {
+  const pressed = part(drawn, selector);
+  return {
+    tooltip: pressed.getAttribute("title"),
+    label: pressed.getAttribute("aria-label"),
+    path: (part(drawn, `${selector} dccex-icon`) as DccexIcon).path,
+  };
+}
+
 test("the pause names what pressing it will do, either way round", async () => {
   const { drawn: holding } = await controls(false);
-  expect(reads(holding, ".hold")).toBe("pause");
+  expect(control(holding, ".hold").label).toBe("pause");
   const { drawn: held } = await controls(true);
-  expect(reads(held, ".hold")).toBe("resume");
-  expect(reads(held, ".empty")).toBe("clear");
+  expect(control(held, ".hold").label).toBe("resume");
+  expect(control(held, ".empty").label).toBe("clear");
+});
+
+test("the pause is drawn as a pause, and as a play while it is holding", async () => {
+  const { drawn: holding } = await controls(false);
+  expect(control(holding, ".hold").path).toBe(mdiPause);
+  const { drawn: held } = await controls(true);
+  expect(control(held, ".hold").path).toBe(mdiPlay);
+});
+
+test("the clear is drawn as the lines going", async () => {
+  const { drawn } = await controls(false);
+  expect(control(drawn, ".empty").path).toBe(mdiNotificationClearAll);
+});
+
+test("each control carries its word as a tooltip and as a label", async () => {
+  const { drawn } = await controls(false);
+  for (const [selector, word] of [
+    [".hold", "pause"],
+    [".empty", "clear"],
+  ] as const) {
+    const carried = control(drawn, selector);
+    expect(carried.tooltip).toBe(word);
+    expect(carried.label).toBe(word);
+  }
+});
+
+test("a control drawn as an icon says nothing in text", async () => {
+  // The word is the tooltip's and the label's. A reader of the row reads a
+  // shape, and a check that asked for the text would pass on a button with
+  // both.
+  const { drawn } = await controls(false);
+  expect(reads(drawn, ".hold")).toBe("");
+  expect(reads(drawn, ".empty")).toBe("");
 });
 
 test("the count says what is waiting and what the queue dropped", async () => {
@@ -173,7 +225,7 @@ test("a monitor nobody handed the controls to does nothing when pressed", async 
   press(drawn, ".hold");
   press(drawn, ".empty");
   expect(all(drawn, ".line")).toHaveLength(2);
-  expect(reads(drawn, ".hold")).toBe("pause");
+  expect(part(drawn, ".hold").getAttribute("aria-label")).toBe("pause");
 });
 
 test("the box says a command can be typed with or without its brackets", async () => {

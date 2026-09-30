@@ -46,8 +46,11 @@
  * rules' and this draws it, as the count beside the controls is.
  *
  * **And it can be paused and cleared** (stories 12 and 13). The two controls
- * are drawn here and what they do is the page's, handed down the way the
- * sending is: **pause** holds the view, so that nothing on screen is trimmed
+ * are drawn as icons — a pause that becomes a play while the view is held, and
+ * the lines going — each carrying its word as a tooltip and as a label, so the
+ * word is there for a reader who is not reading the shape (issue 167). What
+ * they do is the page's, handed down the way the sending is: **pause** holds
+ * the view, so that nothing on screen is trimmed
  * while a reader reads it — which is what scrolling up cannot do, since at
  * capacity the oldest lines go on being dropped — and what arrives behind it
  * is queued out of sight with a count on the monitor, the cap it is dropped
@@ -91,10 +94,12 @@
  * cannot scroll it.
  */
 
+import { mdiNotificationClearAll, mdiPause, mdiPlay } from "@mdi/js";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
+import "./dccex-icon.js";
 import {
   EMPTIED,
   type Behind,
@@ -139,7 +144,11 @@ function staysInBox(pressing: Event): void {
 
 /** What the control that holds the view says, and what it says while it is
  *  holding. One control and not two, named for what pressing it will do, so a
- *  reader on a busy station is never working out which state they are in. */
+ *  reader on a busy station is never working out which state they are in.
+ *
+ *  The word is the tooltip and the label rather than the face of the button,
+ *  which is the icon below (issue 167). Both, because a tooltip is for a
+ *  pointer and there is no pointer on the phone at the layout. */
 const PAUSES = "pause";
 const RESUMES = "resume";
 
@@ -266,11 +275,23 @@ export class DccexMonitor extends LitElement {
     const waits = waiting(this.behind);
     return html`
       <div class="controls">
-        <button type="button" class="hold" @click=${this.pauses}>
-          ${this.paused ? RESUMES : PAUSES}
+        <button
+          type="button"
+          class="hold"
+          title=${this.paused ? RESUMES : PAUSES}
+          aria-label=${this.paused ? RESUMES : PAUSES}
+          @click=${this.pauses}
+        >
+          <dccex-icon .path=${this.paused ? mdiPlay : mdiPause}></dccex-icon>
         </button>
-        <button type="button" class="empty" @click=${this.clears}>
-          ${EMPTIES}
+        <button
+          type="button"
+          class="empty"
+          title=${EMPTIES}
+          aria-label=${EMPTIES}
+          @click=${this.clears}
+        >
+          <dccex-icon .path=${mdiNotificationClearAll}></dccex-icon>
         </button>
         ${waits === null
           ? nothing
