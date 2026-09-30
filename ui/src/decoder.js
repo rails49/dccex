@@ -61,8 +61,8 @@ const CLOSE = ">";
  * Track power, on or off: `<p0>`, `<p1>`, and either with the track it is
  * about — `<p1 MAIN>`.
  *
- * It is the **band**'s second reading: whether the rails are hot. A line about
- * one named track says it of the rails all the same — this page has no track
+ * It is what the **band**'s power button is coloured by: whether the rails are
+ * hot. A line about one named track says it of the rails all the same — this page has no track
  * row and no railroad to hang one on, and what the station last said about
  * power is the whole of what it knows (ADR-0008).
  *
