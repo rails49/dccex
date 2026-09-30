@@ -13,8 +13,9 @@ taken, or whose command station is not enumerated yet, depends on the exit:
 The parser is the part of `__main__.py` that arrived with no tests behind it:
 the rest of the package came across as a copy and brought `control`'s. What is
 asserted of it is the device and the port it is started with, the releases URL
-and the face's port it falls back to, and the two arguments the bus took with
-it (ADR-0001 d.1).
+and the face's port it falls back to, the store the page edits a **script** in
+through the face and the mirror that is given none, and the two arguments the
+bus took with it (ADR-0001 d.1).
 Those two are absent only for as long as nobody adds them back, which is what
 the refusals are here to notice.
 
@@ -62,6 +63,12 @@ read rather than that both spellings happen to agree. Nothing fetches it, and
 the TLD is one that resolves nowhere in case that ever stops being true."""
 
 
+STORE = "http://store.example.invalid:8765"
+"""A store to name, so that naming one proves the flag is read. Nothing dials
+it, and the TLD is one that resolves nowhere in case that ever stops being
+true."""
+
+
 def test_the_device_and_the_port_are_what_the_mirror_is_started_with() -> None:
     args = command_line().parse_args(STARTED)
 
@@ -82,6 +89,28 @@ def test_another_source_of_releases_can_be_named() -> None:
     args = command_line().parse_args([*STARTED, "--firmware-releases", ELSEWHERE])
 
     assert args.firmware_releases == ELSEWHERE
+
+
+def test_no_store_is_the_mirror_a_box_with_a_cable_and_nothing_else_runs() -> None:
+    """A mirror with no `--store` is the app it has always been (ADR-0001).
+
+    The three script routes then answer a status and a sentence and the rest
+    of the face answers as it always did (`face.py`), so the installation this
+    repository exists for — a command station on a cable, a page for it, and
+    nothing else on the box — needs no store to come up.
+    """
+    args = command_line().parse_args(STARTED)
+
+    assert args.store == ""
+
+
+def test_the_store_the_script_is_edited_in_is_named_on_the_command_line() -> None:
+    """The store is `control`'s, on the installation's network under its
+    service name (ADR-0015 d.5, `compose.box.yaml`). Configuration and never
+    payload, like the source of releases: no request can name it."""
+    args = command_line().parse_args([*STARTED, "--store", STORE])
+
+    assert args.store == STORE
 
 
 def test_the_face_is_served_on_a_port_of_its_own_by_default() -> None:

@@ -2,10 +2,11 @@
 
 The device to open and the port to serve it on are the mirror's own two flags
 and the whole of what it was for a while (control ADR-0043). What the others
-are for is the one thing this app does that is not mirroring: writing a
-released build onto the command station, which only the process holding the
-device can do (control ADR-0065, `firmware.py`), and the face that is asked
-about it (`face.py`). There is still no bind address, because both servers
+are for is what this app does that is not mirroring: writing a released build
+onto the command station, which only the process holding the device can do
+(control ADR-0065, `firmware.py`), the face that is asked about it
+(`face.py`), and the store the page edits this railroad's **script** in
+through that face (ADR-0015 d.5, `store.py`). There is still no bind address, because both servers
 bind every interface and what limits their reach is the LAN (control
 ADR-0042).
 
@@ -20,13 +21,20 @@ ADR-0042).
   station's conversation and an HTTP request arriving there would be bytes
   typed at the command station — and the stream on it is joined back to
   `--port` as one more client of the mirror (ADR-0007).
+- `--store <url>`, `control`'s store, where a railroad's **script** is the
+  document the page edits through the face (ADR-0015 d.5, #185). **Left out is
+  a mirror with no store**: the three script routes answer a status and a
+  sentence and the rest of the face answers as it always did, so a box holding
+  a cable with nothing else running is still this app's installation
+  (ADR-0001). Configuration and never payload, like the source of releases.
 
 **There is no broker and no identity.** Both went with the bus (ADR-0001):
 the flash was asked for on a bus in `control` and is asked for on this app's
 own face, and a name to key a refusal row by is a name for a row that no
-longer exists. What is left is an app that dials nothing and answers nothing
-but its own two ports — which is what lets a command station be mirrored on a
-box with nothing else running.
+longer exists. What is left is an app that answers nothing but its own two
+ports, and dials nothing but the release API a flash reads and the store a
+script is edited in — neither of which it needs to mirror a cable, which is
+what lets a command station be mirrored on a box with nothing else running.
 
 **asyncio owns this process.** The mirror is a loop, the flash runs on it, and
 the loop here is what carries a mirror that ended out to the exit status.
@@ -42,6 +50,7 @@ from dccex_usb.face import PORT as FACE_PORT
 from dccex_usb.face import Face, Loopback, Server
 from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.station import Station, to_stderr
+from dccex_usb.store import Store
 
 PERIOD_S = 0.5
 """How often the loop looks at `stop`. It waits on the mirror the rest of the
@@ -56,6 +65,7 @@ def serve(
     stop: threading.Event,
     releases: str = RELEASES,
     face_port: int = FACE_PORT,
+    store: str = "",
     period_s: float = PERIOD_S,
 ) -> None:
     """The app: the mirror, the flasher on the device it holds, and the face
@@ -80,13 +90,26 @@ def serve(
     # not a second fan-out (ADR-0007, #14), and the count of who is on that
     # port is read off the fan-out itself, because it is the one reading on
     # the page the station cannot say about itself (ADR-0008 d.4).
+    #
+    # And the store, where it was given one: the railroad's script the page
+    # edits is a document of `control`'s and is read and written where it
+    # lives (ADR-0015 d.1, `store.py`). No store is the app it has always
+    # been — a cable mirrored on a box with nothing else running — and the
+    # face says so on the three routes that need one.
     face = Server(
-        Face(releases, flasher=flasher, counts=station),
+        Face(
+            releases,
+            flasher=flasher,
+            counts=station,
+            store=Store(store) if store else None,
+        ),
         face_port,
         joins=Loopback(station),
     )
+    scripts = f"scripts in the store at {store}" if store else "no store for scripts"
     to_stderr(
-        f"serving {device} on {port}, face on {face_port}, flashing from {releases}"
+        f"serving {device} on {port}, face on {face_port},"
+        f" flashing from {releases}, {scripts}"
     )
     asyncio.run(mirroring(station, flasher, face, stop, period_s))
 
@@ -141,7 +164,7 @@ async def mirroring(
 
 
 def command_line() -> argparse.ArgumentParser:
-    """The four flags, which are the whole of the configuration."""
+    """The five flags, which are the whole of the configuration."""
     parser = argparse.ArgumentParser(
         prog="python -m dccex_usb",
         description="Mirror the command station's serial device on a TCP port,"
@@ -165,6 +188,14 @@ def command_line() -> argparse.ArgumentParser:
         help="the TCP port this app's own face, and the monitor's stream,"
         " are served on",
     )
+    parser.add_argument(
+        "--store",
+        default="",
+        metavar="URL",
+        help="control's store, where the railroad's script the page edits is"
+        " kept; left out, the face answers the script routes with a sentence"
+        " and the mirror is otherwise unchanged",
+    )
     return parser
 
 
@@ -181,6 +212,7 @@ def main() -> None:
             threading.Event(),
             args.firmware_releases,
             args.face_port,
+            args.store,
         )
 
 

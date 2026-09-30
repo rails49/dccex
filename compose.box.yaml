@@ -95,8 +95,22 @@ services:
       - "${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}:/dev/dccex"
     # What the image's own `CMD` already is, written out because a stack that
     # does not say which device on which port is a stack somebody has to read
-    # a Dockerfile to understand.
-    command: ["--device", "/dev/dccex", "--port", "2560"]
+    # a Dockerfile to understand — and the store, which the `CMD` has no
+    # default for.
+    #
+    # The store is `control`'s, on the installation's network under its
+    # service name as the broker is, and it is the same variable the
+    # translator below is given: the two read and write one document, the
+    # railroad's **script**, and a box that serves its store elsewhere
+    # overrides one line for both (rails49/control#586, ADR-0015 d.1, d.5).
+    # What the mirror does with it is the page's editor: the face lists the
+    # railroads, reads a script and applies one server-side, because a browser
+    # on the page's origin cannot reach the store (#185). Left out, the face
+    # answers those three routes with a sentence and mirrors the cable as
+    # ever, which is what a clean clone gets.
+    command:
+      ["--device", "/dev/dccex", "--port", "2560",
+       "--store", "${DCCEX_STORE_URL:-http://store:8765}"]
     # Long enough for a flash to be waited out. `firmware.py` gives esptool
     # 300 seconds before it kills it, and a container killed in the middle of
     # a write leaves the command station half written; the app closes its face
