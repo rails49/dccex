@@ -413,12 +413,16 @@ def test_the_page_hands_the_row_its_stream_and_its_face() -> None:
 
     The stop and the cut go up the same `send` an operator's typing goes up, so
     they are marked as this page's in the monitor and an operator can see what
-    the sequence did; the face is asked by the page's own `flash`.
+    the sequence did; the face is asked by the page's own `flash`, through the
+    page's own hand — which is what also starts the following of the write
+    (ADR-0012 d.3, `tests/ui/test_page.py`).
     """
     app = code(APP.read_text())
-    assert 'import { flash, releases } from "../face.js";' in app
+    assert 'import { flash, flashing, releases } from "../face.js";' in app
     assert ".sends=${this.#sends}" in app, "the row is handed no stream"
-    assert ".writes=${flash}" in app, "the row is handed no face"
+    assert ".writes=${this.#writes}" in app, "the row is handed no face"
+    writing = app[app.index("#writes = async (") :]
+    assert "await flash(tag)" in writing, "the page asks nobody to write"
 
 
 # -- what the sequence is -----------------------------------------------------
