@@ -157,21 +157,22 @@ pressed on that release's row, where the tag it names is (#9).
 ### The tiles
 
 One track's readings, at the top of the monitor view: one **tile** per track
-whose mode is not NONE, in letter order (#7, #170).
+the station names, in letter order (#7, #170).
 
 | On a tile | What it reads |
 | --- | --- |
+| the track's letter | A, B, C… |
 | a power symbol | green where the track has power, red where it has not, grey where the station has said nothing about it |
 | mode | what the track is set to: MAIN, PROG, DC… |
 | current | the current it draws, in mA |
 | max current | the most it may draw, in mA |
 
-The symbol is the first thing read and the three words are centred under it. The
-power is the symbol's label as well — `track A power is on` — because a reader
-who cannot see the colour is owed the same reading, which is how the **link** is
-drawn on the band (#168). A track set to `NONE` is not in use and gets no tile;
-one the station has given a current for and not yet a mode has a tile with a
-blank mode.
+The letter heads the tile, and the symbol and the three words are centred under
+it. The power is the symbol's label as well — `track A power is on` — because a
+reader who cannot see the colour is owed the same reading, which is how the
+**link** is drawn on the band (#168). `<=>` lists every track the firmware is built with,
+so a track set to `NONE` has a tile too. One the station has given a current for
+and not yet a mode has a tile with a blank mode.
 
 The current is the station's own measure (`<JI>` → `<jI 120 2 0 0>`, A first),
 asked four times a second and shown as the mean of the last eight readings. The

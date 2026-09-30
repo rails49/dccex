@@ -76,7 +76,7 @@ def power(**scenario: Any) -> dict[str, Any]:
 
 
 def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
-    """One **tile** per track in use, by the letter of each.
+    """One **tile** per track, by the letter of each.
 
     Keyed by the letter rather than listed, because what a tile reads is four
     readings and a failure that named the track is the one worth reading. The
@@ -182,14 +182,14 @@ def test_a_track_on_with_the_power_as_a_whole_off_still_cuts() -> None:
 
 
 @pytest.mark.node
-def test_there_is_a_tile_per_track_in_use_in_letter_order() -> None:
-    """One per track whose mode is not NONE, in letter order (CONTEXT.md
-    **tile**, issue 170). D is set to NONE, which is a track not in use.
+def test_there_is_a_tile_per_track_in_letter_order() -> None:
+    """One per track the station names, in letter order (CONTEXT.md **tile**).
+    D is set to NONE and has a tile all the same.
 
     The **link** and the **build** are not among them: the **band** carries
     both.
     """
-    assert [tile["track"] for tile in live()["tiles"]] == ["A", "B", "C"]
+    assert [tile["track"] for tile in live()["tiles"]] == ["A", "B", "C", "D"]
 
 
 @pytest.mark.node
@@ -226,6 +226,14 @@ def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
             "hot": False,
             "says": "track C power is off",
             "mode": "MAIN",
+            "draws": "0 mA",
+            "most": "250 mA",
+        },
+        "D": {
+            "track": "D",
+            "hot": None,
+            "says": "track D power is unknown",
+            "mode": "NONE",
             "draws": "0 mA",
             "most": "250 mA",
         },

@@ -272,8 +272,8 @@ releases are listed and a flash is pressed and followed.
 
 ## tile
 
-One track's readings on the **monitor** view, one per track in use: whether it
-has power, what it is set to (MAIN, PROG, DC…), the current it draws and the
+One track's readings on the **monitor** view, one per track the station
+names, headed by its letter: whether it has power, what it is set to (MAIN, PROG, DC…), the current it draws and the
 most it may draw. The tiles blank when the **link** goes down, because they
 are the station talking. They press nothing (ADR-0011 d.3).
 

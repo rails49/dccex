@@ -1,5 +1,5 @@
 /**
- * The **tile**s, mounted: one per track in use, and the row emptying when the
+ * The **tile**s, mounted: one per track, and the row emptying when the
  * **link** drops.
  *
  * Which words a set of facts produces is the readings module's and is run
@@ -25,8 +25,8 @@ const SPOKE = 1000;
 const SOON = SPOKE + 1000;
 const LATER = SPOKE + 60_000;
 
-/** What two tracks are set to, what they are drawing, the most they may draw,
- *  and the power on each: A on, B off. C is set to NONE and is not in use. */
+/** What three tracks are set to, what they are drawing, the most they may
+ *  draw, and the power on two: A on, B off. C is set to NONE. */
 const MODES = ["<= A MAIN>", "<= B PROG>", "<= C NONE>"];
 const CURRENTS = "<jI 250 12 0>";
 const LIMITS = "<jG 1233 250 250>";
@@ -45,11 +45,16 @@ async function tiles(now: number): Promise<DccexTiles> {
   return await mounted(drawn);
 }
 
-test("a talking station is a tile per track in use, in letter order", async () => {
+test("a talking station is a tile per track, in letter order", async () => {
   const drawn = await tiles(SOON);
-  expect(all(drawn, ".tile .mode")).toStrictEqual(["MAIN", "PROG"]);
-  expect(all(drawn, ".tile .draws")).toStrictEqual(["250 mA", "12 mA"]);
-  expect(all(drawn, ".tile .most")).toStrictEqual(["1233 mA", "250 mA"]);
+  expect(all(drawn, ".tile .track")).toStrictEqual(["A", "B", "C"]);
+  expect(all(drawn, ".tile .mode")).toStrictEqual(["MAIN", "PROG", "NONE"]);
+  expect(all(drawn, ".tile .draws")).toStrictEqual(["250 mA", "12 mA", "0 mA"]);
+  expect(all(drawn, ".tile .most")).toStrictEqual([
+    "1233 mA",
+    "250 mA",
+    "250 mA",
+  ]);
 });
 
 test("the power symbol is the track's power, in colour and in words", async () => {
@@ -70,7 +75,7 @@ test("a track the station has said nothing about the power of is neither", async
 });
 
 test("the tiles go together when the link drops", async () => {
-  expect(all(await tiles(SOON), ".tile")).toHaveLength(2);
+  expect(all(await tiles(SOON), ".tile")).toHaveLength(3);
   expect(all(await tiles(LATER), ".tile")).toStrictEqual([]);
 });
 
