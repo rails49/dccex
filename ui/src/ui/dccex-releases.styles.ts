@@ -23,6 +23,11 @@ import { css } from "lit";
  * on a phone held at the layout asks for, as the command box's send is
  * (`dccex-monitor.styles.ts`).
  *
+ * **The bar is the work pane's too.** It is `accent-color` over Shoelace's
+ * primary, which is what a native `progress` is coloured by, so the one bar on
+ * this page follows the theme with everything else around it and the chrome's
+ * six colours stay on the chrome.
+ *
  * **The yes is drawn as the dangerous press it is**, and the warning above it
  * in the theme's own warning ink: this is the one gesture on the page that
  * stops a railroad, and nothing behind the page guards it (ADR-0006). They are
@@ -205,6 +210,37 @@ export const releasesStyles = css`
     font-size: var(--sl-font-size-small);
   }
 
+  /* How far the write has got: one bar and the stage beside it, under the row
+     with the step, because they are the same minute of the station being away
+     (ADR-0012). */
+  .progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0 0;
+  }
+
+  /* The bar. It takes the width it is given and keeps its height, so a bar
+     that counts and a bar that does not are the same shape and the row does
+     not move under a reader's thumb as the stages go by. */
+  .bar {
+    flex: 1 1 8rem;
+    min-width: 0;
+    height: 0.5rem;
+    accent-color: var(--sl-color-primary-600);
+  }
+
+  /* What it reads: the stage, and the percentage while esptool writes. The
+     digits do not shift the words beside them. */
+  .stage {
+    flex: none;
+    color: var(--sl-color-neutral-700);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* What became of it, where it is drawn for the same reason. */
   .became {
     margin: 0.5rem 0 0;
@@ -212,11 +248,20 @@ export const releasesStyles = css`
     font-size: var(--sl-font-size-small);
   }
 
-  .wrote {
+  /* The write is over and the station has not said what it is running yet: as
+     quiet as the step, because it is the same waiting. */
+  .waiting {
+    color: var(--sl-color-neutral-700);
+  }
+
+  /* The station came back running what was written. */
+  .landed {
     color: var(--sl-color-success-700);
   }
 
-  .refused {
+  /* A refusal, or a station running something else. Both are a flash that did
+     not land, and one ink says so. */
+  .failed {
     color: var(--sl-color-danger-700);
   }
 `;
