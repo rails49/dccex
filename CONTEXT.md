@@ -45,7 +45,9 @@ client; what a client sends reaches the station only as a whole `<…>` message.
 
 `dccex`: the app that turns the layout interface's desired values into the
 station's `<…>` messages and reports what it hears back. It is a client of the
-mirror's port like any other.
+mirror's port like any other, and the one app here on the bus, as a client of
+`control`'s railroad
+([ADR-0014](docs/adr/0014-the-translator-is-on-the-bus-through-controls-package.md)).
 
 **Not:** *driver*, *adapter*, *gateway*, *bridge*, *the dccex service*.
 
