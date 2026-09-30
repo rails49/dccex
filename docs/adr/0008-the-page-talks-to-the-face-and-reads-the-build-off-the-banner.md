@@ -102,6 +102,10 @@ UI rather than inside it.
 - Three tiles blank together when the link drops, and that is the correct
   reading rather than a gap: the build, the current and the last thing said are
   all the station talking, and the station is not talking.
+
+  *Amended 2026-09-30:* the build and the link are on the band and are not
+  tiles (#168, #170). The tile row is one tile per track the station names, and
+  the whole row goes when the link goes down.
 - This UI draws no emergency stop. When LOOK.md widened red on the chrome to
   stop or a fault, the band's link took `--stop` while the station is not
   answering, since that is a fault (#138). Nothing else here is red.
