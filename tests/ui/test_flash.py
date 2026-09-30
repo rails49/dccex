@@ -453,6 +453,40 @@ def test_the_page_asks_its_own_face_to_write_and_names_only_the_tag() -> None:
     ), "the page writes an address of its own rather than building one"
 
 
+def test_the_page_asks_the_face_how_far_a_flash_has_got() -> None:
+    """At the same address a flash is asked for, with a GET (ADR-0012 d.2, d.3).
+
+    Two things on that path and no third: a POST writes the station and a GET
+    says what the writing has come to, so a page that asked how far it had got
+    cannot write anything by asking. The answer is read by the module a bare
+    node runs, as a `releases` document is (`flash.js`'s `progress()`).
+    """
+    asking = code(FACE.read_text())
+    following = asking[asking.index("export async function flashing(") :]
+    assert "fetch(FLASH_PATH)" in following, "the page builds the address it asks"
+    assert "method:" not in following, "the read is not a plain GET"
+    assert "progress(" in following, "the page reads the answer some other way"
+    assert (
+        'fetch("' not in following and "fetch(`" not in following
+    ), "the page writes an address of its own rather than building one"
+
+
+def test_a_face_that_did_not_say_how_far_reads_as_no_flash_running() -> None:
+    """A face that is away, a status that is not a 200, an answer this page
+    cannot read: `null`, and no bar is drawn.
+
+    Nothing running and nothing said read alike, which is the one place the
+    page draws that line the short way: what it does with either is draw no
+    bar, and whether a write of its own is in flight is what the POST's answer
+    says (`flash.js`'s `progress()`, ADR-0009 d.2).
+    """
+    asking = code(FACE.read_text())
+    following = asking[asking.index("export async function flashing(") :]
+    assert "Promise<Flashing | null>" in asking, "a face that is away raises"
+    assert "} catch {" in following, "a face that is away takes the page with it"
+    assert following.count("return null;") >= 2
+
+
 @pytest.mark.node
 def test_a_flash_the_face_refused_is_said_in_the_face_s_own_words() -> None:
     """The mirror says what it turned a flash down for, and a page that wrote
