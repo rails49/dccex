@@ -68,6 +68,12 @@
  * there spent its first five seconds reporting a station that was answering as
  * one that was not (#82).
  *
+ * **One question is asked on the link rather than on the schedule**: the most
+ * each track may draw, which the tiles carry under each track's current. It is
+ * compiled into the **build** and does not move while the station is running,
+ * so it is asked as the link comes up and not again until it comes up again
+ * (issue 170).
+ *
  * **Holding the view still and emptying it are the page's**, because the
  * conversation is. **Paused**, what arrives is queued out of sight and
  * nothing on screen is trimmed — which is what scrolling up cannot do, since
@@ -138,6 +144,17 @@ import "./dccex-tiles.js";
  * **link** fresh, since any answer is the station speaking.
  */
 const CURRENTS = "<JI>";
+
+/** What the page asks the station once, each time the **link** comes up: the
+ * most each track may draw.
+ *
+ * Once, because a limit does not move while the station is running — it is
+ * compiled into the **build**, and a station running a different one has come
+ * up again, which is this link coming up again. So it is asked on the link
+ * rather than on the schedule: the tiles carry it under each track's current
+ * and there is nothing to refresh (`readings.js`, issue 170).
+ */
+const LIMITS = "<JG>";
 
 /** What the page asks the station for every `SLOW_EVERY` polls.
  *
@@ -391,9 +408,20 @@ export class DccexApp extends LitElement {
     }
   }
 
-  /** The readings as they stand, on the page's own clock. */
+  /** The readings as they stand, on the page's own clock.
+   *
+   * **And the one question that is asked on the link rather than on the
+   * schedule**: the most each track may draw, asked as the link comes up. The
+   * link coming up is a change in the readings — the station said something
+   * after a silence, or after never having spoken — so this is where it is
+   * seen, and a station written and restarted is asked again (issue 170).
+   */
   #now(): void {
+    const answered = this.readings.answering;
     this.readings = asOf(this.#kept, Date.now());
+    if (this.readings.answering && !answered) {
+      this.#stream.send(LIMITS);
+    }
   }
 
   /** Ask the face what the configured source carries, once.

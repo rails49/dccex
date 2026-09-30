@@ -56,6 +56,7 @@ def test_the_page_polls_the_station_on_its_own_schedule() -> None:
     page = APP.read_text()
     assert 'const POLLS = ["<s>", "<=>"];' in page, "the page asks the station nothing"
     assert 'const CURRENTS = "<JI>";' in page, "the page does not ask for the current"
+    assert 'const LIMITS = "<JG>";' in page, "the page does not ask for the limits"
     assert re.search(r"POLL_MS\s*=\s*\d+", page) is not None, "there is no schedule"
     assert "setInterval(" in page, "the page asks once and never again"
     assert "this.#stream.send(poll)" in page, "the poll does not go up the stream"
@@ -75,6 +76,27 @@ def test_the_poll_goes_up_the_way_anything_typed_does() -> None:
     assert "this.#stream.send(poll)" in asking, "the poll does not go up the stream"
     assert "this.#stream.send(CURRENTS)" in asking, "the current is never asked"
     assert "this.#sends(" not in asking, "the poll is written to the monitor"
+
+
+def test_the_most_each_track_may_draw_is_asked_on_the_link_and_not_the_poll() -> None:
+    """The one question that is asked on the **link** rather than on the
+    schedule (issue 170).
+
+    A limit is compiled into the **build** and does not move while the station
+    is running, so asking four times a second would spend every client's line on
+    an answer that is the same all evening. A station running a different one has
+    come up again, which is the link coming up again — so it is asked where the
+    link is worked out, and a station written and restarted is asked afresh.
+    """
+    page = APP.read_text()
+    asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]
+    assert "LIMITS" not in asking, "the limits are asked on the poll"
+    now = page[page.index("#now(): void {") :]
+    now = now[: now.index("\n  }")]
+    assert (
+        "asOf(" in now and "this.#stream.send(LIMITS)" in now
+    ), "the limits are not asked where the link comes up"
+    assert "this.readings.answering && !" in now, "they are asked on every reading"
 
 
 def test_the_page_asks_when_the_stream_is_open() -> None:
