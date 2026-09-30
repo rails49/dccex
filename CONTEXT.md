@@ -62,7 +62,8 @@ releases the source carries — each with the day it was published and whether i
 carries a firmware to write with a digest to check the write against (#12, #8,
 #81) — writes one of them onto the station when a caller names its tag (#13),
 carries the station's own conversation to the page and back (#14, the
-**stream** below), and says how many **client**s are on the mirror's port (#7),
+**stream** below), says how far a flash has got while it runs
+([ADR-0012](docs/adr/0012-a-flash-says-how-far-it-has-got.md)), and says how many **client**s are on the mirror's port (#7),
 which was the one reading on the page the **station** could not make about
 itself: the face still answers it and the page no longer draws it (#111). It
 guards nothing while it does: a face is about its app, so whether a railroad
@@ -193,13 +194,13 @@ reading goes is an observation the page did not make (ADR-0009,
 ## band
 
 The chrome across the top of every rails49 UI, carrying what is true of the
-whole system. Here that is two readings — the **link**, and whether the rails
-are hot — and it presses nothing: `control`'s band commands track power
-because `layout` checks the railroad is drained before the wire carries
-anything, and this page is on no bus for anything to check
-([ADR-0008](docs/adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)).
-The **rail** down the side is its counterpart, and both are LOOK.md's rather
-than this repository's.
+whole system. Here that is the UI's name and the **build** on the left, and on
+the right two readings — the **link**, and whether the rails are hot — and one
+control: the power button, which sends `<1>` or `<0>` like
+any other client of the mirror's port
+([ADR-0011](docs/adr/0011-the-band-commands-track-power.md), superseding
+ADR-0008 d.5). The **rail** down the side is its counterpart, and both are
+LOOK.md's rather than this repository's.
 
 **Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
 *status bar*.
@@ -207,10 +208,10 @@ than this repository's.
 ## rail
 
 The chrome down the side of every rails49 UI, carrying what the view in front
-of a person offers. Here it offers nothing: `dccex-rail` draws the column, one
-button wide, and the run the first buttons will land in. The flash's are not
-them: a flash is a gesture about one **release** and is pressed on that
-release's row, where the tag it names is (#9). It is the **band**'s counterpart
+of a person offers. Here that is one button per **view**: the monitor and
+the releases. A flash is not one of them: it is a gesture about one
+**release** and is pressed on that release's row, where the tag it names is
+(#9). It is the **band**'s counterpart
 and LOOK.md's in the same way, which is why its colour, the width of a button
 on it and the window height it turns at are the `--rail*` tokens rather than
 numbers of this page's (`ui/src/ui/dccex-rail.ts`, [ui/look/README.md](ui/look/README.md)).
@@ -229,12 +230,21 @@ touches.
 not), *strip* (the strip is the shape this takes on a short window and not a
 second thing).
 
+## view
+
+What the work pane shows. The **rail** picks one; the **band** is the same
+over every view. There are two: the **monitor**, and the releases, where the
+releases are listed and a flash is pressed and followed.
+
+**Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
+(a mode is what a track is set to).
+
 ## tile
 
-One reading of the station's particulars on the page's work pane: a light for
-the **link**, the **build**, and one per track in use, reading its current or
-`off`. The build and the tracks blank together when the **link** goes down,
-because they are the station talking.
+One track's readings on the **monitor** view, one per track in use: whether it
+has power, what it is set to (MAIN, PROG, DC…), the current it draws and the
+most it may draw. The tiles blank when the **link** goes down, because they
+are the station talking. They press nothing (ADR-0011 d.3).
 
 **Not:** *card*, *widget*, *panel*, *badge*, *stat*, *metric*, *gauge*.
 
