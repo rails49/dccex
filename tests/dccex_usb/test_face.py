@@ -38,20 +38,24 @@ import pytest
 from dccex_usb.face import (
     CRLF,
     HEAD_END,
+    NO_STORE,
     STATUS,
     Answered,
     Counts,
     Ends,
     Face,
     Joins,
+    Keeps,
     Loopback,
     Server,
     Writes,
     response,
+    under,
 )
 from dccex_usb.firmware import Doing, Flasher, Ran, Refusal, Saw, Stage, Wrote
 from dccex_usb.framing import MAX_MESSAGE
 from dccex_usb.station import READ_SIZE, to_stderr
+from dccex_usb.store import Store
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
 from tests.dccex_usb.test_firmware import FakeFetch
 from tests.dccex_usb.test_station import (
@@ -67,6 +71,7 @@ from tests.dccex_usb.test_station import (
     wedge,
 )
 from tests.dccex_usb.test_stream import masked
+from tests.stores import Store as Fake
 
 RELEASES = "https://api.example.invalid/repos/rails49/CommandStation-EX/releases"
 ELSEWHERE = "https://api.example.invalid/repos/someone-else/CommandStation-EX/releases"
@@ -177,6 +182,7 @@ def face(
     releases: str = RELEASES,
     flasher: Writes | None = None,
     counts: Counts | None = None,
+    store: Keeps | None = None,
 ) -> Face:
     """The face a test asks something of, built in one place.
 
@@ -185,12 +191,18 @@ def face(
     a release onto the station, which is a fake for the same reason (the gate
     has no command station and runs no esptool), and the mirror the count of
     clients is read off, which is a fake because no port is bound here.
+
+    The store is left out by default, which is a mirror started with no
+    `--store`: the three script routes then answer a status and a sentence,
+    and every other route answers as it always did. What the script routes are
+    asked of is a face built with `holding()` below.
     """
     return Face(
         releases,
         fetch=fetch if fetch is not None else Source(),
         flasher=flasher if flasher is not None else Writing(),
         counts=counts if counts is not None else Counting(),
+        store=store,
     )
 
 
@@ -601,6 +613,304 @@ def test_no_request_can_redirect_the_source_a_flash_is_written_from() -> None:
     assert answered.status == HTTPStatus.OK
 
 
+# -- the railroad's script ---------------------------------------------------
+
+RAILROAD = "crossover-yard"
+"""The railroad whose script is being edited. A name and nothing more: which
+railroad is running is the bus's to say and is a row in `control`'s UI, so the
+face names none of them (ADR-0015 d.5)."""
+
+SCRIPT = '@on("power")\ndef power(t):\n    t.default()\n'
+"""A script that compiles: the shortest thing of the shape a railroad's
+document has (`dccex.script`, `dccex.sample`)."""
+
+BROKEN = '@on("power")\ndef power(t)\n    t.default()\n'
+"""The same script with the colon off the second line, which is where Python
+says it stops making sense."""
+
+
+def holding(store: Fake) -> Face:
+    """A face reading and writing `store`, which is the fake of `control`'s
+    routes on loopback (`tests/stores.py`).
+
+    A fake and not a stand-in for the reader: the routes are `control`'s and
+    documented there, so what is asserted here is the face against those
+    routes as they are written down rather than against a second copy of what
+    this app believes about them (ADR-0014, consequences,
+    rails49/control#586). Nothing reaches a network — the fake is bound on
+    loopback by the test that opens it.
+    """
+    return face(store=Store(store.url))
+
+
+def test_the_face_lists_the_railroads_the_store_holds(store: Fake) -> None:
+    """The first thing the page asks: which railroads there are, so that a
+    person picks one rather than typing a name (ADR-0015 d.5).
+
+    None of them is marked. Which railroad is running is not something this
+    app knows, and saying so would be the mirror reporting a railroad off a
+    bus it is not on (ADR-0001, #185's out of scope).
+    """
+    store.drawings = [RAILROAD, "bench"]
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("GET", "/railroads", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"railroads": [RAILROAD, "bench"]}
+
+
+def test_the_face_reads_one_railroad_s_script(store: Fake) -> None:
+    """The text as the store holds it, under the railroad it is for."""
+    store.holds(RAILROAD, SCRIPT)
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("GET", f"/scripts/{RAILROAD}", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"script": RAILROAD, "text": SCRIPT}
+
+
+def test_a_railroad_with_no_script_is_a_404_and_not_an_outage(store: Fake) -> None:
+    """The ordinary state of a railroad nobody has written one for. It is the
+    answer the page opens the sample under, so it cannot read as a store that
+    could not be asked (ADR-0015 d.5)."""
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("GET", f"/scripts/{RAILROAD}", b""))
+
+    assert answered.status == HTTPStatus.NOT_FOUND
+    assert RAILROAD in str(answered.body["reason"])
+    assert store.url in str(answered.body["reason"])
+
+
+def test_a_script_applied_is_put_to_the_store(store: Fake) -> None:
+    """What Apply comes to: the text compiles, so it reaches the store as the
+    railroad's document and the page is told it was applied (ADR-0015 d.5).
+
+    Server-side, which is the whole reason this route exists: a browser on the
+    page's origin cannot reach the store, and a UI talks to the bus, the store
+    and its own app's face (the organisation's ADR-0002).
+    """
+    store.opens()
+
+    answered = asyncio.run(
+        holding(store).answer(
+            "PUT", f"/scripts/{RAILROAD}", json.dumps({"text": SCRIPT}).encode()
+        )
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"applied": RAILROAD}
+    assert store.saved == [(RAILROAD, {"script": RAILROAD, "text": SCRIPT})]
+
+
+def test_a_script_that_does_not_compile_never_reaches_the_store(store: Fake) -> None:
+    """The line and the message, and a store that was not asked (ADR-0015
+    d.5).
+
+    A stored text that does not compile is a railroad stood down at the next
+    fetch for a document nobody was told was broken (d.3, d.4), so the compile
+    comes first and the refusal carries what Python said: a page that showed
+    only that the script is bad would leave somebody reading a page of Python
+    for the line.
+    """
+    store.opens()
+
+    answered = asyncio.run(
+        holding(store).answer(
+            "PUT", f"/scripts/{RAILROAD}", json.dumps({"text": BROKEN}).encode()
+        )
+    )
+
+    assert answered.status == HTTPStatus.BAD_REQUEST
+    assert "line 2" in str(answered.body["reason"])
+    assert "expected" in str(answered.body["reason"])
+    assert store.saved == []
+
+
+def test_a_script_is_compiled_and_never_run(store: Fake) -> None:
+    """Compiling says the text is Python and nothing else (ADR-0015 d.5).
+
+    A document that raises the moment it runs compiles perfectly well, and it
+    is applied: what its handlers do is the translator's to find out, in the
+    process that has a station to send to (`dccex.script`). A face that ran one
+    would be running a person's code beside every throttle's bytes, and this
+    text is the one that says which happened.
+    """
+    store.opens()
+    raises = 'raise RuntimeError("this script ran")\n'
+
+    answered = asyncio.run(
+        holding(store).answer(
+            "PUT", f"/scripts/{RAILROAD}", json.dumps({"text": raises}).encode()
+        )
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert store.saved == [(RAILROAD, {"script": RAILROAD, "text": raises})]
+
+
+def test_a_script_of_comments_alone_is_applied(store: Fake) -> None:
+    """What a railroad with no script of its own is offered to start from: the
+    sample, commented out (#185). It compiles to nothing, which is a railroad
+    the translator sends its own commands for (ADR-0013 d.2)."""
+    store.opens()
+    commented = "# nothing yet\n"
+
+    answered = asyncio.run(
+        holding(store).answer(
+            "PUT", f"/scripts/{RAILROAD}", json.dumps({"text": commented}).encode()
+        )
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert store.saved == [(RAILROAD, {"script": RAILROAD, "text": commented})]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(b"", id="nothing"),
+        pytest.param(b"not json at all", id="not json"),
+        pytest.param(b'"a script"', id="not a document"),
+        pytest.param(b"{}", id="no text in it"),
+        pytest.param(b'{"text": 12}', id="a text that is not a string"),
+        pytest.param(b'{"script": "crossover-yard"}', id="the railroad and no text"),
+    ],
+)
+def test_a_body_that_names_no_text_is_refused_before_the_store(
+    store: Fake, body: bytes
+) -> None:
+    """Read the way every payload here is read: one field, and every shape it
+    is not is a refusal rather than an exception."""
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("PUT", f"/scripts/{RAILROAD}", body))
+
+    assert answered.status == HTTPStatus.BAD_REQUEST
+    assert store.saved == []
+
+
+def test_a_store_that_is_away_is_a_status_and_a_reason(store: Fake) -> None:
+    """The store is somebody else's service on the box's own network, and the
+    mirror says what it is doing rather than falling over with it — the same
+    status the releases get for the same reason. The store is not opened
+    here."""
+    asked = holding(store)
+
+    for method, path, body in (
+        ("GET", "/railroads", b""),
+        ("GET", f"/scripts/{RAILROAD}", b""),
+        ("PUT", f"/scripts/{RAILROAD}", json.dumps({"text": SCRIPT}).encode()),
+    ):
+        answered = asyncio.run(asked.answer(method, path, body))
+
+        assert answered.status == HTTPStatus.BAD_GATEWAY, path
+        assert store.url in str(answered.body["reason"]), path
+
+
+def test_a_mirror_with_no_store_says_so_and_answers_everything_else() -> None:
+    """A mirror is an app that holds a cable and repeats it, and a box running
+    one beside a command station and nothing else has no store to be given
+    (ADR-0001). The three script routes say that in a sentence; the station's
+    own five answer as they always did."""
+    asked = face()
+
+    for method, path in (
+        ("GET", "/railroads"),
+        ("GET", f"/scripts/{RAILROAD}"),
+        ("PUT", f"/scripts/{RAILROAD}"),
+    ):
+        answered = asyncio.run(
+            asked.answer(method, path, json.dumps({"text": SCRIPT}).encode())
+        )
+
+        assert answered.status == HTTPStatus.SERVICE_UNAVAILABLE, path
+        assert answered.body == {"reason": NO_STORE}, path
+
+    assert asyncio.run(asked.answer("GET", "/releases", b"")).status == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "method",
+    [pytest.param("POST", id="posted"), pytest.param("DELETE", id="deleted")],
+)
+def test_a_script_is_read_with_get_and_applied_with_put(
+    store: Fake, method: str
+) -> None:
+    """Two verbs and no third. Deleting a script is not on this face (#185's
+    out of scope), and a POST is not how a document with a name of its own is
+    written — the store's own route takes a PUT (ADR-0015 d.1)."""
+    store.holds(RAILROAD, SCRIPT)
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer(method, f"/scripts/{RAILROAD}", b""))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+    assert store.saved == []
+
+
+def test_the_railroads_are_read_and_not_written(store: Fake) -> None:
+    """The list is the store's. A railroad is made in `control`'s editor, and
+    this face has no verb for one (#185's out of scope)."""
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("PUT", "/railroads", b"{}"))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param("/scripts", id="no railroad"),
+        pytest.param("/scripts/", id="an empty name"),
+        pytest.param("/scripts/a/b", id="a name with a level in it"),
+        pytest.param("/scripts/crossover-yard/text", id="something below one"),
+    ],
+)
+def test_a_path_that_names_no_one_railroad_is_not_a_route(
+    store: Fake, path: str
+) -> None:
+    """One level below the route and no deeper, which is the line the store
+    draws on its own paths: a railroad called `a/b` is a name nobody has
+    rather than a route of its own. `/scripts` with nothing on it is not every
+    railroad at once."""
+    store.opens()
+
+    answered = asyncio.run(holding(store).answer("GET", path, b""))
+
+    assert answered.status == HTTPStatus.NOT_FOUND
+    assert store.asked == []
+
+
+@pytest.mark.parametrize(
+    "path,railroad",
+    [
+        pytest.param("/scripts/crossover-yard", "crossover-yard", id="a name"),
+        pytest.param("/scripts/two%20words", "two words", id="a space in one"),
+        pytest.param("/scripts/a%2Fb", None, id="a level escaped into one"),
+        pytest.param("/scripts", None, id="no railroad"),
+        pytest.param("/releases", None, id="another route"),
+    ],
+)
+def test_the_railroad_a_path_names_is_the_name_itself(
+    path: str, railroad: str | None
+) -> None:
+    """A browser escapes what it puts in a path, and the store is asked about
+    the railroad's own name: the unescaping is the face's and the escaping for
+    the store is `store.py`'s, so a railroad with a space in its name is one
+    name all the way through.
+
+    A name with a level escaped into it is no railroad here either. Unescaping
+    it and then refusing it is what keeps `a/b` a name the store does not have
+    rather than a route of its own, which is the line the store draws on its
+    own paths (rails49/control#586).
+    """
+    assert under(path) == railroad
+
+
 # -- the stream --------------------------------------------------------------
 
 KEY = "dGhlIHNhbXBsZSBub25jZQ=="
@@ -726,6 +1036,44 @@ def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
     answered = asyncio.run(face().answer("GET", "/releases", b"", host=LABEL))
 
     assert answered.status == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        pytest.param("GET", "/railroads", id="the railroads"),
+        pytest.param("GET", "/scripts/crossover-yard", id="a script read"),
+        pytest.param("PUT", "/scripts/crossover-yard", id="a script applied"),
+    ],
+)
+def test_a_page_from_another_origin_reaches_no_script(
+    store: Fake, method: str, path: str
+) -> None:
+    """The routes that reach `control`'s store keep the rule the rest keep
+    (ADR-0004 d.4, #185).
+
+    It matters more here than on the station's own routes: a page somewhere
+    else that could apply a script would be editing a railroad's document
+    through an interface that is private to this app, and the store's own
+    refusal never sees the request — what asks it is this app, on the box's
+    network, with no origin on the ask at all (`store.py`).
+    """
+    store.holds("crossover-yard", SCRIPT)
+    store.opens()
+
+    answered = asyncio.run(
+        holding(store).answer(
+            method,
+            path,
+            json.dumps({"text": SCRIPT}).encode(),
+            origin=ELSEWHERE_ORIGIN,
+            host=LABEL,
+        )
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert store.asked == []
+    assert store.saved == []
 
 
 UNREADABLE = "//[v"
