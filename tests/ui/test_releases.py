@@ -313,8 +313,7 @@ def test_the_row_is_the_whole_of_a_view_of_its_own() -> None:
 
     It sat under the tiles and over the conversation until the rail had
     buttons. What it is compared against — the **build** — is on the band over
-    every view and on a tile on the monitor view, so nothing went with the
-    move that the list needs beside it.
+    every view, so nothing went with the move that the list needs beside it.
     """
     app = code(APP.read_text())
     assert 'import "./dccex-releases.js";' in app

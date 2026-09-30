@@ -116,8 +116,9 @@ it. The chip goes when the button does, which is the difference a reader who
 cannot tell the green from the red is left with.
 
 The band gives things up at two widths rather than wrapping. Below 560px the
-build goes: it is the longest thing on the band and it is on a tile on the
-monitor view as well. Below 400px the link's words go and the link is the dot
+build goes: it is the longest thing on the band, and it is the one reading on it
+that does not change while the station is up — what the station is doing is on
+the tiles and what it is running is not. Below 400px the link's words go and the link is the dot
 alone, the dot being the reading and the words that reading a second time. The
 dot and the power button stay at every width — a thumb has to reach the button
 on the phone at the layout. Both numbers are this page's own rather than a look
@@ -153,32 +154,44 @@ pressed on that release's row, where the tag it names is (#9).
 
 ### The tiles
 
-The station's particulars, at the top of the monitor view (#7):
+One track's readings, at the top of the monitor view: one **tile** per track
+whose mode is not NONE, in letter order (#7, #170).
 
-| Tile | What it reads | While the link is down |
-| --- | --- | --- |
-| link | a light: green while the station answers, red when it does not | red |
-| build | the `G-` field of the station's banner | blank |
-| track A · MAIN, … | the track's current in mA, or `off` | gone |
+| On a tile | What it reads |
+| --- | --- |
+| a power symbol | green where the track has power, red where it has not, grey where the station has said nothing about it |
+| mode | what the track is set to: MAIN, PROG, DC… |
+| current | the current it draws, in mA |
+| max current | the most it may draw, in mA |
 
-The light is the same reading as the band's dot (#168), in the work pane beside
-the particulars the link takes away.
+The symbol is the first thing read and the three words are centred under it. The
+power is the symbol's label as well — `track A power is on` — because a reader
+who cannot see the colour is owed the same reading, which is how the **link** is
+drawn on the band (#168). A track set to `NONE` is not in use and gets no tile;
+one the station has given a current for and not yet a mode has a tile with a
+blank mode.
 
-**A tile per track the station uses**, by letter, with its mode (`<=>` →
-`<= A MAIN>`). A track set to `NONE` gets no tile. A track reads `off` when the
-station says its power is off (`<p0 A>`), whatever current was last measured
-on it, and its current otherwise. The current is the station's own measure
-(`<JI>` → `<jI 120 2 0 0>`, A first), asked four times a second and shown as
-the mean of the last eight readings. The station reports one instantaneous
-ADC sample per track, and with a loco running those scatter between under 20
-and over 100 mA; their mean over two seconds is the current. A track the station has named but not measured reads blank, not
-`0 mA`.
+The current is the station's own measure (`<JI>` → `<jI 120 2 0 0>`, A first),
+asked four times a second and shown as the mean of the last eight readings. The
+station reports one instantaneous ADC sample per track, and with a loco running
+those scatter between under 20 and over 100 mA; their mean over two seconds is
+the current. The limit is `<JG>` → `<jG 1233 1233 250 250>`, asked once as the
+link comes up: it is compiled into the **build** and does not move while the
+station is running. A reading the station has not given reads blank, not `0 mA`.
 
-The build and the tracks go together when the link goes down, which is correct
-rather than a gap: they are the station talking and the station is not
-talking. The **build** fills again by itself when the station comes back and
-says which one it is running, so a build from before a flash is never reported
-as the one on the board (ADR-0008 d.3).
+The tiles press nothing (ADR-0011 d.3). The **band**'s power button is the one
+control on the page that commands track power.
+
+The whole row goes when the link goes down, which is correct rather than a gap:
+a tile is one track and a station that is not talking is not saying it has any
+(ADR-0008 d.3). The row keeps its height while it is empty, so the monitor does
+not move under the reader's thumb at the moment the station goes away. The
+**link** and the **build** are the band's and are not tiles: it carries both at
+every width either is drawn at, and a tile repeating one of them would be a
+second answer to a reading the chrome already gives.
+
+On a narrow window the tiles wrap onto more rows rather than running off the
+side, and each may shrink below the share it asks for.
 
 The page no longer shows how many **client**s are on the mirror's port. The
 face still answers that at `/dccex-usb/clients`.
@@ -315,7 +328,7 @@ that is perfectly good (#46). A second flash asked for while one is running is
 refused and not queued.
 
 **A flash that started is not replied to; it is observed.** The stream drops as
-the device goes, the tiles blank, and when the station comes back its banner
+the device goes, the tiles go, and when the station comes back its banner
 says which build it is running. That is how the page learns the write landed,
 and nothing has to be reloaded.
 
@@ -356,9 +369,9 @@ browser can hold:
   into: the mirror keeps none (this repository's ADR-0010);
 - a status line — the banner, the power on a track or on all of them, the
   display, a track's mode — is shown only when it says something different
-  from the last one about the same thing. The measured currents (`<jI …>`,
-  `<jG …>`) are never shown: they move on nearly every poll, and the tiles are
-  where they are read. Every poll is
+  from the last one about the same thing. The measured currents (`<jI …>`) and
+  the limits (`<jG …>`) are never shown: the currents move on nearly every poll,
+  and the tiles are where both are read. Every poll is
   answered with the same eight lines, and every open page polls. The readings
   still hear every line; it is only the monitor that leaves the repeats out;
 - a stream that closed is opened again after two seconds, because everything
@@ -568,8 +581,9 @@ workflow's `node` job beside the modules a bare node runs, which is the same
 split and the same reason (#101, `.github/workflows/ci.yml`).
 
 What a mounted component still cannot answer is layout: happy-dom draws no
-boxes. So the widths the band drops a reading at, the `min-height` a blank tile
-keeps and how loud a **gloss** is beside the bytes are held against the
+boxes. So the widths the band drops a reading at, the height an empty tile row
+keeps, the wrap the tiles take at a phone's width and how loud a **gloss** is
+beside the bytes are held against the
 stylesheets as before (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
 `tests/ui/test_monitor.py`), which is the same cost the look values check names.
 
@@ -605,7 +619,9 @@ monitor (`ui/test/monitor.test.ts`), handed the facts a page would hand it.
 and an idle one says nothing; on a box with no **translator** running, nothing
 else asks. So the page asks on its own schedule — `<JI>` four times a
 second, and `<s>` and `<=>` every fifteen seconds, because every client on the port receives
-the eight lines `<s>` is answered with — up the stream, through the same send an operator's typing goes through, though
+the eight lines `<s>` is answered with — and `<JG>` once each time the **link**
+comes up, because the most a track may draw is compiled into the build and does
+not move while the station is running (#170) — up the stream, through the same send an operator's typing goes through, though
 the poll itself is not written to the monitor — and the mirror goes on
 originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
@@ -621,7 +637,8 @@ d.4).
 be written to: the poll that used to go in the line after `open()` was refused
 and went nowhere, so nothing had been asked and nothing had answered until the
 interval came round, and every load of the page spent its first five seconds
-saying a healthy station was not answering with the **build** tile blank. The
+saying a healthy station was not answering, with the **build** blank and no
+tiles on the monitor view. The
 stream hands the open up the way it hands a line up, and the page asks there —
 which covers a reopen too, since the socket the reopen timer dials says it is
 open like any other. The schedule is untouched and is started once, where the
@@ -632,7 +649,7 @@ poller and not two.
 was the one that was: it came off the face rather than off the stream, and
 which order a browser hands back the answers to a dozen requests in is the
 browser's, so an answer from an older ask could put a count from a minute ago
-on the tile and leave it there until another happened to arrive in order.
+on the page and leave it there until another happened to arrive in order.
 During a flash it was a dozen — the face sits inside esptool for the length of
 a write while the schedule goes on firing. The asks were numbered for it and an
 answer that was not the newest ask's was dropped where it arrived (#88). The
@@ -831,9 +848,10 @@ Two things the prototype left open and the tickets settle while building:
   asserted there. What is: no horizontal scroll, the band dropping the build and
   the link's words and keeping the dot and the power button, the rail's two
   buttons at a thumb, the command box on screen and typed into, and a release
-  row wrapping rather than running off the side. What is not: the tiles onto a
-  second row, and the flash's warning taking its own line above the two presses
-  that answer it. And what the check drives is a Chromium at a phone's width
+  row wrapping rather than running off the side. What is not: the tiles onto
+  more rows — there is no station behind the page in that job, so there are no
+  tiles to measure — and the flash's warning taking its own line above the two
+  presses that answer it. And what the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the
   thing that is still open is somebody holding one up to it. Mounting the
   components settled none of it and could not: happy-dom does no layout
