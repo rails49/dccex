@@ -12,9 +12,9 @@ installation everything below rests on. What is in the work pane is the
 **tile**s, the **release**s under them and the **monitor** under those: the
 station's conversation as it arrives, every line stamped with the time it
 arrived, newest at the bottom (#4), and a box at the foot that types a whole
-`<…>` message back (#6). The band carries its two readings and the tiles carry
-the particulars, all of them made of what the station said and kept live by the
-page's own polling (#7). The releases are listed newest first with the one on
+`<…>` message back (#6). The band carries the **build**, the **link** and the
+power button and the tiles carry the particulars, all of them made of what the
+station said and kept live by the page's own polling (#7, #168). The releases are listed newest first with the one on
 the station marked (#8), and choosing one writes it onto the station — which is
 the last thing here that needed a terminal (#9). What it says was decided in
 rails49/dccex#1 and the tickets under that spec are each a part of it, as [the

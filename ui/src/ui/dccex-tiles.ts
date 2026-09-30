@@ -16,9 +16,9 @@
  * reading through it: whether the station is answering is the one thing it is
  * for, and it is the reading that says the rest are absent rather than zero.
  *
- * **The build is here rather than on the band.** It is long, and it belongs
- * beside the releases it gets compared against, which land above the monitor
- * under their own ticket.
+ * **The build is on the band as well** (issue 168, ADR-0011). The band carries
+ * it as the one line that says what this station is running; the tile keeps it
+ * beside the releases it gets compared against.
  */
 
 import { LitElement, html, type TemplateResult } from "lit";
