@@ -53,7 +53,7 @@ services:
   # the bus (ADR-0001), and without a profile, because this project is the
   # mirror rather than a profile of a bigger one.
   mirror:
-    build:
+    build: &image
       context: .
       dockerfile: deploy/Dockerfile
       args:
@@ -143,6 +143,26 @@ services:
     # The project's own network and the installation's, which is the one the
     # door dials the face on. Joined for the face alone: 2560 is published to
     # the LAN and needs neither.
+    networks:
+      - default
+      - rails49
+
+  # The translator: `layout`'s desired rows to the station's commands, and the
+  # station's replies to the track and link rows (ADR-0014). Same image as the
+  # mirror, run as the other package in it. It dials the broker on `rails49`
+  # and the mirror on this project's own network, and nothing dials it.
+  translator:
+    build: *image
+    image: dccex:${DCCEX_COMMIT:-dev}
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "dccex"]
+    command:
+      ["--broker", "broker:1883",
+       "--station", "mirror:2560",
+       "--startup", "/etc/rails49/dccex-startup.txt"]
+    # Until #175: `scripts/deploy.sh` makes the file where there is none.
+    volumes:
+      - /etc/rails49/dccex-startup.txt:/etc/rails49/dccex-startup.txt:ro
     networks:
       - default
       - rails49

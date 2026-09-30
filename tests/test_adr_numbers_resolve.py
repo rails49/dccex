@@ -326,7 +326,8 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
     Every page that leans on a decision made in `control`, over every tree the
     scan reads: the glossary and the root page; the two READMEs that say what
     the mirror and the page do; the six modules of the package that came across
-    with its prose and five of the six suites that check them; the check that
+    with its prose and five of the six suites that check them; four of the
+    translator's modules and two of its suites (#180); the check that
     holds the package to importing nothing, and four of the page's suites; four
     of the page's own modules and two of its components; and the `Dockerfile`
     the box runs the mirror from. `firmware.py` cites five of the seven

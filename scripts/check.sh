@@ -105,16 +105,20 @@ words() {
 # this is provenance and not a promise (ADR-0003) — but a commit nobody
 # wrote down is a provenance nobody can check.
 source_recorded() {
-  local commit="deee7b6f54d0215f4e02c128e60f50322fd0978c"
+  local commit
   if ! grep -q "rails49/control" src/SOURCE.md 2>/dev/null; then
     echo "src/SOURCE.md does not name rails49/control"
     return 1
   fi
-  if ! grep -q "$commit" src/SOURCE.md; then
-    echo "src/SOURCE.md does not record the commit the copy was taken at"
-    return 1
-  fi
-  echo "rails49/control at ${commit:0:7}"
+  # The mirror's copy, then the translator's (#180).
+  for commit in deee7b6f54d0215f4e02c128e60f50322fd0978c \
+    d3176157229cf848ae2dd74195ddb2c0068d2911; do
+    if ! grep -q "$commit" src/SOURCE.md; then
+      echo "src/SOURCE.md does not record the commit ${commit:0:7} a copy was taken at"
+      return 1
+    fi
+  done
+  echo "rails49/control at deee7b6 and d317615"
 }
 
 # ruff, black and pyright are `control`'s, over the same `src` and `tests`

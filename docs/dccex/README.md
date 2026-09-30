@@ -88,8 +88,9 @@ reflash to change one and the reason for wanting the command at all.
 
 **On the layout box the file is `/etc/rails49/dccex-startup.txt`**, mounted
 read-only into this app's container and named on the command line the service
-runs ([../DEPLOY.md](https://github.com/rails49/control/blob/main/docs/DEPLOY.md#the-command-station),
-[#523](https://github.com/rails49/control/issues/523)). The deploy makes an
+runs ([`compose.box.yaml`](../../compose.box.yaml),
+[control#523](https://github.com/rails49/control/issues/523)). The deploy
+(`scripts/deploy.sh`) makes an
 empty one where the box has none, because a bind mount whose source is
 missing is made by the daemon as a directory and this app would open it as
 its startup file. A single-file mount binds the inode, so the file is edited
@@ -321,14 +322,14 @@ The app is also constructed on the bus directly, with where the station is
 served:
 
 ```python
-DccEx(bus, "host.docker.internal", 2560, startup=Path("/etc/rails49/dccex-startup.txt"))
+DccEx(bus, "mirror", 2560, startup=Path("/etc/rails49/dccex-startup.txt"))
 ```
 
-That is what `--startup` on this app's own command line does, and what the
-harness's physical wiring does when it brings a run up on the physical
-binding — this app and `layout` where the simulator would be
-([bench/runner.py](https://github.com/rails49/control/blob/main/src/tc49/bench/runner.py),
-[#314](https://github.com/rails49/control/issues/314)). There is nowhere else
+That is what `--startup` on this app's own command line does. `control`'s
+bench no longer builds it: a live run against a station is `layout` and this
+app as separate processes on the broker
+([ADR-0014](../adr/0014-the-translator-is-on-the-bus-through-controls-package.md)
+d.6). There is nowhere else
 for the file to go, so `--startup` without `--station` is refused in a sentence
 rather than accepted and dropped
 ([#334](https://github.com/rails49/control/issues/334)).
