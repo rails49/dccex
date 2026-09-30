@@ -232,3 +232,13 @@ test("the box says a command can be typed with or without its brackets", async (
   const drawn = await monitor([]);
   expect(part(drawn, ".typed").getAttribute("placeholder")).toBe("s or <s>");
 });
+
+test("the controls link to the command reference in a new tab", async () => {
+  const drawn = await monitor(SAID);
+  const link = part(drawn, ".controls .reference") as HTMLAnchorElement;
+  expect(link.href).toBe(
+    "https://dcc-ex.com/reference/software/command-summary-consolidated.html",
+  );
+  expect(link.target).toBe("_blank");
+  expect(link.rel).toBe("noopener");
+});
