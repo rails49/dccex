@@ -49,6 +49,37 @@ mirror's port like any other.
 
 **Not:** *driver*, *adapter*, *gateway*, *bridge*, *the dccex service*.
 
+## script
+
+The one Python file of a railroad's own that the translator loads at start.
+It holds the **handler**s, and it is where this railroad's `<…>` that the bus
+has no word for is written: which mode a track is set to, what current it
+may draw, what a turnout throwing does to a track or a signal
+([ADR-0013](docs/adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+
+**Not:** *config*, *plugin*, *automation* (an automation is EXRAIL's, and runs
+on the station), *the startup file* (the file it replaced).
+
+## handler
+
+A function in the **script**, run by the translator when its **event**
+happens. For a desired value, it runs in place of what the translator would
+have sent, and sends that too only if it asks to. For something the station
+reported, it runs after the fact and replaces nothing.
+
+**Not:** *hook*, *rule*, *callback*, *listener*, *trigger*.
+
+## event
+
+What a **handler** is keyed on: a desired value the translator is applying
+(the track's power, a point, a signal, a locomotive's speed or function), or
+something the station reported (a turnout thrown, a track's mode). The two are
+different kinds and are never confused: the first can be replaced, the second
+has already happened.
+
+**Not:** *message* (a message is one `<…>`), *topic*, *trigger*, *signal* (a
+signal is a lineside device).
+
 ## face
 
 An app's own interface, served on the UI's origin and behind the same door,
