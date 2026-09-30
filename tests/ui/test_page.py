@@ -107,8 +107,8 @@ def test_the_page_asks_when_the_stream_is_open() -> None:
     socket `CONNECTING`; `send` refused it and returned `null`, so nothing
     left, and nothing asked again until the interval fired five seconds later.
     Until an answer arrives the readings are made of silence, so every load of
-    the page said a healthy station was not answering and left the **build**
-    tile blank.
+    the page said a healthy station was not answering, with the **build** blank
+    on the band and no **tile**s on the monitor view.
 
     So the page asks on the stream saying it is open — the signal `Stream`
     hands up beside the lines (`tests/ui/test_stream.py`) — and the one `#ask`

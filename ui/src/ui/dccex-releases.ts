@@ -75,7 +75,7 @@ import { releasesStyles } from "./dccex-releases.styles.js";
 /** What the row is called. The word is the glossary's
  *  (CONTEXT.md, **release**): what is published elsewhere and can be written
  *  onto the station, which is not what the station is running now — that is
- *  the **build**, and it is a tile. */
+ *  the **build**, and it is on the band. */
 const HEADING = "releases";
 
 export class DccexReleases extends LitElement {
