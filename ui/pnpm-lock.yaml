@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mdi/js':
+        specifier: ^7.4.47
+        version: 7.4.47
       '@shoelace-style/shoelace':
         specifier: ^2.20.1
         version: 2.20.1(@floating-ui/utils@0.2.12)(@types/react@19.3.0)
@@ -219,6 +222,9 @@ packages:
 
   '@lit/reactive-element@2.1.2':
     resolution: {integrity: sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A==}
+
+  '@mdi/js@7.4.47':
+    resolution: {integrity: sha512-KPnNOtm5i2pMabqZxpUz7iQf+mfrYZyKCZ8QNz85czgEt7cuHcGorWfdzUMWYA0SD+a6Hn4FmJ+YhzzzjkTZrQ==}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -756,6 +762,8 @@ snapshots:
   '@lit/reactive-element@2.1.2':
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.6.0
+
+  '@mdi/js@7.4.47': {}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
