@@ -18,8 +18,9 @@ the flags are where the broker is, where the store is, where the mirror is,
 and the one value that is this deployment's rather than the railroad's:
 
 - `--station <host:port>`, where the `dccex-usb` mirror serves the command
-  station (rails49/dccex). Not the USB device: this app is one client of
-  that port beside JMRI and the hand-held throttles.
+  station, which on the box is the service beside this one
+  (`compose.box.yaml`). Not the USB device: this app is one client of that
+  port beside JMRI and the hand-held throttles.
 - `--store <url>`, where the store serves the documents, which is the one
   route this app reads: `GET /scripts/<railroad>` (rails49/control#586). A
   store that is not answering is a railroad this app carries out OFF, STOP
@@ -124,11 +125,11 @@ names a translator rather than a random string and two of them on one railroad
 are two clients. Nothing in the contract reads it: a topic has one writing
 role and no payload says who published (BUS.md, rule 4)."""
 
-STATION_EXAMPLE = "host.docker.internal:2560"
+STATION_EXAMPLE = "mirror:2560"
 """What a station address looks like, for the help and for a refusal. The
-`dccex-usb` mirror serves the command station on 2560 and is a stack of its
-own on the box (rails49/dccex), so what a box with a station plugged into it
-names is a host and not a service beside this one."""
+`dccex-usb` mirror serves the command station on 2560, and on the box it is
+the service of that name beside this one on the project's own network
+(`compose.box.yaml`)."""
 
 
 def to_stderr(line: str) -> None:

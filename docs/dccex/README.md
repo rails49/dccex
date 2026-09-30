@@ -24,11 +24,12 @@ and nowhere else.
 ## What it connects to
 
 TCP **2560**, which the `dccex-usb` mirror serves from the USB device
-([`rails49/dccex`](https://github.com/rails49/dccex), a project of its own on
-the same box). Not the USB device directly:
-`dccex-usb` owns it, and the port is what lets JMRI and hand-held throttles
-share the same command station. This app is one client of that port beside
-the others, and every client is a peer — nothing in the firmware ranks them.
+([docs/dccex_usb/README.md](../dccex_usb/README.md), the other app in this
+repository and the service beside this one on the box). Not the USB device
+directly: `dccex-usb` owns it, and the port is what lets JMRI and hand-held
+throttles share the same command station. This app is one client of that port
+beside the others, and every client is a peer — nothing in the firmware ranks
+them.
 
 *Subscribes* `tc49/layout/state/wanted/#`. *Publishes*
 `tc49/layout/state/device/track` and `tc49/layout/state/device/link/<id>`,
@@ -348,11 +349,11 @@ that actually happen
 **The banner raises the link and goes no further.** It is what `<s>` is
 answered with, so a station that sends one is a station answering — and that
 is the whole of what this app makes of it. Which build is on the box rode on
-this row until control#567 and does not any more: the flash gesture went with the
-mirror to `rails49/dccex`, and a microcontroller's firmware is not the
-railroad (the organisation's ADR-0002). A banner this app can read no field off
-raises the link just the same, a message this app reads nothing out of being
-the station answering as much as one it does.
+this row until control#567 and does not any more: the flash gesture went with
+the mirror, onto the face this repository serves, and a microcontroller's
+firmware is not the railroad (the organisation's ADR-0002). A banner this app
+can read no field off raises the link just the same, a message this app reads
+nothing out of being the station answering as much as one it does.
 
 **No `device/point`.** This railroad's turnouts have no feedback and the
 station's answer to a throw is one it faked
