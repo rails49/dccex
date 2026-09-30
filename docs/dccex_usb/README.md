@@ -22,6 +22,15 @@ the station's conversation to the page and back (#14). All three are the app's
 own business on the app's own interface, and none of them is a fact about a
 railroad.
 
+It carries one thing that *is* a fact about a railroad, and it carries it
+rather than keeping it: the railroad's **script**, which is the translator's
+own commands for this station and is a document in `control`'s store
+([ADR-0015](../adr/0015-the-script-is-a-railroads-document-in-the-store.md)
+d.5, #185). The page edits it here because a browser on the page's origin
+cannot reach the store, and the face compiles a text and puts it there
+server-side. The store's address is a flag; a mirror given none says so on
+those three routes and mirrors the cable as ever.
+
 The code arrived as a copy of `control`'s at `deee7b6`, its file names kept
 because that is where the code was written; [SOURCE.md](../../src/SOURCE.md)
 says what came from where, and what has been fixed here since `control`'s copy
@@ -34,7 +43,7 @@ was deleted
 python -m dccex_usb --device /dev/dccex --port 2560
 ```
 
-The device to open and the port to serve it on. Two more are optional:
+The device to open and the port to serve it on. Three more are optional:
 
 - `--firmware-releases <url>`, where releases are read from, this
   installation's fork by default. It is **configuration and never payload** —
@@ -42,6 +51,13 @@ The device to open and the port to serve it on. Two more are optional:
   would let anyone on the wifi run an arbitrary binary on the command station.
 - `--face-port <n>`, the port this app's own face is answered on, 8080 by
   default. A port of its own, because 2560 carries the station's conversation.
+- `--store <url>`, `control`'s store, where the railroad's **script** the page
+  edits is kept (ADR-0015 d.5). Configuration and never payload, for the same
+  reason the source of releases is. **Left out is a mirror with no store**:
+  the three script routes answer a status and a sentence, the rest of the face
+  answers as it always did, and a box holding a cable with nothing else running
+  needs none. On the box it is the store service on the `rails49` network, and
+  it is the same variable the translator is given (`compose.box.yaml`).
 
 There is no broker argument and no identity argument. Both went with the bus:
 there is nothing to dial and no row to key by a name.
@@ -223,7 +239,9 @@ The face's router is code, and it is in `compose.box.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
 the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
-What it answers, which is five things — four questions and a conversation:
+What it answers, which is eight things — seven questions and a conversation.
+Five are about the station and this app, and three are the railroad's script
+([below](#the-railroads-script)):
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -302,19 +320,91 @@ half way through (ADR-0010, ADR-0012 d.2). `{"flashing": null}` where no flash
 is running, which is the ordinary answer on a box where nobody is writing the
 station.
 
+### The railroad's script
+
+The **script** is a railroad's Python document in `control`'s store, one per
+railroad, holding the **handler**s the translator runs for this station
+(ADR-0015, [ADR-0013](../adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+It is edited on the page, and the page edits it through here:
+
+```
+$ curl http://dccex-usb:8080/railroads
+{"railroads": ["crossover-yard", "bench"]}
+
+$ curl http://dccex-usb:8080/scripts/crossover-yard
+{"script": "crossover-yard", "text": "@on(\"power\")\ndef power(t):\n    t.default()\n"}
+
+$ curl -X PUT http://dccex-usb:8080/scripts/crossover-yard \
+    -d '{"text": "@on(\"power\")\ndef power(t):\n    t.default()\n"}'
+{"applied": "crossover-yard"}
+
+$ curl -X PUT http://dccex-usb:8080/scripts/crossover-yard \
+    -d '{"text": "def power(t)\n    pass\n"}'
+{"reason": "the script does not compile: line 1: expected ':'"}
+```
+
+**Why here at all.** A UI talks to the bus, the store and its own app's face
+(the organisation's
+[ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)),
+and the store is on the box's own network where a browser is not: the page is
+served over the door's certificate and cannot fetch a service the door does
+not route. So the face reads and writes the document, and the page's half is
+three addresses on its own origin (`ui/src/face.ts`).
+
+**The railroads are the store's drawings.** A railroad's drawing is what the
+store keeps under its name, so the list of drawings is the list of railroads,
+and the names go back in the order the store gave them (rails49/control#586).
+None of them is marked as the one that is running: which railroad that is is
+the bus's to say and is a row in `control`'s UI, and this app is not on the bus
+(ADR-0001).
+
+**A railroad with no script is a `404` and not an outage.** It is the ordinary
+state of a railroad nobody has written one for, and it is what the page opens
+the sample under (`dccex/sample.py`, ADR-0015 d.5). A store that could not be
+asked is the `502` below, which is a different sentence about a different
+thing.
+
+**An applied script is compiled here and never run.** Compiling says the text
+is Python; what its handlers do is the translator's to find out, in the process
+that has a station to send to. A text that does not compile goes back with the
+line and the message and **the store is not asked** — a stored text that does
+not compile is a railroad stood down at the translator's next fetch for a
+document nobody was told was broken (ADR-0015 d.3, d.4). A document that
+compiles and would raise the moment it ran is applied, because that is a
+statement about running it.
+
+**Nothing here guards the railroad**, as nothing here guards a flash. Applying
+a script stands the railroad down at the next fetch: the translator exits on a
+text that differs from the one it is running, which cuts track power, and the
+script takes effect from the next ON (ADR-0015 d.3). The page is what says so
+before the press, and the operator is the guard
+([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md) d.2).
+
+The body names the text and nothing else. The railroad is a level of the route
+and the store is this app's configuration, so a body that named either would be
+a page choosing which railroad it is editing or whose store it is writing to —
+the rule the source of releases is held to, for the same reason (control
+ADR-0042). One level and no deeper: a railroad called `a/b` is a name the store
+does not have rather than a route of its own.
+
 **What it will not answer is a status and a sentence**, in a `reason` field,
 so whoever asked can say what happened rather than sending somebody to read a
 log on the box (control ADR-0050):
 
-- `404` — a path this face does not answer, or a tag the source answered
-  about and carries no release for. The tag is the thing to fix, which is why
-  a source that was never asked is a `502` below and not this. A face is
+- `404` — a path this face does not answer, a tag the source answered
+  about and carries no release for, or a railroad the store holds no script
+  for. The tag is the thing to fix, which is why a source that was never asked
+  is a `502` below and not this; the railroad with no script is not a thing to
+  fix at all, and it is what the page opens the sample under. A face is
   private to its app and is not somewhere else to get at the railroad.
-- `405` — the releases, the count of clients and how far a flash has got are
-  read, with `GET`; a flash is asked for, with `POST`. `/flash` is the one path
-  with two of them on it, and the split is the point: a page that reloaded the
-  read would not write the station again. There is nothing at `/clients` to
-  change, because who is on 2560 is decided by who dialled it.
+- `405` — the releases, the count of clients, how far a flash has got and a
+  railroad's script are read, with `GET`; a flash is asked for, with `POST`,
+  and a script is applied, with `PUT`. `/flash` and `/scripts/<railroad>` are
+  the paths with two of them on each, and the split is the point: a page that
+  reloaded a read would not write the station again, nor store a text again.
+  There is nothing at `/clients` or `/railroads` to change, because who is on
+  2560 is decided by who dialled it and which railroads there are is decided in
+  `control`'s editor.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
@@ -323,10 +413,17 @@ log on the box (control ADR-0050):
   same outage and the same question. The release API is somebody else's
   service and the mirror keeps mirroring what it is doing rather than falling
   over with it. A source that has published nothing yet is not this: that is
-  an answer, and the tags are empty.
+  an answer, and the tags are empty. **The store gets the same answer for the
+  same reason**: it is somebody else's service on the box's network, and a
+  store that is away, or that answers with no list of railroads and no script
+  text, is a sentence with its own words in it rather than this app falling
+  over (ADR-0015 d.5).
 - `400`, `413`, `431` — a request this face cannot read: not HTTP, a head or a
   body larger than a page asking a question has any use for, a body that names
-  no tag, or `latest`, which is not a name for a build.
+  no tag, or `latest`, which is not a name for a build. **And a script that
+  does not compile**, with the line and the message Python gave, which is the
+  one refusal here that is about the content of a body rather than its shape:
+  the store is not asked for it, and the page shows the sentence.
 - `409` — a flash is already in flight. Refused and not queued, for the reason
   a client's bytes are dropped while the device is away: a queued flash is a
   station that reboots minutes after somebody asked.
@@ -343,6 +440,10 @@ log on the box (control ADR-0050):
 - `503` — also the mirror's port not being there when a page opens a stream.
   Nothing is wrong with the request; the port is this app's own, so one that
   cannot be joined is an app on its way down.
+- `503` — and a mirror started with no `--store`, on the three script routes.
+  It is a state of the installation rather than of the request, and it is what
+  a box mirroring a cable with nothing else running answers: the sentence names
+  the flag.
 
 Whoever asked is told, and the box's log is told only what is not the
 caller's doing: a source that could not be read is a line on stderr as well,
@@ -363,6 +464,11 @@ here exactly as it is for the flash, and the suite substitutes its own, so
 every question about what the face says is asked of its routing directly —
 a function of a method, a path and a body, answering with a status and a body,
 with no socket anywhere near it.
+
+Nothing in the gate reaches a store either. The script routes are asked against
+a fake of `control`'s routes on loopback — the same fake the translator's own
+reader is asserted against, because the routes are `control`'s and documented
+there rather than copied here (`tests/stores.py`, ADR-0014, consequences).
 
 ### The monitor's stream
 

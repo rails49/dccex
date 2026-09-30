@@ -31,15 +31,19 @@ top of them.
   lists the firmware releases, flashes one, and shows the serial conversation
   with a box to type into. **The page is here and the work pane is full**
   (#3, #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
-  **view** in — the **tile**s and the **monitor** under them, or the releases
-  (#169) — built by node inside its own image and served by nginx out of it,
+  **view** in — the **tile**s and the **monitor** under them, the releases, or
+  the railroad's **script** (#169, #185) — built by node inside its own image
+  and served by nginx out of it,
   drawing in the look rules from its first commit. The
   whole of what is on it is written down ([the page](docs/ui/README.md)). The
   mirror's face is what it talks to, on that same label under `/dccex-usb` and
   behind the same certificate
   ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
   that face carries the releases the configured source lists, writes one onto
-  the station when the page names its tag, and carries the station's
+  the station when the page names its tag, reads and applies the railroad's
+  script in `control`'s store, which a browser on that origin cannot reach
+  ([ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)
+  d.5), and carries the station's
   conversation both ways on a **stream** the page opens on its own origin —
   one more client of the mirror's port and not a second mirror
   ([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)). Whether the railroad can spare
