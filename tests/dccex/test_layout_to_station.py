@@ -8,8 +8,10 @@ the translator goes red here rather than on the railroad.
 
 The layout interface is built in-process on its own client of the broker and
 drained on a thread, which is what `python -m tc49.layout` does once it has a
-railroad. Its command line waits for a store first, and the store is not
-what is under test.
+railroad. It names the railroad on the bus as it comes up, which is what the
+translator reads to know whose script to ask for; the store here holds none,
+so the translator runs the defaults and what is under test is the seam and
+not the script (`test_translator.py` has the scripts).
 """
 
 import threading
@@ -24,6 +26,7 @@ from tc49.lib.roster import Roster
 
 from tests.brokers import Broker
 from tests.dccex.test_main import App, Station
+from tests.stores import Store
 
 pytestmark = pytest.mark.broker
 
@@ -85,8 +88,9 @@ def station() -> Iterator[Station]:
 
 
 @pytest.fixture
-def app(broker: Broker, station: Station) -> Iterator[App]:
-    running = App(broker, station)
+def app(broker: Broker, station: Station, store: Store) -> Iterator[App]:
+    store.opens()
+    running = App(broker, station, store)
     try:
         yield running
     finally:

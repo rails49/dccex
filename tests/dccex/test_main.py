@@ -8,9 +8,11 @@ drives: an address is what `--station` gives and opening it is what this
 command line has to get right. Nothing needs hardware, which is the rule the
 whole gate sits under.
 
-There is no store here and no fixture for one, and no railroad's name either:
-hardware needs no layout, so this app reads no documents and the order the
-scheduler's and dispatcher's suites exercise does not exist for it.
+The store is a fake of `control`'s routes on loopback (`tests/stores.py`) and
+the railroad is named on the broker by a client standing in for `layout`,
+because between them they decide which script this process runs — and a
+script's text changing under it is one of the two ways this process ends
+(ADR-0015 d.3).
 
 The loop runs on a thread here and is ended with the event `serve` takes; in
 the deployment it is the main thread, asyncio owns it, and a signal ends it.
@@ -29,11 +31,14 @@ from tc49.lib.bus import Payload
 from tc49.lib.mqtt import MqttBus
 
 from dccex.__main__ import serve
+from dccex.store import Scripts
 from tests.brokers import Broker, drained, settle
 from tests.ports import free_port
+from tests.stores import Store
 
 pytestmark = pytest.mark.broker
 
+RAILROAD = "tc49/layout/state/railroad"
 WANTED_TRACK = "tc49/layout/state/wanted/track"
 WANTED_TRACTION = "tc49/layout/state/wanted/traction/10"
 DEVICE_TRACK = "tc49/layout/state/device/track"
@@ -41,6 +46,7 @@ DEVICE_LINK = "tc49/layout/state/device/link"
 
 TRACK_ON = b"<1>"
 TRACK_OFF = b"<0>"
+POLL = b"<s>"
 HALF_SPEED_10 = b"<t 10 63 1>"
 HALTED_10 = b"<t 10 0 1>"
 
@@ -52,11 +58,32 @@ second and doubles to eight: a station that appears three lines after the app
 went looking for it is what these tests wait on, and waiting out a deployed
 backoff to see it would be waiting on nothing else."""
 
-RETAINED_S = 0.1
-"""How long the app waits for the broker's retained desired rows before it
-opens the link, where the deployment gives them a second. Everything here is
-on loopback and already queued by the time the subscription is acknowledged,
-so the window is what a test spends and not what it proves."""
+RETAINED_S = 0.5
+"""How long the app waits for the broker's retained rows — the railroad, and
+the desired picture — before it opens the link, where the deployment gives
+each of them a second.
+
+Room enough for the **railroad** row, which is the one with a consequence: an
+app that opened its link before that row landed would have asked the store
+for no railroad's script, and the power ON it then refuses is not replayed
+when the script arrives a moment later (ADR-0013 d.6). The desired picture
+wants none of this room here — everything is on loopback and already queued
+by the time the subscription is acknowledged — and what the window costs a
+test is what it spends rather than what it proves."""
+
+SCRIPT_S = 0.05
+"""How often the suite's app asks the store for its script, where the
+deployment asks every few seconds: what a test waits on is a script applied
+one line ago."""
+
+SCRIPT = """\
+@on("power")
+def power(t):
+    t.default()
+    t.send("<= A LIMIT 3000>")
+"""
+
+LIMIT_A = b"<= A LIMIT 3000>"
 
 
 class Station:
@@ -139,14 +166,22 @@ class App:
     broker first and have the app go looking for one that is not there.
     """
 
-    def __init__(self, broker: Broker, station: Station, id: str = "dccex") -> None:
+    def __init__(
+        self,
+        broker: Broker,
+        station: Station,
+        store: Store | None = None,
+        id: str = "dccex",
+    ) -> None:
         self.id = id
         self._broker = broker
         self._station = station
+        self._store = store
         self._bus: MqttBus | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.up = threading.Event()
+        self.said_railroad = ""
 
     def start(self) -> None:
         self._bus = MqttBus(port=self._broker.port)
@@ -154,9 +189,11 @@ class App:
             target=serve,
             args=(self._bus, ("127.0.0.1", self._station.port), self._stop),
             kwargs={
+                "scripts": None if self._store is None else Scripts(self._store.url),
                 "id": self.id,
                 "period_s": 0.01,
                 "retained_s": RETAINED_S,
+                "script_s": SCRIPT_S,
                 "first_backoff_s": BACKOFF_S,
                 "max_backoff_s": BACKOFF_S,
                 "log": self._log,
@@ -177,16 +214,19 @@ class App:
             self._bus.close()
 
     def _log(self, line: str) -> None:
-        """The app's log, dropped except for the one line that says it is on
-        the broker and looping. What it says is for a person watching a
+        """The app's log, dropped except for the two lines a test reads: the
+        railroad it came up on, whose script it asked for, and that it is on
+        the broker and looping. What the log says is for a person watching a
         container; the suite asserts on the bus and on the wire."""
+        if line.startswith("railroad "):
+            self.said_railroad = line.removeprefix("railroad ").strip("'")
         if line.startswith("up as"):
             self.up.set()
 
 
 @pytest.fixture
-def app(broker: Broker, station: Station) -> Iterator[App]:
-    running = App(broker, station)
+def app(broker: Broker, station: Station, store: Store) -> Iterator[App]:
+    running = App(broker, station, store)
     try:
         yield running
     finally:
@@ -209,9 +249,9 @@ def rows(heard: list[tuple[str, Payload]], topic: str) -> list[Payload]:
 
 
 def wanting(broker: Broker) -> MqttBus:
-    """A client publishing the desired rows `layout` owns. Another process
-    here, which is what the broker makes of the seam #289 states in one:
-    nothing says who published, and nothing here asks (rule 4)."""
+    """A client publishing the rows `layout` owns. Another process here,
+    which is what the broker makes of the seam #289 states in one: nothing
+    says who published, and nothing here asks (rule 4)."""
     bus = MqttBus(port=broker.port)
     assert bus.wait_connected(), "the writer never reached the broker"
     return bus
@@ -262,27 +302,31 @@ def test_its_link_row_is_keyed_by_the_id_it_was_started_with(
 
 
 def test_it_applies_the_desired_state_it_finds_on_the_broker(
-    broker: Broker, station: Station, app: App
+    broker: Broker, station: Station, store: Store, app: App
 ) -> None:
     """The loop is what makes the app an app, and this is the whole path:
-    `layout`'s retained desired rows are on the broker before this process
-    exists, the client's network thread queues them, the drain hands them to
-    the asyncio loop, and the loop writes them to the station.
+    `layout`'s retained rows are on the broker before this process exists,
+    the client's network thread queues them, the drain hands them to the
+    asyncio loop, and the loop writes them to the station.
 
-    The track goes first whatever order they were published in, so nothing is
-    commanded onto dead rails.
+    The power is not among them. The rails stay as the station reports them
+    and come back when a person presses ON, which is the press below
+    (ADR-0013 d.6).
     """
+    store.opens()
     hand = wanting(broker)
+    hand.publish(RAILROAD, {"name": "bench"})
     hand.publish(WANTED_TRACTION, {"addr": "10", "speed": 0.5})
     hand.publish(WANTED_TRACK, {"power": "on"})
     station.opens()
     app.start()
 
     assert station.waits_for(HALF_SPEED_10), "the locomotive was never commanded"
-    heard = station.heard()
-    assert heard.index(TRACK_ON) < heard.index(
-        HALF_SPEED_10
-    ), "commanded onto dead rails"
+    assert TRACK_ON not in station.heard(), "the power was replayed"
+
+    hand.publish(WANTED_TRACK, {"power": "on"})
+
+    assert station.waits_for(TRACK_ON), "the press never reached the station"
     assert app.running, "the app stopped on its own"
     hand.close()
 
@@ -296,13 +340,14 @@ def test_it_comes_up_against_a_station_that_is_not_there_yet(
 
     A desired value that arrives while the link is down is remembered and
     applied on the connect, which is the same thing that happens to the
-    retained one at startup.
+    retained one at startup. The power is the exception and is not replayed
+    at all (ADR-0013 d.6).
     """
     witness, heard = watching(broker)
     app.start()
     assert app.up.wait(10), "it never came up"
     hand = wanting(broker)
-    hand.publish(WANTED_TRACK, {"power": "on"})
+    hand.publish(WANTED_TRACTION, {"addr": "10", "speed": 0.5})
     assert drained(
         witness, lambda: rows(heard, f"{DEVICE_LINK}/{app.id}") != []
     ), "it never said anything about the link it could not make"
@@ -310,7 +355,7 @@ def test_it_comes_up_against_a_station_that_is_not_there_yet(
 
     station.opens()
 
-    assert station.waits_for(TRACK_ON), "the link was never made"
+    assert station.waits_for(HALF_SPEED_10), "the link was never made"
     assert drained(
         witness, lambda: rows(heard, f"{DEVICE_LINK}/{app.id}")[-1]["link"] == "up"
     ), "the link came up and the row did not say so"
@@ -344,7 +389,7 @@ def test_it_comes_up_against_a_broker_that_is_not_there_yet(
 
 
 def test_it_stands_the_railroad_down_on_its_way_out(
-    broker: Broker, station: Station, app: App
+    broker: Broker, station: Station, store: Store, app: App
 ) -> None:
     """The process ending is not by itself an instruction to the railroad: the
     station goes on running whatever it was last told, so every locomotive this
@@ -354,8 +399,9 @@ def test_it_stands_the_railroad_down_on_its_way_out(
     resumes it, so cutting the supply over a held speed only postpones the
     motion.
     """
+    store.opens()
     hand = wanting(broker)
-    hand.publish(WANTED_TRACK, {"power": "on"})
+    hand.publish(RAILROAD, {"name": "bench"})
     hand.publish(WANTED_TRACTION, {"addr": "10", "speed": 0.5})
     station.opens()
     app.start()
@@ -388,7 +434,7 @@ def test_a_desired_value_it_cannot_read_leaves_it_running(
     witness, _ = watching(broker)
     station.opens()
     app.start()
-    assert station.waits_for(b"<s>"), "the link was never made"
+    assert station.waits_for(POLL), "the link was never made"
 
     hand = wanting(broker)
     for payload in (
@@ -404,5 +450,92 @@ def test_a_desired_value_it_cannot_read_leaves_it_running(
 
     assert station.waits_for(HALF_SPEED_10), "the honest value was dropped too"
     assert app.running, "a frame from another process took the translator down"
+    hand.close()
+    witness.close()
+
+
+def test_it_runs_the_script_the_store_has_for_the_running_railroad(
+    broker: Broker, station: Station, store: Store, app: App
+) -> None:
+    """The whole path of a script: the railroad named on the broker before
+    this process exists, the text fetched off the store's face, and the
+    handler standing in for the command a desired value makes (ADR-0015
+    d.2)."""
+    store.holds("bench", SCRIPT)
+    store.opens()
+    hand = wanting(broker)
+    hand.publish(RAILROAD, {"name": "bench"})
+    station.opens()
+    app.start()
+    assert app.up.wait(TIMEOUT_S), "it never came up"
+    assert app.said_railroad == "bench", "it came up on no railroad"
+    assert station.waits_for(POLL), "the link was never made"
+
+    hand.publish(WANTED_TRACK, {"power": "on"})
+
+    assert station.waits_for(LIMIT_A), "the handler never ran"
+    heard = station.heard()
+    assert heard.index(TRACK_ON) < heard.index(LIMIT_A), "the default came second"
+    assert app.running, "the app stopped on its own"
+    hand.close()
+
+
+def test_a_new_script_text_stands_the_railroad_down_and_ends_the_process(
+    broker: Broker, station: Station, store: Store, app: App
+) -> None:
+    """A script applied on the page while the railroad runs: this process
+    exits, and the exit stands the railroad down as every exit does, so the
+    new script takes effect from power off at the next ON (ADR-0015 d.3).
+    Bringing it up again is compose's."""
+    store.holds("bench", SCRIPT)
+    store.opens()
+    hand = wanting(broker)
+    hand.publish(RAILROAD, {"name": "bench"})
+    station.opens()
+    app.start()
+    assert app.up.wait(TIMEOUT_S), "it never came up"
+    assert app.said_railroad == "bench", "it came up on no railroad"
+    assert station.waits_for(POLL), "the link was never made"
+    hand.publish(WANTED_TRACK, {"power": "on"})
+    assert station.waits_for(LIMIT_A), "the handler never ran"
+
+    store.holds("bench", SCRIPT.replace("3000", "2500"))
+
+    assert station.waits_for(TRACK_OFF), "the railroad was left live"
+    deadline = time.monotonic() + TIMEOUT_S
+    while app.running and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not app.running, "the process went on running the old script"
+    hand.close()
+
+
+def test_a_railroad_that_gives_the_same_text_leaves_it_running(
+    broker: Broker, station: Station, store: Store, app: App
+) -> None:
+    """The comparison is the text and never the name, so a railroad loaded
+    under this app that has the same script leaves the process running and
+    its rows as they were (ADR-0015 d.3)."""
+    store.holds("bench", SCRIPT)
+    store.holds("yard", SCRIPT)
+    store.opens()
+    witness, heard = watching(broker)
+    hand = wanting(broker)
+    hand.publish(RAILROAD, {"name": "bench"})
+    station.opens()
+    app.start()
+    assert app.up.wait(TIMEOUT_S), "it never came up"
+    assert drained(
+        witness,
+        lambda: rows(heard, f"{DEVICE_LINK}/{app.id}")[-1:] != []
+        and rows(heard, f"{DEVICE_LINK}/{app.id}")[-1]["link"] == "up",
+    ), "the link never came up"
+    said = len(rows(heard, f"{DEVICE_LINK}/{app.id}"))
+
+    hand.publish(RAILROAD, {"name": "yard"})
+    settle(witness, seconds=4 * SCRIPT_S)
+
+    assert app.running, "the process ended on a script that had not changed"
+    assert TRACK_OFF not in station.heard(), "the railroad was stood down"
+    assert len(rows(heard, f"{DEVICE_LINK}/{app.id}")) == said, "the row moved"
     hand.close()
     witness.close()

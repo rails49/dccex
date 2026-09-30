@@ -1,4 +1,4 @@
-"""What the station says, framed and read: the two facts, and everything
+"""What the station says, framed and read: the three facts, and everything
 else.
 
 The port carries the whole conversation — this app's replies, and every
@@ -70,10 +70,25 @@ def test_the_banner_reads_as_nothing() -> None:
     assert replies.reply(b"<i>") is None
 
 
+def test_a_turnout_the_station_reports_reads_as_one() -> None:
+    """The station keeps turnouts of its own and this app commands none of
+    them, so the position is one it faked and reaches no bus row. It is read
+    because a script may be keyed on it (ADR-0013 d.3)."""
+    assert replies.reply(b"<H 12 1>") == replies.Turnout(point="12", thrown=True)
+    assert replies.reply(b"<H 12 0>") == replies.Turnout(point="12", thrown=False)
+
+
+def test_a_turnout_line_of_another_shape_reads_as_nothing() -> None:
+    """The station's longer `<H>` forms carry a description or a word where
+    the digit goes, and this app reads neither: a line it does not recognise
+    is the ordinary case here."""
+    for other in (b"<H 12>", b"<H 12 T>", b"<H 12 1 Yard ladder>", b"<H>"):
+        assert replies.reply(other) is None
+
+
 def test_everything_else_on_the_port_reads_as_nothing() -> None:
     for other in (
         b"<l 3 0 128 0>",
-        b"<H 1 1>",
         b"<Q 7>",
         b"<jI 250 0>",
         b"<>",

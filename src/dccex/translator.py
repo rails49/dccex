@@ -29,23 +29,35 @@ station has no packet for — a turnout numbered outside the accessory range,
 say — falls away where the packet is built. An address nothing answers to does
 no harm, as a packet nobody picks up does.
 
-**On connect it applies the retained desired state and does nothing else.**
-The desired values are the whole picture, so there is no handshake and no
-session state to agree: whatever `layout` last wanted is waiting on those
-topics, and applying it is the whole of coming up. The track row goes first,
-so nothing is commanded onto dead rails and a release's zeros land before the
-speeds rather than over them.
+**On connect it applies the retained desired state, power excepted.** The
+desired values are the whole picture, so there is no handshake and no session
+state to agree: whatever `layout` last wanted is waiting on those topics, and
+applying it is the whole of coming up. The power is left out of it — after a
+station or a translator restart the rails stay as the station reports them and
+come back when a person presses ON (ADR-0013 d.6) — and every other value
+replays through its handler.
 
-**Powering on sends the startup file, if there is one.** `startup` names a
-file of raw station commands, one per line, sent in order straight after the
-track-on command; it is where a person writes the trip current each of this
-railroad's power districts really takes, in the station's own language, and
-the only place those values appear. A power district is a hardware fact that
-reaches no bus topic (#217), and the file is not parsed beyond blank and
-comment, so this app has no vocabulary for what is in it. Failing to read it
-is logged and powers on anyway: a railroad coming up at the firmware's low
-default trips early, which is safe and visible, where refusing to power on
-over a missing file is neither (control ADR-0050).
+**It runs one railroad's script.** `--store` is where `control`'s store
+serves the documents; the railroad is the one named on
+`tc49/layout/state/railroad`, and that railroad's script is fetched from the
+store and loaded at start (ADR-0015 d.2). A **handler** in it keyed on a
+desired value runs in place of the command this app would have sent, and one
+keyed on something the station reported runs after the fact. That is where
+this railroad's `<…>` that the bus has no word for is written: the mode each
+track is set to, the current each may draw, a track reversed when a turnout
+throws (ADR-0013).
+
+**A script that does not load leaves the railroad dark.** No script at all is
+a railroad with the defaults, which is what this app sent before there were
+scripts. A script that raises on load, or a store that has not answered yet,
+is no handlers: OFF, STOP and speeds are carried out, power ON is refused, the
+link row says why, and it keeps asking (ADR-0015 d.4). Once a script is
+loaded a fetch that fails changes nothing.
+
+**A new script text exits the process.** The script for the current railroad
+is fetched again every few seconds and compared with the one running; a text
+that differs stands the railroad down and ends the process, which compose
+restarts (ADR-0015 d.3). Nothing is reloaded in place.
 
 Two rules are not a row of the mapping table:
 
@@ -104,11 +116,11 @@ import contextlib
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import NamedTuple
 
 from tc49.lib.bus import Bus, Payload
 from tc49.lib.inventory import OFF, ON, STOPPED, device_topic, split_device
+from tc49.lib.loading import RAILROAD
 from tc49.lib.payload import (
     commanded_power,
     desired_aspect,
@@ -117,7 +129,8 @@ from tc49.lib.payload import (
     desired_speed,
 )
 
-from dccex import commands, replies
+from dccex import commands, replies, script
+from dccex.store import Scripts, Unanswered
 
 _log = logging.getLogger(__name__)
 
@@ -138,6 +151,28 @@ WANTED_FUNCTION = "tc49/layout/state/wanted/function"
 WANTED_POINT = "tc49/layout/state/wanted/point"
 WANTED_SIGNAL = "tc49/layout/state/wanted/signal"
 WANTED_TRACK = "tc49/layout/state/wanted/track"
+
+SCRIPT_ROW = {
+    WANTED_TRACK: script.ROW_POWER,
+    WANTED_POINT: script.ROW_POINT,
+    WANTED_SIGNAL: script.ROW_SIGNAL,
+    WANTED_TRACTION: script.ROW_TRACTION,
+    WANTED_FUNCTION: script.ROW_FUNCTION,
+}
+"""What a script calls each row this app acts on. The bus carries the
+railroad's power on `wanted/track` and a script is written about `power`: the
+topic is the contract's word and the other is the one a person writes in a
+document (BUS.md, *Device vocabulary*, CONTEXT.md **script**)."""
+
+WANTED_BY_ROW = {row: topic for topic, row in SCRIPT_ROW.items()}
+
+REPORTED_EVENT = {
+    script.ROW_POWER: script.REPORTED_POWER,
+    script.ROW_POINT: script.REPORTED_POINT,
+}
+"""The two things the station reports that a handler can be keyed on, and the
+event each is. Power and turnouts; others are added when a script needs one
+(ADR-0013 d.3)."""
 
 DEVICE_TRACK = "tc49/layout/state/device/track"
 DEVICE_LINK = "tc49/layout/state/device/link"
@@ -164,6 +199,13 @@ path that already exists — what is left for this to catch is a station that
 is powered, enumerated and mute, and ten seconds is well outside anything a
 healthy station does with a status query under load (control ADR-0066)."""
 
+SCRIPT_S = 5.0
+"""How often the store is asked for the current railroad's script. It bounds
+how long a script applied on the page waits before the railroad stands down
+for it, and how long a store that was not up at start leaves the railroad
+without handlers. A few seconds is one small request on a face that is
+answering layouts and rosters besides (ADR-0015 d.3)."""
+
 FIRST_BACKOFF_S = 0.5
 MAX_BACKOFF_S = 8.0
 
@@ -180,6 +222,18 @@ suite that had to wait out ten real poll intervals would be asserting the
 machine's scheduler as much as this app."""
 
 
+class Asked(NamedTuple):
+    """What one ask of the store came back with: the script's text, `None`
+    where the railroad has none, or why the store did not answer.
+
+    A value rather than an exception, because the ask is made on a thread of
+    its own and what is done about it is done on the loop thread
+    (`DccEx.following`)."""
+
+    text: str | None
+    away: str | None
+
+
 class Wanted(NamedTuple):
     """One desired value as this app holds it: the row and the address, which
     are the topic's, and the payload that arrived on it. Kept rather than the
@@ -191,6 +245,109 @@ class Wanted(NamedTuple):
     payload: Payload
 
 
+class Event:
+    """What a handler is handed: the event that fired, and the four things a
+    handler may do about it.
+
+    A handler sends raw `<…>`, reads the desired picture and the last
+    reports, and **publishes nothing** on the bus — there is no method here
+    for it, which is the whole of that rule (ADR-0013 d.4). What it is given
+    is the two pictures as this app holds them, so a handler sets everything
+    it depends on from the desired values each time it runs rather than from
+    what an earlier handler sent (d.5).
+
+    Built per firing and not held: `default()` sends once whichever handler
+    of the event asks for it, and `sent_default` is what the translator reads
+    to decide whether a handler that raised has left its command unsent
+    (d.8).
+    """
+
+    def __init__(
+        self,
+        row: str,
+        address: str | None,
+        *,
+        sends: Callable[[bytes], None],
+        default: bytes | None,
+        wanted: dict[str, "Wanted"],
+        reported: dict[tuple[str, str], str],
+    ) -> None:
+        self.row = row
+        """The row this event is on, in the script's words."""
+        self.address = address
+        """The address on it, and None where the row has none."""
+        self.sent_default = False
+        """Whether this app's own command for the value has gone out."""
+        self._sends = sends
+        self._default = default
+        self._wanted = wanted
+        self._reported = reported
+
+    def default(self) -> None:
+        """Send this app's own command for the value that fired.
+
+        A handler runs **in place of** that command, so this is how a script
+        keeps it and adds to it — the power-on that then sets its districts'
+        limits (ADR-0013 d.2). Once per firing whoever asks: two handlers on
+        one value both calling it is one command, not two. It sends nothing
+        for something the station reported: a report has already happened
+        and replaces nothing (d.3).
+        """
+        if self.sent_default or self._default is None:
+            return
+        self.sent_default = True
+        self._sends(self._default)
+
+    def send(self, text: str) -> None:
+        """One raw message to the station, as typed.
+
+        This is the point of a script: what a railroad needs of its station
+        that the bus has no word for is written in the station's own
+        language, and this app grows no vocabulary for it (ADR-0013).
+        """
+        self._sends(text.strip().encode())
+
+    def desired(self, row: str, address: str | None = None) -> object | None:
+        """What the bus last wanted of one device, or None where it has not
+        said. The rows are the script's: `power`, `point`, `signal`,
+        `traction`, `function`.
+
+        The value and not the frame: a position, an aspect, a speed, a
+        function's bit, or the word the power is wanted in. A row this app
+        does not act on raises, so a typo in a script is a handler that says
+        so in the log rather than one that reads None for ever.
+        """
+        if row not in script.DESIRED_ROWS:
+            raise ValueError(
+                f"'{row}' is no desired value: the rows are"
+                f" {', '.join(script.DESIRED_ROWS)}"
+            )
+        held = self._wanted.get(_topic(row, address))
+        return None if held is None else _value(held)
+
+    def reported(self, row: str, address: str | None = None) -> str | None:
+        """What the station last said about one thing, or None where it has
+        said nothing this session. `power`, by the track it named, and
+        `point`, by the id it named.
+
+        The station's own words — `on` and `off` for a track, `closed` and
+        `thrown` for a turnout — and the picture goes with the link: a
+        reading nobody can take is not the last one taken.
+
+        The track a `<p…>` line names, which is the empty address where it
+        names none; that line is sent only when every track is on or none is.
+        A turnout's id is the station's own, which is the one a throw from
+        JMRI or a throttle is reported under and not the accessory number a
+        `point` is commanded by.
+        """
+        if row not in REPORTED_EVENT:
+            raise ValueError(
+                f"'{row}' is nothing the station reports: the rows are"
+                f" {', '.join(REPORTED_EVENT)}"
+            )
+        return self._reported.get((row, address or ""))
+
+
 class DccEx:
     """The translator, on the bus and on one connection to `dccex-usb`.
 
@@ -200,6 +357,12 @@ class DccEx:
     outage. The bus half needs none of it — a desired value that arrives
     while the link is down is remembered and applied on the next connect,
     which is the same thing that happens to the retained value at startup.
+
+    `following()` is the script: the store asked again on a cadence of its
+    own, and a coroutine that comes back where the text has changed and the
+    process is to end (ADR-0015 d.3). `asks()` is one of those asks, made by
+    whoever assembles this app before the link is opened, and `load()` takes
+    a script's text directly.
     """
 
     def __init__(
@@ -211,8 +374,9 @@ class DccEx:
         id: str = ID,
         connect: Connect | None = None,
         now: Now = time.monotonic,
-        startup: Path | None = None,
+        scripts: Scripts | None = None,
         poll_s: float = POLL_S,
+        script_s: float = SCRIPT_S,
         first_backoff_s: float = FIRST_BACKOFF_S,
         max_backoff_s: float = MAX_BACKOFF_S,
     ) -> None:
@@ -223,7 +387,8 @@ class DccEx:
             lambda: asyncio.open_connection(host, port)
         )
         self._now = now
-        self._startup = startup
+        self._scripts = scripts
+        self._script_s = script_s
         self._poll_s = poll_s
         self._first_backoff_s = first_backoff_s
         self._max_backoff_s = max_backoff_s
@@ -249,20 +414,37 @@ class DccEx:
         self._tracks: dict[str, bool] = {}
         self._every: bool | None = None
         self._paused = False
-        # Whether this app has switched this station's track on, which is
-        # what makes the startup file a transition rather than a level.
-        self._powered_on = False
+        # The last report the station made of each thing a handler can be
+        # keyed on, by row and address. What a report event fires on a change
+        # of, and what `Event.reported` reads. Forgotten with the link, like
+        # everything else the station told us.
+        self._reported: dict[tuple[str, str], str] = {}
+        # The railroad this broker runs, as the row names it, and the script
+        # it is running. `None` where no script is loaded, which is a
+        # railroad this app carries out OFF, STOP and speeds for and refuses
+        # power ON (ADR-0015 d.4); `_text` is what the running script was
+        # loaded from and `_refused` the text that would not load.
+        self._railroad = ""
+        self._script: script.Script | None = None
+        self._text: str | None = None
+        self._refused: str | None = None
+        self._trouble: str | None = None
+        self._changed = False
         # What was last said on each of the two rows this app writes. The
         # supply carries why it is off where this app cannot reach the
         # station, so what is held is the pair rather than the word.
         self._track: tuple[str, str | None] | None = None
         self._link: tuple[bool, str] | None = None
+        # The station's own half of the link row, before the script's trouble
+        # is said beside it.
+        self._reached = (False, f"not connected to {self._where}")
         # The railroad is dark and the station unreached, which is what is
         # true before anything is connected, and a client joining now is
         # served that rather than an absence (control ADR-0032).
-        self._publish_link(False, f"not connected to {self._where}")
+        self._said_link()
         self._publish_track()
         bus.subscribe(WANTED, self._on_wanted)
+        bus.subscribe(RAILROAD, self._on_railroad)
 
     # -- the bus: what the hardware should do --------------------------------
 
@@ -317,87 +499,247 @@ class DccEx:
         return False
 
     def _act(self, wanted: Wanted) -> None:
-        """Send what one desired value asks of the station."""
-        if wanted.row == WANTED_TRACK:
-            self._act_track(wanted.payload)
-            return
-        message = _built(wanted)
-        if message is None:
+        """What one desired value asks of the station: the script's handlers
+        for it, or this app's own command where the script has none.
+
+        A handler runs **in place of** the command (ADR-0013 d.2) and every
+        handler keyed on the event runs, in the order the script registered
+        them. The power is the row a handler runs on every value of — `on`,
+        `off` and the stop alike, which is what `t.desired("power")` is read
+        for; there is no transition kept here, and two ONs run the handler
+        twice (d.7).
+
+        **Power ON with no script is refused.** Track modes and current
+        limits are the script's, so a railroad whose script did not load is
+        one whose rails may not be made live: the OFF, the stop and the
+        speeds are carried out and the link row says why (ADR-0015 d.4).
+
+        A locomotive is remembered as commanded whether a handler or this app
+        sent the speed: what a clean exit sends zero to is every locomotive
+        this app has driven, however the bytes were composed.
+        """
+        row = SCRIPT_ROW[wanted.row]
+        power = commanded_power(wanted.payload) if row == script.ROW_POWER else None
+        if power == ON and self._script is None:
+            _log.warning("power ON refused: %s", self._trouble or "no script")
             return
         if wanted.row == WANTED_TRACTION:
             self._commanded[wanted.address] = None
-        self._send(message)
+        # The power's topic has no address under it, which is the row having
+        # one thing in it rather than an address that is the empty string.
+        address = wanted.address or None
+        default = _built(wanted)
+        handlers = self._handlers(row, address)
+        if not handlers:
+            if default is not None:
+                self._send(default)
+            return
+        self._ran(handlers, self._firing(row, address, default))
 
-    def _act_track(self, payload: Payload) -> None:
-        """The power, and the startup file that follows it.
+    def _handlers(self, row: str, address: str | None) -> list[script.Handler]:
+        """The script's handlers for one event, and none at all where no
+        script is loaded."""
+        loaded = self._script
+        return [] if loaded is None else loaded.handlers(row, address)
 
-        The word is sent and nothing is composed around it. An `on` after a
-        `stopped` needs no undoing: the one-shot leaves every locomotive at
-        its slot's stop and holds nothing, so what moves a train again is the
-        next thing that commands one — a grant, or the hand of whoever
-        stopped it (#463).
+    def _firing(self, row: str, address: str | None, default: bytes | None) -> Event:
+        """One event, as a handler is handed it."""
+        return Event(
+            row,
+            address,
+            sends=self._send,
+            default=default,
+            wanted=self._wanted,
+            reported=self._reported,
+        )
 
-        Nor does an `on` clear a lock a station of its own reports. This app
-        commands none, so it releases none: a stop somebody set from a
-        hand-held throttle is theirs to lift, and `_observed` goes on saying
-        `stopped` for as long as the station says it.
+    def _ran(self, handlers: list[script.Handler], firing: Event) -> None:
+        """Run the handlers of one event, and send the default behind a
+        handler that raised.
 
-        The startup file goes **after** the track-on command and on every
-        transition into `on` rather than at every `on`: a second `on` over
-        rails that are already live asks the station for nothing new, and any
-        other word — `off` or the stop — arms the next one. A link that goes
-        takes the memory with it too, because the station on the far end of
-        the next one may have restarted, and one that has forgotten its trip
-        currents runs at the firmware's default until somebody notices.
+        A handler is a person's Python on the far end of a document, so
+        anything at all comes out of it. What is done about that is the rule
+        broken hardware gets: it is logged, and the command the handler was
+        standing in for is sent unless the handler had already asked for it
+        (ADR-0013 d.8). A handler that raised has done something to the
+        station either way — the bytes it sent before it raised are on the
+        wire — so what is left is to not leave the value unapplied as well.
         """
-        power = commanded_power(payload)
-        if power is None:
-            return
-        self._send(commands.track(power))
-        if power == ON and not self._powered_on:
-            self._send_startup()
-        self._powered_on = power == ON
-
-    def _send_startup(self) -> None:
-        """The startup file, read now and sent line by line.
-
-        Read at the transition and not once at startup, so that editing the
-        file and powering the railroad off and on is the whole of changing a
-        trip current — there is no process to restart, and the values a
-        person is adjusting are ones they adjust with the railroad in front
-        of them.
-
-        A file that is missing or cannot be read is logged and nothing else:
-        the power-on goes ahead, because a railroad that refuses to come up
-        over a configuration file is worse than one at whatever trip current
-        the firmware defaults to (control ADR-0050). What that default is belongs to
-        the firmware and not here.
-        """
-        path = self._startup
-        if path is None:
-            return
-        try:
-            text = path.read_text()
-        except (OSError, UnicodeDecodeError) as unreadable:
-            _log.warning("startup file %s not sent: %s", path, unreadable)
-            return
-        for message in commands.startup(text):
-            self._send(message)
+        raised = False
+        for handler in handlers:
+            try:
+                handler(firing)
+            except Exception:  # noqa: BLE001 - a handler is a person's Python
+                raised = True
+                _log.exception(
+                    "the handler %s raised on %s",
+                    getattr(handler, "__name__", handler),
+                    firing.row,
+                )
+        if raised:
+            firing.default()
 
     def _applied(self) -> list[Wanted]:
         """The desired picture in the order a fresh connection is handed it:
-        the track row first, then every other in the order the topics were
-        first heard.
+        every row but the power, in the order the topics were first heard.
 
-        Track first because the two things it can do have to happen before
-        anything else does — power reaches the rails before a turnout is
-        asked to throw, and a release's zeros land before the speeds that
-        follow them rather than over the top of them.
+        **The power is not replayed.** After a station or a translator
+        restart the rails stay as the station reports them and come back when
+        a person presses ON, which is the one desired value a connect does
+        not carry out (ADR-0013 d.6). `layout` holds power as desired and
+        reads it off the supply, as it does for any report of off.
+
+        Every other value goes out through its handler, which is what makes a
+        connect the same path as a value arriving live.
         """
-        held = list(self._wanted.values())
-        return [w for w in held if w.row == WANTED_TRACK] + [
-            w for w in held if w.row != WANTED_TRACK
-        ]
+        return [w for w in self._wanted.values() if w.row != WANTED_TRACK]
+
+    # -- the script: the railroad's own commands -----------------------------
+
+    @property
+    def railroad(self) -> str:
+        """The railroad the bus names, whose script this app runs. Empty
+        where none is named, which is an ordinary state of a box that has
+        chosen none (control ADR-0060)."""
+        return self._railroad
+
+    @property
+    def changed(self) -> bool:
+        """Whether the script's text has changed under this process, which is
+        what ends it."""
+        return self._changed
+
+    def _on_railroad(self, topic: str, payload: Payload) -> None:
+        """The railroad named on the row. Nothing is rebuilt on it — the link
+        this app has and the supply it reports are the command station's, and
+        the station is the same station — it is the script that is that
+        railroad's and is asked for again (ADR-0015 d.3)."""
+        name = payload.get("name")
+        if isinstance(name, str):
+            self._railroad = name
+
+    def load(self, text: str | None) -> None:
+        """Run `text` and hold the handlers it registered.
+
+        The **text** and not a path or a URL, which is what lets the tests
+        load the sample directly (ADR-0015 d.2). `None` is a railroad with no
+        script: an empty script, and every desired value sends what this app
+        sends with no script at all.
+
+        A text that raises leaves this app with no handlers and the link row
+        saying so, and the text is remembered as refused so that the same one
+        is not run again on every ask. The person who has to fix it reads the
+        log and the row (control ADR-0050).
+        """
+        if text is None:
+            self._script, self._text, self._refused = script.Script(), None, None
+            self._trouble = None
+        else:
+            try:
+                loaded = script.load(text)
+            except Exception as broken:  # noqa: BLE001 - so is loading one
+                _log.exception("the script for '%s' does not load", self._railroad)
+                self._script, self._refused = None, text
+                self._trouble = (
+                    f"the script for '{self._railroad}' does not load: {broken}"
+                )
+            else:
+                self._script, self._text, self._refused = loaded, text, None
+                self._trouble = None
+        self._said_link()
+        self._publish_track()
+
+    def asks(self) -> bool:
+        """Ask the store for the current railroad's script, once, on the
+        caller's own thread. Says whether the process has to end.
+
+        The first ask is made before the link is opened, so that a connect
+        replays the desired picture through the handlers it is going to run
+        (`__main__`). After that it is `following` that asks.
+
+        Nothing is waited for and nothing is retried here: a store that is
+        not up yet is an ordinary state, and what this app does about it is
+        run with no handlers and ask again (ADR-0015 d.4).
+        """
+        scripts = self._scripts
+        if scripts is None:
+            return False
+        return self._took(_asked(scripts, self._railroad))
+
+    async def following(self) -> None:
+        """Ask again every `script_s`, until the text has changed.
+
+        Returning is this app saying the process should end: a new text takes
+        effect through a restart and never in place, so the railroad is stood
+        down and compose brings it up on the new script (ADR-0015 d.3).
+
+        **The request goes on a thread of its own and nothing else does.** A
+        store that has accepted a connection and gone quiet would otherwise
+        stop the poll and the drain for as long as it takes to time out, and
+        the loop that drives the railroad waits for nothing but the railroad.
+        What the answer is made of happens back here, on the loop, because the
+        bus is the loop thread's — one binding of it is single-threaded by
+        contract (`lib/bus.py`) and this app's own rows are published from
+        whichever thread drains it.
+
+        Where there is no store there is nothing to ask and this never comes
+        back: what was loaded is what runs.
+        """
+        while True:
+            await asyncio.sleep(self._script_s)
+            scripts = self._scripts
+            if scripts is None:
+                continue
+            said = await asyncio.to_thread(_asked, scripts, self._railroad)
+            if self._took(said):
+                return
+
+    def _took(self, said: "Asked") -> bool:
+        """What the store said, taken.
+
+        A store that did not answer is said on the link row while there is no
+        script, and changes nothing once one is loaded: the script goes on
+        running and the row goes on saying what the station is doing
+        (ADR-0015 d.4).
+        """
+        if said.away is not None:
+            self._without(said.away)
+            return False
+        return self._read(said.text)
+
+    def _read(self, text: str | None) -> bool:
+        """What the store answered, taken: a first script loaded, a text that
+        has changed reported as the end of this process, and anything else
+        nothing at all.
+
+        A railroad change that gives the same text, or no script both times,
+        changes nothing — the comparison is the text and never the name
+        (ADR-0015 d.3).
+        """
+        if self._script is not None:
+            if text == self._text:
+                return False
+            self._changed = True
+            return True
+        if text is not None and text == self._refused:
+            return False
+        self.load(text)
+        return False
+
+    def _without(self, why: str) -> None:
+        """A store that did not answer, said on the link row — while there is
+        no script. Once one is loaded a fetch that fails changes nothing: the
+        script goes on running and the row goes on saying what the station is
+        doing (ADR-0015 d.4)."""
+        if self._script is not None:
+            return
+        trouble = f"no script: {why}"
+        if trouble == self._trouble:
+            return
+        _log.warning("%s", trouble)
+        self._trouble = trouble
+        self._said_link()
+        self._publish_track()
 
     # -- the link: what the hardware reports ---------------------------------
 
@@ -573,23 +915,58 @@ class DccEx:
         self._last_heard = self._now()
         self._publish_link(True, f"connected to {self._where}")
         self._publish_track()
+        self._reports(told)
+
+    def _reports(
+        self, told: replies.Power | replies.Lock | replies.Turnout | None
+    ) -> None:
+        """The script's handlers for what the station just reported, run after
+        the fact.
+
+        A report replaces nothing — the station has already done it — and
+        fires on a **change**: the poll makes the station restate every
+        track's power once a second, and a handler on every one of those
+        answers would be a handler on the clock (ADR-0013 d.3).
+
+        Power is the word the bus uses for it, and a turnout's position is
+        the two words a point is commanded with, so a script compares against
+        what it wrote rather than against a digit.
+        """
+        if isinstance(told, replies.Power):
+            self._reported_by(script.ROW_POWER, told.track, ON if told.on else OFF)
+        elif isinstance(told, replies.Turnout):
+            self._reported_by(
+                script.ROW_POINT,
+                told.point,
+                commands.THROWN if told.thrown else commands.CLOSED,
+            )
+
+    def _reported_by(self, row: str, address: str, value: str) -> None:
+        """One report, held and — where it differs from the last one heard —
+        handed to the handlers keyed on it."""
+        if self._reported.get((row, address)) == value:
+            return
+        self._reported[(row, address)] = value
+        event = REPORTED_EVENT[row]
+        handlers = self._handlers(event, address)
+        if handlers:
+            self._ran(handlers, self._firing(event, address, None))
 
     def _forget(self) -> None:
-        """Let go of everything the station told us, and of having powered
-        it on, the link having gone.
+        """Let go of everything the station told us, the link having gone.
 
         What cannot be read is not what was last read: a district that
         tripped while we were away, or a stop somebody cleared by hand, would
-        otherwise stand as an observation nobody made. The power-on is the
-        same kind of staleness pointing the other way — the station on the
-        next link may be one that has just come up — so the next `on` sends
-        the startup file again rather than assume the last one took."""
+        otherwise stand as an observation nobody made. The reports a script
+        reads go with them, so the first thing the station says on the next
+        link is a change and a handler keyed on it runs — the station on the
+        far end may be one that has just come up."""
         self._answered = False
         self._last_heard = None
         self._tracks.clear()
         self._every = None
         self._paused = False
-        self._powered_on = False
+        self._reported.clear()
 
     def _send(self, message: bytes) -> None:
         """One whole message to the station, or nothing at all because the
@@ -663,11 +1040,28 @@ class DccEx:
         self._bus.publish(DEVICE_TRACK, frame)
 
     def _publish_link(self, up: bool, detail: str) -> None:
+        """What the station is doing, which is what the link row is: said
+        again whenever it moves."""
+        self._reached = (up, detail)
+        self._said_link()
+
+    def _said_link(self) -> None:
         """This app's link to the station, keyed by the id it was started
-        with. Republished when the reason changes as well as the word: while
-        an outage lasts the row goes on saying so, and *why* is what a person
-        reads (control ADR-0050).
+        with, with the script's trouble said beside it. Republished when the
+        detail changes as well as the word: while an outage lasts the row
+        goes on saying so, and *why* is what a person reads
+        (control ADR-0050).
+
+        The word is the **station** answering and nothing else, because that
+        is what a link is (control ADR-0066): a script that will not load is
+        not the station being away. It rides on the detail instead, which is
+        where a person reading why the railroad will not come on reads it —
+        in `control`'s UI and in this app's log, and not on a page of this
+        repository's (ADR-0015, consequences).
         """
+        up, detail = self._reached
+        if self._trouble is not None:
+            detail = f"{detail}; {self._trouble}"
         said = (up, detail)
         if said == self._link:
             return
@@ -676,11 +1070,57 @@ class DccEx:
         self._bus.publish(device_topic(DEVICE_LINK, self._id), frame)
 
 
+def _asked(scripts: Scripts, railroad: str) -> Asked:
+    """One ask of the store, and the only thing here that blocks.
+
+    A module function and not a method, because what it may touch is what it
+    is handed: it runs on a thread of its own and the app's state is the loop
+    thread's (`DccEx.following`).
+
+    A railroad nobody has named is nothing to ask about rather than a route
+    with an empty name: a box that has chosen no railroad is an ordinary
+    state of one (control ADR-0060, #564).
+    """
+    if not railroad:
+        return Asked(None, f"no railroad is named on {RAILROAD}")
+    try:
+        return Asked(scripts.text(railroad), None)
+    except Unanswered as away:
+        return Asked(None, str(away))
+
+
+def _topic(row: str, address: str | None) -> str:
+    """Where one desired value sits, from the script's word for its row and
+    the address on it. A row with one thing in it — the railroad's power —
+    has no address and no level under the topic."""
+    topic = WANTED_BY_ROW[row]
+    return f"{topic}/{address}" if address else topic
+
+
+def _value(wanted: Wanted) -> object | None:
+    """The value one desired frame states, as a script reads it: a position,
+    an aspect, a speed, a function's bit, or the word the power is wanted in.
+
+    The value and not the frame, and read with the library's own readers, so
+    a handler compares against the same words the contract carries and never
+    against a key of a payload (BUS.md, rule 4)."""
+    row, _address, payload = wanted
+    if row == WANTED_TRACTION:
+        return desired_speed(payload)
+    if row == WANTED_FUNCTION:
+        return desired_function(payload)
+    if row == WANTED_POINT:
+        return desired_position(payload)
+    if row == WANTED_SIGNAL:
+        return desired_aspect(payload)
+    return commanded_power(payload)
+
+
 def _built(wanted: Wanted) -> bytes | None:
     """The message one desired value becomes, or None where it becomes none
     — a payload that cannot be read, or a value this hardware has no packet
-    for. The track row answers the power alone: the zeros and the release
-    that may come before it are not this value's, they are the transition's.
+    for. The track row answers the power alone: what a railroad wants around
+    a power-on is its script's and not this value's.
     """
     row, address, payload = wanted
     if row == WANTED_TRACTION:

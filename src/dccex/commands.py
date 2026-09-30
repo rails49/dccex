@@ -7,7 +7,7 @@ in. The `<…>` syntax is this app's private business and appears nowhere else
 in the repository (control ADR-0043); [docs/dccex/README.md](../../../docs/dccex/README.md)
 is where it is written down.
 
-Three of the seven functions answer `None`. A value this app cannot put on a
+Three of the six functions answer `None`. A value this app cannot put on a
 wire — a position that is neither `closed` nor `thrown`, an aspect no head
 here is wired for, a function value the station's binary `<F>` cannot express
 — sends **nothing** rather than something near it: a translator that guessed
@@ -17,10 +17,10 @@ being echoed back as a measured one (control ADR-0022, control ADR-0050).
 
 The one word that is not a table row is here too, `STATUS`, the whole of what
 a poll is made of, because it is bytes on the same wire and belongs beside
-the rest of the protocol. So is `startup`, which is the one function that
-maps nothing: it hands over what a person wrote, because a file of raw
-station commands exists precisely so that this app needs no vocabulary for
-what is in it.
+the rest of the protocol. What a railroad wants of its station that no row
+here covers — a track's mode, a district's current limit — is its **script**'s
+and is written in the station's own language, so nothing here has a
+vocabulary for it (ADR-0013, `script.py`).
 """
 
 from tc49.lib.inventory import OFF, ON, STOPPED
@@ -184,28 +184,3 @@ def _number(addr: str, most: int, *, least: int) -> int | None:
         return None
     number = int(addr)
     return number if least <= number <= most else None
-
-
-COMMENT = "#"
-"""What a line of a startup file is a note on rather than a command. A person
-writes the trip currents their four power districts really take, and the line
-above each saying which district it is has to be a line the station never
-sees."""
-
-
-def startup(text: str) -> list[bytes]:
-    """A startup file's text as the messages it sends, in the order written.
-
-    **Not parsed beyond blank and comment.** Every other line is a string the
-    station is handed exactly as typed, because the whole point of the file
-    is that a person writes whatever their station understands — a per-district
-    trip current, an auto-reverser, a polarity — without this app growing a
-    vocabulary for it. Nothing here knows what a district is, and nothing
-    above the layout interface learns that this railroad has four of them
-    (#217).
-
-    Surrounding whitespace goes: it is how a file is laid out and not part of
-    any message, and a line that is nothing else is skipped.
-    """
-    lines = (line.strip() for line in text.splitlines())
-    return [line.encode() for line in lines if line and not line.startswith(COMMENT)]

@@ -1,29 +1,30 @@
 """`python -m dccex` — the translator as a process of its own.
 
 Every app comes up alone (control ADR-0059, decision 5). Started against an empty
-broker with nothing else running and no command station on the other end of
-the port, this connects, publishes its own two retained rows — the railroad
-dark and the station unreached — and stays up, retrying the mirror on a
-backoff of its own; it exits on nothing but a signal. Nothing here is ordered
-by anything else coming up first, which is why compose carries no
-`depends_on`.
+broker with nothing else running, no store answering and no command station on
+the other end of the port, this connects, publishes its own two retained rows
+— the railroad dark and the station unreached — and stays up, retrying the
+mirror and the store on backoffs of their own; it exits on a signal, and on a
+script's text changing under it (ADR-0015 d.3). Nothing here is ordered by
+anything else coming up first, which is why compose carries no `depends_on`.
 
-**No railroad and no store.** Hardware needs no layout: this app reads the
-wanted rows and writes what it observes, and it does not know that layouts
-exist (control ADR-0059, decision 5). Where the other five processes are told which
-railroad they run, there is nothing here for the name to select — no document
-is read, and an address is the string the hardware answers to rather than
-something looked up (decision 6). So the flags are where the broker is, where
-the mirror is, and the two values that are this deployment's rather than the
-railroad's:
+**A store, and no railroad on the command line.** This app reads one
+document, the **script** its railroad's own station commands are written in
+(ADR-0015), and which railroad that is comes off
+`tc49/layout/state/railroad` rather than off a flag: the other five processes
+are told which railroad they run, and this one follows the row because the
+station it holds is the same station whichever railroad is loaded on it. So
+the flags are where the broker is, where the store is, where the mirror is,
+and the one value that is this deployment's rather than the railroad's:
 
 - `--station <host:port>`, where the `dccex-usb` mirror serves the command
   station (rails49/dccex). Not the USB device: this app is one client of
   that port beside JMRI and the hand-held throttles.
-- `--startup <file>`, the raw station commands sent on powering the rails —
-  the per-district trip currents, in the station's own language, which is the
-  one place those values appear (#217). Optional: a railroad with none comes
-  up at whatever the firmware defaults to.
+- `--store <url>`, where the store serves the documents, which is the one
+  route this app reads: `GET /scripts/<railroad>` (rails49/control#586). A
+  store that is not answering is a railroad this app carries out OFF, STOP
+  and speeds for and refuses power ON, saying why on its link row, and it
+  keeps asking (ADR-0015 d.4).
 - `--id`, the name its link row is keyed by (#368, decision 7), defaulting to
   the package's. A value and not a contract: it appears in no drawing, no
   configuration and no list of ours, and it is a key only because one railroad
@@ -41,29 +42,30 @@ twice — two stations, two translators, decision 7 — and two clients sharing
 one client id take turns disconnecting each other on the broker for as long as
 both are up.
 
-**A railroad loaded under it changes nothing here.** The other five apps
+**A railroad loaded under it rebuilds nothing here.** The other five apps
 follow `tc49/layout/state/railroad` and rebuild on the railroad it names
-(control ADR-0060); this one takes no `--railroad` and owns no row keyed by a
-railroad — the link it has and the supply it reports are the command
-station's, and the station is still the same station. So it stands, and its
-rows stand with it (`tests/system/test_reload.py`).
+(control ADR-0060); this one owns no row keyed by a railroad — the link it
+has and the supply it reports are the command station's, and the station is
+still the same station. What the row does decide is which railroad's script
+is asked for, and a script whose text differs from the running one ends this
+process rather than being loaded in place (ADR-0015 d.3).
 
-The startup order is `lib/startup.py`'s, with no store in it. **No
-documents**: an app that reads nothing cannot be brought up in the wrong order
-with respect to one that serves documents. Then the broker, and `DccEx` on it,
+The startup order is `lib/startup.py`'s. The broker first, then `DccEx` on it,
 the constructor stating this app's two opening rows — `device/link/<id>: down`
-and a dark `device/track` carrying why. **No rows of a previous process to
-adopt**, and none of this app's own to read back: the two it owns are stated
-by the constructor. What it does wait for is the *desired* picture, which is
-`layout`'s to write and the broker's to retain — and it is waited for
-**before the link is opened**, so that the whole of it is held when the first
-connection is handed it. That is what keeps the track row first: `_applied()`
-orders a connect's picture, where a value arriving over a link that is already
-up is acted on as it arrives, and a speed reaching the station ahead of the
-power is a locomotive that rolls the moment somebody makes the rails live
-(#333, control ADR-0054).
+and a dark `device/track` carrying why. Then **the row that names the
+railroad**, waited for by name because there is one of it, and the script
+asked for once on this thread: a store that has not answered leaves this app
+with no handlers, which is a state it comes up in and says on its link row
+rather than one it waits out (ADR-0015 d.4). **No rows of a previous process
+to adopt**, and none of this app's own to read back: the two it owns are
+stated by the constructor. Last the *desired* picture, which is `layout`'s to
+write and the broker's to retain, waited for **before the link is opened** so
+that the whole of it is held when the first connection is handed it — and
+after the script, so that what a connect replays goes out through the
+handlers that are going to run (#333, control ADR-0054).
 
-Then the loop: `DccEx.run()` keeping the link, and a drain beside it.
+Then the loop: `DccEx.run()` keeping the link, `DccEx.following()` asking the
+store for the script, and a drain beside them.
 
 **asyncio owns this process.** `DccEx._send` writes to an
 `asyncio.StreamWriter` from inside a bus subscriber, so whichever thread
@@ -74,12 +76,14 @@ own network thread, and the drain here is what hands those frames to the loop
 (lib/mqtt.py). A daemon thread under a synchronous owner would mean
 marshalling a cross-thread write that does not exist today.
 
-The railroad is stood down before the process ends, on the signal as well as
-on the stop: zero to every locomotive this app has commanded and then the
-track off, because the station goes on running whatever it was last told and
-an exit over a rolling locomotive leaves it rolling. It comes **before** the
-link is let go — cancelling `DccEx.run` closes the writer, and zeros sent
-after that have nowhere to go.
+The railroad is stood down before the process ends, on the signal, on the
+stop, and on a new script: zero to every locomotive this app has commanded
+and then the track off, because the station goes on running whatever it was
+last told and an exit over a rolling locomotive leaves it rolling. It comes
+**before** the link is let go — cancelling `DccEx.run` closes the writer, and
+zeros sent after that have nowhere to go. A new script takes effect from power
+off at the next ON for exactly this reason: the exit that loads it stands the
+railroad down like any other (ADR-0015 d.3).
 
 `DccEx` is handed a `Bus` and nothing else in the package changes: which
 binding it got is this file's business, and a desired value that cannot be
@@ -94,15 +98,23 @@ import signal
 import sys
 import threading
 from collections.abc import Callable
-from pathlib import Path
 
+from tc49.lib.loading import RAILROAD
 from tc49.lib.mqtt import MqttBus, address
-from tc49.lib.startup import PERIOD_S, RETAINED_S, command_line, connected
+from tc49.lib.startup import (
+    PERIOD_S,
+    RETAINED_S,
+    command_line,
+    connected,
+    retained,
+)
 
+from dccex.store import Scripts
 from dccex.translator import (
     FIRST_BACKOFF_S,
     ID,
     MAX_BACKOFF_S,
+    SCRIPT_S,
     DccEx,
 )
 
@@ -131,10 +143,11 @@ def serve(
     bus: MqttBus,
     station: tuple[str, int],
     stop: threading.Event,
-    startup: Path | None = None,
+    scripts: Scripts | None = None,
     id: str = ID,
     period_s: float = PERIOD_S,
     retained_s: float = RETAINED_S,
+    script_s: float = SCRIPT_S,
     first_backoff_s: float = FIRST_BACKOFF_S,
     max_backoff_s: float = MAX_BACKOFF_S,
     log: Callable[[str], None] = to_stderr,
@@ -146,9 +159,13 @@ def serve(
     happens to be — in the loop, or in the wait above it — and `main` lets
     that out.
 
-    The two backoffs are the translator's own and are here for the suite,
-    which has a station appear on a port seconds after the app went looking
-    for it and no reason to wait out a deployed retry to see it.
+    The two backoffs and the script's cadence are the translator's own and are
+    here for the suite, which has a station appear on a port seconds after the
+    app went looking for it, and a script applied while it watches, and no
+    reason to wait out a deployed retry to see either.
+
+    It comes back where the loop ended: on the stop, or on a script whose text
+    has changed, which is a restart and is said on the way out.
     """
     if not connected(bus, stop, log):
         return
@@ -158,13 +175,34 @@ def serve(
         host,
         port,
         id=id,
-        startup=startup,
+        scripts=scripts,
+        script_s=script_s,
         first_backoff_s=first_backoff_s,
         max_backoff_s=max_backoff_s,
     )
+    _railroad(bus, stop, retained_s)
+    app.asks()
+    log(f"railroad '{app.railroad}'")
     _retained(bus, stop, retained_s)
     log(f"up as '{id}' on {host}:{port}, draining every {period_s}s")
     asyncio.run(_driving(app, bus, stop, period_s))
+    if app.changed:
+        log("the script changed: the railroad is down and this process is ending")
+
+
+def _railroad(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
+    """Wait for the row that names the railroad, and deliver it, before the
+    script it decides is asked for.
+
+    Waited for **by name**, which `lib/startup.py` can do here where the
+    desired picture below leaves it nothing to name: there is one railroad row
+    and this comes back the instant it lands. A broker holding none is a
+    railroad nobody has chosen, which is an ordinary state of a box — this app
+    comes up with no script, says so, and asks again when the row names one
+    (control ADR-0060, #564).
+    """
+    retained(bus, RAILROAD, stop, timeout_s)
+    bus.drain()
 
 
 def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
@@ -180,7 +218,7 @@ def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     Delivered here on this thread, which is the one thread there is until
     `asyncio.run` starts: `DccEx` remembers a desired value and acts on it
     only where a writer is open, so what arrives now is held whole and applied
-    in `_applied()`'s order — the track first — by the first connection.
+    — the power excepted — by the first connection.
 
     One drain and not a loop of them, because a drain delivers what is waiting
     when it starts and the window is what the waiting was for.
@@ -192,24 +230,32 @@ def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
 async def _driving(
     app: DccEx, bus: MqttBus, stop: threading.Event, period_s: float
 ) -> None:
-    """The link and the drain, on the one loop, until the process ends.
+    """The link, the script and the drain, on the one loop, until the process
+    ends.
 
     Ctrl-C arrives here as a cancellation, `asyncio.run` cancelling the task
     it is waiting on, so the stand-down is in a `finally` and the interrupt
     goes on out to `main`. It is the same `finally` the stop event reaches,
-    because a railroad left driving is left driving however the process was
-    ended.
+    and the same one a new script reaches: a railroad left driving is left
+    driving however the process was ended.
+
+    `following` coming back is the third way out. It ends this loop rather
+    than raising, because a new script is an ordinary thing to happen to a
+    running railroad and not a fault (ADR-0015 d.3); what a fault in it does
+    is come out of the `await` below, where nothing swallows it.
     """
     link = asyncio.create_task(app.run())
+    watching = asyncio.create_task(app.following())
     try:
-        while not stop.is_set():
+        while not stop.is_set() and not watching.done():
             bus.drain()
             await asyncio.sleep(period_s)
     finally:
         await app.shutdown()
-        link.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await link
+        for task in (link, watching):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
 
 def main() -> None:
@@ -218,7 +264,6 @@ def main() -> None:
         description="Run the dccex translator against a broker: the device"
         " vocabulary turned into a command station's own language.",
         railroad=False,
-        store=False,
     )
     parser.add_argument(
         "--station",
@@ -226,13 +271,6 @@ def main() -> None:
         metavar="HOST:PORT",
         help=f"where dccex-usb serves the command station, e.g."
         f" {STATION_EXAMPLE}; retried until it answers",
-    )
-    parser.add_argument(
-        "--startup",
-        type=Path,
-        metavar="FILE",
-        help="raw station commands sent on powering the rails, one per line:"
-        " this railroad's per-district trip currents",
     )
     parser.add_argument(
         "--id",
@@ -262,11 +300,14 @@ def main() -> None:
     # stands, so a wait for a broker that never comes up ends on it too, and
     # the railroad is stood down on the way out either way.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
-    to_stderr(f"broker {host}:{port}, station {station[0]}:{station[1]}")
+    to_stderr(
+        f"broker {host}:{port}, station {station[0]}:{station[1]},"
+        f" store {args.store}"
+    )
     bus = MqttBus(host, port, client_id=f"{CLIENT_PREFIX}{args.id}")
     try:
         with contextlib.suppress(KeyboardInterrupt):
-            serve(bus, station, threading.Event(), args.startup, args.id)
+            serve(bus, station, threading.Event(), Scripts(args.store), args.id)
     finally:
         bus.close()
 

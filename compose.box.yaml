@@ -149,20 +149,28 @@ services:
 
   # The translator: `layout`'s desired rows to the station's commands, and the
   # station's replies to the track and link rows (ADR-0014). Same image as the
-  # mirror, run as the other package in it. It dials the broker on `rails49`
-  # and the mirror on this project's own network, and nothing dials it.
+  # mirror, run as the other package in it. It dials the broker and the store
+  # on `rails49` and the mirror on this project's own network, and nothing
+  # dials it.
   translator:
     build: *image
     image: dccex:${DCCEX_COMMIT:-dev}
     restart: unless-stopped
     entrypoint: ["python", "-m", "dccex"]
+    # The store is `control`'s, on the installation's network under its
+    # service name as the broker is (rails49/control#586). It is where this
+    # railroad's **script** is read from, `GET /scripts/<railroad>`, and the
+    # railroad is the one named on the bus rather than anything said here
+    # (ADR-0015). Behind a variable so a box that serves the store somewhere
+    # else overrides one line, the way the device mapping above is.
+    #
+    # **No mount and no file.** The startup file went with #175: what a
+    # railroad wants of its station is a document in the store, edited on the
+    # page, and the deploy makes nothing on the box for it.
     command:
       ["--broker", "broker:1883",
        "--station", "mirror:2560",
-       "--startup", "/etc/rails49/dccex-startup.txt"]
-    # Until #175: `scripts/deploy.sh` makes the file where there is none.
-    volumes:
-      - /etc/rails49/dccex-startup.txt:/etc/rails49/dccex-startup.txt:ro
+       "--store", "${DCCEX_STORE_URL:-http://store:8765}"]
     networks:
       - default
       - rails49

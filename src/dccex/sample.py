@@ -53,6 +53,7 @@ def reverser(t):
 @on("point", "20")
 @on("point", "21")
 def signal_5(t):
+    t.default()
     closed = t.desired("point", "20") == t.desired("point", "21") == "closed"
     t.send("<A 5 2>" if closed else "<A 5 0>")
 """
