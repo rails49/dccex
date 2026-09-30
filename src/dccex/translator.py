@@ -240,13 +240,19 @@ class Asked(NamedTuple):
 
 class Wanted(NamedTuple):
     """One desired value as this app holds it: the row and the address, which
-    are the topic's, and the payload that arrived on it. Kept rather than the
-    bytes it becomes, because what the track row is worth depends on whether
-    a stop is latched at the moment it is applied."""
+    are the topic's, the payload that arrived on it, and the command it
+    becomes.
+
+    The command is built where the value arrives and kept, so it is built once
+    per value rather than again on every firing; a value that becomes no
+    command is not held at all (`DccEx._on_wanted`). The payload is kept
+    beside it because what a handler reads is the value and never the bytes
+    (`Event.desired`)."""
 
     row: str
     address: str
     payload: Payload
+    default: bytes
 
 
 class Event:
@@ -471,9 +477,10 @@ class DccEx:
         row, address = split
         if not self._recognises(row, address):
             return
-        wanted = Wanted(row, address, payload)
-        if _built(wanted) is None:
+        default = _built(row, address, payload)
+        if default is None:
             return
+        wanted = Wanted(row, address, payload, default)
         self._wanted[topic] = wanted
         if self._writer is not None:
             self._act(wanted)
@@ -532,13 +539,11 @@ class DccEx:
         # The power's topic has no address under it, which is the row having
         # one thing in it rather than an address that is the empty string.
         address = wanted.address or None
-        default = _built(wanted)
         handlers = self._handlers(row, address)
         if not handlers:
-            if default is not None:
-                self._send(default)
+            self._send(wanted.default)
             return
-        self._ran(handlers, self._firing(row, address, default))
+        self._ran(handlers, self._firing(row, address, wanted.default))
 
     def _handlers(self, row: str, address: str | None) -> list[script.Handler]:
         """The script's handlers for one event, and none at all where no
@@ -1110,7 +1115,7 @@ def _value(wanted: Wanted) -> object | None:
     The value and not the frame, and read with the library's own readers, so
     a handler compares against the same words the contract carries and never
     against a key of a payload (BUS.md, rule 4)."""
-    row, _address, payload = wanted
+    row, payload = wanted.row, wanted.payload
     if row == WANTED_TRACTION:
         return desired_speed(payload)
     if row == WANTED_FUNCTION:
@@ -1122,13 +1127,15 @@ def _value(wanted: Wanted) -> object | None:
     return commanded_power(payload)
 
 
-def _built(wanted: Wanted) -> bytes | None:
+def _built(row: str, address: str, payload: Payload) -> bytes | None:
     """The message one desired value becomes, or None where it becomes none
     — a payload that cannot be read, or a value this hardware has no packet
     for. The track row answers the power alone: what a railroad wants around
     a power-on is its script's and not this value's.
+
+    The row, the address and the payload rather than a `Wanted`, because a
+    `Wanted` holds what this returns.
     """
-    row, address, payload = wanted
     if row == WANTED_TRACTION:
         speed = desired_speed(payload)
         return None if speed is None else commands.traction(address, speed)
