@@ -1,6 +1,7 @@
 # ADR-0009 — the decoder is a pure function, and an unknown line gets no gloss
 
-- **Status:** accepted, 2026-09-23
+- **Status:** accepted, 2026-09-23; d.4 amended by
+  [ADR-0016](0016-a-trip-is-read-from-the-stations-diagnostics.md)
 - **Ticket:** rails49/dccex#1
 - **Related:** [ADR-0007](0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)
   (the stream the decoder reads, and the mirror reading nothing on it),
