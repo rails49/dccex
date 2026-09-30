@@ -1,6 +1,6 @@
-"""`python -m tc49.dccex` — the translator as a process of its own.
+"""`python -m dccex` — the translator as a process of its own.
 
-Every app comes up alone (ADR-0059, decision 5). Started against an empty
+Every app comes up alone (control ADR-0059, decision 5). Started against an empty
 broker with nothing else running and no command station on the other end of
 the port, this connects, publishes its own two retained rows — the railroad
 dark and the station unreached — and stays up, retrying the mirror on a
@@ -10,7 +10,7 @@ by anything else coming up first, which is why compose carries no
 
 **No railroad and no store.** Hardware needs no layout: this app reads the
 wanted rows and writes what it observes, and it does not know that layouts
-exist (ADR-0059, decision 5). Where the other five processes are told which
+exist (control ADR-0059, decision 5). Where the other five processes are told which
 railroad they run, there is nothing here for the name to select — no document
 is read, and an address is the string the hardware answers to rather than
 something looked up (decision 6). So the flags are where the broker is, where
@@ -43,7 +43,7 @@ both are up.
 
 **A railroad loaded under it changes nothing here.** The other five apps
 follow `tc49/layout/state/railroad` and rebuild on the railroad it names
-(ADR-0060); this one takes no `--railroad` and owns no row keyed by a
+(control ADR-0060); this one takes no `--railroad` and owns no row keyed by a
 railroad — the link it has and the supply it reports are the command
 station's, and the station is still the same station. So it stands, and its
 rows stand with it (`tests/system/test_reload.py`).
@@ -61,7 +61,7 @@ connection is handed it. That is what keeps the track row first: `_applied()`
 orders a connect's picture, where a value arriving over a link that is already
 up is acted on as it arrives, and a speed reaching the station ahead of the
 power is a locomotive that rolls the moment somebody makes the rails live
-(#333, ADR-0054).
+(#333, control ADR-0054).
 
 Then the loop: `DccEx.run()` keeping the link, and a drain beside it.
 
@@ -96,14 +96,15 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
-from tc49.dccex.translator import (
+from tc49.lib.mqtt import MqttBus, address
+from tc49.lib.startup import PERIOD_S, RETAINED_S, command_line, connected
+
+from dccex.translator import (
     FIRST_BACKOFF_S,
     ID,
     MAX_BACKOFF_S,
     DccEx,
 )
-from tc49.lib.mqtt import MqttBus, address
-from tc49.lib.startup import PERIOD_S, RETAINED_S, command_line, connected
 
 CLIENT_PREFIX = "tc49-"
 """What this app calls itself to the broker, in front of its id, so the log
@@ -122,7 +123,7 @@ def to_stderr(line: str) -> None:
     """The log: what is being waited for, and what came up. `lib` says its own
     piece under its own prefix (`mqtt:`), and the link to the station is said
     on the bus rather than here — `device/link` is where a participant that
-    cannot reach its hardware reports it (ADR-0050)."""
+    cannot reach its hardware reports it (control ADR-0050)."""
     print(f"dccex: {line}", file=sys.stderr, flush=True)
 
 
@@ -213,7 +214,7 @@ async def _driving(
 
 def main() -> None:
     parser = command_line(
-        prog="python -m tc49.dccex",
+        prog="python -m dccex",
         description="Run the dccex translator against a broker: the device"
         " vocabulary turned into a command station's own language.",
         railroad=False,

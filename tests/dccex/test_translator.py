@@ -21,10 +21,10 @@ from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 
 import pytest
-
-from tc49.dccex.translator import DccEx
 from tc49.lib.bus import InProcessBus, Payload
 from tc49.lib.clock import Clock
+
+from dccex.translator import DccEx
 
 TIMEOUT_S = 5.0
 QUIET_S = 0.05
@@ -234,7 +234,7 @@ def test_every_point_address_is_acted_on() -> None:
 
 
 async def _every_point_address_is_acted_on() -> None:
-    """An address names no system (ADR-0059): it is the string the drawing
+    """An address names no system (control ADR-0059): it is the string the drawing
     carries and the hardware answers to, so `5` is a turnout this station
     throws and there is no level in front of it to look at."""
     bus, _ = bus_and_tap()
@@ -503,7 +503,7 @@ async def _file_that_cannot_be_read_is_logged_and_the_railroad_powers_on(
 ) -> None:
     """A railroad coming up at the firmware's low default trips early, which
     is safe and visible; one that refuses to come up over a configuration
-    file is neither (ADR-0050). The person who has to fix it reads the
+    file is neither (control ADR-0050). The person who has to fix it reads the
     log."""
     bus, _ = bus_and_tap()
     port = Port()
@@ -533,7 +533,7 @@ def test_the_link_is_down_before_anything_is_connected() -> None:
 def test_the_link_row_is_keyed_by_the_id_the_app_is_started_with() -> None:
     """The id is whatever the publisher calls itself and appears in no
     drawing and no list of ours, so two of these on one railroad each keep
-    their own row and neither erases the other (ADR-0059). The package's name
+    their own row and neither erases the other (control ADR-0059). The package's name
     is the default and a value, not a contract."""
     bus, tap = bus_and_tap()
     DccEx(bus, id="shed")
@@ -551,7 +551,7 @@ def test_the_supply_says_why_it_is_off_while_the_station_is_unreachable() -> Non
 async def _supply_says_why_it_is_off_while_the_station_is_unreachable() -> None:
     """The link row's own words, said again on the supply, so a person
     reading why the railroad is dark reads it off the supply itself rather
-    than off a second row (ADR-0059). The reason goes when the station
+    than off a second row (control ADR-0059). The reason goes when the station
     answers: what the row says then is the station's own word."""
     bus, tap = bus_and_tap()
     port = Port()
@@ -811,7 +811,7 @@ async def _station_that_stops_answering_lowers_the_link() -> None:
     session goes on and nothing closes. Ten unanswered polls are what says
     the station is gone, and the supply says it too: `layout` folds a link
     it has heard say `down` to `state/power: off`, which is the point of the
-    row (ADR-0066).
+    row (control ADR-0066).
     """
     bus, tap = bus_and_tap()
     port = Port()

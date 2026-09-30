@@ -6,7 +6,7 @@ broadcast meant for JMRI, a hand-held throttle or a browser — so most of what
 is read here is somebody else's and reads as nothing at all (#289).
 """
 
-from tc49.dccex import replies
+from dccex import replies
 
 
 def test_bytes_become_whole_messages() -> None:

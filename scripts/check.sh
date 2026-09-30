@@ -30,6 +30,10 @@
 # every machine this gate runs on (#101). The workflow runs those too, in a
 # job of its own required on the pull request.
 #
+# A `broker` marker is the same again, for the translator's suites that run
+# against a real `mosquitto` (#180), and this script does not collect it
+# either. The workflow installs one and runs those in a job of its own.
+#
 # **One thing it does fetch, once per environment.** `pyright` is distributed as
 # a wrapper: the first time it runs in an environment it downloads a node and
 # its own npm package into it, which is the `Install prebuilt node` line in the
@@ -123,7 +127,7 @@ check source source_recorded
 check ruff tool ruff check .
 check black tool black --check .
 check pyright tool pyright
-check tests "${PY[@]}" -m pytest -q -m "not docker and not node"
+check tests "${PY[@]}" -m pytest -q -m "not docker and not node and not broker"
 
 if [ -n "$red" ]; then
   printf 'red:%s\n' "$red"

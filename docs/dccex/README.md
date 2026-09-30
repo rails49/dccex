@@ -1,7 +1,7 @@
 # DCC-EX
 
 The first translator under `layout`
-([ADR-0043](../adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)):
+([ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)):
 a thin app, `dccex`, that subscribes to the **device vocabulary** and turns it
 into the DCC-EX command station's own language, and publishes back what the
 station reports.
@@ -11,7 +11,7 @@ written down.** Every other component is oblivious to what powers the layout:
 nothing above the layout interface expects DCC-EX, or Lenz, or NCE, or
 anything else — those are one family of devices among many. The `<…>` syntax
 appears on no bus topic, in no other package and in no normative document
-([BUS.md](../BUS.md#device-vocabulary) is the contract, and a test keeps
+([BUS.md](https://github.com/rails49/control/blob/main/docs/BUS.md#device-vocabulary) is the contract, and a test keeps
 protocol names off the pages that are not about hardware). A different command
 station gets a different translator, or reaches the system through JMRI, and
 nothing else moves.
@@ -35,16 +35,16 @@ the others, and every client is a peer — nothing in the firmware ranks them.
 where the id is the one this app is started with — `dccex`, the package's
 name, where it is given no other. The id is whatever the publisher calls
 itself, a value and not a contract: it appears in no drawing, no configuration
-and no list of ours (ADR-0059).
+and no list of ours (control ADR-0059).
 
 **It acts on every address it hears**, and there is no ownership table
 anywhere. An address names no system — it is the string the drawing carries
 and the hardware answers to
-([ADR-0059](../adr/0059-the-bus-is-a-broker-each-app-is-its-own-process-and-the-bridge-is-deleted.md))
+([ADR-0059](https://github.com/rails49/control/blob/main/docs/adr/0059-the-bus-is-a-broker-each-app-is-its-own-process-and-the-bridge-is-deleted.md))
 — so every point and signal address is this app's, as every traction and
 function address is, a decoder answering to the number it was programmed with
 whoever sends the packet
-([ADR-0045](../adr/0045-the-railroad-owns-cars-and-a-train-is-an-ordered-list-of-them.md)).
+([ADR-0045](https://github.com/rails49/control/blob/main/docs/adr/0045-the-railroad-owns-cars-and-a-train-is-an-ordered-list-of-them.md)).
 What this station has no packet for — a turnout numbered outside the accessory
 range — falls away in the mapping below. An address nothing answers to does no
 harm, as a packet nobody picks up does.
@@ -88,7 +88,7 @@ reflash to change one and the reason for wanting the command at all.
 
 **On the layout box the file is `/etc/rails49/dccex-startup.txt`**, mounted
 read-only into this app's container and named on the command line the service
-runs ([../DEPLOY.md](../DEPLOY.md#the-command-station),
+runs ([../DEPLOY.md](https://github.com/rails49/control/blob/main/docs/DEPLOY.md#the-command-station),
 [#523](https://github.com/rails49/control/issues/523)). The deploy makes an
 empty one where the box has none, because a bind mount whose source is
 missing is made by the daemon as a directory and this app would open it as
@@ -115,7 +115,7 @@ trip currents runs at the firmware's default until somebody notices.
 **A file that is missing or cannot be read is logged and the railroad powers
 on anyway.** Refusing to power on because a configuration file was missing is
 worse than coming up at whatever the firmware defaults to
-([ADR-0050](../adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+([ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
 What that default is belongs to the firmware and not here, and it is a choice
 made there: a station's trip currents are fixed when its firmware is built, so
 one built with this railroad's four values is protected with no file at all and
@@ -150,7 +150,7 @@ a decoder. It is sent as `<a>` and never as `<T>`: `<T>` would put a turnout
 table inside the station and answer with a position the station faked, and
 `align` carries the points its transit needs every time so that a translator
 throws what it is told and holds no table
-([ADR-0031](../adr/0031-the-layout-carries-the-points-a-transit-needs.md)).
+([ADR-0031](https://github.com/rails49/control/blob/main/docs/adr/0031-the-layout-carries-the-points-a-transit-needs.md)).
 
 **What an aspect is worth to a head is wiring**, not contract: `stop` is `0`,
 which the extended accessory packet reserves for stop, and `caution` and
@@ -218,7 +218,7 @@ good until something has come back on it. It goes on saying `down` for the
 whole outage, which is where a broken link becomes visible: at runtime, to a
 person who can act on it, and not in a gate that would need a powered layout
 to pass
-([ADR-0050](../adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+([ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
 The same words go on `device/track` as its `reason` while the station is
 unreachable, so a person reading why the railroad is dark reads it off the
 supply itself rather than off a second row. A district that has tripped gets
@@ -241,20 +241,20 @@ the two cannot drift apart, and it is generous on purpose — `layout` folds any
 `down` to `state/power: off`, so a timeout that fires early stops a railroad
 mid-session, and the mirror closing its clients is what reports the outages
 that actually happen
-([ADR-0066](../adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
+([ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
 
 **The banner raises the link and goes no further.** It is what `<s>` is
 answered with, so a station that sends one is a station answering — and that
 is the whole of what this app makes of it. Which build is on the box rode on
 this row until #567 and does not any more: the flash gesture went with the
 mirror to `rails49/dccex`, and a microcontroller's firmware is not the
-railroad (rails49/.github ADR-0002). A banner this app can read no field off
+railroad (the organisation's ADR-0002). A banner this app can read no field off
 raises the link just the same, a message this app reads nothing out of being
 the station answering as much as one it does.
 
 **No `device/point`.** This railroad's turnouts have no feedback and the
 station's answer to a throw is one it faked
-([ADR-0022](../adr/0022-a-symbol-carries-its-hardware-address.md)), so the row
+([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)), so the row
 stays empty however many turnouts are thrown. A faked observation is worse
 than silence.
 
@@ -282,12 +282,12 @@ reach is one it was not driving, and `_send` drops rather than queues.
 ## The command line
 
 ```
-python -m tc49.dccex --broker <host:port> --station <host:port>
+python -m dccex --broker <host:port> --station <host:port>
                      [--startup <file>] [--id <name>]
 ```
 
 The process a container runs, coming up alone against a broker
-([ADR-0059](../adr/0059-the-bus-is-a-broker-each-app-is-its-own-process-and-the-bridge-is-deleted.md),
+([ADR-0059](https://github.com/rails49/control/blob/main/docs/adr/0059-the-bus-is-a-broker-each-app-is-its-own-process-and-the-bridge-is-deleted.md),
 decision 5) as `layout`, `scheduler`, `dispatcher`, `driver` and `simulator`
 do, and as `dccex-usb` has all along.
 
@@ -315,7 +315,7 @@ first, where a value arriving over a link that is already up is acted on as it
 arrives, and a speed reaching the station ahead of the power is a locomotive
 that rolls the moment somebody makes the rails live
 ([#333](https://github.com/rails49/control/issues/333),
-[ADR-0054](../adr/0054-the-railroad-comes-up-at-rest-and-points-replay.md)).
+[ADR-0054](https://github.com/rails49/control/blob/main/docs/adr/0054-the-railroad-comes-up-at-rest-and-points-replay.md)).
 
 The app is also constructed on the bus directly, with where the station is
 served:
@@ -327,7 +327,7 @@ DccEx(bus, "host.docker.internal", 2560, startup=Path("/etc/rails49/dccex-startu
 That is what `--startup` on this app's own command line does, and what the
 harness's physical wiring does when it brings a run up on the physical
 binding — this app and `layout` where the simulator would be
-([bench/runner.py](../../src/tc49/bench/runner.py),
+([bench/runner.py](https://github.com/rails49/control/blob/main/src/tc49/bench/runner.py),
 [#314](https://github.com/rails49/control/issues/314)). There is nowhere else
 for the file to go, so `--startup` without `--station` is refused in a sentence
 rather than accepted and dropped
@@ -344,7 +344,7 @@ the image builds with `uv sync --frozen`.
 named.** `_send` writes to an `asyncio.StreamWriter` from inside a bus
 subscriber, so whichever thread drains the bus is the thread that writes to the
 station: with the loop owning the process every subscriber already runs on the
-loop thread and that write is where it belongs. Under `python -m tc49.dccex`
+loop thread and that write is where it belongs. Under `python -m dccex`
 the drain is a coroutine beside `run()`, and the MQTT client's network thread
 only appends to the queue that drain empties. Putting this app on a daemon
 thread under a synchronous owner would mean marshalling with

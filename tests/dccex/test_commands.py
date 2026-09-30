@@ -6,7 +6,7 @@ app promises the command station. Pure functions, so none of it needs a
 socket, a bus or hardware (#289).
 """
 
-from tc49.dccex import commands
+from dccex import commands
 
 
 def test_a_speed_is_scaled_and_its_sign_is_the_direction() -> None:
@@ -40,7 +40,7 @@ def test_a_fraction_past_the_maximum_is_the_maximum() -> None:
 
 def test_a_function_is_the_switch_the_station_has() -> None:
     """The bit the row carries, and the same bytes the words `on` and `off`
-    reached the wire as before the row carried a boolean (ADR-0063)."""
+    reached the wire as before the row carried a boolean (control ADR-0063)."""
     assert commands.function("3", "2", True) == b"<F 3 2 1>"
     assert commands.function("3", "2", False) == b"<F 3 2 0>"
 

@@ -2,7 +2,7 @@
 
 Here rather than in `tests/harness.py`, which is the in-process assembly and
 nothing else: what these build is a second process on a port of its own, and
-the apps that come up alone against one (ADR-0059, decision 5) each want the
+the apps that come up alone against one (control ADR-0059, decision 5) each want the
 same fixture.
 
 Where no `mosquitto` is installed the suites that take `broker` skip, so a
@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import NoReturn
 
 import pytest
-
 from tc49.lib.mqtt import MqttBus
+
 from tests.ports import free_port
 
 
@@ -72,7 +72,7 @@ class Broker:
     `persistence false`, as the deployed one has it, so what it held is gone
     when it returns: a broker keeps retained values while it runs and nothing
     across its own restart, which is the railroad coming up at rest
-    (ADR-0059, decision 3).
+    (control ADR-0059, decision 3).
     """
 
     def __init__(self, conf: Path) -> None:

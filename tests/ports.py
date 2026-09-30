@@ -7,7 +7,7 @@ a store on a thread.
 
 Every one of those is told its number before anything binds it. A store's
 URL is handed to an app that goes looking for it first, which is the order
-those suites exist to hold (ADR-0059, decision 5), and mosquitto reads its
+those suites exist to hold (control ADR-0059, decision 5), and mosquitto reads its
 port out of a config file written before the process starts. So a number
 picked by binding `:0` and closing the socket is a number nobody holds, and
 the kernel is free to hand the same one to the next outbound connection —

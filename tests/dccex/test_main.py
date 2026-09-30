@@ -2,7 +2,7 @@
 
 Against a real broker and a real listener on real sockets, because that is
 what is under test — an app started against nothing, in whatever order the
-machine brings the two up (ADR-0059, decision 5). The station is reached by
+machine brings the two up (control ADR-0059, decision 5). The station is reached by
 **address** here rather than by the injected connection `test_translator.py`
 drives: an address is what `--station` gives and opening it is what this
 command line has to get right. Nothing needs hardware, which is the rule the
@@ -25,12 +25,14 @@ import time
 from collections.abc import Iterator
 
 import pytest
-
-from tc49.dccex.__main__ import serve
 from tc49.lib.bus import Payload
 from tc49.lib.mqtt import MqttBus
+
+from dccex.__main__ import serve
 from tests.brokers import Broker, drained, settle
 from tests.ports import free_port
+
+pytestmark = pytest.mark.broker
 
 WANTED_TRACK = "tc49/layout/state/wanted/track"
 WANTED_TRACTION = "tc49/layout/state/wanted/traction/10"
@@ -130,7 +132,7 @@ def station() -> Iterator[Station]:
 
 
 class App:
-    """The translator running as `python -m tc49.dccex` runs it, on a thread
+    """The translator running as `python -m dccex` runs it, on a thread
     so the test can watch the bus and the port while it is up.
 
     Its client is made when it starts and not before, so a test can stop the
@@ -219,7 +221,7 @@ def test_a_cold_start_publishes_the_apps_own_rows(
     broker: Broker, station: Station, app: App
 ) -> None:
     """Against an empty broker with no station on the other end: the two rows
-    this app opens with, waiting for whoever subscribes next (ADR-0059).
+    this app opens with, waiting for whoever subscribes next (control ADR-0059).
 
     The link it cannot make, keyed by the id it was started with (decision 7),
     and a supply that is off carrying that same sentence as its reason — a
@@ -244,7 +246,7 @@ def test_its_link_row_is_keyed_by_the_id_it_was_started_with(
 ) -> None:
     """`--id` is the whole of what a second translator on one railroad needs:
     the row is keyed by it, so the second's `up` does not erase the first's
-    `down` (ADR-0059, decision 7). A value and not a contract — it appears in
+    `down` (control ADR-0059, decision 7). A value and not a contract — it appears in
     no drawing and no list of ours."""
     named = App(broker, station, id="north-yard")
     witness, heard = watching(broker)
@@ -290,7 +292,7 @@ def test_it_comes_up_against_a_station_that_is_not_there_yet(
 ) -> None:
     """The order nothing forbids: no `depends_on` anywhere, so the app is
     started before the mirror it drives and retries rather than exiting, as
-    the apps that read documents retry the store (ADR-0059, decision 5).
+    the apps that read documents retry the store (control ADR-0059, decision 5).
 
     A desired value that arrives while the link is down is remembered and
     applied on the connect, which is the same thing that happens to the
@@ -321,7 +323,7 @@ def test_it_comes_up_against_a_broker_that_is_not_there_yet(
 ) -> None:
     """The other order nothing forbids. The two opening rows are publishes,
     and a publish made to a broker that is not there is dropped rather than
-    queued (ADR-0050), so the app waits for the broker before it is built at
+    queued (control ADR-0050), so the app waits for the broker before it is built at
     all — and the station is not touched meanwhile."""
     broker.stop()
     station.opens()

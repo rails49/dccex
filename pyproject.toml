@@ -1,9 +1,17 @@
 [project]
-name = "dccex-usb"
+name = "dccex"
 version = "0.1.0"
-description = "The command station's serial device, mirrored on a TCP port"
+description = "The command station's serial device, mirrored on a TCP port, and the translator between it and the bus"
 requires-python = ">=3.12"
-dependencies = ["esptool>=5.4"]
+dependencies = [
+  "esptool>=5.4",
+  "tc49",
+]
+
+# `control`'s bus library (ADR-0014 d.2). `uv.lock` holds the commit; the pin
+# moves with `uv lock --upgrade-package tc49` (d.3).
+[tool.uv.sources]
+tc49 = { git = "https://github.com/rails49/control", branch = "main" }
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff", "black", "pyright"]
@@ -13,7 +21,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dccex_usb"]
+packages = ["src/dccex_usb", "src/dccex"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -30,6 +38,7 @@ testpaths = ["tests"]
 markers = [
   "docker: needs a Docker daemon",
   "node: needs a node on the machine",
+  "broker: needs a mosquitto on the machine",
 ]
 
 # The three below are `control`'s at deee7b6, unchanged. The code they read
@@ -47,3 +56,5 @@ target-version = ["py312"]
 [tool.pyright]
 include = ["src", "tests"]
 typeCheckingMode = "strict"
+# `tc49` ships no `py.typed`, so its types are read off its source.
+reportMissingTypeStubs = false

@@ -1,6 +1,6 @@
 """dccex: the translator between the device vocabulary and the command station.
 
-The first of the thin apps that hang under `layout` (ADR-0043). Above it the
+The first of the thin apps that hang under `layout` (control ADR-0043). Above it the
 bus carries the **device vocabulary** — what each device should do, and what
 each is observed to do — and below it is one TCP connection to `dccex-usb`,
 which owns the command station's serial device and serves it on port 2560 so
@@ -20,11 +20,11 @@ nothing else moves.
 *Subscribes* `tc49/layout/state/wanted/#`. *Publishes*
 `tc49/layout/state/device/track` and `tc49/layout/state/device/link/<id>`,
 where the id is the one this app is started with — the package's name where
-it is given no other, a value and not a contract (ADR-0059).
+it is given no other, a value and not a contract (control ADR-0059).
 
 **It acts on an address only if it recognises it**, and there is no ownership
 table anywhere: every point and signal address it hears, and every traction
-and function address, an address naming no system (ADR-0059). What this
+and function address, an address naming no system (control ADR-0059). What this
 station has no packet for — a turnout numbered outside the accessory range,
 say — falls away where the packet is built. An address nothing answers to does
 no harm, as a packet nobody picks up does.
@@ -45,7 +45,7 @@ reaches no bus topic (#217), and the file is not parsed beyond blank and
 comment, so this app has no vocabulary for what is in it. Failing to read it
 is logged and powers on anyway: a railroad coming up at the firmware's low
 default trips early, which is safe and visible, where refusing to power on
-over a missing file is neither (ADR-0050).
+over a missing file is neither (control ADR-0050).
 
 Two rules are not a row of the mapping table:
 
@@ -53,7 +53,7 @@ Two rules are not a row of the mapping table:
 tells every decoder to stand with the track still live and holds nothing
 afterwards, so any throttle on the shared port may drive away from it. That
 is the operator's call to make — they are the one holding the layout.
-`device/track` is `on` and `off` (ADR-0063): the observed supply goes back to
+`device/track` is `on` and `off` (control ADR-0063): the observed supply goes back to
 `on` as soon as the broadcast is out, because the rails are live under a stop
 and there is nothing else the supply could truthfully read. The stop is not
 lost for going unobserved — `layout` holds the one it commanded and publishes
@@ -61,9 +61,9 @@ lost for going unobserved — `layout` holds the one it commanded and publishes
 emergency-stop *lock* would hold it in the hardware instead, which is the
 better answer where a station has one, and nothing has to be asked before
 using it: each translator implements `stopped` as well as its own hardware
-allows and never by removing power (ADR-0063, decision 3). One product's
+allows and never by removing power (control ADR-0063, decision 3). One product's
 firmware-branch command is dialect this app absorbs, not a word the bus
-learns (ADR-0058, #463, #464).
+learns (control ADR-0058, #463, #464).
 
 **An overload is polled for.** A district that trips is not broadcast on TCP
 — the station cuts it and says so on its USB diagnostics only — so this app
@@ -79,8 +79,8 @@ power back on is. Whoever constructs this app calls it before letting the
 loop go (`bench/runner.py`).
 
 **No `device/point` is ever published.** This railroad's turnouts have no
-feedback and the station's answer to a throw is one it faked (ADR-0022), so
-the row stays empty: a faked observation is worse than silence (ADR-0050).
+feedback and the station's answer to a throw is one it faked (control ADR-0022), so
+the row stays empty: a faked observation is worse than silence (control ADR-0050).
 
 **`device/link`** is `up` while the station is answering, `down` otherwise,
 with `detail` carrying what a person would want to read. It is the station
@@ -88,12 +88,12 @@ answering and not the socket being open: the poll goes on asking for as long
 as the link lasts, and ten intervals of silence lower the row where the
 connection underneath is still there — a station switched off behind a mirror
 that holds its clients, a pulled cable, a wedged one. An answer afterwards
-raises it again, and nothing is torn down for it (ADR-0066). That is where
+raises it again, and nothing is torn down for it (control ADR-0066). That is where
 the physical link becomes visible at runtime, which is where verifying it
 belongs — not in a gate that would need a powered layout to pass. The same
 words go on `device/track` as its `reason` while the station is unreachable,
 so a person reading why the railroad is dark reads it off the supply itself
-rather than off a second row (ADR-0059).
+rather than off a second row (control ADR-0059).
 
 The framing and the mapping are pure and live in `replies` and `commands`;
 what is here is the connection and the state that a connection is made of.
@@ -107,7 +107,6 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import NamedTuple
 
-from tc49.dccex import commands, replies
 from tc49.lib.bus import Bus, Payload
 from tc49.lib.inventory import OFF, ON, STOPPED, device_topic, split_device
 from tc49.lib.payload import (
@@ -118,6 +117,8 @@ from tc49.lib.payload import (
     desired_speed,
 )
 
+from dccex import commands, replies
+
 _log = logging.getLogger(__name__)
 
 ID = "dccex"
@@ -125,7 +126,7 @@ ID = "dccex"
 other name: the package's, because a name has to come from somewhere. A
 value and not a contract — the id is whatever the publisher calls itself, it
 appears in no drawing, no configuration and no list of ours, and nothing but
-`layout` reads the row it keys (ADR-0059)."""
+`layout` reads the row it keys (control ADR-0059)."""
 
 HOST = "host.docker.internal"
 PORT = 2560
@@ -161,7 +162,7 @@ of a session. It can afford to be generous, because the mirror closes its
 clients for a device it knows is away and that ends the session through the
 path that already exists — what is left for this to catch is a station that
 is powered, enumerated and mute, and ten seconds is well outside anything a
-healthy station does with a status query under load (ADR-0066)."""
+healthy station does with a status query under load (control ADR-0066)."""
 
 FIRST_BACKOFF_S = 0.5
 MAX_BACKOFF_S = 8.0
@@ -243,7 +244,7 @@ class DccEx:
         # nothing this app has heard. What the poll measures its silence
         # against: the link is the station answering, so a station that has
         # stopped answering is one this app has to stop calling reachable,
-        # however open the socket underneath stays (ADR-0066).
+        # however open the socket underneath stays (control ADR-0066).
         self._last_heard: float | None = None
         self._tracks: dict[str, bool] = {}
         self._every: bool | None = None
@@ -258,7 +259,7 @@ class DccEx:
         self._link: tuple[bool, str] | None = None
         # The railroad is dark and the station unreached, which is what is
         # true before anything is connected, and a client joining now is
-        # served that rather than an absence (ADR-0032).
+        # served that rather than an absence (control ADR-0032).
         self._publish_link(False, f"not connected to {self._where}")
         self._publish_track()
         bus.subscribe(WANTED, self._on_wanted)
@@ -276,7 +277,7 @@ class DccEx:
         either: it is dropped whole, so a connect does not replay something
         that sent nothing when it arrived. Dropped silently and to the trace,
         the frame being on it by virtue of having been published — this app
-        answers nothing, so a refusal would have nowhere to go (ADR-0034).
+        answers nothing, so a refusal would have nowhere to go (control ADR-0034).
         """
         split = split_device(topic)
         if split is None:
@@ -297,7 +298,7 @@ class DccEx:
         recognises its own addresses and everything else is somebody's or
         nobody's, and an address nobody answers to does no harm.
 
-        An address names no system (ADR-0059), so a point or signal address
+        An address names no system (control ADR-0059), so a point or signal address
         is **every** one this app hears: it is the string the drawing carries
         and the hardware answers to, and an address this station has no packet
         for falls away where the packet is built, not here. Traction is one
@@ -369,7 +370,7 @@ class DccEx:
         A file that is missing or cannot be read is logged and nothing else:
         the power-on goes ahead, because a railroad that refuses to come up
         over a configuration file is worse than one at whatever trip current
-        the firmware defaults to (ADR-0050). What that default is belongs to
+        the firmware defaults to (control ADR-0050). What that default is belongs to
         the firmware and not here.
         """
         path = self._startup
@@ -520,7 +521,7 @@ class DccEx:
         their bytes, and a station that is powered, enumerated and mute
         leaves the mirror nothing to report at all — so the far end noticing
         that ten questions went unanswered is the only thing that catches a
-        wedged station (ADR-0066).
+        wedged station (control ADR-0066).
 
         What goes is everything the station told us, the same `_forget` a
         link that closed runs: a reading nobody can take is not the last one
@@ -637,10 +638,10 @@ class DccEx:
         the station's own.
 
         It is the link row's own words, said again on the supply, so a person
-        reading why the railroad is dark needs no second row (ADR-0059). A
+        reading why the railroad is dark needs no second row (control ADR-0059). A
         district that has tripped gets none: the station reported that and
         said nothing about why, and a reason this app invented would be worse
-        than none (ADR-0050).
+        than none (control ADR-0050).
         """
         if self._link is None or self._link[0]:
             return None
@@ -665,7 +666,7 @@ class DccEx:
         """This app's link to the station, keyed by the id it was started
         with. Republished when the reason changes as well as the word: while
         an outage lasts the row goes on saying so, and *why* is what a person
-        reads (ADR-0050).
+        reads (control ADR-0050).
         """
         said = (up, detail)
         if said == self._link:

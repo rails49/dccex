@@ -4,7 +4,7 @@ Every row of the device vocabulary this app recognises has a function here,
 and each is **pure** — no socket, no state, no clock — so the whole protocol
 is asserted as "this value, these bytes" on a machine with nothing plugged
 in. The `<…>` syntax is this app's private business and appears nowhere else
-in the repository (ADR-0043); [docs/dccex/README.md](../../../docs/dccex/README.md)
+in the repository (control ADR-0043); [docs/dccex/README.md](../../../docs/dccex/README.md)
 is where it is written down.
 
 Three of the seven functions answer `None`. A value this app cannot put on a
@@ -13,7 +13,7 @@ here is wired for, a function value the station's binary `<F>` cannot express
 — sends **nothing** rather than something near it: a translator that guessed
 would move a turnout the layout did not ask for, and a faked action is worse
 than silence, which is the same rule that keeps a commanded position from
-being echoed back as a measured one (ADR-0022, ADR-0050).
+being echoed back as a measured one (control ADR-0022, control ADR-0050).
 
 The one word that is not a table row is here too, `STATUS`, the whole of what
 a poll is made of, because it is bytes on the same wire and belongs beside
@@ -97,7 +97,7 @@ def function(addr: str, number: str, value: bool) -> bytes:
 
     The station's function is a **switch** and so is the row that reaches it:
     a function is one bit here as it was everywhere else it was checked
-    (ADR-0063). So every value the row can carry is one this station can be
+    (control ADR-0063). So every value the row can carry is one this station can be
     told, and this is **never `None`** for the reason `traction` is not —
     there is nothing left to refuse. What people mean by a range is decoder
     configuration, which is a different capability and no packet of this
@@ -113,8 +113,8 @@ def point(addr: str, position: str) -> bytes | None:
     Stateless is the point of it. The station also keeps turnouts of its own
     and answers a throw with a position it has faked, and this app wants
     neither: `align` carries the points its transit needs every time, so a
-    translator throws what it is told and holds no table (ADR-0031,
-    ADR-0043), and a faked reply is what `device/point` is never published
+    translator throws what it is told and holds no table (control ADR-0031,
+    control ADR-0043), and a faked reply is what `device/point` is never published
     from.
 
     The address the drawing types is the accessory number a throttle shows,
@@ -164,7 +164,7 @@ def track(power: str) -> bytes:
     an act, which is the better answer where a station has one and is not
     asked for here: it is one product's firmware-branch command, and a
     `stopped` that meant "under a lock" would put a station's private
-    vocabulary inside a bus word every railroad shares (ADR-0043, ADR-0063,
+    vocabulary inside a bus word every railroad shares (control ADR-0043, control ADR-0063,
     #464).
     """
     if power == ON:
