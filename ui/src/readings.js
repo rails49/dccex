@@ -59,11 +59,10 @@ const CUTTING = "power off";
 const HEATING = "power on";
 const POWER = "power";
 
-/** What the link reads in words. The dot is the reading for a reader looking
- *  at it, and these are the same reading for one who is not: the band draws
- *  them beside the dot while the station is not answering, because a fault is
- *  owed a sentence, and a station that is answering is the dot alone (issue
- *  168, #138). */
+/** What the link reads in words. The dot is the reading for a reader looking at
+ *  it and these are the same reading for one who is not, so the band hands them
+ *  to a reader either way; it draws them beside the dot while the station is not
+ *  answering, because a fault is owed a sentence (issue 168, #138). */
 const ANSWERING = "answering";
 const OFFLINE = "dcc-ex offline";
 
