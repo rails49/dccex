@@ -45,6 +45,18 @@ SEQUENCE = "flash.js"
 POWER = "readings.js"
 
 
+def asked_of_the_face(page: str) -> set[str]:
+    """The names the page imports from the **face**.
+
+    Read rather than matched against a line, because the line wraps: the page
+    asks the face for six things now and what a reader of either suite wants
+    to know is that the name is there, not which column it sits in (#185).
+    """
+    block = re.search(r"""import \{([^}]*)\} from "\.\./face\.js";""", page)
+    assert block is not None, "the page asks the face for nothing"
+    return {name.strip() for name in block.group(1).split(",") if name.strip()}
+
+
 def test_the_page_polls_the_station_on_its_own_schedule() -> None:
     """Nothing else on the box asks (ADR-0010).
 
@@ -214,7 +226,7 @@ def test_the_page_asks_the_face_and_the_row_presses() -> None:
     is handed the releases and the **build** (ADR-0012 d.3).
     """
     page = code(APP.read_text())
-    assert 'import { flash, flashing, releases } from "../face.js";' in page
+    assert {"flash", "flashing", "releases"} <= asked_of_the_face(page)
     writing = page[page.index("#writes = async (") :]
     writing = writing[: writing.index("\n  };")]
     assert "await flash(tag)" in writing, "the page asks nobody to write"
@@ -263,12 +275,17 @@ def test_the_page_hears_the_hash_change_and_lets_it_go_when_it_goes() -> None:
 
 
 def test_the_monitor_view_is_drawn_only_while_it_is_showing() -> None:
-    """The releases are a view of their own and the conversation is the other
-    (CONTEXT.md **view**, #169).
+    """The releases and the script are views of their own and the conversation
+    is the third (CONTEXT.md **view**, #169, #185).
 
-    Taken away rather than hidden: a monitor left in the document behind the
-    releases would go on measuring a scroller with no height and go on drawing
-    two thousand rows nobody is looking at.
+    Taken away rather than hidden: a monitor left in the document behind
+    another view would go on measuring a scroller with no height and go on
+    drawing two thousand rows nobody is looking at.
+
+    **Drawn on its own view and not on everything that is not the releases.**
+    The condition names the monitor rather than the view it is not, because a
+    third view arriving is otherwise a third view with a monitor behind it
+    (#185).
     """
     drawn = code(APP.read_text())
     monitor = drawn[
@@ -278,7 +295,8 @@ def test_the_monitor_view_is_drawn_only_while_it_is_showing() -> None:
     ]
     assert "<dccex-tiles" in monitor and "<dccex-monitor" in monitor
     assert "<dccex-releases" not in monitor, "the releases are drawn on both views"
-    assert 'this.view === "releases" ? nothing : this.#monitor()' in drawn
+    assert "<dccex-script" not in monitor, "the script is drawn on both views"
+    assert 'this.view === "monitor" ? this.#monitor() : nothing' in drawn
 
 
 def test_the_releases_are_hidden_and_not_taken_away() -> None:

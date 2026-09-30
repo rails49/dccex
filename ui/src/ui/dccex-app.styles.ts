@@ -55,6 +55,16 @@ export const appStyles = css`
     align-content: start;
   }
 
+  /* The script view is one thing and takes the whole of the pane: the box in
+     it scrolls its own text, so the pane must not scroll instead of it — a
+     page of Python under a window that scrolls puts the Apply control below
+     the fold. minmax(0, 1fr) rather than 1fr, because a 1fr row grows to fit
+     what is in it and a long script is what is in it. */
+  .work.script {
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
   @media (max-height: ${unsafeCSS(RAIL_TURNS_PX)}px) {
     :host {
       grid-template-areas:

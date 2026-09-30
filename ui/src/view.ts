@@ -1,10 +1,10 @@
 /**
  * The **view**s, and the hash the page keeps the current one in.
  *
- * There are two — the **monitor** and the releases — and the **rail** picks
- * between them (CONTEXT.md, #166, #169). The **band** is the same over both:
- * what is true of the whole station does not change with what a person is
- * looking at.
+ * There are three — the **monitor**, the releases and the **script** — and the
+ * **rail** picks between them (CONTEXT.md, #166, #169, issue 185). The **band**
+ * is the same over all of them: what is true of the whole station does not
+ * change with what a person is looking at.
  *
  * **The hash is where the view is kept**, so the address bar says which one a
  * page is on. A view somebody is looking at can then be sent to somebody else,
@@ -23,15 +23,15 @@
  * through them rather than being read off a template (`ui/test/view.test.ts`).
  */
 
-/** What the work pane shows: one of the two. */
-export type View = "monitor" | "releases";
+/** What the work pane shows: one of the three. */
+export type View = "monitor" | "releases" | "script";
 
 /** The views, in the order the rail draws a button for each of them.
  *
  *  Written out once. The rail iterating this is a rail that cannot offer a
- *  view the page would not read back, and a third view is one entry here and
- *  one icon there. */
-export const VIEWS: readonly View[] = ["monitor", "releases"];
+ *  view the page would not read back, and a view is one entry here and one
+ *  icon there. */
+export const VIEWS: readonly View[] = ["monitor", "releases", "script"];
 
 /** The view a page with no view named in its hash opens on. */
 export const OPENS: View = "monitor";
