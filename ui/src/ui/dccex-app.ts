@@ -280,6 +280,15 @@ export class DccexApp extends LitElement {
    *  first of those polls goes out before the tool has printed anything. */
   #writing = false;
 
+  /** Whether an ask about the flash is out already.
+   *
+   *  One at a time, so the answers cannot arrive out of order. Which order a
+   *  browser hands back the answers to two requests in is the browser's, and an
+   *  older answer landing after a newer one is the defect the count of clients
+   *  had (#88, issue 111): here it would walk the bar backwards. A tick that finds
+   *  one out goes by and the next asks. */
+  #asking = false;
+
   /** The stream, and the two things it hands up: the lines that arrive, and
    *  the socket being open — which is when the page asks, because a poll sent
    *  at one that was still connecting was refused and went nowhere (#82). */
@@ -524,9 +533,22 @@ export class DccexApp extends LitElement {
    * A face that could not be asked reads as no flash running, which is `face.ts`'s
    * answer and is drawn as no bar: a bar left standing for an answer nobody got
    * would say the station was being written (ADR-0009 d.2).
+   *
+   * **One ask at a time.** Two out at once could be answered in either order,
+   * and the older answer landing last would walk the bar backwards — the defect
+   * the count of clients had, which the page stopped numbering for when it
+   * stopped drawing it (#88, issue 111).
    */
   async #follows(): Promise<void> {
-    this.flashing = await flashing();
+    if (this.#asking) {
+      return;
+    }
+    this.#asking = true;
+    try {
+      this.flashing = await flashing();
+    } finally {
+      this.#asking = false;
+    }
   }
 
   /** Hear the station's lines into the readings, and hand them all to the
