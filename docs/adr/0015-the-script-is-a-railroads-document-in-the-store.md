@@ -1,6 +1,8 @@
 # ADR-0015 — the script is a railroad's document in the store
 
-- **Status:** accepted, 2026-09-30
+- **Status:** accepted, 2026-09-30; amended 2026-09-30 (#175): d.3 said a
+  railroad change exits, and d.4 did not say what a store outage does to a
+  loaded script.
 - **Ticket:** #185, #175, rails49/control#586
 - **Amends:** ADR-0013 d.1 and d.8
 - **Related:** ADR-0014 (the translator on the bus through `control`'s
@@ -25,16 +27,17 @@ the railroad alone.
 retained `tc49/layout/state/railroad`, then fetches that railroad's script.
 Loading takes the script's text, so the tests hand it the sample directly.
 
-**d.3** It asks again every few seconds and compares the text with the one it
-runs. When the script or the railroad changes, it exits and compose restarts
-it. The exit stands the railroad down, as every exit does, so a script takes
-effect from power off at the next ON.
+**d.3** Every few seconds it fetches the script for the current railroad and
+compares the text with the one it runs. When the text differs, it exits and
+compose restarts it. A railroad change that gives the same text, or no script
+both times, changes nothing. The exit stands the railroad down, as every exit
+does, so a script takes effect from power off at the next ON.
 
 **d.4** A railroad with no script runs with the defaults. A script that raises
 on load, or a store that does not answer, leaves the translator with no
 handlers: it carries out OFF, STOP and speeds, refuses power ON, and says why
-on its link row. It keeps asking. This extends ADR-0013 d.8 from a handler to
-the whole script.
+on its link row. It keeps asking. Once a script is loaded, a fetch that fails
+changes nothing. This extends ADR-0013 d.8 from a handler to the whole script.
 
 **d.5** The page edits a script through this repository's face. Apply sends
 the text to the face, which compiles it, refuses one that does not compile,
