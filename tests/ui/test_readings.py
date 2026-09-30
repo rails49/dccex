@@ -211,7 +211,7 @@ def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
             "says": "track A power is on",
             "mode": "MAIN",
             "draws": "120 mA",
-            "most": "1233 mA",
+            "most": "max 1233 mA",
         },
         "B": {
             "track": "B",
@@ -219,7 +219,7 @@ def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
             "says": "track B power is on",
             "mode": "MAIN",
             "draws": "2 mA",
-            "most": "1233 mA",
+            "most": "max 1233 mA",
         },
         "C": {
             "track": "C",
@@ -227,7 +227,7 @@ def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
             "says": "track C power is off",
             "mode": "MAIN",
             "draws": "0 mA",
-            "most": "250 mA",
+            "most": "max 250 mA",
         },
         "D": {
             "track": "D",
@@ -235,7 +235,7 @@ def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
             "says": "track D power is unknown",
             "mode": "NONE",
             "draws": "0 mA",
-            "most": "250 mA",
+            "most": "max 250 mA",
         },
     }
 
