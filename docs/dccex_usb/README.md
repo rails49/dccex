@@ -223,7 +223,7 @@ The face's router is code, and it is in `compose.box.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
 the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
-What it answers, which is four things — three questions and a conversation:
+What it answers, which is five things — four questions and a conversation:
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -234,6 +234,12 @@ $ curl http://dccex-usb:8080/releases
 
 $ curl -X POST http://dccex-usb:8080/flash -d '{"tag": "v5.6.4-rails49.1"}'
 {"flashed": "v5.6.4-rails49.1"}
+
+$ curl http://dccex-usb:8080/flash
+{"flashing": {"tag": "v5.6.4-rails49.1", "stage": "writing", "percent": 46}}
+
+$ curl http://dccex-usb:8080/flash
+{"flashing": null}
 
 $ curl http://dccex-usb:8080/clients
 {"clients": 3}
@@ -263,7 +269,7 @@ Which of them is newest is the page's question rather than this app's: the
 dates go back as the source stamped them and the ordering is done where the
 list is drawn (docs/ui/README.md).
 
-The third is how many **client**s are on 2560 at the moment it is asked, and it
+The fifth is how many **client**s are on 2560 at the moment it is asked, and it
 was the one reading the page drew that is not the station talking: a command
 station knows nothing about who is listening to it, and the app holding the
 port does ([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
@@ -284,6 +290,18 @@ caller: the head, the body and the answer being taken. A caller that goes away
 mid-flash loses only the answer, because the station is being written by then
 and stopping halfway is the one thing nobody can recover from.
 
+The third is **how far that flash has got**, read at the same path with a
+`GET` while it runs
+([ADR-0012](../adr/0012-a-flash-says-how-far-it-has-got.md)): the `tag` being
+written, the `stage` — `fetching`, `checking`, `writing`, `verifying` — and,
+while esptool writes, the `percent` it prints. `percent` is null outside the
+writing, because the tool counts the blocks it sends and nothing counts a fetch
+or a hash. A GET and not a streamed answer on the POST, so that any tab reads
+it and not only the one that pressed flash, including one opened or reloaded
+half way through (ADR-0010, ADR-0012 d.2). `{"flashing": null}` where no flash
+is running, which is the ordinary answer on a box where nobody is writing the
+station.
+
 **What it will not answer is a status and a sentence**, in a `reason` field,
 so whoever asked can say what happened rather than sending somebody to read a
 log on the box (control ADR-0050):
@@ -292,10 +310,11 @@ log on the box (control ADR-0050):
   about and carries no release for. The tag is the thing to fix, which is why
   a source that was never asked is a `502` below and not this. A face is
   private to its app and is not somewhere else to get at the railroad.
-- `405` — the releases and the count of clients are read, with `GET`; a flash
-  is asked for, with `POST`. There is nothing at `/flash` to read, and a page
-  that reloaded one would write the station again; there is nothing at
-  `/clients` to change, because who is on 2560 is decided by who dialled it.
+- `405` — the releases, the count of clients and how far a flash has got are
+  read, with `GET`; a flash is asked for, with `POST`. `/flash` is the one path
+  with two of them on it, and the split is the point: a page that reloaded the
+  read would not write the station again. There is nothing at `/clients` to
+  change, because who is on 2560 is decided by who dialled it.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
@@ -347,7 +366,7 @@ with no socket anywhere near it.
 
 ### The monitor's stream
 
-The third thing the face carries is the station's conversation, both ways, on
+The fourth thing the face carries is the station's conversation, both ways, on
 the same port and under the same prefix:
 
 ```
@@ -437,9 +456,17 @@ closed once the grace passes, because for that minute or two the device
 genuinely is away and a flash outlasts any grace. The railroad going dark for
 the length of a flash is the correct outcome: nobody expects trains to run
 while the station is being written, and the guard against a flash under a
-moving train is the operator's, below. Progress needs nothing of its own: the
-link is down and the translator that lost it says so, and when the station
-answers again it reports the **build** it now runs.
+moving train is the operator's, below.
+
+**How far it has got is kept while it runs and asked for on the face**
+([ADR-0012](../adr/0012-a-flash-says-how-far-it-has-got.md), #171). esptool's
+output is read line by line as it arrives rather than collected and read at the
+exit, and two of its lines are readings: a block gone out with the percentage on
+it, and the `Wrote` that says the bytes are there and what is left is the hash.
+The stage and that percentage are what `GET /flash` answers
+[above](#the-face). The last step is still the station's own: the link is down
+while the write lasts, and when the station answers again it reports the
+**build** it now runs, which is what says the flash worked (ADR-0012 d.4).
 
 **What it refuses**, each of them a status and a reason to whoever asked and a
 line on the box besides: a tag the source carries no release for (`404`), a
