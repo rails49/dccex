@@ -32,6 +32,12 @@ else is stood up. They go in through the page's own `fetch`, so what is
 measured is the rows the page draws rather than a shape poked into a
 component.
 
+**Both views are measured, and the rail is what gets to the second.** The page
+opens on the **monitor** and the releases are a view of its own (#169), so the
+browser presses the rail's button for them and measures the rows there. A
+press that did not switch the view leaves the rows undrawn, so the wait for
+one times out and every assertion below is red at once.
+
 **This is not part of the gate.** It carries the `docker` marker, which
 `scripts/check.sh` does not collect, and the workflow runs it in the job that
 already builds and serves this image, where a missing daemon is a failure and
@@ -99,6 +105,12 @@ DESKTOP = (1280, 800)
 #: assertions below ask for them under.
 WIDTHS = {"phone": PHONE, "desktop": DESKTOP}
 
+#: The two **view**s, by the name the rail's button for each of them carries
+#: and the page keeps in its hash (`ui/src/view.ts`, #169). The browser opens
+#: on the first and presses the rail to reach the second, which is the one
+#: gesture a reader has for getting there.
+MONITOR, RELEASES_VIEW = "monitor", "releases"
+
 #: What the browser answers the face's release request with. Three releases,
 #: because rows are what the wrap rule is about and the nothing-said state has
 #: none — and the fields are the three the face passes on and no more
@@ -130,8 +142,9 @@ RELEASES = "**/dccex-usb/releases"
 TYPED = "<s>"
 
 #: The look rules' minimum for a thumb, read off the copy the page draws with
-#: rather than written out: the power button on the band is pressed on the
-#: phone this check is about (`ui/look/README.md`, ADR-0011 d.1).
+#: rather than written out: the power button on the band and the two buttons on
+#: the rail are pressed on the phone this check is about (`ui/look/README.md`,
+#: ADR-0011 d.1, #169).
 THUMB = int(declarations(COPY.read_text())["--rail-button"].removesuffix("px"))
 
 #: A pixel of slack on a comparison between two rendered edges. Layout is
@@ -162,12 +175,13 @@ from playwright.sync_api import Route, sync_playwright
 URL, RELEASES, TYPED = sys.argv[1], sys.argv[2], sys.argv[3]
 CARRIED = json.loads(sys.argv[4])
 WIDTHS = json.loads(sys.argv[5])
+MONITOR, RELEASES_VIEW = sys.argv[6], sys.argv[7]
 
-#: What the page drew, at one width. The command box is measured with the
-#: release row shut, which is how the page opens; the rows are measured with
-#: it open, because that is the only way anybody reads one.
+#: What the page drew, on one view, at one width. Each view is measured while
+#: it is the one showing: the other is not in the document, which is what a
+#: page that draws the view the rail picked means.
 MEASURE = """
-() => {
+(view) => {
   const box = (drawn) => {
     const at = drawn.getBoundingClientRect();
     return {
@@ -176,6 +190,26 @@ MEASURE = """
     };
   };
   const app = document.querySelector("dccex-app");
+  const wide = document.documentElement.scrollWidth;
+  if (view === "releases") {
+    const releases = app.renderRoot.querySelector("dccex-releases");
+    return {
+      hash: location.hash,
+      scrollWidth: wide,
+      rows: [...releases.renderRoot.querySelectorAll(".release")].map(
+        (release) => ({
+          tag: release.querySelector(".tag").textContent,
+          box: box(release),
+          scrollWidth: release.scrollWidth,
+          clientWidth: release.clientWidth,
+          parts: [...release.children].map((part) => ({
+            part: part.className,
+            box: box(part),
+          })),
+        }),
+      ),
+    };
+  }
   const band = app.renderRoot.querySelector("dccex-band");
   // What one part of the band was drawn as. The display is read as well as the
   // box: the build is blank with no face behind the page, so a box of no width
@@ -186,40 +220,28 @@ MEASURE = """
       ? null
       : { box: box(drawn), display: getComputedStyle(drawn).display };
   };
+  const rail = app.renderRoot.querySelector("dccex-rail");
+  const button = (selector) => box(rail.renderRoot.querySelector(selector));
   const monitor = app.renderRoot.querySelector("dccex-monitor");
   const typed = box(monitor.renderRoot.querySelector("input.typed"));
   const send = box(monitor.renderRoot.querySelector(".box button[type=submit]"));
-  const releases = app.renderRoot.querySelector("dccex-releases");
-  const row = releases.renderRoot.querySelector("details");
-  const shut = document.documentElement.scrollWidth;
-  row.open = true;
-  const rows = [...releases.renderRoot.querySelectorAll(".release")].map(
-    (release) => ({
-      tag: release.querySelector(".tag").textContent,
-      box: box(release),
-      scrollWidth: release.scrollWidth,
-      clientWidth: release.clientWidth,
-      parts: [...release.children].map((part) => ({
-        part: part.className,
-        box: box(part),
-      })),
-    }),
-  );
-  const opened = document.documentElement.scrollWidth;
-  row.open = false;
   return {
     innerWidth: window.innerWidth,
     innerHeight: window.innerHeight,
-    scrollWidth: { shut: shut, opened: opened },
+    hash: location.hash,
+    scrollWidth: wide,
     band: {
       build: part(".build"),
       dot: part(".dot"),
       says: part(".says"),
       power: part(".power"),
     },
+    rail: {
+      monitor: button("button.monitor"),
+      releases: button("button.releases"),
+    },
     typed: typed,
     send: send,
-    rows: rows,
   };
 }
 """
@@ -235,16 +257,22 @@ def answered(route: Route) -> None:
 
 
 def measured(page, width, height):
-    """The page loaded at one width, measured, and typed into."""
+    """The page loaded at one width, measured on both views, and typed into.
+
+    It opens on the monitor, which is what a page with nothing in its hash
+    shows, and reaches the releases the way a person does: the rail's button.
+    A press that did not switch the view is a wait that times out here rather
+    than an assertion below.
+    """
     page.set_viewport_size({"width": width, "height": height})
     page.goto(URL)
     page.wait_for_selector("input.typed")
-    # Attached rather than visible: the release rows are inside a row that
-    # opens, and a shut one draws nothing.
-    page.wait_for_selector(".release", state="attached")
-    drawn = page.evaluate(MEASURE)
+    drawn = page.evaluate(MEASURE, MONITOR)
     page.fill("input.typed", TYPED)
     drawn["reads"] = page.input_value("input.typed")
+    page.click(f"dccex-rail button.{RELEASES_VIEW}")
+    page.wait_for_selector(".release")
+    drawn[RELEASES_VIEW] = page.evaluate(MEASURE, RELEASES_VIEW)
     return drawn
 
 
@@ -288,8 +316,13 @@ def lines(row: dict[str, Any]) -> int:
 
 
 def row(drawn: dict[str, Any], tag: str) -> dict[str, Any]:
-    """The one release row named `tag`, asserted to have been drawn."""
-    found = [release for release in drawn["rows"] if release["tag"] == tag]
+    """The one release row named `tag`, asserted to have been drawn.
+
+    Off the releases view, which is where a release row is.
+    """
+    found = [
+        release for release in drawn[RELEASES_VIEW]["rows"] if release["tag"] == tag
+    ]
     assert len(found) == 1, f"{tag} was drawn {len(found)} times"
     return cast(dict[str, Any], found[0])
 
@@ -336,6 +369,8 @@ def drawn() -> Iterator[dict[str, Any]]:
             TYPED,
             json.dumps(CARRIED),
             json.dumps(WIDTHS),
+            MONITOR,
+            RELEASES_VIEW,
             seconds=DRIVE_SECONDS,
         )
         # The last line, because a pull writes to this stream too.
@@ -361,16 +396,46 @@ def test_the_page_does_not_scroll_sideways_at_either_width(
     rendered produces, and it is invisible to every check that reads the
     stylesheet.
 
-    With the release row shut, which is how the page opens, and with it open,
-    which is the widest the page ever is: a long **tag** is the longest thing
-    on it and it is behind the one control that hides something.
+    On both **view**s, because each is measured while it is the one showing
+    and the widest thing on the page is a long **tag** on the other one.
     """
     for width, page in drawn.items():
-        for state, wide in page["scrollWidth"].items():
+        for view in (MONITOR, RELEASES_VIEW):
+            measured = page if view == MONITOR else page[view]
+            wide = measured["scrollWidth"]
             assert wide <= page["innerWidth"] + SLACK, (
                 f"the page is {wide}px wide in a {page['innerWidth']}px {width}"
-                f" with the releases {state}"
+                f" on the {view} view"
             )
+
+
+def test_the_rail_offers_both_views_and_is_pressed_to_reach_one(
+    drawn: dict[str, Any],
+) -> None:
+    """The one gesture a reader has for changing what the work pane shows
+    (#169).
+
+    Both buttons are drawn, each is the thumb the look rules ask for, and
+    neither is off the side of a phone. That the press worked is the hash and
+    the rows: the fixture pressed the releases button and the browser was on
+    `#releases` with the list drawn, which is a page that read the hash back.
+    """
+    for width, page in drawn.items():
+        for view, button in page["rail"].items():
+            assert (
+                button["width"] >= THUMB - SLACK and button["height"] >= THUMB - SLACK
+            ), f"the rail's {view} button is under a thumb in a {width}: {button}"
+            assert (
+                button["left"] >= -SLACK
+                and button["right"] <= page["innerWidth"] + SLACK
+            ), f"the rail's {view} button is off the side of a {width}: {button}"
+        assert page["hash"] in (
+            "",
+            f"#{MONITOR}",
+        ), "the page did not open on the monitor"
+        assert (
+            page[RELEASES_VIEW]["hash"] == f"#{RELEASES_VIEW}"
+        ), "pressing the rail did not put the view in the hash"
 
 
 def test_the_narrow_band_keeps_the_dot_and_the_power_button(
@@ -446,8 +511,9 @@ def test_the_release_rows_wrap_on_a_phone_rather_than_running_off_the_side(
     working rather than a thing to pin down.
     """
     phone = drawn["phone"]
-    assert len(phone["rows"]) == len(CARRIED), "the releases were not drawn"
-    for release in phone["rows"]:
+    rows = phone[RELEASES_VIEW]["rows"]
+    assert len(rows) == len(CARRIED), "the releases were not drawn"
+    for release in rows:
         assert (
             release["scrollWidth"] <= release["clientWidth"] + SLACK
         ), f"{release['tag']} overflows its own row"
