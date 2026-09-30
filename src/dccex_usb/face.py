@@ -5,17 +5,20 @@ same door, about the app rather than about a railroad (the organisation's
 ADR-0002). This one is the mirror's, and it is what the page for the command
 station talks to and the only thing it talks to: a command station is not a
 fact about a railroad, so there is no bus here to carry the question and no
-store to keep the answer (ADR-0001).
+store to keep the answer (ADR-0001). The one document it reaches for is the
+railroad's **script**, which *is* a fact about a railroad and is `control`'s
+to keep: the face reads and writes it where it lives and keeps none of its own
+(ADR-0015 d.1, `store.py`).
 
-**Five things are asked of it: what releases the source carries, that one of
-them be written onto the station, how far that writing has got, the station's
-own conversation, both ways, and how many clients are on the mirror's port.**
-The second is what the face was wanted for, and the third is what it answers
-while the second is still in flight: a flash is a minute or two, and the page
-asks about it rather than being told (ADR-0010, ADR-0012, #171). The fifth is
-this app's own business about itself, and it is the one reading the page drew
-that the station could not say — which the page no longer draws, though the
-face still answers it (ADR-0008 d.4, #111,
+**Five things are asked of it about the station: what releases the source
+carries, that one of them be written onto the station, how far that writing
+has got, the station's own conversation, both ways, and how many clients are
+on the mirror's port.** The second is what the face was wanted for, and the
+third is what it answers while the second is still in flight: a flash is a
+minute or two, and the page asks about it rather than being told (ADR-0010,
+ADR-0012, #171). The fifth is this app's own business about itself, and it is
+the one reading the page drew that the station could not say — which the page
+no longer draws, though the face still answers it (ADR-0008 d.4, #111,
 `docs/ui/README.md`). Writing means owning the
 serial port, so the app that holds the device is the only thing that can do it
 (control ADR-0065, `firmware.py`); what this adds is that whoever asked is
@@ -30,6 +33,19 @@ fan-out, a monitor that stops reading is cut off by the same rule, and an
 outage disconnects it with the rest. Nothing of the conversation is read here
 and nothing is decided about it — the mirror's framing is what makes what a
 page types a whole `<…>` message, exactly as it does for every other client.
+
+**And three about the translator's script, which the page edits through here**
+(ADR-0015 d.5, #185): the railroads `control`'s store holds, one railroad's
+script, and a script applied. The store is the face's counterparty and never
+the page's — a browser on this origin cannot reach it, and a UI talks to the
+bus, the store and its own app's face (the organisation's ADR-0002) — so the
+address is a flag on this app and the asking is `store.py`'s. An applied
+script is **compiled here and never run**: what it does not compile is a
+sentence the person editing reads, and running a railroad's document inside
+the process that holds the cable is the translator's job and not this one's
+(`dccex.script`, ADR-0013). A mirror started with no store answers those three
+and nothing else with a status and a sentence, which is what a box running this
+app beside a command station and nothing else gets.
 
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
@@ -74,10 +90,11 @@ import json
 from collections.abc import Awaitable, Callable, Mapping
 from http import HTTPStatus
 from typing import NamedTuple, Protocol, cast
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from dccex_usb.firmware import RELEASES, Doing, Fetch, Refusal, Wrote, asset, fetch
 from dccex_usb.station import HOST, READ_SIZE, to_stderr
+from dccex_usb.store import Away
 from dccex_usb.stream import (
     CLOSE,
     DATA,
@@ -110,9 +127,10 @@ watching the railroad, and what lets go of one that has stopped reading is the
 mirror's own rule (`Monitor`)."""
 
 MAX_BODY_BYTES = 1 << 16
-"""How much body the face reads. What a page asks this app is a tag and a
-gesture; anything larger is not a question this answers, and reading it would
-be a buffer somebody else decides the size of (control ADR-0042)."""
+"""How much body the face reads. What a page asks this app is a tag, a gesture
+and a railroad's **script**, which is a page or two of Python; anything larger
+is not a question this answers, and reading it would be a buffer somebody else
+decides the size of (control ADR-0042)."""
 
 CRLF = "\r\n"
 HEAD_END = b"\r\n\r\n"
@@ -228,6 +246,57 @@ page has to show."""
 CLIENTS = "clients"
 """What the count goes back under."""
 
+RAILROADS_PATH = "/railroads"
+"""What the railroads `control`'s store holds are asked for at, with the
+door's prefix already off it (ADR-0004). Railroads and not drawings: what the
+page offers a person is the railroad whose **script** they are about to edit,
+and that the store keeps the list under a drawing's name is the store's own
+arrangement (`store.py`, rails49/control#586)."""
+
+RAILROADS = "railroads"
+"""What the list goes back under: the names, in the order the store gave
+them. A name is the whole of what a caller ever says about a railroad here —
+which railroad is running is the bus's to say and is a row in `control`'s UI
+rather than anything this app knows (ADR-0015 d.5, out of scope of #185)."""
+
+SCRIPTS_PATH = "/scripts"
+"""What one railroad's **script** is read and applied at, one level above the
+railroad's name, with the door's prefix already off it (ADR-0004). The same
+shape the store's own route has, because it is the same document being named
+(ADR-0015 d.1). Two things and no third: a GET reads the text and a PUT
+applies one, so a page that reloaded the read has applied nothing."""
+
+SCRIPT = "script"
+"""What a script names its railroad under, in the answer and in the document
+that goes to the store: the store's own field, passed on as it came."""
+
+TEXT = "text"
+"""What a script carries its text under, read and answered. The store's own
+field again, and the whole of what is read out of an applied script's body: a
+body that also named a railroad or a store would be a page deciding which
+railroad it is editing and whose store it is writing to, and the railroad is
+the route and the store is this app's configuration (control ADR-0042)."""
+
+APPLIED = "applied"
+"""What an answer says a script was applied under, with the railroad it was
+applied for. The page says it is applied and nothing more: whether the
+translator has loaded it is the link row in `control`'s UI, which is where a
+railroad's own state is said (ADR-0015, consequences)."""
+
+COMPILED_AS = "<script>"
+"""What a script is named while it is compiled — the name the translator loads
+it under, so that a line the two of them refuse is a line refused under one
+name (`dccex.script`)."""
+
+NO_STORE = (
+    "this mirror was given no store, so the script cannot be read or applied:"
+    " the address is --store on its command line"
+)
+"""What the three script routes answer where the app was started with no
+store. It is a state of the installation and not of the request, and it is the
+answer a page gets on a box where this app is mirroring a cable with nothing
+else running (`__main__.py`)."""
+
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
     # for a build (CONTEXT.md), and a body that names no tag asks nothing.
@@ -303,6 +372,29 @@ class Counts(Protocol):
 
     @property
     def clients(self) -> int: ...
+
+
+class Keeps(Protocol):
+    """What the face needs of `control`'s store: where it is, the railroads it
+    holds, one railroad's **script** text, and a text put there.
+
+    `Store` satisfies it by having the members (`store.py`). Narrow for the
+    reason `Writes` and `Counts` above are narrow — the face is routing — and
+    it is the whole of what this app ever asks a store: three routes, about the
+    one document of a railroad's that is this station's business (ADR-0015
+    d.1). `where` is on it because a refusal names the store a person has to go
+    and look at, and a face that wrote the address twice would be a second
+    answer to which store this is.
+    """
+
+    @property
+    def where(self) -> str: ...
+
+    async def railroads(self) -> list[str]: ...
+
+    async def text(self, railroad: str) -> str | None: ...
+
+    async def puts(self, railroad: str, text: str) -> None: ...
 
 
 class Answered(NamedTuple):
@@ -422,6 +514,59 @@ def named(body: bytes) -> str | None:
     return tag if isinstance(tag, str) and tag else None
 
 
+def written(body: bytes) -> str | None:
+    """The **script** text an applied script carries in `body`, or None where
+    it carries none.
+
+    Read the way `named` above is read — one field, and every shape it is not
+    is None rather than an exception. One field is the whole of it: the
+    railroad is the route and the store is this app's configuration, so a body
+    that named either would be a page choosing which railroad it is editing or
+    whose store it is writing to (control ADR-0042, ADR-0015 d.5).
+
+    An empty text is a text. A railroad whose script is a comment and nothing
+    else is a railroad the translator sends its own commands for, which is an
+    ordinary script and not a refusal (ADR-0013 d.2, `dccex.script`).
+    """
+    try:
+        document = json.loads(body)
+    except ValueError:
+        return None
+    if not isinstance(document, dict):
+        return None
+    text = cast(dict[str, object], document).get(TEXT)
+    return text if isinstance(text, str) else None
+
+
+def uncompiled(text: str) -> str | None:
+    """Why `text` is not Python — the line and the message — or None where it
+    compiles.
+
+    **Compiled and never run** (ADR-0015 d.5). A script's handlers are what
+    running it registers, and running a railroad's document in the process
+    that holds the command station's device would put a person's code beside
+    every throttle's bytes: what the face owes the person editing is that a
+    text that cannot compile never reaches the store, and compiling is the
+    whole of what answers that. The loading is the translator's
+    (`dccex.script`), and a script that compiles and raises on load is what it
+    says on its link row (ADR-0015 d.4).
+
+    The line goes back with the message because a page showing only that a
+    script is bad leaves somebody reading a page of Python for it. A text
+    Python refuses with no line on it — a null byte in the middle of it — goes
+    back as what Python said.
+    """
+    try:
+        compile(text, COMPILED_AS, "exec")
+    except SyntaxError as bad:
+        return f"line {bad.lineno}: {bad.msg}" if bad.lineno else str(bad.msg)
+    except ValueError as bad:
+        # `compile` raises this rather than a SyntaxError for a source with a
+        # null byte in it, which has no line to name.
+        return str(bad)
+    return None
+
+
 def elsewhere(origin: str, host: str) -> bool:
     """Whether the page that asked is on some origin other than the one the
     request was addressed to.
@@ -465,6 +610,13 @@ class Face:
     holds the cable would answer a page that everything was fine and write
     nothing, and one served without the mirror would answer that nobody is on
     a port it is not serving.
+
+    **The store is the one that may be absent**, and `None` is what says so.
+    A mirror is an app that holds a cable and repeats it, and a box running one
+    beside a command station and nothing else has no store to be given
+    (ADR-0001, `__main__.py`): the face is served either way, and the three
+    script routes answer a status and a sentence rather than an editor that
+    quietly writes nowhere.
     """
 
     def __init__(
@@ -474,11 +626,13 @@ class Face:
         fetch: Fetch = fetch,
         flasher: Writes,
         counts: Counts,
+        store: Keeps | None = None,
     ) -> None:
         self._releases = releases
         self._fetch = fetch
         self._flasher = flasher
         self._counts = counts
+        self._store = store
 
     async def answer(
         self,
@@ -500,8 +654,9 @@ class Face:
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
         prefix is already off it: what the face answers is `/releases`,
-        `/flash`, `/clients` and `/stream`, and a prefix that arrived is a
-        path this does not answer (ADR-0004).
+        `/flash`, `/clients`, `/stream`, `/railroads` and
+        `/scripts/<railroad>`, and a prefix that arrived is a path this does
+        not answer (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
@@ -511,10 +666,12 @@ class Face:
         what holds a page somewhere else off the command station (ADR-0004
         d.4).
 
-        The body is read by one route, which is the flash asked for: it names
-        the tag to write and nothing else (#13). How far that flash has got is
-        read at the same path with a GET, which reads no body and writes
-        nothing (ADR-0012 d.2).
+        The body is read by two routes. The flash asked for names the tag to
+        write and nothing else (#13), and how far that flash has got is read
+        at the same path with a GET, which reads no body and writes nothing
+        (ADR-0012 d.2). A script applied names the text and nothing else; the
+        railroad it is for is a level of the route, so what is being edited is
+        in the address a person could read off the page (ADR-0015 d.5, #185).
         """
         if elsewhere(origin, host):
             return refused(
@@ -551,6 +708,24 @@ class Face:
                     f" and this was {method}",
                 )
             return await self._writes(body)
+        if asked == RAILROADS_PATH:
+            if method != "GET":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET, and this was {method}",
+                )
+            return await self._railroads()
+        railroad = under(asked)
+        if railroad is not None:
+            if method == "GET":
+                return await self._script(railroad)
+            if method != "PUT":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET and applied with PUT,"
+                    f" and this was {method}",
+                )
+            return await self._applies(railroad, body)
         if asked == CLIENTS_PATH:
             if method != "GET":
                 return refused(
@@ -629,6 +804,107 @@ class Face:
         if wrote.refusal is None:
             return Answered(HTTPStatus.OK, {FLASHED: tag})
         return refused(STATUS[wrote.refusal], wrote.said)
+
+    async def _railroads(self) -> Answered:
+        """The railroads `control`'s store holds, in the order it lists them,
+        or why they could not be read.
+
+        The order is the store's and is passed on as it came, as the releases
+        are: which railroad a person wants is a question about the names, and
+        the page that draws them is what asks it. None of them is marked as
+        the one that is running — which railroad that is is the bus's to say,
+        and it is a row in `control`'s UI (ADR-0015 d.5).
+        """
+        store = self._store
+        if store is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_STORE)
+        try:
+            found = await store.railroads()
+        except Away as away:
+            return refused(HTTPStatus.BAD_GATEWAY, f"the store is away: {away}")
+        return Answered(HTTPStatus.OK, {RAILROADS: found})
+
+    async def _script(self, railroad: str) -> Answered:
+        """One railroad's **script**, as the text the store holds, or a `404`
+        where it holds none for that railroad.
+
+        A railroad with no script is an answer and not an outage: it is the
+        ordinary state of a railroad nobody has written one for, and what the
+        page opens for it is the sample (ADR-0015 d.5, `dccex.sample`). The
+        store being away is the other answer and carries the store's own words.
+        """
+        store = self._store
+        if store is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_STORE)
+        try:
+            text = await store.text(railroad)
+        except Away as away:
+            return refused(HTTPStatus.BAD_GATEWAY, f"the store is away: {away}")
+        if text is None:
+            return refused(
+                HTTPStatus.NOT_FOUND,
+                f"the store at {store.where} has no script for '{railroad}'",
+            )
+        return Answered(HTTPStatus.OK, {SCRIPT: railroad, TEXT: text})
+
+    async def _applies(self, railroad: str, body: bytes) -> Answered:
+        """A script applied: compiled here, and put to the store where it
+        compiles.
+
+        **In that order, and the store is not asked for one that does not
+        compile** (ADR-0015 d.5). A text that is not Python is a text the
+        translator would come up with no handlers from, and storing one would
+        stand the railroad down at the next fetch for a document the person
+        editing was never told was broken (ADR-0015 d.3, d.4): what goes back
+        instead is the line and the message, which is what the page shows.
+
+        **It is not run.** Compiling says the text is Python; what its handlers
+        do is the translator's to find out, in the process that has a station
+        to send to (`dccex.script`).
+
+        **Nothing here guards the railroad**, as nothing here guards a flash.
+        Applying a script is a railroad stood down at the next fetch, and the
+        page is what says so before the press (ADR-0015 d.3, ADR-0006).
+        """
+        store = self._store
+        if store is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_STORE)
+        text = written(body)
+        if text is None:
+            return refused(
+                HTTPStatus.BAD_REQUEST,
+                f'a script names its text as {{"{TEXT}": "…"}},' " and this named none",
+            )
+        bad = uncompiled(text)
+        if bad is not None:
+            return refused(
+                HTTPStatus.BAD_REQUEST, f"the script does not compile: {bad}"
+            )
+        try:
+            await store.puts(railroad, text)
+        except Away as away:
+            return refused(HTTPStatus.BAD_GATEWAY, f"the store is away: {away}")
+        return Answered(HTTPStatus.OK, {APPLIED: railroad})
+
+
+def under(asked: str) -> str | None:
+    """The railroad `asked` names one level below the scripts route, or None
+    where the path is not one of that route's.
+
+    One level and no deeper. A railroad called `a/b` is a name the store does
+    not have rather than a route of its own, which is the line the store draws
+    on its own paths (`store.py`, rails49/control#586), and `/scripts` with no
+    railroad on it is a path this face does not answer rather than every
+    railroad at once.
+
+    The name arrives escaped, because a browser escapes what it puts in a path,
+    and it is unescaped here: what the store is asked about is the railroad's
+    own name, and escaping it again for the store is `store.py`'s.
+    """
+    if not asked.startswith(f"{SCRIPTS_PATH}/"):
+        return None
+    named = unquote(asked[len(SCRIPTS_PATH) + 1 :])
+    return named if named and "/" not in named else None
 
 
 def refused(status: HTTPStatus, reason: str) -> Answered:
