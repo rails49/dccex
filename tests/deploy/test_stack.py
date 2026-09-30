@@ -294,14 +294,16 @@ def test_the_translator_dials_the_broker_on_rails49_and_the_mirror_here() -> Non
     assert "ports:" not in block
 
 
-def test_the_startup_file_the_translator_mounts_is_the_one_the_deploy_makes() -> None:
-    """Until #175. A bind mount of a path that is not there makes a directory
-    of it, which the translator then fails to read."""
-    (mount,) = entries(services(BOX)["translator"], "volumes")
-    path = mount.split(":")[0]
-    assert mount == f"{path}:{path}:ro"
-    assert f'"--startup", "{path}"' in services(BOX)["translator"]
-    assert f"startup={path}\n" in DEPLOY.read_text()
+def test_the_translator_is_given_the_store_and_mounts_nothing() -> None:
+    """The script is a document in the store and no longer a file on the box
+    (#175, ADR-0015 d.1), so the service names a store and the deploy makes
+    nothing for it. A mount whose source is missing is made by the daemon as
+    a directory, which is what there is now nothing to get wrong."""
+    block = services(BOX)["translator"]
+    assert '"--store", "${DCCEX_STORE_URL:-http://store:8765}"' in block
+    assert "--startup" not in block
+    assert "volumes:" not in block
+    assert "startup" not in DEPLOY.read_text()
 
 
 def test_the_mirrors_grace_is_a_flashs_and_names_the_page_a_stop_is_on() -> None:

@@ -18,13 +18,16 @@ import logging
 import socket
 import time
 from collections.abc import AsyncGenerator, Callable
-from pathlib import Path
 
 import pytest
 from tc49.lib.bus import InProcessBus, Payload
 from tc49.lib.clock import Clock
+from tc49.lib.loading import RAILROAD
 
+from dccex import sample
+from dccex.store import Scripts
 from dccex.translator import DccEx
+from tests.stores import Store
 
 TIMEOUT_S = 5.0
 QUIET_S = 0.05
@@ -130,20 +133,30 @@ async def running(
     port: Port,
     poll_s: float = NEVER_S,
     backoff_s: float = 0.005,
-    startup: Path | None = None,
+    text: str = "",
+    no_script: bool = False,
     now: Callable[[], float] = time.monotonic,
 ) -> AsyncGenerator[DccEx]:
     """The app, constructed on the bus and keeping its link, until the test
-    is done with it."""
+    is done with it.
+
+    The script is loaded from `text` and never off a store: loading takes the
+    text, which is what lets a test hand over three lines (ADR-0015 d.2). The
+    empty text is a railroad whose store has no script for it — an empty
+    script, and every desired value sending what this app sends with none.
+    `no_script` is the other state, a railroad whose script this app has not
+    got at all, which is the one where power ON is refused (d.4).
+    """
     app = DccEx(
         bus,
         connect=port.connect,
         now=now,
-        startup=startup,
         poll_s=poll_s,
         first_backoff_s=backoff_s,
         max_backoff_s=backoff_s * 4,
     )
+    if not no_script:
+        app.load(text)
     bus.drain()
     keeping = asyncio.create_task(app.run())
     try:
@@ -186,20 +199,22 @@ async def _retained_desired_state_is_applied_on_connect() -> None:
         await station.heard_nothing_more()
 
 
-def test_the_track_is_applied_before_everything_else() -> None:
-    asyncio.run(_track_is_applied_before_everything_else())
+def test_the_power_is_not_in_what_a_connection_is_handed() -> None:
+    asyncio.run(_power_is_not_in_what_a_connection_is_handed())
 
 
-async def _track_is_applied_before_everything_else() -> None:
-    """Power reaches the rails before a turnout is asked to throw, whatever
-    order the topics were first heard in."""
+async def _power_is_not_in_what_a_connection_is_handed() -> None:
+    """Every desired value but the power, which is the one a connect does
+    not carry out: the rails stay as the station reports them and come back
+    when a person presses ON (ADR-0013 d.6)."""
     bus, _ = bus_and_tap()
     wanted(bus, POINT, "5", {"addr": "5", "position": "closed"})
     wanted(bus, TRACK, "", {"power": "on"})
     port = Port()
     async with running(bus, port):
         station = await port.opened()
-        assert await station.heard(2) == [b"<1>", b"<a 2 0 0>"]
+        assert await station.heard(1) == [b"<a 2 0 0>"]
+        await station.heard_nothing_more()
 
 
 def test_a_value_that_arrives_while_the_link_is_down_waits_for_it() -> None:
@@ -359,162 +374,620 @@ async def _an_on_does_not_lift_a_lock_the_station_reports() -> None:
         await station.heard_nothing_more()
 
 
-# -- the startup file ----------------------------------------------------
+# -- the script -----------------------------------------------------------
 
-FILE = """\
-# /etc/rails49/dccex-startup.txt — trip currents for the four districts
-
-<= A LIMIT 3000>
-<= B LIMIT 3000>
-<= C LIMIT 1500>
+LIMITS = """\
+@on("power")
+def power(t):
+    t.default()
+    for district, ma in {"A": 3000, "B": 1500}.items():
+        t.send(f"<= {district} LIMIT {ma}>")
 """
 
-SENT = [b"<= A LIMIT 3000>", b"<= B LIMIT 3000>", b"<= C LIMIT 1500>"]
+SENT = [b"<= A LIMIT 3000>", b"<= B LIMIT 1500>"]
+
+REVERSER = """\
+@on("point", "12")
+def point_12(t):
+    t.default()
+    t.send("<= D MAIN_INV>" if t.desired("point", "12") == "thrown" else "<= D MAIN>")
+"""
+
+INSTEAD = """\
+@on("signal", "40")
+def signal_40(t):
+    t.send("<A 5 2>")
+"""
+
+UNSAID = """\
+@on("signal", "40")
+def signal_40(t):
+    t.send(f"<= D {t.desired('point', '9')}>")
+"""
+
+RAISES = """\
+@on("point", "5")
+def point_5(t):
+    raise RuntimeError("the reversing loop is not wired yet")
+"""
+
+RAISES_AFTER = """\
+@on("point", "5")
+def point_5(t):
+    t.default()
+    raise RuntimeError("the reversing loop is not wired yet")
+"""
+
+WATCHES = """\
+@on("reported_power")
+def rails(t):
+    t.send("<A 9 2>" if t.reported("power") == "on" else "<A 9 0>")
 
 
-def written(tmp_path: Path) -> Path:
-    path = tmp_path / "dccex-startup.txt"
-    path.write_text(FILE)
-    return path
+@on("reported_point", "12")
+def thrown_by_hand(t):
+    t.send("<= D MAIN_INV>" if t.reported("point", "12") == "thrown" else "<= D MAIN>")
+"""
 
 
-def test_powering_on_sends_the_track_on_and_then_the_file(tmp_path: Path) -> None:
-    asyncio.run(_powering_on_sends_the_track_on_and_then_the_file(written(tmp_path)))
+def test_a_handler_sends_the_railroads_own_commands_after_the_default() -> None:
+    asyncio.run(_handler_sends_the_railroads_own_commands_after_the_default())
 
 
-async def _powering_on_sends_the_track_on_and_then_the_file(startup: Path) -> None:
-    """The order is the whole of it: the districts take their trip currents
-    once there is power to trip. The comment and the blank line are a
-    person's layout of the file and are not commands, so the station never
-    sees them."""
+async def _handler_sends_the_railroads_own_commands_after_the_default() -> None:
+    """The power-on a railroad really wants: the track-on command this app
+    would have sent, and then the district limits nothing on the bus has a
+    word for. `default()` sends the first, where the handler asked for it."""
     bus, _ = bus_and_tap()
     port = Port()
-    async with running(bus, port, startup=startup):
+    async with running(bus, port, text=LIMITS):
         station = await port.opened()
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(4) == [b"<1>"] + SENT
+        assert await station.heard(3) == [b"<1>"] + SENT
         await station.heard_nothing_more()
 
 
-def test_a_second_on_with_no_off_between_sends_the_file_once(tmp_path: Path) -> None:
-    asyncio.run(_second_on_with_no_off_between_sends_the_file_once(written(tmp_path)))
+def test_every_on_runs_the_power_handler() -> None:
+    asyncio.run(_every_on_runs_the_power_handler())
 
 
-async def _second_on_with_no_off_between_sends_the_file_once(startup: Path) -> None:
-    """It is a transition and not a level: an `on` over rails that are
-    already live asks the station for nothing new, and an `off` and back is
-    what makes it a fresh power-on again."""
+async def _every_on_runs_the_power_handler() -> None:
+    """Not a transition: two ONs over rails that are already live run the
+    handler twice, because what a handler sets is a level and it sets
+    everything it depends on each time (ADR-0013 d.5, d.7)."""
     bus, _ = bus_and_tap()
     port = Port()
-    async with running(bus, port, startup=startup):
+    async with running(bus, port, text=LIMITS):
         station = await port.opened()
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(4) == [b"<1>"] + SENT
+        assert await station.heard(3) == [b"<1>"] + SENT
 
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(1) == [b"<1>"]
+        assert await station.heard(3) == [b"<1>"] + SENT
         await station.heard_nothing_more()
 
+
+def test_the_power_handler_runs_on_the_off_and_on_the_stop_as_well() -> None:
+    asyncio.run(_power_handler_runs_on_the_off_and_on_the_stop_as_well())
+
+
+async def _power_handler_runs_on_the_off_and_on_the_stop_as_well() -> None:
+    """The event is the desired value being applied, whichever word it
+    carries; there is no transition kept here. A handler that wants only the
+    ON reads `t.desired("power")` and says so itself."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=LIMITS):
+        station = await port.opened()
         wanted(bus, TRACK, "", {"power": "off"})
-        wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(5) == [b"<0>", b"<1>"] + SENT
-
-
-def test_clearing_a_stop_powers_on_and_sends_the_file(tmp_path: Path) -> None:
-    asyncio.run(_clearing_a_stop_powers_on_and_sends_the_file(written(tmp_path)))
-
-
-async def _clearing_a_stop_powers_on_and_sends_the_file(startup: Path) -> None:
-    """`stopped` is not `on`, so the `on` that clears it is a transition into
-    `on` like any other and the file follows the track-on command. The rails
-    stayed live under the stop and the station has the values already;
-    sending them twice sets them to what they were."""
-    bus, _ = bus_and_tap()
-    port = Port()
-    async with running(bus, port, startup=startup):
-        station = await port.opened()
-        wanted(bus, TRACTION, "3", {"addr": "3", "speed": 0.5})
-        wanted(bus, TRACK, "", {"power": "on"})
-        bus.drain()
-        assert await station.heard(5) == [b"<t 3 63 1>", b"<1>"] + SENT
+        assert await station.heard(3) == [b"<0>"] + SENT
 
         wanted(bus, TRACK, "", {"power": "stopped"})
-        wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        cleared = [b"<!>", b"<1>"]
-        assert await station.heard(5) == cleared + SENT
+        assert await station.heard(3) == [b"<!>"] + SENT
 
 
-def test_a_new_link_powers_on_from_the_beginning(tmp_path: Path) -> None:
-    asyncio.run(_new_link_powers_on_from_the_beginning(written(tmp_path)))
+def test_a_handler_replaces_the_command_it_stands_in_for() -> None:
+    asyncio.run(_handler_replaces_the_command_it_stands_in_for())
 
 
-async def _new_link_powers_on_from_the_beginning(startup: Path) -> None:
-    """The station on the far end of the next link may be one that has just
-    restarted, and one that has forgotten its trip currents runs at the
-    firmware's default until somebody notices. So the memory goes with the
-    link and the retained `on` sends the file again."""
+async def _handler_replaces_the_command_it_stands_in_for() -> None:
+    """A handler that does not call `default()` is the whole of what the
+    value sends: this railroad's signal 40 is a head at address 5, and the
+    aspect this app would have sent never goes out (ADR-0013 d.2)."""
     bus, _ = bus_and_tap()
     port = Port()
-    async with running(bus, port, startup=startup):
-        wanted(bus, TRACK, "", {"power": "on"})
+    async with running(bus, port, text=INSTEAD):
+        station = await port.opened()
+        wanted(bus, SIGNAL, "40", {"addr": "40", "aspect": "clear"})
         bus.drain()
-        first = await port.opened()
-        assert await first.heard(4) == [b"<1>"] + SENT
-
-        first.hangs_up()
-        second = await port.opened(2)
-        assert await second.heard(4) == [b"<1>"] + SENT
+        assert await station.heard(1) == [b"<A 5 2>"]
+        await station.heard_nothing_more()
 
 
-def test_with_no_startup_file_the_byte_stream_is_what_it_was() -> None:
-    asyncio.run(_with_no_startup_file_the_byte_stream_is_what_it_was())
+def test_a_handler_reads_the_desired_picture() -> None:
+    asyncio.run(_handler_reads_the_desired_picture())
 
 
-async def _with_no_startup_file_the_byte_stream_is_what_it_was() -> None:
-    """The flag is optional and its absence is not a behaviour: what goes out
-    is the track-on command and nothing after it."""
+async def _handler_reads_the_desired_picture() -> None:
+    """What a handler sets, it sets from the desired values and never from
+    what an earlier handler sent (ADR-0013 d.5). The value that fired is in
+    the picture by the time the handler runs, so a point handler reads the
+    position it is being asked for."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=REVERSER):
+        station = await port.opened()
+        wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 3 3 1>", b"<= D MAIN_INV>"]
+
+        wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 3 3 0>", b"<= D MAIN>"]
+
+
+def test_a_desired_value_the_bus_has_not_given_reads_none() -> None:
+    asyncio.run(_desired_value_the_bus_has_not_given_reads_none())
+
+
+async def _desired_value_the_bus_has_not_given_reads_none() -> None:
+    """A turnout nobody has thrown: the picture says so rather than standing
+    in a default of its own (ADR-0013 d.4)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=UNSAID):
+        station = await port.opened()
+        wanted(bus, SIGNAL, "40", {"addr": "40", "aspect": "clear"})
+        bus.drain()
+        assert await station.heard(1) == [b"<= D None>"]
+
+
+def test_with_no_script_the_byte_stream_is_what_it_was() -> None:
+    asyncio.run(_with_no_script_the_byte_stream_is_what_it_was())
+
+
+async def _with_no_script_the_byte_stream_is_what_it_was() -> None:
+    """A railroad with no script in the store runs the defaults, which is
+    what this app sent before there were scripts (ADR-0015 d.4)."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port):
         station = await port.opened()
         wanted(bus, TRACK, "", {"power": "on"})
+        wanted(bus, POINT, "5", {"addr": "5", "position": "thrown"})
         bus.drain()
-        assert await station.heard(1) == [b"<1>"]
+        assert await station.heard(2) == [b"<1>", b"<a 2 0 1>"]
         await station.heard_nothing_more()
 
 
-def test_a_file_that_cannot_be_read_is_logged_and_the_railroad_powers_on(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+def test_a_handler_that_raises_is_logged_and_the_default_sent(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    asyncio.run(
-        _file_that_cannot_be_read_is_logged_and_the_railroad_powers_on(
-            tmp_path / "not-there.txt", caplog
-        )
-    )
+    asyncio.run(_handler_that_raises_is_logged_and_the_default_sent(caplog))
 
 
-async def _file_that_cannot_be_read_is_logged_and_the_railroad_powers_on(
-    missing: Path, caplog: pytest.LogCaptureFixture
+async def _handler_that_raises_is_logged_and_the_default_sent(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A railroad coming up at the firmware's low default trips early, which
-    is safe and visible; one that refuses to come up over a configuration
-    file is neither (control ADR-0050). The person who has to fix it reads the
-    log."""
+    """A handler is a person's Python and anything at all comes out of it.
+    The value is applied anyway — the turnout the layout asked for is thrown
+    — and whoever has to fix the script reads the log (ADR-0013 d.8)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.ERROR):
+        async with running(bus, port, text=RAISES):
+            station = await port.opened()
+            wanted(bus, POINT, "5", {"addr": "5", "position": "thrown"})
+            bus.drain()
+            assert await station.heard(1) == [b"<a 2 0 1>"]
+            await station.heard_nothing_more()
+    assert "point_5" in caplog.text
+    assert "not wired yet" in caplog.text
+
+
+def test_a_handler_that_raises_after_the_default_does_not_send_it_twice(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_handler_that_raises_after_the_default_does_not_send_it_twice(caplog))
+
+
+async def _handler_that_raises_after_the_default_does_not_send_it_twice(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The default runs behind a raising handler **unless the handler had
+    called it**: one desired value is one packet on the rails."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.ERROR):
+        async with running(bus, port, text=RAISES_AFTER):
+            station = await port.opened()
+            wanted(bus, POINT, "5", {"addr": "5", "position": "thrown"})
+            bus.drain()
+            assert await station.heard(1) == [b"<a 2 0 1>"]
+            await station.heard_nothing_more()
+    assert "point_5" in caplog.text
+
+
+def test_a_connect_replays_every_other_value_through_its_handler() -> None:
+    asyncio.run(_connect_replays_every_other_value_through_its_handler())
+
+
+async def _connect_replays_every_other_value_through_its_handler() -> None:
+    """A connect is the same path as a value arriving live: the turnout
+    replays, its handler runs, and the retained power is left alone
+    (ADR-0013 d.6)."""
+    bus, _ = bus_and_tap()
+    wanted(bus, TRACK, "", {"power": "on"})
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    async with running(bus, port, text=REVERSER):
+        station = await port.opened()
+        assert await station.heard(2) == [b"<a 3 3 1>", b"<= D MAIN_INV>"]
+        await station.heard_nothing_more()
+
+
+def test_a_report_handler_runs_after_the_fact_and_only_on_a_change() -> None:
+    asyncio.run(_report_handler_runs_after_the_fact_and_only_on_a_change())
+
+
+async def _report_handler_runs_after_the_fact_and_only_on_a_change() -> None:
+    """The poll makes the station restate every track's power once a second,
+    so a report handler that ran on every answer would be a handler on the
+    clock. It fires where the value differs from the last one heard, and
+    replaces nothing: there is no command of this app's to stand in for
+    (ADR-0013 d.3)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=WATCHES):
+        station = await port.opened()
+        station.says(b"<p1>")
+        assert await station.heard(1) == [b"<A 9 2>"]
+
+        station.says(b"<p1>", b"<p1>")
+        await station.heard_nothing_more()
+
+        station.says(b"<p0>")
+        assert await station.heard(1) == [b"<A 9 0>"]
+
+
+def test_a_turnout_the_station_reports_is_an_event() -> None:
+    asyncio.run(_turnout_the_station_reports_is_an_event())
+
+
+async def _turnout_the_station_reports_is_an_event() -> None:
+    """A throw from JMRI or a hand-held throttle reaches a railroad's own
+    commands only this way, after the station has acted. The id is the
+    station's own and the position is the word a point is commanded with."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=WATCHES):
+        station = await port.opened()
+        station.says(b"<H 12 1>")
+        assert await station.heard(1) == [b"<= D MAIN_INV>"]
+
+        station.says(b"<H 12 1>")
+        await station.heard_nothing_more()
+
+        station.says(b"<H 12 0>")
+        assert await station.heard(1) == [b"<= D MAIN>"]
+
+
+def test_a_report_this_app_does_not_read_fires_nothing() -> None:
+    asyncio.run(_report_this_app_does_not_read_fires_nothing())
+
+
+async def _report_this_app_does_not_read_fires_nothing() -> None:
+    """Most of the traffic on the port is another client's conversation, and
+    power and turnouts are the two things a script can be keyed on. The
+    banner, a slot's speed and a `<H>` line of another shape go unread."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=WATCHES):
+        station = await port.opened()
+        station.says(b"<l 3 1 191 0>", b"<iDCC-EX V-5.6.4 / ESP32>", b"<H 12>")
+        await station.heard_nothing_more()
+
+
+def test_the_reports_a_script_reads_go_with_the_link() -> None:
+    asyncio.run(_reports_a_script_reads_go_with_the_link())
+
+
+async def _reports_a_script_reads_go_with_the_link() -> None:
+    """A reading nobody can take is not the last one taken, so the station on
+    the far end of the next link is heard afresh and the handler keyed on
+    what it says runs."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=WATCHES):
+        first = await port.opened()
+        first.says(b"<p1>")
+        assert await first.heard(1) == [b"<A 9 2>"]
+
+        first.hangs_up()
+        second = await port.opened(2)
+        second.says(b"<p1>")
+        assert await second.heard(1) == [b"<A 9 2>"]
+
+
+# -- the sample script ----------------------------------------------------
+
+
+def test_the_sample_powers_the_railroad_on() -> None:
+    asyncio.run(_sample_powers_the_railroad_on())
+
+
+async def _sample_powers_the_railroad_on() -> None:
+    """The sample is the interface and the documentation both, so what it
+    sends is asserted as bytes: the track-on command, this installation's
+    four district limits, and the mode of the track the reversing loop is
+    on, which the power handler sets from the point that decides it rather
+    than relying on the point's own handler (ADR-0013 d.5)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=sample.TEXT):
+        station = await port.opened()
+        wanted(bus, TRACK, "", {"power": "on"})
+        bus.drain()
+        assert await station.heard(6) == [
+            b"<1>",
+            b"<= A LIMIT 3000>",
+            b"<= B LIMIT 3000>",
+            b"<= C LIMIT 1500>",
+            b"<= D LIMIT 1500>",
+            b"<= D MAIN>",
+        ]
+        await station.heard_nothing_more()
+
+
+def test_the_sample_reverses_the_district_behind_point_12() -> None:
+    asyncio.run(_sample_reverses_the_district_behind_point_12())
+
+
+async def _sample_reverses_the_district_behind_point_12() -> None:
+    """The turnout throws and the track behind it changes mode with it, and
+    an ON afterwards sets the same mode from the same desired value."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=sample.TEXT):
+        station = await port.opened()
+        wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 3 3 1>", b"<= D MAIN_INV>"]
+
+        wanted(bus, TRACK, "", {"power": "on"})
+        bus.drain()
+        assert (await station.heard(6))[-1] == b"<= D MAIN_INV>"
+
+
+def test_the_sample_sets_signal_5_from_two_turnouts() -> None:
+    asyncio.run(_sample_sets_signal_5_from_two_turnouts())
+
+
+async def _sample_sets_signal_5_from_two_turnouts() -> None:
+    """One handler on two events: each turnout throws, and the head clears
+    only where both are closed. The turnout nobody has thrown reads `None`,
+    which is not `closed`, so the first of the two leaves the signal at
+    stop."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=sample.TEXT):
+        station = await port.opened()
+        wanted(bus, POINT, "20", {"addr": "20", "position": "closed"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 5 3 0>", b"<A 5 0>"]
+
+        wanted(bus, POINT, "21", {"addr": "21", "position": "closed"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 6 0 0>", b"<A 5 2>"]
+
+        wanted(bus, POINT, "20", {"addr": "20", "position": "thrown"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 5 3 1>", b"<A 5 0>"]
+
+
+# -- a railroad with no script this app could load ------------------------
+
+
+def test_with_no_script_loaded_power_on_is_refused(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_with_no_script_loaded_power_on_is_refused(caplog))
+
+
+async def _with_no_script_loaded_power_on_is_refused(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Track modes and current limits are the script's, so a railroad whose
+    script this app has not got is one whose rails may not be made live. The
+    OFF, the stop and the speeds are carried out — each of them is a thing a
+    railroad is only made safer by (ADR-0015 d.4)."""
     bus, _ = bus_and_tap()
     port = Port()
     with caplog.at_level(logging.WARNING):
-        async with running(bus, port, startup=missing):
+        async with running(bus, port, no_script=True):
             station = await port.opened()
             wanted(bus, TRACK, "", {"power": "on"})
             bus.drain()
-            assert await station.heard(1) == [b"<1>"]
             await station.heard_nothing_more()
-    assert "not-there.txt" in caplog.text
+
+            wanted(bus, TRACTION, "3", {"addr": "3", "speed": 0.5})
+            wanted(bus, TRACK, "", {"power": "stopped"})
+            wanted(bus, TRACK, "", {"power": "off"})
+            bus.drain()
+            assert await station.heard(3) == [b"<t 3 63 1>", b"<!>", b"<0>"]
+    assert "power ON refused" in caplog.text
+
+
+def test_a_script_that_does_not_load_says_why_on_the_link_row() -> None:
+    """A load error shows on the link row and in this app's log, and not on a
+    page of this repository's (ADR-0015, consequences). The word on the row is
+    still the station's: a script that will not load is not the station being
+    away."""
+    bus, tap = bus_and_tap()
+    app = DccEx(bus)
+    app.load("1 / 0\n")
+    bus.drain()
+    said = tap.values(DEVICE_LINK)[-1]
+    assert said["link"] == "down"
+    assert "does not load" in said["detail"]
+    assert "division by zero" in said["detail"]
+    assert tap.values(DEVICE_TRACK)[-1]["reason"] == said["detail"]
+
+    app.load(LIMITS)
+    bus.drain()
+    assert "does not load" not in tap.values(DEVICE_LINK)[-1]["detail"]
+
+
+# -- asking the store -----------------------------------------------------
+
+
+def asking(bus: InProcessBus, store: Store) -> DccEx:
+    """The app with a store to ask and no link open: what `asks()` is under
+    test on. The station is another suite's, and a script is asked for
+    before a link is opened anyway."""
+    app = DccEx(bus, scripts=Scripts(store.url, timeout_s=1.0))
+    bus.drain()
+    return app
+
+
+def named(bus: InProcessBus, railroad: str) -> None:
+    """The railroad this broker runs, as `layout` names it."""
+    bus.publish(RAILROAD, {"name": railroad})
+    bus.drain()
+
+
+def test_the_railroad_the_bus_names_is_the_script_that_is_asked_for(
+    store: Store,
+) -> None:
+    """The translator follows the railroad row for one thing: which script is
+    its own (ADR-0015 d.2)."""
+    store.holds("bench", LIMITS)
+    store.opens()
+    bus, _ = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+
+    assert app.asks() is False
+    assert app.railroad == "bench"
+    assert store.asked == ["bench"]
+
+
+def test_a_new_script_text_ends_the_process(store: Store) -> None:
+    """A script applied on the page is a document that changed under a
+    running translator. It exits, standing the railroad down as every exit
+    does, and compose brings it up on the new text (ADR-0015 d.3)."""
+    store.holds("bench", LIMITS)
+    store.opens()
+    bus, _ = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+    assert app.asks() is False
+
+    store.holds("bench", INSTEAD)
+
+    assert app.asks() is True
+    assert app.changed is True
+
+
+def test_a_railroad_change_that_gives_the_same_text_changes_nothing(
+    store: Store,
+) -> None:
+    """The comparison is the text and never the name: two railroads with the
+    same script leave the process running and its rows as they were."""
+    store.holds("bench", LIMITS)
+    store.holds("yard", LIMITS)
+    store.opens()
+    bus, _ = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+    assert app.asks() is False
+
+    named(bus, "yard")
+
+    assert app.asks() is False
+    assert app.changed is False
+
+
+def test_two_railroads_with_no_script_change_nothing(store: Store) -> None:
+    """`404` both times is no change, and the defaults go on being sent."""
+    store.opens()
+    bus, _ = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+    assert app.asks() is False
+
+    named(bus, "yard")
+
+    assert app.asks() is False
+    assert app.changed is False
+
+
+def test_a_store_that_stops_answering_leaves_the_script_running(
+    store: Store,
+) -> None:
+    """Once a script is loaded a fetch that fails changes nothing: the script
+    keeps running and the link row goes on saying what the station is doing
+    (ADR-0015 d.4)."""
+    store.holds("bench", LIMITS)
+    store.opens()
+    bus, tap = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+    assert app.asks() is False
+    bus.drain()
+    said = tap.values(DEVICE_LINK)[-1]["detail"]
+
+    store.closes()
+
+    assert app.asks() is False
+    assert app.changed is False
+    bus.drain()
+    assert tap.values(DEVICE_LINK)[-1]["detail"] == said
+
+
+def test_a_store_that_has_not_answered_says_why_on_the_link_row(
+    store: Store,
+) -> None:
+    """A store that is not up yet is an ordinary state of a box, and what
+    this app does about it is come up with no handlers, say why, and ask
+    again (ADR-0015 d.4)."""
+    bus, tap = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+
+    assert app.asks() is False
+    bus.drain()
+    said = tap.values(DEVICE_LINK)[-1]
+    assert "no script" in said["detail"]
+    assert store.url in said["detail"]
+
+    store.holds("bench", LIMITS)
+    store.opens()
+
+    assert app.asks() is False
+    bus.drain()
+    assert "no script" not in tap.values(DEVICE_LINK)[-1]["detail"]
+
+
+def test_with_no_railroad_named_there_is_no_script_to_ask_for(
+    store: Store,
+) -> None:
+    """A box that has chosen no railroad is an ordinary state (control
+    ADR-0060, #564). The store is not asked, and the row says what is
+    missing."""
+    store.opens()
+    bus, tap = bus_and_tap()
+    app = asking(bus, store)
+
+    assert app.asks() is False
+    bus.drain()
+    assert "no railroad" in tap.values(DEVICE_LINK)[-1]["detail"]
+    assert store.asked == []
 
 
 # -- what the hardware reports -------------------------------------------

@@ -1,15 +1,16 @@
-"""What the station says, and the two facts this app reads out of it.
+"""What the station says, and the three facts this app reads out of it.
 
 The station writes `<…>` messages to every client, replies and unasked
 broadcasts alike, and one byte stream cannot say which a line is —
 `dccex-usb` fans the whole conversation to everybody and routes nothing
 (control ADR-0043). So what arrives here is everything the station has to say to
-anyone, and the reading is deliberately narrow: the power each track is in
-and whether the emergency-stop lock is on. Everything else — the banner, a
-slot's speed, a turnout the station keeps of its own, a sensor it polls, a
-fast clock — is another client's business and is passed over unread.
+anyone, and the reading is deliberately narrow: the power each track is in,
+whether the emergency-stop lock is on, and the turnouts the station keeps of
+its own, which are read for a **script** to be keyed on and for nothing else
+(ADR-0013 d.3). Everything else — the banner, a slot's speed, a sensor it
+polls, a fast clock — is another client's business and is passed over unread.
 
-Two functions, both pure. `messages` is the framing rule, bytes in and whole
+Pure, both of them. `messages` is the framing rule, bytes in and whole
 messages out; `reply` is one message read into a fact or into `None`. Neither
 raises, and a message this app does not recognise is not an error: it is the
 ordinary case, most of the traffic on the port being somebody else's.
@@ -55,6 +56,27 @@ class Power:
 
 
 @dataclass(frozen=True)
+class Turnout:
+    """What one `<H…>` line says: which turnout the station named, and
+    whether it reads thrown.
+
+    The station keeps turnouts of its own and this app commands none of them
+    — a point is thrown with a stateless accessory packet, and the position
+    the station answers with is one it faked (control ADR-0022). So this is
+    never read back as an observation and `device/point` stays empty. It is
+    read because a **script** may be keyed on it: a throw from JMRI or a
+    hand-held throttle reaches a railroad's own commands only this way, after
+    the station has acted (ADR-0013 d.3).
+
+    The id is the station's own turnout number, which is what its table is
+    keyed by and not the accessory number a `point` is commanded with.
+    """
+
+    point: str
+    thrown: bool
+
+
+@dataclass(frozen=True)
 class Lock:
     """Whether the station says its emergency-stop lock is on: `<!PAUSED>`
     and `<!RESUMED>`, which it broadcasts on the lock changing and on being
@@ -90,14 +112,16 @@ def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     return partial, whole
 
 
-def reply(message: bytes) -> Power | Lock | None:
+def reply(message: bytes) -> Power | Lock | Turnout | None:
     """The fact one whole message states, or None where it states none of the
-    two this app reads."""
+    three this app reads."""
     body = message[1:-1]
     if body == b"!PAUSED":
         return Lock(locked=True)
     if body == b"!RESUMED":
         return Lock(locked=False)
+    if body.startswith(b"H "):
+        return _turnout(body[2:])
     if not body.startswith((b"p0", b"p1")):
         return None
     named = body[2:].strip().decode(errors="replace")
@@ -106,3 +130,19 @@ def reply(message: bytes) -> Power | Lock | None:
     if len(named) == 1 and named in TRACKS:
         return Power(track=named, on=body[1:2] == b"1")
     return None
+
+
+def _turnout(named: bytes) -> Turnout | None:
+    """A `<H id state>` line read, or None where it is no such line.
+
+    Two fields and a digit: `1` is thrown, the polarity a `point` is
+    commanded with. The station's longer forms — a turnout's description, the
+    `<H>` list it sends when asked — carry more fields or a word where the
+    digit goes, and this app reads neither: a line it does not recognise is
+    the ordinary case here (control ADR-0050).
+    """
+    fields = named.split()
+    if len(fields) != 2 or fields[1] not in (b"0", b"1"):
+        return None
+    point = fields[0].decode(errors="replace")
+    return Turnout(point=point, thrown=fields[1] == b"1")
