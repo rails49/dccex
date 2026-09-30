@@ -42,6 +42,7 @@ import pytest
 
 from tests.ui.node import ran
 from tests.ui.test_look import UI
+from tests.ui.test_page import asked_of_the_face
 from tests.ui.test_stream import code, quoted
 
 #: The sequence, and the module it is the whole of.
@@ -420,7 +421,7 @@ def test_the_page_hands_the_row_its_stream_and_its_face() -> None:
     (ADR-0012 d.3, `tests/ui/test_page.py`).
     """
     app = code(APP.read_text())
-    assert 'import { flash, flashing, releases } from "../face.js";' in app
+    assert {"flash", "flashing", "releases"} <= asked_of_the_face(app)
     assert ".sends=${this.#sends}" in app, "the row is handed no stream"
     assert ".writes=${this.#writes}" in app, "the row is handed no face"
     writing = app[app.index("#writes = async (") :]
@@ -469,6 +470,9 @@ def test_the_page_asks_the_face_how_far_a_flash_has_got() -> None:
     """
     asking = code(FACE.read_text())
     following = asking[asking.index("export async function flashing(") :]
+    # The one function, and not the rest of the module behind it: what the
+    # page asks the face for has grown past the flash (#185).
+    following = following[: following.index("\n}")]
     assert "fetch(FLASH_PATH)" in following, "the page builds the address it asks"
     assert "method:" not in following, "the read is not a plain GET"
     assert "progress(" in following, "the page reads the answer some other way"

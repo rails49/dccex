@@ -221,9 +221,9 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
 
     Both ways of saying whose it is, over the tree as it stands. The mirror's
     face and the suite that asks it what it answers, the module the page
-    reaches a face through, the two components that say what the page talks
-    to, the page's README and the two suites of the page's checks all mean the
-    organisation's and say so in words; `SOURCE.md`
+    reaches a face through, the three components that say what the page talks
+    to, the page's README and the three suites of the page's checks all mean
+    the organisation's and say so in words; `SOURCE.md`
     means this repository's, which is superseded and says so, and so does the
     module that holds every other number to naming its repository (#128).
     `face.ts` is in this set across a line break and the README's `:39` by
@@ -243,9 +243,11 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
         "tests/test_adr_numbers_resolve.py",
         "tests/ui/test_flash.py",
         "tests/ui/test_releases.py",
+        "tests/ui/test_script.py",
         "ui/src/face.ts",
         "ui/src/ui/dccex-app.ts",
         "ui/src/ui/dccex-releases.ts",
+        "ui/src/ui/dccex-script.ts",
     }
     assert {name for name, text in read if LINKED.search(text)} == {
         "CONTEXT.md",

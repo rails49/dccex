@@ -9,12 +9,14 @@
  * second client of the mirror's port for one page.
  *
  * The work pane shows one **view** and the **rail** picks it (CONTEXT.md,
- * issue 169). There are two: the monitor view, which is the **tile**s and the
- * **monitor** under them — the station's particulars and its conversation as
- * it arrives (#4, #6, #7) — and the releases, which is what the station could
- * be written with (#8). What the page around them proves is the installation
- * the rest of the UI rests on: it is built by node inside the image, served by
- * nginx out of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
+ * issue 169). There are three: the monitor view, which is the **tile**s and
+ * the **monitor** under them — the station's particulars and its conversation
+ * as it arrives (#4, #6, #7) — the releases, which is what the station could
+ * be written with (#8), and the **script**, which is what this railroad wants
+ * of the station and is a document in `control`'s store (issue 185,
+ * ADR-0015). What the page around them proves is the installation the rest of
+ * the UI rests on: it is built by node inside the image, served by nginx out
+ * of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
  *
  * **Which one that is is kept in the hash** (`view.ts`). The rail's press
  * writes it and this reads it back, so the address bar says which view a page
@@ -30,15 +32,18 @@
  * goes on drawing two thousand rows and measuring a scroller that cannot
  * answer.
  *
- * **The releases stay in the document and are hidden**, which is the one
- * exception and is the flash. A flash in flight is that pane's — which step
- * it is on, how far the write has got and what became of it
- * (`dccex-releases.ts`) — and the minute it
+ * **The releases and the script stay in the document and are hidden**, which
+ * is the exception, and each has its own reason. A flash in flight is the
+ * releases pane's — which step it is on, how far the write has got and what
+ * became of it (`dccex-releases.ts`) — and the minute it
  * takes is exactly when an operator goes to the monitor to watch the station
  * drop and come back (#9). A pane taken out of the document and built again
  * would have forgotten a write that is still running, and would offer the
  * press that starts a second one. It costs a list of three rows nobody is
- * looking at.
+ * looking at. Unapplied edits are the script pane's in the same way, and they
+ * are held nowhere else in the system until Apply (ADR-0015 d.5): a pane built
+ * again on the way back would have discarded somebody's typing without asking,
+ * which is the one thing that view promises not to do (issue 185).
  *
  * **The counterparties are the page's, the flash included** (#9). Choosing a
  * release stops the locomotives, cuts track power and asks the **face** to
@@ -57,6 +62,15 @@
  * and is marked as this page's in the monitor, and the station's `<p…>` answer
  * is what turns the button's colour. The page checks nothing before it goes:
  * the guard is the operator, as for a flash (ADR-0011 d.4, ADR-0006).
+ *
+ * **The script's counterparties are the page's too** (issue 185). The
+ * railroads the store holds, one railroad's script and a script applied are
+ * all asked of the **face**, which reaches the store server-side because a
+ * browser on this origin cannot (the organisation's ADR-0002, ADR-0015 d.5) —
+ * and they are asked from here and handed down, so the pane holds edits and
+ * not a counterparty. The railroads are asked for once on load, as the
+ * releases are: which railroads a store holds changes when somebody draws one,
+ * and the way to ask again is to reload.
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
@@ -123,7 +137,14 @@
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
-import { flash, flashing, releases } from "../face.js";
+import {
+  applies,
+  flash,
+  flashing,
+  railroads,
+  releases,
+  script,
+} from "../face.js";
 import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
 import {
@@ -141,6 +162,7 @@ import {
   type Readings,
 } from "../readings.js";
 import { type Carried } from "../releases.js";
+import { type Applied, type Opened } from "../script.js";
 import { Stream } from "../stream.js";
 import { OPENS, type View, hashed, viewed } from "../view.js";
 import { appStyles } from "./dccex-app.styles.js";
@@ -148,6 +170,7 @@ import "./dccex-band.js";
 import "./dccex-monitor.js";
 import "./dccex-rail.js";
 import "./dccex-releases.js";
+import "./dccex-script.js";
 import "./dccex-tiles.js";
 
 /** What the page asks the station for every poll: the current on every track.
@@ -232,6 +255,7 @@ export class DccexApp extends LitElement {
     readings: { state: true },
     carried: { state: true },
     flashing: { state: true },
+    railroads: { state: true },
     view: { state: true },
   };
 
@@ -259,6 +283,15 @@ export class DccexApp extends LitElement {
    *  is what it is doing, and a page reloaded in the middle of a write is
    *  reading about that write (ADR-0012 d.3). */
   flashing: Flashing | null = null;
+
+  /** The railroads `control`'s store holds, as the face answered them, or
+   *  `null` where it could not be asked — which is also where it has not been
+   *  asked yet, and the list says they could not be read until it has
+   *  (`face.ts`).
+   *
+   *  None of them is marked as the one that is running: which railroad that is
+   *  is the bus's to say, and this page is on no bus (ADR-0015 d.5). */
+  railroads: string[] | null = null;
 
   /** Which view the work pane is showing, as the hash names it. The view a
    *  page opens on until the hash has been read, which is what a page with
@@ -313,6 +346,7 @@ export class DccexApp extends LitElement {
     window.addEventListener("hashchange", this.#shows);
     this.#stream.open();
     void this.#list();
+    void this.#holds();
     this.#polling = setInterval(() => {
       this.#ask();
     }, POLL_MS);
@@ -356,8 +390,8 @@ export class DccexApp extends LitElement {
       <dccex-band .readings=${this.readings} .sends=${this.#sends}></dccex-band>
       <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
       <div class="work ${this.view}">
-        ${this.view === "releases" ? nothing : this.#monitor()}
-        ${this.#releases()}
+        ${this.view === "monitor" ? this.#monitor() : nothing}
+        ${this.#releases()} ${this.#script()}
       </div>
     `;
   }
@@ -394,6 +428,24 @@ export class DccexApp extends LitElement {
         .sends=${this.#sends}
         .writes=${this.#writes}
       ></dccex-releases>
+    `;
+  }
+
+  /** The script view: the railroads the store holds, and the one open in a
+   *  box.
+   *
+   *  Hidden rather than taken away while another view is showing, for the
+   *  reason the releases are: unapplied edits are held in that pane and
+   *  nowhere else until Apply, and a pane built again on the way back would
+   *  have discarded them (ADR-0015 d.5). */
+  #script(): TemplateResult {
+    return html`
+      <dccex-script
+        ?hidden=${this.view !== "script"}
+        .railroads=${this.railroads}
+        .opens=${this.#opens}
+        .applies=${this.#applies}
+      ></dccex-script>
     `;
   }
 
@@ -501,6 +553,38 @@ export class DccexApp extends LitElement {
   async #list(): Promise<void> {
     this.carried = await releases();
   }
+
+  /** Ask the face which railroads the store holds, once.
+   *
+   * Once, for the reason the releases are asked for once: what a store holds
+   * changes when somebody draws a railroad in `control`'s editor, and a page
+   * that asked every five seconds would be polling another app's store for an
+   * answer that is the same all evening (ADR-0010). A face that could not be
+   * asked leaves the list saying so rather than saying the store is empty
+   * (`face.ts`, ADR-0009 d.2), and the way to ask again is to reload.
+   */
+  async #holds(): Promise<void> {
+    this.railroads = await railroads();
+  }
+
+  /** Ask the face for one railroad's script, as the pane picks one.
+   *
+   * The counterparty is the page's (the organisation's ADR-0002): what the
+   * pane does is pick, edit and press, and what asks the mirror is here. What
+   * the answer means — the store's text, the sample where there is none, or
+   * nothing to edit — is `script.ts`'s (`face.ts`).
+   */
+  readonly #opens = (railroad: string): Promise<Opened> => script(railroad);
+
+  /** Ask the face to apply a text to a railroad's script.
+   *
+   * The face compiles it and puts it to the store, and what comes back is its
+   * answer — the line and the message where it does not compile (ADR-0015
+   * d.5). The page neither compiles nor stores: there is no Python in a
+   * browser, and the store is not on this origin.
+   */
+  readonly #applies = (railroad: string, text: string): Promise<Applied> =>
+    applies(railroad, text);
 
   /** Ask the face to write a named release, and follow the write while it runs.
    *
