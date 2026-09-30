@@ -1,25 +1,23 @@
 /**
- * The **tile**s, mounted, blanking together when the **link** drops.
+ * The **tile**s, mounted: one per track in use, and the row emptying when the
+ * **link** drops.
  *
  * Which words a set of facts produces is the readings module's and is run
- * through it (`tests/ui/test_readings.py`); what is asserted here is that the
- * blanking happens on the page. It is the one of the five #1 named that a
- * source-text check could never have made: three tiles emptying at the same
- * moment is a property of a rendered row and not of a template (#126).
+ * through it (`tests/ui/test_readings.py`); what is asserted here is what
+ * reaches the page. It is the one of the five #1 named that a source-text check
+ * could never have made: a row of three tiles going at the same moment is a
+ * property of a rendered row and not of a template (#126).
  *
- * The **build** blanks hardest, and it is drawn empty rather than dropped: a
- * build held over from before a flash would be the page reporting what it
- * cannot see, and a row that collapsed as the station went would move the
- * monitor under the reader's thumb (ADR-0008 d.3). That second half is the
- * stylesheet's `min-height` and is still held there — happy-dom does no
- * layout.
+ * The row keeps its height while it is empty, so the monitor does not move
+ * under the reader's thumb as the station goes (ADR-0008 d.3). That half is the
+ * stylesheet's `min-height` and is still held there — happy-dom does no layout.
  */
 
 import { expect, test } from "vitest";
 
 import { QUIET, asOf, heard } from "../src/readings.js";
 import { DccexTiles } from "../src/ui/dccex-tiles.js";
-import { all, mounted, part, reads } from "./mounted.js";
+import { all, mounted, part } from "./mounted.js";
 
 /** When the station spoke, on the page's clock, and two moments to ask at:
  *  one it has spoken within, one it has been quiet past `SILENT_MS` for. */
@@ -27,17 +25,15 @@ const SPOKE = 1000;
 const SOON = SPOKE + 1000;
 const LATER = SPOKE + 60_000;
 
-/** The banner a station sends when it comes up, what track A is set to, and
- *  the currents the tracks are drawing. */
-const BANNER = "<iDCC-EX V-5.2.76 / MEGA / STANDARD_MOTOR G-9db6d36>";
-const TRACK_A = "<= A MAIN>";
-const CURRENTS = "<jI 250>";
+/** What two tracks are set to, what they are drawing, the most they may draw,
+ *  and the power on each: A on, B off. C is set to NONE and is not in use. */
+const MODES = ["<= A MAIN>", "<= B PROG>", "<= C NONE>"];
+const CURRENTS = "<jI 250 12 0>";
+const LIMITS = "<jG 1233 250 250>";
+const POWER = ["<p1 A>", "<p0 B>"];
 
-/** The build that banner names. */
-const BUILD = "9db6d36";
-
-/** A station that came up, said what its track is and what it is drawing. */
-const TALKED = [BANNER, TRACK_A, CURRENTS].reduce(
+/** A station that came up, said what its tracks are and what they are doing. */
+const TALKED = [...MODES, CURRENTS, LIMITS, ...POWER].reduce(
   (kept, line) => heard(kept, line, SPOKE),
   QUIET,
 );
@@ -49,38 +45,43 @@ async function tiles(now: number): Promise<DccexTiles> {
   return await mounted(drawn);
 }
 
-test("a talking station fills the build and a tile for the track in use", async () => {
+test("a talking station is a tile per track in use, in letter order", async () => {
   const drawn = await tiles(SOON);
-  expect(all(drawn, ".tile .of")).toStrictEqual([
-    "link",
-    "build",
-    "track A · MAIN",
-  ]);
-  expect(all(drawn, ".tile .reads")).toStrictEqual([BUILD, "250 mA"]);
+  expect(all(drawn, ".tile .mode")).toStrictEqual(["MAIN", "PROG"]);
+  expect(all(drawn, ".tile .draws")).toStrictEqual(["250 mA", "12 mA"]);
+  expect(all(drawn, ".tile .most")).toStrictEqual(["1233 mA", "250 mA"]);
 });
 
-test("the build and the track blank together when the link drops", async () => {
-  const drawn = await tiles(LATER);
-  expect(all(drawn, ".tile .of")).toStrictEqual(["link", "build"]);
-  expect(reads(drawn, ".tile .reads")).toBe("");
+test("the power symbol is the track's power, in colour and in words", async () => {
+  const drawn = await tiles(SOON);
+  const [on, off] = [...drawn.renderRoot.querySelectorAll(".power")];
+  expect(on?.classList).toContain("on");
+  expect(on?.getAttribute("aria-label")).toBe("track A power is on");
+  expect(off?.classList).toContain("off");
+  expect(off?.getAttribute("aria-label")).toBe("track B power is off");
 });
 
-test("the build is drawn empty rather than held over from before", async () => {
-  expect(all(await tiles(SOON), ".tile .reads")).toContain(BUILD);
-  expect(all(await tiles(LATER), ".tile .reads")).not.toContain(BUILD);
+test("a track the station has said nothing about the power of is neither", async () => {
+  const drawn = new DccexTiles();
+  drawn.readings = asOf(heard(QUIET, "<= A MAIN>", SPOKE), SOON);
+  const power = part(await mounted(drawn), ".power");
+  expect([...power.classList]).toStrictEqual(["power"]);
+  expect(power.getAttribute("aria-label")).toBe("track A power is unknown");
 });
 
-test("the light says whether the station is answering, in words too", async () => {
-  const talking = part(await tiles(SOON), ".dot");
-  expect(talking.classList).toContain("on");
-  expect(talking.getAttribute("aria-label")).toBe("answering");
-  const quiet = part(await tiles(LATER), ".dot");
-  expect(quiet.classList).toContain("off");
-  expect(quiet.getAttribute("aria-label")).toBe("not answering");
+test("the tiles go together when the link drops", async () => {
+  expect(all(await tiles(SOON), ".tile")).toHaveLength(2);
+  expect(all(await tiles(LATER), ".tile")).toStrictEqual([]);
 });
 
-test("tiles nobody handed readings to are the blanks of a quiet page", async () => {
+test("a reading the station has not given is blank and not a zero", async () => {
+  const drawn = new DccexTiles();
+  drawn.readings = asOf(heard(QUIET, "<= A MAIN>", SPOKE), SOON);
+  expect(all(await mounted(drawn), ".tile .draws")).toStrictEqual([""]);
+  expect(all(drawn, ".tile .most")).toStrictEqual([""]);
+});
+
+test("tiles nobody handed readings to are the empty row of a quiet page", async () => {
   const drawn = await mounted(new DccexTiles());
-  expect(all(drawn, ".tile .of")).toStrictEqual(["link", "build"]);
-  expect(reads(drawn, ".tile .reads")).toBe("");
+  expect(all(drawn, ".tile")).toStrictEqual([]);
 });
