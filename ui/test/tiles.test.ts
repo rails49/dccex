@@ -51,9 +51,9 @@ test("a talking station is a tile per track, in letter order", async () => {
   expect(all(drawn, ".tile .mode")).toStrictEqual(["MAIN", "PROG", "NONE"]);
   expect(all(drawn, ".tile .draws")).toStrictEqual(["250 mA", "12 mA", "0 mA"]);
   expect(all(drawn, ".tile .most")).toStrictEqual([
-    "1233 mA",
-    "250 mA",
-    "250 mA",
+    "max 1233 mA",
+    "max 250 mA",
+    "max 250 mA",
   ]);
 });
 

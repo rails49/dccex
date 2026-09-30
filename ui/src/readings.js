@@ -173,7 +173,7 @@ export const QUIET = /** @type {Kept} */ ({
  *   a reader who cannot see the colour is given
  * @property {string} mode what the track is set to — MAIN, PROG, DC…
  * @property {string} draws the current it draws, in milliamps
- * @property {string} most the most it may draw, in milliamps
+ * @property {string} most the most it may draw, in milliamps, after `max`
  */
 
 /**
@@ -398,6 +398,6 @@ export function tiles(readings) {
       says: says(letter, track.hot),
       mode: track.mode ?? BLANK,
       draws: milliamps(track.milliamps),
-      most: milliamps(track.most),
+      most: track.most === null ? BLANK : `max ${milliamps(track.most)}`,
     }));
 }

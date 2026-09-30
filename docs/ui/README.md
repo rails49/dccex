@@ -165,7 +165,7 @@ the station names, in letter order (#7, #170).
 | a power symbol | green where the track has power, red where it has not, grey where the station has said nothing about it |
 | mode | what the track is set to: MAIN, PROG, DC… |
 | current | the current it draws, in mA |
-| max current | the most it may draw, in mA |
+| max current | the most it may draw, in mA, after `max`: `max 1233 mA` |
 
 The letter heads the tile, and the symbol and the three words are centred under
 it. The power is the symbol's label as well — `track A power is on` — because a
