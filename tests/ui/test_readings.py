@@ -75,22 +75,28 @@ def power(**scenario: Any) -> dict[str, Any]:
     return pressed
 
 
-def tiles(**scenario: Any) -> dict[str, str]:
-    """What the tiles read, by the name of each."""
-    return {shown["of"]: shown["reads"] for shown in drawn(**scenario)["tiles"]}
+def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
+    """One **tile** per track in use, by the letter of each.
+
+    Keyed by the letter rather than listed, because what a tile reads is four
+    readings and a failure that named the track is the one worth reading. The
+    order is asserted on its own below, off the same answer.
+    """
+    return {tile["track"]: tile for tile in drawn(**scenario)["tiles"]}
 
 
 BANNER = "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>"
 
 #: One poll's answer from the station on the layout (5.6.4, EX-CSB1), trimmed
 #: to what the readings are made of: power on A and B, off on C, every track
-#: MAIN, and the current on each.
+#: MAIN, the current on each and the most each may draw.
 POLLED = (
     "<p1 A>",
     "<p1 B>",
     "<p0 C>",
     "<p1>",
     "<jI 120 2 0 0>",
+    "<jG 1233 1233 250 250>",
     "<= A MAIN>",
     "<= B MAIN>",
     "<= C MAIN>",
@@ -102,12 +108,6 @@ TALKING: tuple[tuple[str, int], ...] = (
     (BANNER, NOW - 30),
     *((line, NOW - 20) for line in POLLED),
 )
-
-
-def light(**scenario: Any) -> bool:
-    """Whether the link light is on."""
-    lit: bool = drawn(**scenario)["tiles"][0]["lit"]
-    return lit
 
 
 @lru_cache(maxsize=1)
@@ -169,7 +169,7 @@ def test_any_track_on_is_a_button_that_cuts_the_power() -> None:
         "does": "power off",
         "sends": "<0>",
     }
-    assert tiles(said=said, now=NOW)["track C"] == "off"
+    assert tiles(said=said, now=NOW)["C"]["hot"] is False
 
 
 @pytest.mark.node
@@ -182,48 +182,79 @@ def test_a_track_on_with_the_power_as_a_whole_off_still_cuts() -> None:
 
 
 @pytest.mark.node
-def test_the_tiles_are_the_light_the_build_and_a_tile_per_track() -> None:
-    """In order: the link light, the build, then each track the station uses
-    by its letter. D is set to NONE, which is a track not in use."""
-    assert [shown["of"] for shown in live()["tiles"]] == [
-        "link",
-        "build",
-        "track A · MAIN",
-        "track B · MAIN",
-        "track C · MAIN",
-    ]
+def test_there_is_a_tile_per_track_in_use_in_letter_order() -> None:
+    """One per track whose mode is not NONE, in letter order (CONTEXT.md
+    **tile**, issue 170). D is set to NONE, which is a track not in use.
+
+    The **link** and the **build** are not among them: the **band** carries
+    both.
+    """
+    assert [tile["track"] for tile in live()["tiles"]] == ["A", "B", "C"]
 
 
 @pytest.mark.node
-def test_the_tiles_read_the_station_s_particulars() -> None:
-    """A track that is on reads its current; one that is off reads `off`,
-    not the current last measured on it."""
+def test_a_tile_reads_a_track_s_power_mode_current_and_limit() -> None:
+    """The readings a tile is, and nothing else. A reading added without a
+    scenario beside it is one an operator can be shown that nobody ever read
+    (ADR-0009 d.3).
+
+    The power is there twice and is one reading: the colour the symbol takes,
+    and the same thing in words for a reader who cannot see it (issue 168).
+    C's power is off and its current is still what the station last measured on
+    it — the symbol says the power and the number says the current, which are
+    two readings and not one.
+    """
     assert tiles(said=list(TALKING), now=NOW) == {
-        "link": "",
-        "build": "9db6d10",
-        "track A · MAIN": "120 mA",
-        "track B · MAIN": "2 mA",
-        "track C · MAIN": "off",
+        "A": {
+            "track": "A",
+            "hot": True,
+            "says": "track A power is on",
+            "mode": "MAIN",
+            "draws": "120 mA",
+            "most": "1233 mA",
+        },
+        "B": {
+            "track": "B",
+            "hot": True,
+            "says": "track B power is on",
+            "mode": "MAIN",
+            "draws": "2 mA",
+            "most": "1233 mA",
+        },
+        "C": {
+            "track": "C",
+            "hot": False,
+            "says": "track C power is off",
+            "mode": "MAIN",
+            "draws": "0 mA",
+            "most": "250 mA",
+        },
     }
-    assert light(said=list(TALKING), now=NOW) is True
 
 
 @pytest.mark.node
 def test_a_track_whose_mode_is_not_known_yet_is_still_drawn() -> None:
-    """A current arrives before the mode has: the track is drawn by its letter
-    alone until the station says what it is set to."""
+    """A current arrives before the mode has: the track has a tile and its mode
+    is blank until the station says what it is set to."""
     assert tiles(said=[("<jI 40>", NOW)], now=NOW) == {
-        "link": "",
-        "build": "",
-        "track A": "40 mA",
+        "A": {
+            "track": "A",
+            "hot": None,
+            "says": "track A power is unknown",
+            "mode": "",
+            "draws": "40 mA",
+            "most": "",
+        },
     }
 
 
 @pytest.mark.node
 def current(*milliamps: int) -> str:
-    """What track A's tile reads after these readings, one a second."""
+    """What track A's tile reads as its current after these readings, one a
+    second."""
     said = [(f"<jI {ma}>", NOW - 10 + i) for i, ma in enumerate(milliamps)]
-    return tiles(said=said, now=NOW)["track A"]
+    draws: str = tiles(said=said, now=NOW)["A"]["draws"]
+    return draws
 
 
 def test_the_current_is_the_mean_of_the_last_eight_readings() -> None:
@@ -254,7 +285,6 @@ def test_a_line_the_decoder_does_not_know_is_still_the_station_speaking() -> Non
     plainly answering, and a **link** that went down under one would be the
     page calling a talking station dead."""
     assert band(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW)["answering"] is True
-    assert light(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW) is True
 
 
 @pytest.mark.node
@@ -268,8 +298,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
         "says": "dcc-ex offline",
         "power": {"hot": None, "does": "power", "sends": None},
     }
-    assert tiles(now=NOW) == {"link": "", "build": ""}
-    assert light(now=NOW) is False
+    assert tiles(now=NOW) == {}
 
 
 @pytest.mark.node
@@ -304,10 +333,10 @@ def test_the_power_button_presses_nothing_while_the_link_is_down() -> None:
 def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
     """The station said all of it and then went quiet past the silence.
 
-    The band says so rather than leaving the page looking merely idle, the
-    light goes red, and the tiles that are the station talking go with it —
-    which is the correct reading rather than a gap, because the station is not
-    talking (ADR-0008 d.3).
+    The band says so rather than leaving the page looking merely idle, and the
+    tiles go with it — the whole row, because a tile is one track and the
+    station has stopped saying there is one. That is the correct reading rather
+    than a gap: the station is not talking (ADR-0008 d.3).
     """
     gone: dict[str, Any] = {"said": list(TALKING), "now": NOW + silent_ms()}
 
@@ -317,8 +346,7 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
         "says": "dcc-ex offline",
         "power": {"hot": None, "does": "power", "sends": None},
     }
-    assert tiles(**gone) == {"link": "", "build": ""}
-    assert light(**gone) is False
+    assert tiles(**gone) == {}
 
 
 @pytest.mark.node
@@ -341,8 +369,6 @@ def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
     flashing = [(BANNER, NOW)]
     back = [*flashing, (BANNER.replace("9db6d10", "0ff1ce5"), NOW + 90_000)]
 
-    assert tiles(said=flashing, now=NOW + 60_000)["build"] == ""
-    assert tiles(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
     assert band(said=flashing, now=NOW + 60_000)["build"] == ""
     assert band(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
 
@@ -363,14 +389,14 @@ def test_what_the_station_last_said_is_what_the_readings_read() -> None:
 
     assert power(said=said[:2], now=NOW)["sends"] == "<1>"
     assert power(said=said, now=NOW)["sends"] == "<0>"
-    assert tiles(said=said, now=NOW)["track A"] == "50 mA"
+    assert tiles(said=said, now=NOW)["A"]["draws"] == "50 mA"
 
 
 @pytest.mark.node
 def test_a_reading_the_station_has_not_given_is_blank_and_not_a_zero() -> None:
     """A track the station has named but not measured has no current.
     Drawing `0 mA` there would be a reading nobody took (ADR-0009 d.2)."""
-    assert tiles(said=[("<= A MAIN>", NOW)], now=NOW)["track A · MAIN"] == ""
+    assert tiles(said=[("<= A MAIN>", NOW)], now=NOW)["A"]["draws"] == ""
 
 
 def test_the_readings_hold_no_clock_and_no_socket() -> None:

@@ -86,6 +86,8 @@ export const MEAN_OF = 8;
  * @property {boolean | null} hot whether the track has power
  * @property {number | null} milliamps the current it draws: the mean of
  *   `recent`
+ * @property {number | null} most the most it may draw, in milliamps, as the
+ *   station's `<jG …>` gives it
  * @property {readonly number[]} recent the latest readings, oldest first
  */
 
@@ -94,6 +96,7 @@ const UNKNOWN = /** @type {Track} */ ({
   mode: null,
   hot: null,
   milliamps: null,
+  most: null,
   recent: [],
 });
 
@@ -150,16 +153,27 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * One reading as it is drawn: what it is called, and what it reads.
+ * One **tile**: one track's readings, as they are drawn (CONTEXT.md **tile**,
+ * issue 170).
  *
- * The band and the tiles draw the same shape because they are the same kind
- * of thing — a name and a word — and what differs is where they sit and how
- * loud they are, which is the stylesheets'.
+ * The power is what it is rather than a word, because the tile draws it as a
+ * symbol and the words it is labelled with are the component's. The other
+ * three are words, blank where the station has not said: a `0 mA` nobody
+ * measured is a reading nobody took (ADR-0009 d.2).
  *
- * @typedef {object} Shown
- * @property {string} of which reading it is
- * @property {string} reads the words a person sees
- * @property {boolean} [lit] for a light rather than words: whether it is on
+ * The letter is the tile's name and is not one of the three words drawn on it
+ * (issue 170): it is the order the tiles come in, and it is what the power
+ * symbol's words name the track by.
+ *
+ * @typedef {object} Tile
+ * @property {string} track the letter the station names it by
+ * @property {boolean | null} hot whether the track has power, which is what
+ *   colours the symbol: `null` where the station has said nothing about it
+ * @property {string} says whether the track has power, in words, which is what
+ *   a reader who cannot see the colour is given
+ * @property {string} mode what the track is set to — MAIN, PROG, DC…
+ * @property {string} draws the current it draws, in milliamps
+ * @property {string} most the most it may draw, in milliamps
  */
 
 /**
@@ -230,6 +244,13 @@ export function heard(kept, line, at) {
     const track = tracks[letter] ?? UNKNOWN;
     const recent = [...track.recent, milliamps].slice(-MEAN_OF);
     tracks[letter] = { ...track, recent, milliamps: mean(recent) };
+  });
+  reading?.limits?.forEach((milliamps, i) => {
+    const letter = LETTERS[i];
+    if (letter === undefined) {
+      return;
+    }
+    tracks[letter] = { ...(tracks[letter] ?? UNKNOWN), most: milliamps };
   });
   return {
     ...kept,
@@ -323,36 +344,62 @@ export function band(readings) {
 }
 
 /**
- * What the tiles read, in the order they are drawn: a light for the **link**,
- * the **build**, then a tile per track.
+ * Milliamps as a tile reads them, or blank where nothing has been measured.
  *
- * The light is the link at a glance, green or red, which the **band** carries
- * as a dot of its own as well (issue 168). The **build** is on the band too,
- * and the tile keeps it where a narrow band gives it up (issue 169).
+ * @param {number | null} measured
+ * @returns {string}
+ */
+function milliamps(measured) {
+  return measured === null ? BLANK : `${Math.round(measured)} mA`;
+}
+
+/**
+ * What a track's power reads in words: the label the tile's symbol carries, so
+ * that a reader who cannot see the colour is given the same reading — as the
+ * **link**'s words are on the band (issue 168).
  *
- * A track reads `off` when the station says its power is off, whatever
- * current was last measured on it, and its current in milliamps otherwise. A
- * track set to `NONE` is not in use and gets no tile.
+ * `unknown` rather than `off` where the station has said nothing about the
+ * track: a state nobody confirmed drawn as a state is a reading nobody took
+ * (ADR-0009 d.2).
+ *
+ * @param {string} letter which track
+ * @param {boolean | null} hot whether it has power
+ * @returns {string}
+ */
+function says(letter, hot) {
+  const state = hot === null ? "unknown" : hot ? "on" : "off";
+  return `track ${letter} power is ${state}`;
+}
+
+/**
+ * One **tile** per track in use, in letter order (CONTEXT.md **tile**, issue
+ * 170).
+ *
+ * In use is a mode that is not `NONE`: a track the station has switched off
+ * altogether is not a reading anybody wants four of. A track the station has
+ * given a current for and not yet a mode is in use all the same — the current
+ * is the station talking about it — and its mode is blank until the answer to
+ * `<=>` arrives.
+ *
+ * **The whole row goes when the link goes down**, because `asOf` has taken the
+ * tracks away: the tiles are the station talking and the station is not
+ * talking (ADR-0008 d.3). The **link** and the **build** are the **band**'s and
+ * are not tiles — the band carries both at every width one of them is drawn at
+ * (issue 168, issue 170).
  *
  * @param {Readings} readings
- * @returns {Shown[]}
+ * @returns {Tile[]}
  */
 export function tiles(readings) {
-  const tracks = Object.entries(readings.tracks)
+  return Object.entries(readings.tracks)
     .filter(([, track]) => track.mode !== "NONE")
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([letter, track]) => ({
-      of: track.mode === null ? `track ${letter}` : `track ${letter} · ${track.mode}`,
-      reads:
-        track.hot === false
-          ? "off"
-          : track.milliamps === null
-            ? BLANK
-            : `${Math.round(track.milliamps)} mA`,
+      track: letter,
+      hot: track.hot,
+      says: says(letter, track.hot),
+      mode: track.mode ?? BLANK,
+      draws: milliamps(track.milliamps),
+      most: milliamps(track.most),
     }));
-  return [
-    { of: "link", reads: BLANK, lit: readings.answering },
-    { of: "build", reads: readings.build ?? BLANK },
-    ...tracks,
-  ];
 }
