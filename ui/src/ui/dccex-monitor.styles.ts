@@ -90,6 +90,13 @@ export const monitorStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
+  /* The link to the command reference, at the right end of the controls. */
+  .reference {
+    margin-left: auto;
+    color: var(--sl-color-neutral-600);
+    font-size: var(--sl-font-size-small);
+  }
+
   /* The one thing that scrolls. It is given the height and the overflow so
      that following the newest line is a scroll position this component owns,
      rather than the work pane's or the window's.

@@ -157,6 +157,11 @@ const RESUMES = "resume";
  *  spoken to and the readings are not touched. */
 const EMPTIES = "clear";
 
+/** Where the commands the box takes are listed, and what the link says. */
+const REFERENCE =
+  "https://dcc-ex.com/reference/software/command-summary-consolidated.html";
+const REFERS = "commands ↗";
+
 /** Where a reader who has scrolled up is, kept across an update: a row, and
  *  where in the view that row sat.
  *
@@ -296,6 +301,9 @@ export class DccexMonitor extends LitElement {
         ${waits === null
           ? nothing
           : html`<span class="waiting">${waits}</span>`}
+        <a class="reference" href=${REFERENCE} target="_blank" rel="noopener">
+          ${REFERS}
+        </a>
       </div>
       <div class="lines">
         ${this.said.length === 0
