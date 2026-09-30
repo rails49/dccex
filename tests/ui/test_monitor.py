@@ -1013,6 +1013,23 @@ def test_the_controls_are_their_own_row_and_sized_for_a_thumb() -> None:
     assert not undercut, f"the controls set their own {', '.join(undercut)}"
 
 
+def test_the_history_steps_are_quiet_and_sized_for_a_thumb() -> None:
+    """The ↑ and ↓ beside the send are sized by the bare `button` rule, as the
+    controls above are, and are drawn quieter than the send."""
+    styles = STYLES.read_text()
+    step = rule(styles, ".box .step")
+    assert (
+        "background:" in step and "primary" not in step
+    ), "the steps are drawn as loudly as the send"
+    sizing = ("min-width", "min-height", "width", "height", "padding")
+    undercut = [
+        asked
+        for asked in sizing
+        if re.search(rf"(?<![\w-]){re.escape(asked)}\s*:", step)
+    ]
+    assert not undercut, f"the steps set their own {', '.join(undercut)}"
+
+
 def test_a_line_this_page_sent_goes_through_the_same_keeping() -> None:
     """The line the operator typed is kept the way an arriving one is, which
     is what puts it behind a pause with the rest (run above).

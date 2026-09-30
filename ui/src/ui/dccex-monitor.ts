@@ -21,6 +21,12 @@
  * `message.js`'s, writing it is the stream's, and holding the conversation is
  * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
+ * **The box remembers what was sent.** ↑ and ↓, as keys or as the two buttons
+ * beside the send, step through the last commands as a shell does, and what
+ * was being typed comes back past the newest one. Tapping a sent line puts it
+ * in the box. The history is what `sends` handed back, not the page's polls,
+ * and it is kept in `localStorage` for this device.
+ *
  * **The lines are handed to it and the sending is handed to it**, because what
  * is made of the conversation is the whole page and not this pane: the band
  * and the tiles read the same bytes (ADR-0008 d.2), and a monitor that owned
@@ -110,6 +116,26 @@ const SENT_MARK = "»";
 /** What the box says before anything is typed into it. The shortest whole
  *  message there is, which is also the one an operator types most. */
 const PLACEHOLDER = "<s>";
+
+/** How many sent commands the box remembers, and where it keeps them. */
+const RECALLED = 50;
+const RECALL_KEY = "dccex.sent";
+
+/** The commands kept from an earlier visit, or none where storage is empty,
+ *  blocked or unreadable. */
+function recalled(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECALL_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+/** Keeps a press on a step button from taking focus off the box, so an open
+ *  on-screen keyboard stays open. */
+function staysInBox(pressing: Event): void {
+  pressing.preventDefault();
+}
 
 /** What the control that holds the view says, and what it says while it is
  *  holding. One control and not two, named for what pressing it will do, so a
@@ -214,6 +240,28 @@ export class DccexMonitor extends LitElement {
    *  conversation with no rows in it. */
   #held: Held | null = null;
 
+  /** What was sent, oldest first. */
+  #sent: string[] = recalled();
+
+  /** Which of `#sent` the box shows. `#sent.length` is what was being typed
+   *  before stepping back, kept in `#draft`. */
+  #at = this.#sent.length;
+  #draft = "";
+
+  /** Whether the next update follows the newest line whatever the scroller
+   *  reads, because a keyboard resized the view since it was measured. */
+  #refollow = false;
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.visualViewport?.addEventListener("resize", this.#resized);
+  }
+
+  override disconnectedCallback(): void {
+    window.visualViewport?.removeEventListener("resize", this.#resized);
+    super.disconnectedCallback();
+  }
+
   override render(): TemplateResult {
     const waits = waiting(this.behind);
     return html`
@@ -240,7 +288,10 @@ export class DccexMonitor extends LitElement {
                 }
                 const read = gloss(said.line);
                 return html`
-                  <div class=${said.sent ? "line sent" : "line"}>
+                  <div
+                    class=${said.sent ? "line sent" : "line"}
+                    @click=${said.sent ? () => this.#recall(said.line) : nothing}
+                  >
                     <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
                     <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
                     <span class="said">${said.line}</span>
@@ -263,7 +314,29 @@ export class DccexMonitor extends LitElement {
           autocapitalize="off"
           autocorrect="off"
           spellcheck="false"
+          @keydown=${this.#keys}
+          @focus=${this.#focused}
         />
+        <button
+          type="button"
+          class="step older"
+          aria-label="older command"
+          ?disabled=${this.#at === 0}
+          @mousedown=${staysInBox}
+          @click=${() => this.#step(-1)}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          class="step newer"
+          aria-label="newer command"
+          ?disabled=${this.#at === this.#sent.length}
+          @mousedown=${staysInBox}
+          @click=${() => this.#step(1)}
+        >
+          ↓
+        </button>
         <button type="submit">send</button>
       </form>
     `;
@@ -300,7 +373,8 @@ export class DccexMonitor extends LitElement {
    */
   override willUpdate(): void {
     const scroller = this.#scroller();
-    this.#following = scroller === null || atBottom(scroller);
+    this.#following = this.#refollow || scroller === null || atBottom(scroller);
+    this.#refollow = false;
     this.#held =
       scroller === null || this.#following ? null : holding(scroller);
   }
@@ -367,7 +441,74 @@ export class DccexMonitor extends LitElement {
       return;
     }
     box.value = "";
+    if (this.#sent.at(-1) !== sent) {
+      this.#sent = [...this.#sent, sent].slice(-RECALLED);
+      try {
+        localStorage.setItem(RECALL_KEY, JSON.stringify(this.#sent));
+      } catch {
+        // Not kept past this visit.
+      }
+    }
+    this.#at = this.#sent.length;
+    this.#draft = "";
+    this.requestUpdate();
   }
+
+  /** ↑ and ↓ in the box step through what was sent. */
+  #keys(pressed: KeyboardEvent): void {
+    const by =
+      pressed.key === "ArrowUp" ? -1 : pressed.key === "ArrowDown" ? 1 : 0;
+    if (by !== 0) {
+      pressed.preventDefault();
+      this.#step(by);
+    }
+  }
+
+  /** Show the command `by` steps from the one in the box. Leaving the end
+   *  keeps what was being typed; coming back to it restores that. */
+  #step(by: number): void {
+    const box = this.#box();
+    const to = this.#at + by;
+    if (box === null || to < 0 || to > this.#sent.length) {
+      return;
+    }
+    if (this.#at === this.#sent.length) {
+      this.#draft = box.value;
+    }
+    this.#at = to;
+    box.value = this.#sent[to] ?? this.#draft;
+    this.requestUpdate();
+  }
+
+  /** Put a sent line in the box, to edit or send again. */
+  #recall(line: string): void {
+    const box = this.#box();
+    if (box === null) {
+      return;
+    }
+    box.value = line;
+    this.#at = this.#sent.length;
+    this.#draft = "";
+    box.focus();
+    this.requestUpdate();
+  }
+
+  /** Where the reader is as the box takes focus, which is before an
+   *  on-screen keyboard opens. */
+  #focused(): void {
+    const scroller = this.#scroller();
+    this.#following = scroller === null || atBottom(scroller);
+  }
+
+  /** The on-screen keyboard opened or closed. A reader who was at the bottom
+   *  when the box took focus is put back on the newest line; one who had
+   *  scrolled up is left where they are (#4). */
+  readonly #resized = (): void => {
+    if (this.#following && this.shadowRoot?.activeElement === this.#box()) {
+      this.#refollow = true;
+      this.requestUpdate();
+    }
+  };
 
   #scroller(): HTMLElement | null {
     return this.renderRoot.querySelector<HTMLElement>(".lines");

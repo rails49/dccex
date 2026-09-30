@@ -177,7 +177,7 @@ MEASURE = """
   };
   const monitor = app.renderRoot.querySelector("dccex-monitor");
   const typed = box(monitor.renderRoot.querySelector("input.typed"));
-  const send = box(monitor.renderRoot.querySelector(".box button"));
+  const send = box(monitor.renderRoot.querySelector(".box button[type=submit]"));
   const releases = app.renderRoot.querySelector("dccex-releases");
   const row = releases.renderRoot.querySelector("details");
   const shut = document.documentElement.scrollWidth;
