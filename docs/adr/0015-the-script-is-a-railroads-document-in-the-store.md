@@ -17,17 +17,18 @@ the translator does not follow the railroad today.
 ## Decision
 
 **d.1** A script is a document in `control`'s store, one per railroad:
-`GET`/`PUT /scripts/<railroad>`. The store backs it up with the rest. A box has
-one DCC-EX station, so the key is the railroad alone.
+`GET`/`PUT /scripts/<railroad>`, as a JSON document carrying the text. The
+store backs it up with the rest. A box has one DCC-EX station, so the key is
+the railroad alone.
 
 **d.2** The translator takes `--store <url>`, not `--script`. It reads the
 retained `tc49/layout/state/railroad`, then fetches that railroad's script.
 Loading takes the script's text, so the tests hand it the sample directly.
 
-**d.3** It asks again every few seconds with `If-None-Match`. When the script
-or the railroad changes, it exits and compose restarts it. The exit stands the
-railroad down, as every exit does, so a script takes effect from power off at
-the next ON.
+**d.3** It asks again every few seconds and compares the text with the one it
+runs. When the script or the railroad changes, it exits and compose restarts
+it. The exit stands the railroad down, as every exit does, so a script takes
+effect from power off at the next ON.
 
 **d.4** A railroad with no script runs with the defaults. A script that raises
 on load, or a store that does not answer, leaves the translator with no
@@ -54,6 +55,8 @@ before they are discarded, and says that Apply stops the railroad.
 - **One script per installation.** Railroads need different configurations.
 - **One railroad per installation.** A change to `control` ADR-0060 larger
   than following the railroad.
+- **The script as `text/x-python` with an `ETag`.** Every other store route
+  answers JSON, and headers would have to pass through the store's router.
 - **A mounted file with modification-time checks.** File owner and inode
   handling, and a translator tied to the store's host.
 - **Reloading in place.** A second way in beside the start.
