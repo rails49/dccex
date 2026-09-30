@@ -270,6 +270,19 @@ def test_the_mirror_runs_the_device_and_the_port_the_mapping_names() -> None:
     assert f'"--device", "{INSIDE}", "--port", "2560"' in services(BOX)["mirror"]
 
 
+def test_the_mirror_is_given_the_store_the_page_edits_a_script_in() -> None:
+    """The face's editor reaches `control`'s store server-side, so the address
+    is on the mirror's command line (ADR-0015 d.5, #185).
+
+    The same variable the translator is given below, because the two read and
+    write one document: a box that serves its store somewhere else overrides
+    one line for both, the way the device mapping is one line.
+    """
+    block = services(BOX)["mirror"]
+    assert '"--store", "${DCCEX_STORE_URL:-http://store:8765}"' in block
+    assert block.count("${DCCEX_STORE_URL") == 1
+
+
 def test_the_translator_runs_on_a_box_alone() -> None:
     """A clean clone has no broker to dial (ADR-0008), so the base does not
     run it."""
