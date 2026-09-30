@@ -31,7 +31,8 @@ door ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-nev
 ```
 https://dccex.$BOX_DOMAIN/                     this page
 https://dccex.$BOX_DOMAIN/dccex-usb/releases   what the configured source carries
-https://dccex.$BOX_DOMAIN/dccex-usb/flash      write one of them onto the station
+https://dccex.$BOX_DOMAIN/dccex-usb/flash      write one of them onto the station,
+                                               and read how far that has got
 https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 ```
@@ -42,9 +43,10 @@ than a railroad — which is what makes it the same page on a box with a station
 and no layout as on the layout box, with no branch between them. Every reading
 on the page is made of what the station said on the **stream**. How many
 **client**s are on the mirror's port was the one that was not, and the page no
-longer draws it, so what it asks the face for is the releases and a flash
-rather than a reading (#111). The count is still the app's own business about
-itself and the face still answers it at the address above.
+longer draws it, so what it asks the face for is the releases, a flash and how
+far that flash has got rather than a reading of the station's (#111, #172). The
+count is still the app's own business about itself and the face still answers it
+at the address above.
 
 It calls no third-party service. The releases are read by the app from its
 configured source and handed on; the browser never reaches the release API, and
@@ -327,10 +329,33 @@ is that the release source could not be read, and not to go and retype a tag
 that is perfectly good (#46). A second flash asked for while one is running is
 refused and not queued.
 
+**How far the write has got is asked for and drawn as one bar** (#172,
+[ADR-0012](../adr/0012-a-flash-says-how-far-it-has-got.md)). The mirror reads
+esptool's output as it runs and answers the stage and, while esptool writes, the
+percentage; the page asks twice a second while there is a flash to follow and
+once on load, and draws a bar with the stage beside it in the mirror's own
+words — *fetching*, *checking*, *writing NN %*, *verifying*. The bar counts for
+the writing and runs without a number for the other three, because esptool
+counts the blocks it sends and nothing counts a fetch or a hash: a bar drawn at
+a percentage nobody measured is a reading nobody took (ADR-0009 d.2).
+
+The answer is about the mirror and not about who pressed, so a page opened or
+reloaded in the middle of a write shows that write, and offers no press while it
+runs — a second flash is what the mirror refuses anyway. An idle page asks once,
+on load, and then nothing: a question with one answer asked four times a minute
+by every tab left open on the box is not a poll worth spending (this
+repository's ADR-0010). One ask is out at a time, because two could be answered
+in either order and the older answer landing last would walk the bar backwards —
+the defect the count of clients had (#88, #111).
+
 **A flash that started is not replied to; it is observed.** The stream drops as
 the device goes, the tiles go, and when the station comes back its banner
 says which build it is running. That is how the page learns the write landed,
-and nothing has to be reloaded.
+and nothing has to be reloaded. So the answer to the POST is not the end of it:
+the page says it is waiting for the station until the **build** arrives, and
+then says whether it is the **tag** that was written. A build that is something
+else is a failure however the mirror answered — what is on the station is read
+off the station (ADR-0006 d.3, ADR-0012 d.4).
 
 ### The stream
 
@@ -530,8 +555,9 @@ answers whether the page could read it at all and what the face answered
 through the listing, and reads the release rows back (`tests/ui/releases.mjs`),
 and
 `tests/ui/test_flash.py` puts a flash through the sequence and reads back what
-went down the cable, in what order, and what the page said while it did
-(`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
+went down the cable, in what order, what the page said while it did, what it
+made of the mirror's answer about how far the write had got, and what became of
+the flash once the station came back (`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
 and a conversation arriving on the socket through the rules that answer where
 the stream is and where a line ends (`tests/ui/framing.mjs`), and
 `tests/ui/test_monitor.py` puts a scroller, a time and whole conversations —
@@ -656,8 +682,12 @@ answer that was not the newest ask's was dropped where it arrived (#88). The
 page stopped drawing that count and the numbering went with the ask it
 guarded: every reading here is now made of lines off the stream and of the
 clock, and both of those only go forward. What the page asks the face for is
-the releases, once where it joins the document, and a flash, on a press —
-neither of them on the schedule (`tests/ui/test_releases.py`).
+the releases, once where it joins the document, a flash, on a press, and how far
+a flash has got, on a schedule of its own — twice a second while there is one to
+follow, once on load, and not at all otherwise (`tests/ui/test_releases.py`,
+`tests/ui/test_page.py`). That last one is a reading of this shape again, and
+what keeps its answers in order is that one ask is out at a time rather than the
+numbering (#172).
 
 **Nothing typed is held for it.** A message an operator typed while the stream
 was down is a command to a command station, and one arriving seconds later,
@@ -850,8 +880,9 @@ Two things the prototype left open and the tickets settle while building:
   buttons at a thumb, the command box on screen and typed into, and a release
   row wrapping rather than running off the side. What is not: the tiles onto
   more rows — there is no station behind the page in that job, so there are no
-  tiles to measure — and the flash's warning taking its own line above the two
-  presses that answer it. And what the check drives is a Chromium at a phone's width
+  tiles to measure — the flash's warning taking its own line above the two
+  presses that answer it, and the bar a flash fills, which wants a flash in
+  flight and there is no face behind the page in that job to run one. And what the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the
   thing that is still open is somebody holding one up to it. Mounting the
   components settled none of it and could not: happy-dom does no layout
