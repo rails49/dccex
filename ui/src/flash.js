@@ -374,6 +374,12 @@ export function instead(tag, build) {
  * the build goes with the link (ADR-0008 d.3) — and then the build either is the
  * tag or is not, which is the whole of what says a flash landed (ADR-0006 d.3).
  *
+ * **It is a reading of this moment and not a record.** A station that goes away
+ * again after it came back leaves the page waiting for it once more, the way the
+ * **build** on the band and the mark in the list go with the **link**
+ * (ADR-0008 d.3): what the page can see is what it says, and a sentence held
+ * over from a minute ago would be one about a station nobody is looking at.
+ *
  * @param {Wrote | null} wrote what the sequence came back with, or `null` where
  *   no flash has been asked for
  * @param {string | null} tag the release it was asked to write
