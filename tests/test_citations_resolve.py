@@ -220,9 +220,10 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
     """Named so the check above cannot pass by looking at nothing.
 
     Both ways of saying whose it is, over the tree as it stands. The mirror's
-    face, the module the page reaches a face through, the two components that
-    say what the page talks to, the page's README and the two suites of the
-    page's checks all mean the organisation's and say so in words; `SOURCE.md`
+    face and the suite that asks it what it answers, the module the page
+    reaches a face through, the two components that say what the page talks
+    to, the page's README and the two suites of the page's checks all mean the
+    organisation's and say so in words; `SOURCE.md`
     means this repository's, which is superseded and says so, and so does the
     module that holds every other number to naming its repository (#128).
     `face.ts` is in this set across a line break and the README's `:39` by
@@ -238,6 +239,7 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
         "docs/ui/README.md",
         "src/SOURCE.md",
         "src/dccex_usb/face.py",
+        "tests/dccex_usb/test_face.py",
         "tests/test_adr_numbers_resolve.py",
         "tests/ui/test_flash.py",
         "tests/ui/test_releases.py",
