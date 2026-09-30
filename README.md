@@ -26,9 +26,10 @@ top of them.
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
   with a box to type into. **The page is here and the work pane is full**
-  (#3, #5–#9): `ui/` holds the band, the rail and a work pane of **tile**s, the
-  releases and the **monitor**, built by node inside its own image and served
-  by nginx out of it, drawing in the look rules from its first commit. The
+  (#3, #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
+  **view** in — the **tile**s and the **monitor** under them, or the releases
+  (#169) — built by node inside its own image and served by nginx out of it,
+  drawing in the look rules from its first commit. The
   whole of what is on it is written down ([the page](docs/ui/README.md)). The
   mirror's face is what it talks to, on that same label under `/dccex-usb` and
   behind the same certificate

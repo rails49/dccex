@@ -328,7 +328,7 @@ export function band(readings) {
  *
  * The light is the link at a glance, green or red, which the **band** carries
  * as a dot of its own as well (issue 168). The **build** is on the band too,
- * and the tile keeps it beside the releases it gets compared against.
+ * and the tile keeps it where a narrow band gives it up (issue 169).
  *
  * A track reads `off` when the station says its power is off, whatever
  * current was last measured on it, and its current in milliamps otherwise. A

@@ -27,7 +27,9 @@ here, so every token has something on the page that is its colour or its size.
 answering, which is a fault (#138), and its power button while every track is
 off, which is the stop. `--rail-group` is the one green this chrome has, so the
 band's dot and a power button with the rails hot take it as well as the rail's
-groups (#168, ADR-0011 d.1).
+groups (#168, ADR-0011 d.1). `--band-ink` is the one light, so it is the ink on
+the rail too: the glyph on a rail button, and the chip under the one for the
+view being shown (#169).
 
 ## The copy is inert
 

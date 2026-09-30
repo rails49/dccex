@@ -18,7 +18,8 @@
  *
  * **The build is on the band as well** (issue 168, ADR-0011). The band carries
  * it as the one line that says what this station is running; the tile keeps it
- * beside the releases it gets compared against.
+ * where a narrow band gives it up, which is every phone held at the layout
+ * (issue 169, `dccex-band.styles.ts`).
  */
 
 import { LitElement, html, type TemplateResult } from "lit";
