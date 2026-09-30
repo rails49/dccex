@@ -14,15 +14,21 @@
  * them would follow.
  *
  * **Every address here is built from that prefix and carries nothing on it.**
- * The one thing the page asks — what **release**s the configured source
- * carries — is a question about the app rather than a question with
- * parameters, and the one thing it asks *for* names a **tag** and nothing
- * else: where releases are read from is that app's own configuration, and a
- * page that could name it would be a page deciding what the command station is
- * offered to run (control ADR-0042, `firmware.py`).
+ * What the page asks — what **release**s the configured source carries, and how
+ * far a flash in flight has got — are questions about the app rather than
+ * questions with parameters, and the one thing it asks *for* names a **tag** and
+ * nothing else: where releases are read from is that app's own configuration,
+ * and a page that could name it would be a page deciding what the command
+ * station is offered to run (control ADR-0042, `firmware.py`).
  */
 
-import { UNANSWERED, WAITING, type Wrote } from "./flash.js";
+import {
+  UNANSWERED,
+  WAITING,
+  type Flashing,
+  type Wrote,
+  progress,
+} from "./flash.js";
 import { carried, type Carried } from "./releases.js";
 
 /** The prefix the mirror's face answers under on this page's own origin, and
@@ -82,9 +88,14 @@ export async function releases(): Promise<Carried[] | null> {
   }
 }
 
-/** Where a **release** is asked to be written onto the station. Asked for and
- *  never read: there is nothing at this address to see, and a page that
- *  reloaded one would write the station twice (`face.py`). */
+/** Where a **release** is asked to be written onto the station, and where how
+ *  far that writing has got is read.
+ *
+ *  Two things on one path, which is the face's own arrangement: a POST writes
+ *  the station and a GET says what the writing has come to, so a page that
+ *  asked how far it had got cannot have written anything by asking, and one
+ *  that reloaded the read writes the station no second time (ADR-0012 d.2,
+ *  `face.py`). */
 export const FLASH_PATH = `${FACE}/flash`;
 
 /** How a flash is asked for, what the tag it names rides in, and what it
@@ -145,5 +156,47 @@ export async function flash(tag: string): Promise<Wrote> {
     };
   } catch {
     return { flashed: false, says: UNANSWERED };
+  }
+}
+
+/** What how far a flash has got comes back under: the flash in flight, or
+ *  `null` where none is running (`face.py`'s `FLASHING`). One key, so that a
+ *  page asking twice a second has one thing to read and no flag to read beside
+ *  it (ADR-0012 d.2). */
+const FLASHING = "flashing";
+
+/**
+ * How far the flash in flight has got, or `null` where none is running and
+ * where the face did not say.
+ *
+ * **It is asked for rather than waited on** (ADR-0012, ADR-0010). The POST
+ * above sits inside esptool for a minute or two and answers once; this is the
+ * question a page can ask while that is happening, and any page can ask it —
+ * one opened or reloaded mid-flash is told what is under way, because the
+ * answer is about the mirror and not about who pressed.
+ *
+ * **What this does is the asking, and the reading is `flash.js`'s
+ * `progress()`**, which is where a `releases` document's reading is and for the
+ * same reason: the `fetch`, the status and the envelope need a browser and are
+ * here, and what the page makes of the answer needs nothing and is in a module
+ * a bare node runs (`tests/ui/test_flash.py`, ADR-0009 d.3).
+ *
+ * It answers rather than raising, as the two above do: a rejection left loose
+ * on a poll running twice a second would be an unhandled rejection twice a
+ * second.
+ */
+export async function flashing(): Promise<Flashing | null> {
+  try {
+    const answered = await fetch(FLASH_PATH);
+    if (!answered.ok) {
+      return null;
+    }
+    const said: unknown = await answered.json();
+    if (typeof said !== "object" || said === null) {
+      return null;
+    }
+    return progress((said as Record<string, unknown>)[FLASHING]);
+  } catch {
+    return null;
   }
 }
