@@ -8,6 +8,8 @@ asserted where the bytes are (`test_translator.py`); here a handler is handed
 a list and appends its name to it, so what is under test is the keying alone.
 """
 
+from pathlib import Path
+
 import pytest
 
 from dccex import sample, script
@@ -122,3 +124,11 @@ def test_the_sample_registers_the_events_it_names() -> None:
     ]
     assert loaded.handlers("point", "5") == []
     assert loaded.handlers("reported_point", "12") == []
+
+
+def test_the_page_about_this_app_shows_the_sample() -> None:
+    """The sample is the documentation as much as the test data (ADR-0013,
+    consequences), so the page shows the text the tests load rather than a
+    copy of it that can drift."""
+    page = Path(__file__).resolve().parent.parent.parent / "docs" / "dccex"
+    assert sample.TEXT in (page / "README.md").read_text()

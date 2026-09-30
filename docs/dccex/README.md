@@ -49,79 +49,172 @@ What this station has no packet for — a turnout numbered outside the accessory
 range — falls away in the mapping below. An address nothing answers to does no
 harm, as a packet nobody picks up does.
 
-**On connect it applies the retained desired state and does nothing else.**
-The desired values are the whole picture, so there is no handshake and no
-session state to agree. The `wanted/track` row is applied first, so power
-reaches the rails before a turnout is asked to throw and a release's zeros
-land before the speeds rather than over the top of them.
+**On connect it applies the retained desired state, power excepted.** The
+desired values are the whole picture, so there is no handshake and no session
+state to agree. The power is the one value a connect does not carry out:
+after a station or a translator restart the rails stay as the station reports
+them and come back when a person presses ON (ADR-0013 d.6). Every other value
+replays through its handler, in the order the topics were first heard.
 
-## The startup file
+## The script
 
-`--startup <path>` names a file of raw station commands, one per line, that
-this app sends **on every transition of `wanted/track` into `on`, straight
-after the track-on command**. The flag is optional; with no file the byte
-stream is exactly what it is without it.
+**`--store <url>`** is where `control`'s store serves the documents, and the
+one route this app reads is the **script**: a railroad's Python document,
+one per railroad, at `GET /scripts/<railroad>`, answering
+`{"script": "<railroad>", "text": "..."}`
+([ADR-0015](../adr/0015-the-script-is-a-railroads-document-in-the-store.md),
+[control#586](https://github.com/rails49/control/issues/586)). Which railroad
+that is comes off the retained `tc49/layout/state/railroad` and never off a
+flag: the station this app holds is the same station whichever railroad is
+loaded on it, and the script is the one thing about it that is the railroad's.
 
-That file is where this installation's **power district trip currents** are
-written, and the only place they appear. This railroad has four districts,
-A–D, and each takes the current its wiring can really carry; a district is a
-hardware-level fact that reaches no bus topic
-([#217](https://github.com/rails49/control/issues/217)), so no other component
-learns there are four of them, or any.
+The script is where this railroad's `<…>` that the bus has no word for is
+written — which mode each track is set to, what current each may draw, what a
+turnout throwing does to a track or a signal
+([ADR-0013](../adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+It replaced the startup file, which could only send raw commands after the
+first `<1>` of a session (ADR-0013 d.9).
 
+A **handler** is a function in it, run when its **event** happens. Two kinds,
+and they are never confused. A handler keyed on a **desired value** runs in
+place of the command this app would have sent for it, and sends that too only
+by asking. A handler keyed on something the **station reported** runs after
+the fact and replaces nothing.
+
+### The sample
+
+This is the interface, and it is `dccex/sample.py` in this repository: the
+tests load it, fire events and assert the bytes sent, and it is what a
+railroad with no script of its own is offered to start from
+([#185](https://github.com/rails49/dccex/issues/185)).
+
+```python
+# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015).
+#
+# `on(row, address=None)` keys a handler on an event. The rows are power,
+# point, signal, traction, function, and for what the station reported
+# reported_power and reported_point.
+#
+# A handler on a desired value runs in place of the command the translator
+# would have sent; `t.default()` sends that command as well. `t.send(text)`
+# sends one raw message. `t.desired(row, address=None)` reads the desired
+# picture and `t.reported(row, address=None)` the last reports; a value the
+# bus has not given reads None.
+
+
+@on("power")
+def power(t):
+    t.default()
+    for district, ma in {"A": 3000, "B": 3000, "C": 1500, "D": 1500}.items():
+        t.send(f"<= {district} LIMIT {ma}>")
+    reverser(t)
+
+
+@on("point", "12")
+def point_12(t):
+    t.default()
+    reverser(t)
+
+
+def reverser(t):
+    # District D is the reversing loop behind point 12.
+    mode = "MAIN_INV" if t.desired("point", "12") == "thrown" else "MAIN"
+    t.send(f"<= D {mode}>")
+
+
+@on("point", "20")
+@on("point", "21")
+def signal_5(t):
+    t.default()
+    closed = t.desired("point", "20") == t.desired("point", "21") == "closed"
+    t.send("<A 5 2>" if closed else "<A 5 0>")
 ```
-# /etc/rails49/dccex-startup.txt — trip currents for the four districts
-<= A LIMIT 3000>
-<= B LIMIT 3000>
-<= C LIMIT 1500>
-<= D LIMIT 1500>
-```
 
-**The values above are this installation's**, not a default and not a
-recommendation: what a district can take is what is wired to it, and the file
-is where a person writes theirs. The command spelling is the station's, and it
-wants firmware that has the per-district limit — that patch, the command and
-flashing it are a separate project and not this repository's work
+**The values in it are this installation's**, not defaults and not a
+recommendation: what a district can take is what is wired to it, and which
+track the reversing loop is on is this railroad's wiring. The command
+spellings are the station's, and the per-district limit wants firmware that
+has it — that patch, the command and flashing it are a separate project and
+not this repository's work
 ([rails49/CommandStation-EX#1](https://github.com/rails49/CommandStation-EX/issues/1)).
-Until it lands the values are compiled into the station instead, which is a
-reflash to change one and the reason for wanting the command at all.
 
-**On the layout box the file is `/etc/rails49/dccex-startup.txt`**, mounted
-read-only into this app's container and named on the command line the service
-runs ([`compose.box.yaml`](../../compose.box.yaml),
-[control#523](https://github.com/rails49/control/issues/523)). The deploy
-(`scripts/deploy.sh`) makes an
-empty one where the box has none, because a bind mount whose source is
-missing is made by the daemon as a directory and this app would open it as
-its startup file. A single-file mount binds the inode, so the file is edited
-in place: an editor that replaces it leaves the container reading the values
-it was created with.
+### What a script is written with
 
-**The file is not parsed beyond blank and comment.** A line beginning with `#`
-is a note and a blank line is layout; every other line is stripped of
-surrounding whitespace and handed to the station exactly as typed. That is the
-whole point of it: a person writes anything their station understands —
-auto-reverse and polarity are the same kind of hardware configuration and
-belong here if they ever need setting — without this app growing a vocabulary
-for it, and without a mechanism that would reach the scheduler, the dispatcher
-or the driver.
+`on(row, address=None)` registers a handler. The rows are `power`, `point`,
+`signal`, `traction` and `function` for the desired values, and
+`reported_power` and `reported_point` for what the station said. The address
+is the string the bus carries and the hardware answers to; left out, the
+handler runs for **every** address of its row, which is the only form `power`
+has. Two of these stack on one function, which is how one signal is set from
+two turnouts. A row that is no event, or an address that is not a string, is
+a script that does not load.
 
-**It is a transition and not a level.** A second `on` over rails that are
-already live sends nothing: the station has the values. Any other word sends
-them again — an `off` and back, and the emergency-stop lock and its release —
-and so does a new link — the station on the far end of the
-next one may be one that has just restarted, and one that has forgotten its
-trip currents runs at the firmware's default until somebody notices.
+The handler is handed one argument, the event, and may do four things with
+it:
 
-**A file that is missing or cannot be read is logged and the railroad powers
-on anyway.** Refusing to power on because a configuration file was missing is
-worse than coming up at whatever the firmware defaults to
-([ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
-What that default is belongs to the firmware and not here, and it is a choice
-made there: a station's trip currents are fixed when its firmware is built, so
-one built with this railroad's four values is protected with no file at all and
-the file only changes them. One built with the stock definition trips at 5000 mA
-on every output, and a missing file leaves the wiring behind that.
+| written | does |
+| --- | --- |
+| `t.default()` | sends this app's own command for the value that fired, once per firing whoever asks; nothing at all for a report |
+| `t.send(text)` | sends one raw `<…>` message, as typed |
+| `t.desired(row, address=None)` | reads the desired picture: a position, an aspect, a speed, a function's bit, or the word the power is wanted in. `None` where the bus has not said |
+| `t.reported(row, address=None)` | reads the last reports: `power` by the track the station named — the empty address on the line that names none — and `point` by the id it named. `None` where the station has not said this session |
+
+It publishes nothing on the bus: there is no method for it (ADR-0013 d.4).
+The rows `reported` reads are `power` and `point`, the verb carrying what the
+event names spell out.
+
+**A handler sets everything it depends on each time it runs, from the desired
+picture** (d.5). The power handler above sets district D's mode from the
+point that decides it, even though point 12's own handler sets the same
+thing: a handler that relied on an earlier one would be wrong on the first
+power-on of a session.
+
+**The power handler runs on every value of the row** — `on`, `off` and the
+stop — and on every ON rather than only on a change from off (d.7). There is
+no transition kept here; a handler that wants only the ON reads
+`t.desired("power")` and says so itself.
+
+**A report fires on a change.** The poll below makes the station restate
+every track's power once a second, and a handler on every one of those
+answers would be a handler on the clock; it runs where the value differs from
+the last one heard (d.3). Everything the station told us goes with the link,
+so the first thing said on the next one is a change. Power and turnouts are
+the two reports a handler can be keyed on; others are added when a script
+needs one. A turnout's report is the station's own faked answer to a throw
+([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)),
+read for a script and for nothing else — it reaches no bus row — and it is
+how a throw from JMRI or a hand-held throttle reaches a railroad's own
+commands at all.
+
+**A handler that raises is logged, and the default is sent** unless the
+handler had already called it (d.8, as extended by ADR-0015 d.4). A script is
+a person's Python and anything at all comes out of it; the turnout the layout
+asked for is thrown either way, and whoever has to fix the script reads the
+log.
+
+### A script that is not there, and one that will not load
+
+**No script (`404`): the defaults.** A railroad whose store has no document
+for it sends exactly what this app sent before there were scripts.
+
+**A script that raises on load, or a store that has not answered: no
+handlers.** OFF, STOP and speeds are carried out; **power ON is refused**;
+and the link row's `detail` says why, beside what the station is doing
+(ADR-0015 d.4). Track modes and current limits are the script's, so a
+railroad whose script this app has not got is one whose rails may not be made
+live. It keeps asking, and the reason leaves the row when a script loads.
+
+**Once a script is loaded, a fetch that fails changes nothing.** The script
+keeps running. A store that goes away does not take the railroad with it.
+
+**A new text ends the process.** The script for the current railroad is
+fetched again every few seconds and compared with the one running; a text
+that differs stands the railroad down, as every exit does, and the process
+ends for compose to restart (ADR-0015 d.3). So a script applied on the page
+takes effect from power off at the next ON, which is what a track mode and a
+current limit have to be set from. Nothing is reloaded in place. A railroad
+change that gives the same text, or no script both times, changes nothing:
+the comparison is the text and never the name.
 
 ## The mapping
 
@@ -226,6 +319,14 @@ supply itself rather than off a second row. A district that has tripped gets
 none: the station reported that and said nothing about why, and an invented
 reason would be worse than none.
 
+**A script that will not load rides on the same `detail`**, said beside what
+the station is doing, and leaves the word alone: the link is the station
+answering, and a document that will not compile is not the station being away
+([ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md),
+ADR-0015 d.4). That is where a person reading why the
+railroad will not come on reads it — on the row, in `control`'s UI, and in
+this app's log.
+
 **Ten unanswered polls lower it, with the session still open.** The socket
 closing is not the only way a station goes away and is not the usual one:
 `dccex-usb` holds its clients through an outage it thinks is brief and drops
@@ -283,8 +384,8 @@ reach is one it was not driving, and `_send` drops rather than queues.
 ## The command line
 
 ```
-python -m dccex --broker <host:port> --station <host:port>
-                     [--startup <file>] [--id <name>]
+python -m dccex --broker <host:port> --store <url> --station <host:port>
+                     [--id <name>]
 ```
 
 The process a container runs, coming up alone against a broker
@@ -292,54 +393,62 @@ The process a container runs, coming up alone against a broker
 decision 5) as `layout`, `scheduler`, `dispatcher`, `driver` and `simulator`
 do, and as `dccex-usb` has all along.
 
-**No railroad and no store.** Hardware needs no layout: this app reads the
-wanted rows and writes what it observes, and there is nothing for a railroad's
-name to select here — no document is read, and an address is the string the
-hardware answers to rather than something looked up. `--station` is where
-`dccex-usb` serves the command station, `--startup` the file of trip currents
-below, and `--id` the name the link row is keyed by, the package's where it is
-given no other. The id names the broker's client too, `tc49-<id>`: this is the
-one app a railroad may run twice, and two clients sharing a client id take
-turns disconnecting each other.
+**A store, and no railroad on the command line.** `--station` is where
+`dccex-usb` serves the command station, `--store` where the store serves the
+documents, and `--id` the name the link row is keyed by, the package's where
+it is given no other. There is no `--railroad`: the one document this app
+reads is its railroad's script, and which railroad that is is the row's to
+say (above). An address is the string the hardware answers to rather than
+something looked up, so nothing else here is a railroad's. The id names the
+broker's client too, `tc49-<id>`: this is the one app a railroad may run
+twice, and two clients sharing a client id take turns disconnecting each
+other.
 
-The drain period, the poll and the reconnect backoff are not flags. Nothing
-outside the process has an opinion about them, and what the station is asked,
-how long it may go without answering before the link falls, and how often a
-lost link is retried are this app's own.
+The drain period, the poll, the reconnect backoff and how often the store is
+asked are not flags. Nothing outside the process has an opinion about them,
+and what the station is asked, how long it may go without answering before the
+link falls, how often a lost link is retried and how often a script is asked
+for are this app's own.
 
-Coming up is the broker, then the desired picture, then the link. The two rows
-the constructor states are publishes, and a publish made to a broker that is
-not there is dropped rather than queued, so the broker is waited for first. The
-desired rows the broker has retained are then waited for **before** the link is
-opened, for a second: what a connection is handed is ordered with the track
-first, where a value arriving over a link that is already up is acted on as it
-arrives, and a speed reaching the station ahead of the power is a locomotive
-that rolls the moment somebody makes the rails live
+Coming up is the broker, then the railroad, then the script, then the desired
+picture, then the link. The two rows the constructor states are publishes, and
+a publish made to a broker that is not there is dropped rather than queued, so
+the broker is waited for first. The **railroad** row is waited for by name,
+because there is one of it and the script cannot be asked for without it, and
+the script is asked for once on that thread — a store that has not answered is
+a state this app comes up in and says on its row, not one it waits out. The
+desired rows the broker has retained are waited for last and **before** the
+link is opened, for a second: a value arriving over a link that is already up
+is acted on as it arrives, so the whole picture has to be held before a
+connection is handed it
 ([#333](https://github.com/rails49/control/issues/333),
 [ADR-0054](https://github.com/rails49/control/blob/main/docs/adr/0054-the-railroad-comes-up-at-rest-and-points-replay.md)).
 
 The app is also constructed on the bus directly, with where the station is
-served:
+served and the script's own text:
 
 ```python
-DccEx(bus, "mirror", 2560, startup=Path("/etc/rails49/dccex-startup.txt"))
+app = DccEx(bus, "mirror", 2560, scripts=Scripts("http://store:8765"))
+app.load(sample.TEXT)
 ```
 
-That is what `--startup` on this app's own command line does. `control`'s
-bench no longer builds it: a live run against a station is `layout` and this
-app as separate processes on the broker
+Loading takes the **text**, which is what `--store` fetches and what the
+tests hand over (ADR-0015 d.2). `asks()` is one ask of the store, made before
+the link is opened; `following()` is the ones after it, and it comes back
+where the text has changed and the process is to end. `control`'s bench no
+longer builds this app: a live run against a station is `layout` and this app
+as separate processes on the broker
 ([ADR-0014](../adr/0014-the-translator-is-on-the-bus-through-controls-package.md)
-d.6). There is nowhere else
-for the file to go, so `--startup` without `--station` is refused in a sentence
-rather than accepted and dropped
-([#334](https://github.com/rails49/control/issues/334)).
+d.6).
 
 `run()` is the connection: it connects, applies the retained desired state,
 reads what the station says until the link goes, and reconnects with backoff.
 Nothing else waits on it — a desired value arriving while the link is down is
 remembered and applied on the next connect, the way the retained value is at
-startup. **No dependency is added**: the whole of it is `asyncio` streams, and
-the image builds with `uv sync --frozen`.
+startup, and the power is the one that is not (ADR-0013 d.6).
+
+**No dependency is added**: the whole of it is `asyncio` streams and
+`urllib`, and the image builds with `uv sync --frozen`.
 
 **asyncio owns this app's process, and the session's only where a station is
 named.** `_send` writes to an `asyncio.StreamWriter` from inside a bus
