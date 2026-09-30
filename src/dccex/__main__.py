@@ -1,41 +1,34 @@
 """`python -m dccex` — the translator as a process of its own.
 
-Every app comes up alone (control ADR-0059, decision 5). Started against an empty
-broker with nothing else running, no store answering and no command station on
-the other end of the port, this connects, publishes its own two retained rows
-— the railroad dark and the station unreached — and stays up, retrying the
-mirror and the store on backoffs of their own; it exits on a signal, and on a
-script's text changing under it (ADR-0015 d.3). Nothing here is ordered by
-anything else coming up first, which is why compose carries no `depends_on`.
+Every app comes up alone (control ADR-0059, decision 5). Started against an
+empty broker with nothing else running, no store answering and no command
+station on the other end of the port, this connects, publishes its own two
+retained rows — the railroad dark and the station unreached — and stays up,
+retrying the mirror and the store on backoffs of their own; it exits on a
+signal, and on a script's text changing under it (ADR-0015 d.3). Nothing here
+is ordered by anything else coming up first, which is why compose carries no
+`depends_on`.
 
-**A store, and no railroad on the command line.** This app reads one
-document, the **script** its railroad's own station commands are written in
-(ADR-0015), and which railroad that is comes off
-`tc49/layout/state/railroad` rather than off a flag: the other five processes
-are told which railroad they run, and this one follows the row because the
-station it holds is the same station whichever railroad is loaded on it. So
-the flags are where the broker is, where the store is, where the mirror is,
-and the one value that is this deployment's rather than the railroad's:
+**A store, and no railroad on the command line.** Which railroad this app runs
+comes off `tc49/layout/state/railroad` rather than off a flag, because the
+station it holds is the same station whichever railroad is loaded on it
+([docs/dccex/README.md](../../docs/dccex/README.md), ADR-0015). So the flags
+are where the broker is, where the store is, where the mirror is, and the one
+value that is this deployment's rather than the railroad's:
 
 - `--station <host:port>`, where the `dccex-usb` mirror serves the command
   station, which on the box is the service beside this one
   (`compose.box.yaml`). Not the USB device: this app is one client of that
   port beside JMRI and the hand-held throttles.
 - `--store <url>`, where the store serves the documents, which is the one
-  route this app reads: `GET /scripts/<railroad>` (rails49/control#586). A
-  store that is not answering is a railroad this app carries out OFF, STOP
-  and speeds for and refuses power ON, saying why on its link row, and it
-  keeps asking (ADR-0015 d.4).
-- `--id`, the name its link row is keyed by (control#368, decision 7),
-  defaulting to the package's. A value and not a contract: it appears in no
-  drawing, no configuration and no list of ours, and it is a key only because
-  one railroad may have several participants and the second's `up` would
-  otherwise erase the first's `down`.
+  route this app reads: `GET /scripts/<railroad>` (rails49/control#586).
+- `--id`, the name its link row is keyed by, defaulting to the package's
+  (control#368, decision 7).
 
 Neither the drain period nor the poll nor the backoff is a flag — nothing
 outside this process has an opinion about how often it takes what the broker's
 network thread left waiting, and what the station is asked and how often a
-lost link is retried are the translator's own (translator.py).
+lost link is retried are the translator's own (`translator.py`).
 
 **The id names the broker's client too**, `tc49-<id>`, where the other apps
 name themselves after the package. This is the one app a railroad may run
@@ -43,17 +36,13 @@ twice — two stations, two translators, decision 7 — and two clients sharing
 one client id take turns disconnecting each other on the broker for as long as
 both are up.
 
-**A railroad loaded under it rebuilds nothing here.** The other five apps
-follow `tc49/layout/state/railroad` and rebuild on the railroad it names
-(control ADR-0060); this one owns no row keyed by a railroad — the link it
-has and the supply it reports are the command station's, and the station is
-still the same station. What the row does decide is which railroad's script
-is asked for, and a script whose text differs from the running one ends this
-process rather than being loaded in place (ADR-0015 d.3).
+**A railroad loaded under it rebuilds nothing here**: this app owns no row
+keyed by a railroad, and what the row decides is which railroad's script is
+asked for (`DccEx._on_railroad`, control ADR-0060, ADR-0015 d.3).
 
-The startup order is `tc49.lib.startup`'s. The broker first, then `DccEx` on it,
-the constructor stating this app's two opening rows — `device/link/<id>: down`
-and a dark `device/track` carrying why. Then **the row that names the
+The startup order is `tc49.lib.startup`'s. The broker first, then `DccEx` on
+it, the constructor stating this app's two opening rows — `device/link/<id>:
+down` and a dark `device/track` carrying why. Then **the row that names the
 railroad**, waited for by name because there is one of it, and the script
 asked for once on this thread: a store that has not answered leaves this app
 with no handlers, which is a state it comes up in and says on its link row
@@ -68,23 +57,15 @@ handlers that are going to run (control#333, control ADR-0054).
 Then the loop: `DccEx.run()` keeping the link, `DccEx.following()` asking the
 store for the script, and a drain beside them.
 
-**asyncio owns this process.** `DccEx._send` writes to an
-`asyncio.StreamWriter` from inside a bus subscriber, so whichever thread
-drains the bus is the thread that writes to the station. With the loop owning
-the process every subscriber runs on the loop thread and that write is already
-where it belongs; the MQTT client's callback only appends to a queue on its
-own network thread, and the drain here is what hands those frames to the loop
-(`tc49.lib.mqtt`). A daemon thread under a synchronous owner would mean
-marshalling a cross-thread write that does not exist today.
+**asyncio owns this process**, so the thread that drains the bus is the thread
+that writes to the station and no write is marshalled across one
+(`DccEx._send`, `tc49.lib.mqtt`,
+[docs/dccex/README.md](../../docs/dccex/README.md)).
 
-The railroad is stood down before the process ends, on the signal, on the
-stop, and on a new script: zero to every locomotive this app has commanded
-and then the track off, because the station goes on running whatever it was
-last told and an exit over a rolling locomotive leaves it rolling. It comes
-**before** the link is let go — cancelling `DccEx.run` closes the writer, and
-zeros sent after that have nowhere to go. A new script takes effect from power
-off at the next ON for exactly this reason: the exit that loads it stands the
-railroad down like any other (ADR-0015 d.3).
+The railroad is stood down before the process ends, on the signal, on the stop
+and on a new script (`DccEx.shutdown`, ADR-0015 d.3). It comes **before** the
+link is let go — cancelling `DccEx.run` closes the writer, and zeros sent after
+that have nowhere to go.
 
 `DccEx` is handed a `Bus` and nothing else in the package changes: which
 binding it got is this file's business, and a desired value that cannot be
