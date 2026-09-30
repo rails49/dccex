@@ -48,6 +48,7 @@ from typing import Any, cast
 
 import pytest
 
+from tests.ui.test_look import COPY, declarations
 from tests.ui.test_page_serves import (
     BUILD_SECONDS,
     DOCKERFILE,
@@ -86,12 +87,12 @@ DRIVE = (
 PAGE = "http://127.0.0.1/"
 
 #: A phone held upright, which is the thing at the layout: an iPhone's CSS
-#: width and height. 375 is under the 560 the band turns at and is the
-#: narrowest width anybody reads this page on.
+#: width and height. 375 is under both widths the band gives something up at —
+#: the build below 560 and the link's words below 400 — and is the narrowest
+#: width anybody reads this page on.
 PHONE = (375, 812)
 
-#: A desktop, which is where the rules that are dropped below 560px have to go
-#: on holding.
+#: A desktop, which is where what the band gives up on a phone has to be back.
 DESKTOP = (1280, 800)
 
 #: The two of them, in the order the browser walks them, by the name the
@@ -127,6 +128,11 @@ RELEASES = "**/dccex-usb/releases"
 #: station what it is running and it is never sent — there is no stream open
 #: to send it on and nothing here presses the send.
 TYPED = "<s>"
+
+#: The look rules' minimum for a thumb, read off the copy the page draws with
+#: rather than written out: the power button on the band is pressed on the
+#: phone this check is about (`ui/look/README.md`, ADR-0011 d.1).
+THUMB = int(declarations(COPY.read_text())["--rail-button"].removesuffix("px"))
 
 #: A pixel of slack on a comparison between two rendered edges. Layout is
 #: worked out in fractions and rounded for painting, and a rule that read a
@@ -171,9 +177,14 @@ MEASURE = """
   };
   const app = document.querySelector("dccex-app");
   const band = app.renderRoot.querySelector("dccex-band");
-  const reading = (of) => {
-    const drawn = band.renderRoot.querySelector(".reading." + of);
-    return drawn === null ? null : box(drawn);
+  // What one part of the band was drawn as. The display is read as well as the
+  // box: the build is blank with no face behind the page, so a box of no width
+  // is what a drawn one and a dropped one both measure.
+  const part = (selector) => {
+    const drawn = band.renderRoot.querySelector(selector);
+    return drawn === null
+      ? null
+      : { box: box(drawn), display: getComputedStyle(drawn).display };
   };
   const monitor = app.renderRoot.querySelector("dccex-monitor");
   const typed = box(monitor.renderRoot.querySelector("input.typed"));
@@ -200,8 +211,12 @@ MEASURE = """
     innerWidth: window.innerWidth,
     innerHeight: window.innerHeight,
     scrollWidth: { shut: shut, opened: opened },
-    link: reading("link"),
-    rails: reading("rails"),
+    band: {
+      build: part(".build"),
+      dot: part(".dot"),
+      says: part(".says"),
+      power: part(".power"),
+    },
     typed: typed,
     send: send,
     rows: rows,
@@ -358,29 +373,41 @@ def test_the_page_does_not_scroll_sideways_at_either_width(
             )
 
 
-def test_the_narrow_band_draws_the_link_and_not_the_rails(
+def test_the_narrow_band_keeps_the_dot_and_the_power_button(
     drawn: dict[str, Any],
 ) -> None:
-    """Below the width the band turns at, the reading that survives is whether
-    the station is answering.
+    """Below the widths the band gives things up at, what survives is the link
+    at a glance and the one control.
 
-    `tests/ui/test_band.py` holds the rule as it is written — which reading the
-    media query names, and that it is not the link, under the name this one
-    borrows. What is held here is that a browser does it: the link is drawn and has a size at 375px, the rails reading has
-    none, and at a desktop width both are there. The last of the three is what
-    keeps the first two from passing on a page that drew no band at all.
+    `tests/ui/test_band.py` holds the rules as they are written — which part
+    each query names, and that neither names the dot or the button. What is
+    held here is that a browser does it: at 375px the **build** and the link's
+    words are not laid out, the dot and the power button are, and at a desktop
+    width the words are back. The last of them is what keeps the rest from
+    passing on a page that drew no band at all.
+
+    The button is measured against `--rail-button` as well, which is the look
+    rules' minimum for a thumb: it is pressed on the phone held at the layout,
+    and a rule that asked for that height inside a row that squashed it would
+    read as this passing (ADR-0011 d.1).
     """
-    phone, desktop = drawn["phone"], drawn["desktop"]
+    phone, desktop = drawn["phone"]["band"], drawn["desktop"]["band"]
+    for name in ("build", "dot", "says", "power"):
+        assert phone[name] is not None, f"the band drew no {name} at all"
+    assert phone["build"]["display"] == "none", "the narrow band keeps the build"
+    assert phone["says"]["display"] == "none", "the narrow band keeps the words"
+    assert phone["dot"]["box"]["width"] > 0, "the narrow band drops the link"
     assert (
-        phone["link"] is not None and phone["link"]["width"] > 0
-    ), "the narrow band drops the link"
-    assert phone["rails"] is not None, "the band draws no rails reading at all"
+        phone["power"]["box"]["width"] >= THUMB - SLACK
+        and phone["power"]["box"]["height"] >= THUMB - SLACK
+    ), f"the power button is under a thumb at a phone's width: {phone['power']['box']}"
     assert (
-        phone["rails"]["width"] == 0 and phone["rails"]["height"] == 0
-    ), f"the narrow band still draws the rails: {phone['rails']}"
+        phone["power"]["box"]["right"] <= drawn["phone"]["innerWidth"] + SLACK
+    ), "the power button is off the side of the screen"
     assert (
-        desktop["rails"] is not None and desktop["rails"]["width"] > 0
-    ), "the band drops the rails at every width"
+        desktop["says"]["display"] != "none"
+    ), "the band drops the words at every width"
+    assert desktop["says"]["box"]["width"] > 0, "the band says nothing at any width"
 
 
 def test_the_command_box_is_on_a_phone_s_screen_and_can_be_typed_into(
