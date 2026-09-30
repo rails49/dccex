@@ -11,6 +11,13 @@
 //
 //     {"tag": "v1", "sends": 1, "wrote": {"flashed": false, "says": "…"}}
 //
+// It may also carry what the face answered under `flashing` — how far the
+// flash in flight has got, before the page has made anything of it — and then
+// what comes back says what the page's reader made of it and what the bar over
+// it reads.
+//
+//     {"flashing": {"tag": "v1", "stage": "writing", "percent": 42}}
+//
 // What comes back is what went down the cable and what was asked of the face,
 // in one list and in the order it happened — which is the whole of the
 // ordering the railroad depends on — along with the steps the page showed, what
@@ -29,6 +36,7 @@ import {
   CONFIRMS,
   CUTS,
   CUTTING,
+  STAGES,
   STOPPING,
   STOPS,
   UNANSWERED,
@@ -36,6 +44,8 @@ import {
   UNSTOPPED,
   WARNS,
   WROTE,
+  bar,
+  progress,
   sequence,
   writing,
 } from "../../ui/src/flash.js";
@@ -64,11 +74,15 @@ const ran = async (scenario) => {
       shown.push(step);
     },
   };
+  const flashing = progress(scenario.flashing ?? null);
   return {
     order,
     shown,
     wrote: await sequence(tag, hands),
     writing: writing(tag),
+    progress: flashing,
+    bar: bar(flashing),
+    stages: STAGES,
     sends: { STOPS, CUTS },
     says: {
       WARNS,

@@ -87,6 +87,18 @@ def says() -> dict[str, str]:
     return said
 
 
+def progress(answer: Any) -> dict[str, Any] | None:
+    """What the page's reader makes of one `flashing` answer."""
+    read: dict[str, Any] | None = flashed(flashing=answer)["progress"]
+    return read
+
+
+def bar(answer: Any) -> dict[str, Any] | None:
+    """What the bar over that answer reads, and how full it is."""
+    shown: dict[str, Any] | None = flashed(flashing=answer)["bar"]
+    return shown
+
+
 # -- what the page does -------------------------------------------------------
 
 
@@ -218,6 +230,110 @@ def test_the_yes_is_a_press_of_its_own() -> None:
     decline: the choice, the warning, and then the gesture."""
     assert says()["CHOOSES"] and says()["CONFIRMS"] and says()["CANCELS"]
     assert says()["CHOOSES"] != says()["CONFIRMS"]
+
+
+# -- how far it has got -------------------------------------------------------
+
+
+@pytest.mark.node
+def test_the_stages_are_the_four_the_face_names() -> None:
+    """In the flash's own order, and spelt as the mirror spells them: they are
+    read off the wire and drawn as they arrive, so a page with a list of its own
+    would be a page glossing the face (ADR-0012 d.2, `firmware.py`'s
+    `Stage`)."""
+    assert words()["stages"] == ["fetching", "checking", "writing", "verifying"]
+
+
+@pytest.mark.node
+def test_a_flash_in_flight_is_the_tag_the_stage_and_the_percentage() -> None:
+    """The three the face answers under `flashing` (ADR-0012 d.2, `face.py`'s
+    `progress()`)."""
+    assert progress({"tag": TAG, "stage": "writing", "percent": 42}) == {
+        "tag": TAG,
+        "stage": "writing",
+        "percent": 42,
+    }
+
+
+@pytest.mark.node
+def test_no_flash_running_reads_as_no_flash_running() -> None:
+    """The ordinary answer on a box where nobody is writing the station, and
+    the one key the face puts it under carries `null` for it."""
+    assert progress(None) is None
+
+
+@pytest.mark.node
+def test_an_answer_the_page_cannot_read_reads_as_no_flash() -> None:
+    """Read one field at a time, as the releases are, because this arrives from
+    another app over a wire (`releases.js`'s `carried()`): an answer that names
+    no tag or no stage is not a flash this page can say anything about, and a
+    bar over it would be a reading nobody made (ADR-0009 d.2)."""
+    for answer in (
+        {},
+        {"stage": "writing", "percent": 42},
+        {"tag": "", "stage": "writing"},
+        {"tag": TAG},
+        {"tag": TAG, "stage": ""},
+        "writing",
+        7,
+        [],
+        True,
+    ):
+        assert progress(answer) is None, f"{answer!r} reads as a flash in flight"
+
+
+@pytest.mark.node
+def test_a_stage_the_page_has_no_word_for_is_the_face_s_word() -> None:
+    """A mirror that names a fifth stage is a flash that is running, and a page
+    that answered no flash for it would be hiding one it was told about. The
+    word it was given is not a guess; a bar that does not count is what stands
+    under it (ADR-0009 d.2, d.5)."""
+    assert progress({"tag": TAG, "stage": "wiping", "percent": None}) == {
+        "tag": TAG,
+        "stage": "wiping",
+        "percent": None,
+    }
+
+
+@pytest.mark.node
+def test_the_bar_counts_the_writing_and_says_how_far() -> None:
+    """One bar with a stage label: the writing is what esptool counts, so that
+    is the stage the bar fills for and the only one with a number beside it
+    (ADR-0012 d.1, d.2)."""
+    assert bar({"tag": TAG, "stage": "writing", "percent": 42}) == {
+        "says": "writing 42 %",
+        "percent": 42,
+    }
+
+
+@pytest.mark.node
+def test_the_stages_nothing_counts_are_a_bar_that_does_not() -> None:
+    """Nothing counts a fetch, a hash or a verify, so the bar over them reads
+    the stage and runs without a number: a bar drawn at a percentage nobody
+    measured is a reading nobody took (ADR-0009 d.2, `firmware.py`)."""
+    for stage in ("fetching", "checking", "verifying"):
+        assert bar({"tag": TAG, "stage": stage, "percent": None}) == {
+            "says": stage,
+            "percent": None,
+        }
+
+
+@pytest.mark.node
+def test_a_writing_with_no_percentage_the_page_can_read_does_not_count() -> None:
+    """esptool has not printed one yet, or the number is not one a bar can be
+    drawn at. The stage is still the stage; what goes is the count."""
+    for percent in (None, "42", 140, -1, True):
+        assert bar({"tag": TAG, "stage": "writing", "percent": percent}) == {
+            "says": "writing",
+            "percent": None,
+        }, f"{percent!r} is drawn as a percentage"
+
+
+@pytest.mark.node
+def test_a_bar_over_no_flash_is_no_bar() -> None:
+    """Nothing is running, so there is nothing to draw: a bar left standing
+    would say the station was being written."""
+    assert bar(None) is None
 
 
 # -- what the row draws -------------------------------------------------------

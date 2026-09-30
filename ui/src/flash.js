@@ -26,6 +26,14 @@
  * minute or two of nothing at all and a page with nothing on it reads as a
  * hang.
  *
+ * **And how far the writing itself has got is asked for.** The mirror reads
+ * esptool's output as it runs and answers the stage and the percentage on a
+ * route of its own, so the page asks twice a second while a flash is in flight
+ * and draws a bar over what it is told (ADR-0012, `face.py`). What that answer
+ * means — the stages, and the one stage anything counts — is at the foot of this
+ * module, beside the words: it is the same flash and the same person reading
+ * about it, and the asking is `face.ts`'s as the rest of the asking is.
+ *
  * **Success is not replied to; it is observed.** What comes back from the face
  * says the write was asked for and finished, and what is on the station is
  * read off the station — the stream drops, comes back, and the banner says
@@ -179,4 +187,129 @@ export async function sequence(tag, hands) {
   }
   hands.shows(writing(tag));
   return await hands.writes(tag);
+}
+
+/* -- how far it has got ---------------------------------------------------- */
+
+/**
+ * The stages a flash goes through, in the order it goes through them, as the
+ * **face** names them (ADR-0012 d.2, `firmware.py`'s `Stage`).
+ *
+ * The words are the mirror's and are drawn as they arrive. The list is here so
+ * that what the page shows can be asserted against the four the app sends, and
+ * not so that the page can look a stage up: a stage this list does not carry is
+ * still a flash that is running, and it is drawn under the word the face said
+ * (ADR-0009 d.2, d.5).
+ */
+export const STAGES = ["fetching", "checking", "writing", "verifying"];
+
+/** The one stage anything counts. esptool counts the blocks it sends; nothing
+ *  counts a fetch, a hash or a verify, so this is the one stage a percentage
+ *  arrives for and the one the bar fills for (ADR-0012 d.2). */
+const COUNTED = "writing";
+
+/**
+ * How far the flash in flight has got, as the face answers it.
+ *
+ * @typedef {object} Flashing
+ * @property {string} tag the release being written
+ * @property {string} stage the part of the flash that is under way, in the
+ *   face's own words — one of `STAGES`
+ * @property {number | null} percent how far the writing has got, and `null`
+ *   outside it and wherever the face put no number the page can read
+ */
+
+/** The three fields a flash in flight carries, as the face names them
+ *  (`face.py`'s `progress()`). The tag is under the same word a flash is asked
+ *  for by, because it is the same thing being named. */
+const TAG = "tag";
+const STAGE = "stage";
+const PERCENT = "percent";
+
+/** How full a bar may be drawn. A number outside it is not a percentage. */
+const FULL = 100;
+
+/**
+ * The flash in flight in `answer`, or `null` where none is running.
+ *
+ * **Nothing running and nothing said read alike here**, which is the one place
+ * this page draws that line the short way: what the page does with either is
+ * draw no bar, and it has the face's own answer to the POST for whether a write
+ * is under way of its own (`face.ts`). A sentence about a flash nobody can see
+ * would be a page reporting a station it is not watching (ADR-0009 d.2).
+ *
+ * Read one field at a time, as the releases are (`releases.js`'s `carried()`):
+ * this arrives from another app over a wire, and a reader that reached into it
+ * would be taken down by whatever that app answered the day it answered
+ * something else. An answer that names no tag or no stage is not a flash this
+ * page can say anything about; a percentage that is not a number between none
+ * and full is no count, and the stage still stands.
+ *
+ * @param {unknown} answer what the face answered under `flashing`
+ * @returns {Flashing | null}
+ */
+export function progress(answer) {
+  if (typeof answer !== "object" || answer === null || Array.isArray(answer)) {
+    return null;
+  }
+  const fields = /** @type {Record<string, unknown>} */ (answer);
+  const tag = fields[TAG];
+  const stage = fields[STAGE];
+  if (typeof tag !== "string" || tag === "") {
+    return null;
+  }
+  if (typeof stage !== "string" || stage === "") {
+    return null;
+  }
+  const percent = fields[PERCENT];
+  return {
+    tag,
+    stage,
+    percent:
+      typeof percent === "number" &&
+      Number.isFinite(percent) &&
+      percent >= 0 &&
+      percent <= FULL
+        ? percent
+        : null,
+  };
+}
+
+/**
+ * One bar: what it reads, and how full it is.
+ *
+ * The word is the issue's and is not the **band** — this is the bar a flash
+ * fills on the releases view (issue 172).
+ *
+ * @typedef {object} Bar
+ * @property {string} says the stage, with the percentage beside it where there
+ *   is one
+ * @property {number | null} percent how full, out of a hundred, and `null`
+ *   where there is nothing to count — a bar that is running and not counting
+ */
+
+/**
+ * The bar over the flash in flight, or `null` where none is running.
+ *
+ * **The writing is the one stage that counts.** esptool prints how far it has
+ * got as it sends blocks and nothing prints anything for a fetch, a hash or a
+ * verify, so those stages are a bar that runs without a number: a bar drawn at
+ * a percentage nobody measured is a reading nobody took (ADR-0009 d.2,
+ * ADR-0012 d.2).
+ *
+ * @param {Flashing | null} flashing how far the flash has got
+ * @returns {Bar | null}
+ */
+export function bar(flashing) {
+  if (flashing === null) {
+    return null;
+  }
+  const counted = flashing.stage === COUNTED ? flashing.percent : null;
+  return {
+    says:
+      counted === null
+        ? flashing.stage
+        : `${flashing.stage} ${Math.round(counted)} %`,
+    percent: counted,
+  };
 }
