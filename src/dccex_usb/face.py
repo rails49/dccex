@@ -44,8 +44,8 @@ script is **compiled here and never run**: what it does not compile is a
 sentence the person editing reads, and running a railroad's document inside
 the process that holds the cable is the translator's job and not this one's
 (`dccex.script`, ADR-0013). A mirror started with no store answers those three
-and nothing else with a status and a sentence, which is what a box running this
-app beside a command station and nothing else gets.
+with a status and a sentence and is otherwise the app it has always been, which
+is what a box mirroring a cable with nothing else running gets.
 
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
@@ -289,8 +289,8 @@ it under, so that a line the two of them refuse is a line refused under one
 name (`dccex.script`)."""
 
 NO_STORE = (
-    "this mirror was given no store, so the script cannot be read or applied:"
-    " the address is --store on its command line"
+    "this mirror was given no store, so it can neither list the railroads nor"
+    " read or apply a script: the address is --store on its command line"
 )
 """What the three script routes answer where the app was started with no
 store. It is a state of the installation and not of the request, and it is the

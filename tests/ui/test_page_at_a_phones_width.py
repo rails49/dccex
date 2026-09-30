@@ -105,10 +105,13 @@ DESKTOP = (1280, 800)
 #: assertions below ask for them under.
 WIDTHS = {"phone": PHONE, "desktop": DESKTOP}
 
-#: The two **view**s, by the name the rail's button for each of them carries
-#: and the page keeps in its hash (`ui/src/view.ts`, #169). The browser opens
-#: on the first and presses the rail to reach the second, which is the one
-#: gesture a reader has for getting there.
+#: The two **view**s this check walks, by the name the rail's button for each
+#: of them carries and the page keeps in its hash (`ui/src/view.ts`, #169).
+#: The browser opens on the first and presses the rail to reach the second,
+#: which is the one gesture a reader has for getting there. The **script** view
+#: is a third and is not walked: what is in it is a box with no face behind the
+#: page to fill it, so every button on the rail is measured below and only
+#: these two panes are (#185, docs/ui/README.md).
 MONITOR, RELEASES_VIEW = "monitor", "releases"
 
 #: What the browser answers the face's release request with. Three releases,
@@ -239,6 +242,7 @@ MEASURE = """
     rail: {
       monitor: button("button.monitor"),
       releases: button("button.releases"),
+      script: button("button.script"),
     },
     typed: typed,
     send: send,
@@ -415,8 +419,8 @@ def test_the_rail_offers_both_views_and_is_pressed_to_reach_one(
     """The one gesture a reader has for changing what the work pane shows
     (#169).
 
-    Both buttons are drawn, each is the thumb the look rules ask for, and
-    neither is off the side of a phone. That the press worked is the hash and
+    Every button is drawn, each is the thumb the look rules ask for, and none
+    is off the side of a phone. That the press worked is the hash and
     the rows: the fixture pressed the releases button and the browser was on
     `#releases` with the list drawn, which is a page that read the hash back.
     """
