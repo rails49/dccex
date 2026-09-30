@@ -8,11 +8,11 @@ about nothing else.
 what the station is doing, it lists what the station could be written with, and
 it writes one of them.** `ui/` holds the band, the rail and the work pane, built and served the
 way this page says (#3) — which is the tracer bullet, and it is the
-installation everything below rests on. What is in the work pane is the
-**tile**s, the **release**s under them and the **monitor** under those: the
-station's conversation as it arrives, every line stamped with the time it
-arrived, newest at the bottom (#4), and a box at the foot that types a whole
-`<…>` message back (#6). The band carries the **build**, the **link** and the
+installation everything below rests on. The work pane shows one **view** and
+the rail picks it (#169): the monitor view, which is the **tile**s and the
+**monitor** under them — the station's conversation as it arrives, every line
+stamped with the time it arrived, newest at the bottom (#4), and a box at the
+foot that types a whole `<…>` message back (#6) — or the **release**s. The band carries the **build**, the **link** and the
 power button and the tiles carry the particulars, all of them made of what the
 station said and kept live by the page's own polling (#7, #168). The releases are listed newest first with the one on
 the station marked (#8), and choosing one writes it onto the station — which is
@@ -59,6 +59,8 @@ so the source does not arrive in the words the page shows either
 
 The **band** across the top, the rail down the side, and the work pane between
 them. The band and the rail are LOOK.md's and do not vary between rails49 UIs.
+The band is the same over every view; the rail is what picks the view, and the
+work pane is what changes.
 
 ### The band
 
@@ -114,8 +116,8 @@ it. The chip goes when the button does, which is the difference a reader who
 cannot tell the green from the red is left with.
 
 The band gives things up at two widths rather than wrapping. Below 560px the
-build goes: it is the longest thing on the band and it is on a tile beside the
-releases as well. Below 400px the link's words go and the link is the dot
+build goes: it is the longest thing on the band and it is on a tile on the
+monitor view as well. Below 400px the link's words go and the link is the dot
 alone, the dot being the reading and the words that reading a second time. The
 dot and the power button stay at every width — a thumb has to reach the button
 on the phone at the layout. Both numbers are this page's own rather than a look
@@ -124,9 +126,34 @@ browser is what does it: `tests/ui/test_page_at_a_phones_width.py` loads the
 built page at 375px and reads back a dot and a thumb-sized button with a size,
 a build and the words with none (#127, #168).
 
+### The rail
+
+One button per **view**, in the rail's one run: the monitor as `mdiConsole`
+and the releases as `mdiFlashAlert`, each carrying the view's own word as a
+tooltip and as a label (#169, #167). Pressing one is the only way the work
+pane changes.
+
+The button for the view in front of the person wears `--band-ink` as a chip
+with `--rail-group` on the glyph, and the other is that ink on the group.
+White on the group is 3.8 to 1, where a control a person has to read needs 3.
+Dimming the other button was the alternative and says the wrong thing: a dim
+glyph is what a control that cannot be pressed looks like on this chrome
+(ADR-0011 d.2). Both buttons are `--rail-button` square, which is the look
+rules' minimum for a thumb, and they lie down with the rail on a short window.
+
+**The view is kept in the page's hash** — `#monitor` and `#releases`, and a
+hash that names neither is the monitor, which is what a page opens on. So a
+view can be linked to, a reload comes back where it was, and the back button
+steps through the views rather than off the page. The rail's press writes the
+hash and the page reads it: one direction each, and no second answer to which
+view is showing (`ui/src/view.ts`).
+
+A flash is not a button here: it is a gesture about one **release** and is
+pressed on that release's row, where the tag it names is (#9).
+
 ### The tiles
 
-The station's particulars, at the top of the work pane (#7):
+The station's particulars, at the top of the monitor view (#7):
 
 | Tile | What it reads | While the link is down |
 | --- | --- | --- |
@@ -163,7 +190,11 @@ with its publication date and whether it carries a flashable asset — one with
 a digest to check it against, which is what the face answers `flashable` for
 (#8, #81). The one whose **tag** matches the build on the station now is
 marked as such, so being up to date is something to see rather than to work
-out. The list is collapsed under the tiles.
+out. The list is the releases view, and it is open: a reader who pressed
+*releases* on the rail has asked for them. It stays a row that opens and
+shuts — a long list on a phone is why — and it was collapsed until it had a
+view of its own, where a list that grew pushed the conversation down the
+screen (#169).
 
 **The app fetches and the browser does not.** A UI talks to the bus, the store
 and its own app's face and nothing else (the organisation's ADR-0002), so the
@@ -283,8 +314,8 @@ and nothing has to be reloaded.
 
 ### The stream
 
-The station's conversation, below the releases, with a box to type into at the
-foot.
+The station's conversation, below the tiles on the monitor view, with a box to
+type into at the foot.
 
 - Every line is stamped with the time it arrived.
 - A line the **decoder** knows carries a **gloss** — one plain sentence beside
@@ -744,13 +775,17 @@ process it starts runs in (#113).
 **And it is laid out at a phone's width.** The page is read on a phone held at
 the layout, and until #127 nothing here had drawn it at one:
 `tests/ui/test_page_at_a_phones_width.py` runs the image this section is
-about, loads it in a Chromium at 375px and at 1280px, and holds five things
-there — no horizontal scroll at either width, the band keeping its dot and a
-thumb-sized power button where the **build** and the link's words are dropped,
-the command box inside the viewport and a line typed into it coming back out of
-it, a release row with a long **tag** wrapping with nothing off the side of it,
-and the link's words back at a desktop width, which is what keeps the narrow
-claims from passing on a page that drew no band. There is no face behind the page in that job, so the
+about, loads it in a Chromium at 375px and at 1280px, and holds six things
+there — no horizontal scroll at either width on either view, the band keeping
+its dot and a thumb-sized power button where the **build** and the link's
+words are dropped, two thumb-sized rail buttons on the screen with the hash
+saying which view a press reached, the command box inside the viewport and a
+line typed into it coming back out of it, a release row with a long **tag**
+wrapping with nothing off the side of it, and the link's words back at a
+desktop width, which is what keeps the narrow claims from passing on a page
+that drew no band. Each view is measured while it is the one showing, and the
+browser reaches the releases the way a person does: it presses the rail
+(#169). There is no face behind the page in that job, so the
 **stream** never opens and the link reads as not answering — the state a page
 with nothing behind it draws, and enough for layout. The one thing stood up is
 the release list, because rows are what the wrap rule is about and that state
@@ -782,14 +817,14 @@ rule as the two checks above it.
 
 Two things the prototype left open and the tickets settle while building:
 
-- whether the release list stays a collapsed row once it grows past four
-  entries. It is a collapsed row as of #8, and what would change it is somebody
-  reading a long one on the box;
+- whether the release list stays a row at all once it grows past four entries.
+  It is a row that opens and shuts as of #8 and it opens on its own view as of
+  #169, and what would change it is somebody reading a long one on the box;
 - narrow widths are drawn in a browser as of #127, and not all of them are
   asserted there. What is: no horizontal scroll, the band dropping the build and
-  the link's words and keeping the dot and the power button, the command box on
-  screen and typed into, and a release row wrapping rather than running off the
-  side. What is not: the tiles onto a
+  the link's words and keeping the dot and the power button, the rail's two
+  buttons at a thumb, the command box on screen and typed into, and a release
+  row wrapping rather than running off the side. What is not: the tiles onto a
   second row, and the flash's warning taking its own line above the two presses
   that answer it. And what the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the

@@ -223,7 +223,7 @@ def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> 
     """Three things on the band and two widths that take one away each.
 
     The **build** goes first: it is the longest thing on the band, and it is on
-    a tile beside the releases it gets compared against as well. Then the
+    a tile on the monitor view as well. Then the
     link's words go and the link is the dot alone — the dot is the reading and
     the words are that reading a second time. The dot and the power button
     survive every width: the button is the one control on the page that

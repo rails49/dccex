@@ -169,10 +169,10 @@ export const bandStyles = css`
   }
 
   /* Below the width at which the band cannot carry all of it, the build goes
-     first: it is the longest thing on the band and it is on a tile beside the
-     releases as well, where the release it gets compared against is. 560px is
-     this page's own number and not a look rule: it is where the name, the
-     build and the readings stop fitting on a phone held upright. */
+     first: it is the longest thing on the band and it is on a tile on the
+     monitor view as well. 560px is this page's own number and not a look
+     rule: it is where the name, the build and the readings stop fitting on a
+     phone held upright. */
   @media (max-width: 560px) {
     .build {
       display: none;
