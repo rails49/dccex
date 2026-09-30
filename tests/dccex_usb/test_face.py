@@ -49,7 +49,7 @@ from dccex_usb.face import (
     Writes,
     response,
 )
-from dccex_usb.firmware import Flasher, Ran, Refusal, Saw, Wrote
+from dccex_usb.firmware import Doing, Flasher, Ran, Refusal, Saw, Stage, Wrote
 from dccex_usb.framing import MAX_MESSAGE
 from dccex_usb.station import READ_SIZE, to_stderr
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
@@ -133,8 +133,8 @@ TAG = TAGS[0]
 
 
 class Writing:
-    """The flasher, faked: the tags it was asked to write, and what it says
-    became of them.
+    """The flasher, faked: the tags it was asked to write, what it says became
+    of them, and how far it says the one in flight has got.
 
     It is the whole of what the face needs of the thing that holds the device
     (`Writes`), which is why a test can stand in for it: what a flash does to
@@ -142,8 +142,9 @@ class Writing:
     this file's.
     """
 
-    def __init__(self, wrote: Wrote | None = None) -> None:
+    def __init__(self, wrote: Wrote | None = None, doing: Doing | None = None) -> None:
         self._wrote = wrote
+        self.doing = doing
         self.asked: list[str] = []
 
     async def wanted(self, tag: str) -> Wrote:
@@ -517,13 +518,65 @@ def test_a_body_that_names_no_tag_is_refused_before_the_device(body: bytes) -> N
     assert writing.asked == []
 
 
-def test_a_flash_is_asked_for_and_not_read() -> None:
-    """The station is written by asking, so `GET /flash` is not a way to see
-    what is being written: there is nothing to read here, and a page that
-    reloaded one would write the station again."""
+def test_how_far_the_flash_in_flight_has_got_is_read_off_the_face() -> None:
+    """What ADR-0012 adds (d.2): a flash is minutes long, and the page that
+    asked — or any other tab, including one opened half way through — reads the
+    stage and the percentage off this rather than waiting on the POST."""
+    writing = Writing(doing=Doing(TAG, Stage.WRITING, 46))
+
+    answered = asyncio.run(face(flasher=writing).answer("GET", "/flash", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {
+        "flashing": {"tag": TAG, "stage": "writing", "percent": 46}
+    }
+    assert writing.asked == [], "reading how far a flash has got wrote the station"
+
+
+@pytest.mark.parametrize(
+    "stage",
+    [
+        pytest.param(Stage.FETCHING, id="fetching"),
+        pytest.param(Stage.CHECKING, id="checking"),
+        pytest.param(Stage.VERIFYING, id="verifying"),
+    ],
+)
+def test_a_flash_that_is_not_writing_yet_carries_no_percentage(stage: Stage) -> None:
+    """esptool counts the blocks it sends, and nothing counts a fetch or a
+    hash: the stage is the whole of the reading outside the writing, and a
+    number standing in for one would be a reading nobody made (ADR-0012
+    d.2)."""
+    answered = asyncio.run(
+        face(flasher=Writing(doing=Doing(TAG, stage, None))).answer(
+            "GET", "/flash", b""
+        )
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {
+        "flashing": {"tag": TAG, "stage": stage.value, "percent": None}
+    }
+
+
+def test_no_flash_running_is_what_the_face_says_and_not_a_refusal() -> None:
+    """The ordinary answer on a box where nobody is writing the station: the
+    page asks on load so that a tab opened mid-flash shows one (ADR-0012 d.3),
+    and most of the time there is none to show."""
+    answered = asyncio.run(face(flasher=Writing()).answer("GET", "/flash", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"flashing": None}
+
+
+@pytest.mark.parametrize(
+    "method", [pytest.param("PUT", id="put"), pytest.param("DELETE", id="deleted")]
+)
+def test_a_flash_is_asked_for_with_post_and_read_with_get(method: str) -> None:
+    """Two things at this path and no third: the station is written by asking
+    for it, and how far that has got is read."""
     writing = Writing()
 
-    answered = asyncio.run(face(flasher=writing).answer("GET", "/flash", asking()))
+    answered = asyncio.run(face(flasher=writing).answer(method, "/flash", asking()))
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert writing.asked == []
@@ -919,6 +972,8 @@ class Slow:
     """A flasher that takes longer than the caller's patience, which every
     real one does: esptool is a minute or two."""
 
+    doing: Doing | None = None
+
     def __init__(self, takes_s: float) -> None:
         self._takes_s = takes_s
 
@@ -1050,6 +1105,64 @@ def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() ->
             await log.wait_for_count("serial open", 2)
             assert mirror.held, "the mirror did not take the device back"
         finally:
+            await streamed.close()
+            await mirror.close()
+            cable.close()
+
+    asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
+
+
+def test_how_far_a_flash_has_got_is_read_while_the_flash_is_still_running() -> None:
+    """ADR-0012 through a socket, with a pty for the command station: esptool
+    is writing, the page asks how far that has got on a second request, and it
+    is answered while the POST that asked for the flash is still waiting (d.1,
+    d.2, d.3). A tab opened mid-flash reads the same thing.
+
+    What runs is a fake and it says one of esptool's progress lines, because
+    nothing in the gate may need a command station.
+    """
+
+    async def scenario() -> None:
+        log = Log()
+        cable = Pty()
+        mirror = station(cable.path, log)
+        writing = asyncio.Event()
+        let_go = asyncio.Event()
+
+        async def runner(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
+            saw("Writing at 0x00010000... (46 %)")
+            writing.set()
+            await let_go.wait()
+            return Ran(0, "")
+
+        flasher = Flasher(mirror, RELEASES, fetch=FakeFetch(), runner=runner, log=log)
+        streamed = served(face(flasher=flasher))
+        await mirror.start()
+        await streamed.start()
+        try:
+            await log.wait_for("serial open")
+            flash = asyncio.create_task(
+                ask(
+                    streamed.port,
+                    request(method="POST", target="/flash", body=asking()),
+                )
+            )
+            await writing.wait()
+
+            asked = await ask(streamed.port, request(target="/flash"))
+
+            assert asked == (
+                HTTPStatus.OK,
+                {"flashing": {"tag": TAG, "stage": "writing", "percent": 46}},
+            )
+            let_go.set()
+            assert await flash == (HTTPStatus.OK, {"flashed": TAG})
+            assert await ask(streamed.port, request(target="/flash")) == (
+                HTTPStatus.OK,
+                {"flashing": None},
+            )
+        finally:
+            let_go.set()
             await streamed.close()
             await mirror.close()
             cable.close()
