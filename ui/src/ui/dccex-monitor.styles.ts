@@ -67,6 +67,10 @@ export const monitorStyles = css`
     margin-bottom: 0.5rem;
   }
 
+  /* The colour goes to the icon in the button, which takes currentColor, and
+     the font size is what the icon is a multiple of (dccex-icon.styles.ts).
+     Neither sets a size of its own: that is the bare button rule's, and a
+     min-height here would win and take the two below a thumb. */
   .controls button {
     background: var(--sl-color-neutral-100);
     color: var(--sl-color-neutral-700);
