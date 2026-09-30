@@ -201,15 +201,54 @@ def test_a_flash_that_cannot_start_says_why() -> None:
 
 
 @pytest.mark.node
-def test_a_flash_that_was_written_is_answered_and_then_observed() -> None:
-    """Success is not replied to with a build: what is on the station is read
-    off the station, on the banner it sends when it comes back (ADR-0006 d.3,
-    ADR-0008 d.3)."""
+def test_a_flash_that_was_written_waits_for_the_station() -> None:
+    """Success is not replied to with a build: the write is over and what is on
+    the station is read off the station, on the banner it sends when it comes
+    back (ADR-0006 d.3, ADR-0008 d.3, ADR-0012 d.4).
+
+    So the answer to the POST is not the end of it. The page says it is waiting
+    for the station until the station says which **build** it is running, and
+    there is nothing else it can truthfully say in that minute.
+    """
     happened = flashed(tag=TAG)
 
     assert happened["wrote"]["flashed"] is True
-    assert happened["wrote"]["says"] == says()["WROTE"]
-    assert "build" in says()["WROTE"], "the page does not say where to look"
+    assert happened["wrote"]["says"] == says()["WAITING"]
+    assert happened["became"] == {"landed": None, "says": says()["WAITING"]}
+
+
+@pytest.mark.node
+def test_a_station_running_the_tag_is_the_flash_that_landed() -> None:
+    """The **build** off the banner is the tag that was written, which is the
+    one thing that says the flash landed — read off the station and not off the
+    mirror's answer (ADR-0006 d.3, ADR-0012 d.4)."""
+    happened = flashed(tag=TAG, build=TAG)
+
+    assert happened["became"]["landed"] is True
+    assert TAG in happened["became"]["says"]
+
+
+@pytest.mark.node
+def test_a_build_that_differs_from_the_tag_is_a_failure() -> None:
+    """The station came back running something else, whatever the mirror
+    answered (ADR-0012 d.4). Both are named, because which build came back is
+    what whoever fixes it has to go on."""
+    happened = flashed(tag=TAG, build="v5.6.3-rails49.2")
+
+    assert happened["became"]["landed"] is False
+    assert TAG in happened["became"]["says"]
+    assert "v5.6.3-rails49.2" in happened["became"]["says"]
+
+
+@pytest.mark.node
+def test_a_refusal_is_what_became_of_it_whatever_the_station_is_running() -> None:
+    """Nothing was written, so the build on the station is not about this
+    gesture: what the operator reads is the refusal, and a station that is up
+    and running the same release it always was does not turn one into a flash
+    that landed."""
+    happened = flashed(tag=TAG, sends=0, build="v5.6.3-rails49.2")
+
+    assert happened["became"] == {"landed": False, "says": says()["UNSTOPPED"]}
 
 
 @pytest.mark.node

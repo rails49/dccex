@@ -7,9 +7,11 @@
 //
 // A scenario is the page's two hands answering: how many messages the stream
 // takes before it is shut, and what the face answers when it is asked to
-// write.
+// write. It may carry what the station says it is running afterwards, which is
+// what the flash is read against once it is over.
 //
 //     {"tag": "v1", "sends": 1, "wrote": {"flashed": false, "says": "…"}}
+//     {"tag": "v1", "build": "v2"}
 //
 // It may also carry what the face answered under `flashing` — how far the
 // flash in flight has got, before the page has made anything of it — and then
@@ -42,9 +44,10 @@ import {
   UNANSWERED,
   UNCUT,
   UNSTOPPED,
+  WAITING,
   WARNS,
-  WROTE,
   bar,
+  became,
   progress,
   sequence,
   writing,
@@ -68,17 +71,19 @@ const ran = async (scenario) => {
     },
     writes: async (asked) => {
       order.push(`wrote ${asked}`);
-      return scenario.wrote ?? { flashed: true, says: WROTE };
+      return scenario.wrote ?? { flashed: true, says: WAITING };
     },
     shows: (step) => {
       shown.push(step);
     },
   };
   const flashing = progress(scenario.flashing ?? null);
+  const wrote = await sequence(tag, hands);
   return {
     order,
     shown,
-    wrote: await sequence(tag, hands),
+    wrote,
+    became: became(wrote, tag, scenario.build ?? null),
     writing: writing(tag),
     progress: flashing,
     bar: bar(flashing),
@@ -94,7 +99,7 @@ const ran = async (scenario) => {
       UNSTOPPED,
       UNCUT,
       UNANSWERED,
-      WROTE,
+      WAITING,
     },
   };
 };

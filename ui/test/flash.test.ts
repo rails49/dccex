@@ -25,8 +25,8 @@ import {
   CUTTING,
   STOPPING,
   STOPS,
+  WAITING,
   WARNS,
-  WROTE,
   type Wrote,
   writing,
 } from "../src/flash.js";
@@ -42,8 +42,9 @@ const CARRIED: Carried[] = [
   { tag: "v5.2.75", published: "2026-07-02T09:00:00Z", flashable: false },
 ];
 
-/** What a flash the mirror wrote comes back as. */
-const WRITTEN: Wrote = { flashed: true, says: WROTE };
+/** What a flash the mirror wrote comes back as: the write is over and the
+ *  station has not said what it is running yet (ADR-0012 d.4). */
+const WRITTEN: Wrote = { flashed: true, says: WAITING };
 
 /** What the row asked for, and what it was showing when it asked.
  *
@@ -146,7 +147,7 @@ test("the step goes when the flash is over and what became of it is drawn", asyn
   press(drawn, ".confirms");
   await settled(drawn);
   expect(all(drawn, ".step")).toStrictEqual([]);
-  expect(reads(drawn, ".became.wrote")).toBe(WROTE);
+  expect(reads(drawn, ".became.wrote")).toBe(WAITING);
 });
 
 test("the step is drawn outside the row, which can be shut while it runs", async () => {
