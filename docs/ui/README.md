@@ -12,12 +12,15 @@ the installation everything below rests on. The work pane shows one **view** and
 the rail picks it (#169): the monitor view, which is the **tile**s and the
 **monitor** under them — the station's conversation as it arrives, every line
 stamped with the time it arrived, newest at the bottom (#4), and a box at the
-foot that types a whole `<…>` message back (#6) — or the **release**s. The band
+foot that types a whole `<…>` message back (#6) — the **release**s, or the
+railroad's **script**. The band
 carries the **build**, the **link** and the power button and the tiles carry the
 particulars, all of them made of what the station said and kept live by the
 page's own polling (#7, #168). The releases are listed newest first with the one
 on the station marked (#8), and choosing one writes it onto the station — which
-is the last thing here that needed a terminal (#9). What it says was decided in
+is the last thing here that needed a terminal (#9). The script is the
+translator's commands for this railroad's station, edited in a box and applied
+to `control`'s store through the face (#185). What it says was decided in
 rails49/dccex#1 and the tickets under that spec are each a part of it, as
 [the cutover page](../cutover.md) was written ahead of its evening. What is
 already here besides is the other end: the **mirror**'s **face**, which is the
@@ -35,19 +38,34 @@ https://dccex.$BOX_DOMAIN/dccex-usb/releases   what the configured source carrie
 https://dccex.$BOX_DOMAIN/dccex-usb/flash      write one of them onto the station,
                                                and read how far that has got
 https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
+https://dccex.$BOX_DOMAIN/dccex-usb/railroads  the railroads the store holds
+https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
+                                               one railroad's script, read and
+                                               applied
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 ```
 
-Not the bus and not the store. The organisation's ADR-0002 permits all three
-and this page uses the third, because its subject is a command station rather
-than a railroad — which is what makes it the same page on a box with a station
-and no layout as on the layout box, with no branch between them. Every reading
-on the page is made of what the station said on the **stream**. How many
-**client**s are on the mirror's port was the one that was not, and the page no
-longer draws it, so what it asks the face for is the releases, a flash and how
-far that flash has got rather than a reading of the station's (#111, #172). The
-count is still the app's own business about itself and the face still answers it
-at the address above.
+Not the bus, and not the store directly. The organisation's ADR-0002 permits
+all three and this page uses the third, because its subject is a command
+station rather than a railroad — which is what makes it the same page on a box
+with a station and no layout as on the layout box, with no branch between them.
+Every reading on the page is made of what the station said on the **stream**.
+How many **client**s are on the mirror's port was the one that was not, and the
+page no longer draws it, so what it asks the face for is the releases, a flash
+and how far that flash has got rather than a reading of the station's (#111,
+#172). The count is still the app's own business about itself and the face still
+answers it at the address above.
+
+**The one document it edits goes through the face too, and for a reason of the
+door's rather than of the rule's** (#185,
+[ADR-0015](../adr/0015-the-script-is-a-railroads-document-in-the-store.md)
+d.5). A railroad's **script** is a document in `control`'s store, and the store
+is on the box's own network with no router of its own: this page is served over
+the door's certificate and cannot fetch a service the door does not route. So
+the face lists the railroads, reads the script and applies one server-side, and
+the page asks the three addresses above like everything else it asks. Nothing
+about the store is on this page — no host, no port and no route of the store's
+(`ui/src/face.ts`).
 
 It calls no third-party service. The releases are read by the app from its
 configured source and handed on; the browser never reaches the release API, and
@@ -133,21 +151,22 @@ with none (#127, #168).
 
 ### The rail
 
-One button per **view**, in the rail's one run: the monitor as `mdiConsole`
-and the releases as `mdiFlashAlert`, each carrying the view's own word as a
-tooltip and as a label (#169, #167). Pressing one is what a person changes
-the work pane with.
+One button per **view**, in the rail's one run: the monitor as `mdiConsole`,
+the releases as `mdiFlashAlert` and the script as `mdiScriptTextOutline`, each
+carrying the view's own word as a tooltip and as a label (#169, #167, #185).
+Pressing one is what a person changes the work pane with.
 
 The button for the view in front of the person wears `--band-ink` as a chip
 with `--rail-group` on the glyph, and the other is that ink on the group.
 White on the group is 3.8 to 1, where a control a person has to read needs 3.
 Dimming the other button was the alternative and says the wrong thing: a dim
 glyph is what a control that cannot be pressed looks like on this chrome
-(ADR-0011 d.2). Both buttons are `--rail-button` square, which is the look
+(ADR-0011 d.2). The buttons are `--rail-button` square, which is the look
 rules' minimum for a thumb, and they lie down with the rail on a short window.
 
-**The view is kept in the page's hash** — `#monitor` and `#releases`, and a
-hash that names neither is the monitor, which is what a page opens on. So a
+**The view is kept in the page's hash** — `#monitor`, `#releases` and
+`#script`, and a hash that names none of them is the monitor, which is what a
+page opens on. So a
 view can be linked to, a reload comes back where it was, and the back button
 steps through the views rather than off the page. The rail's press writes the
 hash and the page reads it: one direction each, and no second answer to which
@@ -359,6 +378,64 @@ the page says it is waiting for the station until the **build** arrives, and
 then says whether it is the **tag** that was written. A build that is something
 else is a failure however the mirror answered — what is on the station is read
 off the station (ADR-0006 d.3, ADR-0012 d.4).
+
+### The script
+
+The railroad's **script**, in a box on a view of its own (#185, ADR-0015 d.5).
+A script is a railroad's Python document in `control`'s store, one per
+railroad, holding the **handler**s the **translator** runs for this station —
+which mode a track is set to, what current it may draw, what a turnout throwing
+does to a track or a signal
+([ADR-0013](../adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+It is the one thing on this page that is about a railroad, and it is here
+because the app that serves the page's face is the app that can reach the store
+from the box's own network.
+
+The railroads the store holds are listed as controls, one each, and the person
+picks one. **None of them is marked as the one that is running**: which railroad
+that is is the bus's to say, and it is a row in `control`'s UI rather than a
+reading this page can make. A list that could not be read says so, and a store
+with no railroads in it says that instead — two sentences, because they are
+two different things (ADR-0009 d.2).
+
+Picking one opens its script in a `<textarea>`: monospace, because the
+indentation is the structure of a Python document, and Tab puts four spaces in
+rather than moving to the next control. **A railroad the store has no script
+for opens on the translator's sample, commented out** — the shape a script
+has, in front of somebody writing their first one, and applying it unchanged
+is a railroad whose script does nothing rather than one running values a page
+suggested (`ui/src/script.ts`, `src/dccex/sample.py`). A script that could not
+be read opens no box at all: offering the sample for a document the page never
+saw would be inviting somebody to overwrite it.
+
+**Edits stay in the page until Apply.** Nothing is sent as it is typed —
+applying a script stands the railroad down, so there is no version of this that
+saves while somebody thinks. What that costs is edits that can be lost, so
+leaving the railroad for another one asks first, and so does closing the page.
+Both questions name what is at stake; the browser's own words on a close are
+the browser's.
+
+**Apply says what it does before it does it.** The translator exits on a text
+that differs from the one it is running, which cuts track power and stands the
+railroad down, and the script takes effect from the next ON (ADR-0015 d.3).
+Nothing behind the page guards that — the face compiles and the store
+stores — so the operator is told and asked a second time, exactly as they are
+for a flash ([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)
+d.2).
+
+The second press sends the text to the face, which compiles it and puts it to
+the store. **A text that does not compile is refused with the line and the
+message, and the page shows what the mirror said**: there is no Python in a
+browser, and a second opinion here about what compiles is the disagreement that
+would put a text in the store the translator cannot load. What the page says of
+its own is one sentence, and only where there was no answer to read
+([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+
+**Whether the translator loaded it is not on this page.** A load error is a row
+in `control`'s UI and a line in the translator's log, which is where a
+railroad's own state is said (ADR-0015, consequences). Nor is deleting a
+script: this face has no verb for one, as it has none for a document of any
+other kind.
 
 ### The stream
 
@@ -852,9 +929,12 @@ rule as the two checks above it.
 
 ## What is not on it
 
-- **Anything about a railroad.** No turnout names, no roster, no run state —
-  none of them is a thing a command station says. Somebody wanting them wants
-  `control`'s UI, which is next door on the layout box.
+- **Anything about a railroad but its script.** No turnout names, no roster,
+  no run state — none of them is a thing a command station says. Somebody
+  wanting them wants `control`'s UI, which is next door on the layout box. The
+  railroad's **script** is the exception and is above: it is a document about
+  what this railroad wants of *this* station, and the app whose face this page
+  talks to is the one that can reach the store it lives in (ADR-0015 d.5).
 - **Commanding track power anywhere but the band and the flash sequence's own
   step.** The band's power button is the one control on the page that sends
   `<0>` or `<1>` (ADR-0011 d.1, d.3), and no emergency stop is drawn on the
@@ -865,8 +945,10 @@ rule as the two checks above it.
   points with raw accessory packets so the station holds no definitions, and
   `config.rails49.h` is compile-time and changed by flashing a build. What is
   left is `<D …>` and track mode, which the command box types.
-- **Scripting.** EX-RAIL is not compiled into this fork's firmware and nothing
-  on this railroad scripts anything.
+- **Automations.** EX-RAIL is not compiled into this fork's firmware, so
+  nothing runs on the station itself. The railroad's **script** is not one of
+  these and is not on the station: it is Python the translator runs on the box,
+  and an automation is EX-RAIL's word for the other thing (CONTEXT.md).
 - **Authentication.** The LAN is the trust boundary, as everywhere else
   (control ADR-0042).
 

@@ -54,9 +54,11 @@ mirror's port like any other, and the one app here on the bus, as a client of
 ## script
 
 A railroad's Python document in `control`'s store, one per railroad, that the
-translator loads at start and the page edits. It holds the **handler**s, and it is where this railroad's `<…>` that the bus
-has no word for is written: which mode a track is set to, what current it
-may draw, what a turnout throwing does to a track or a signal
+translator loads at start and the page edits on a **view** of its own, through
+the mirror's **face** (#185). It holds the **handler**s, and it is where this
+railroad's `<…>` that the bus has no word for is written: which mode a track
+is set to, what current it may draw, what a turnout throwing does to a track
+or a signal
 ([ADR-0013](docs/adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md),
 [ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)).
 
@@ -103,6 +105,14 @@ itself: the face still answers it and the page no longer draws it (#111). It
 guards nothing while it does: a face is about its app, so whether a railroad
 can spare its command station for two minutes is the operator's question and
 not this app's (ADR-0006).
+
+It carries one thing that is a fact about a railroad, and carries rather than
+keeps it: the **script**, which the page edits through the mirror's face
+because a browser on the page's origin cannot reach `control`'s store. The face
+lists the railroads, reads one railroad's script, and compiles a text and puts
+it there; the store's address is a flag on the app and no request can name it
+([ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)
+d.5, #185).
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
@@ -242,10 +252,10 @@ LOOK.md's rather than this repository's.
 ## rail
 
 The chrome down the side of every rails49 UI, carrying what the view in front
-of a person offers. Here that is one button per **view**: the monitor and
-the releases. A flash is not one of them: it is a gesture about one
-**release** and is pressed on that release's row, where the tag it names is
-(#9). It is the **band**'s counterpart
+of a person offers. Here that is one button per **view**: the monitor, the
+releases and the **script**. A flash is not one of them: it is a gesture about
+one **release** and is pressed on that release's row, where the tag it names
+is (#9). It is the **band**'s counterpart
 and LOOK.md's in the same way, which is why its colour, the width of a button
 on it and the window height it turns at are the `--rail*` tokens rather than
 numbers of this page's (`ui/src/ui/dccex-rail.ts`, [ui/look/README.md](ui/look/README.md)).
@@ -267,8 +277,10 @@ second thing).
 ## view
 
 What the work pane shows. The **rail** picks one; the **band** is the same
-over every view. There are two: the **monitor**, and the releases, where the
-releases are listed and a flash is pressed and followed.
+over every view. There are three: the **monitor**; the releases, where the
+releases are listed and a flash is pressed and followed; and the **script**,
+where a railroad's is opened in a box and applied to `control`'s store through
+the **face** (#185).
 
 **Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
 (a mode is what a track is set to).
