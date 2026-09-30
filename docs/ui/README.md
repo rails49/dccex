@@ -265,7 +265,7 @@ foot.
 - It follows the newest line while the view is at the bottom and stays put once
   it has been scrolled up, so reading back does not fight the stream — including
   across a trim, where the lines it is measured from are the ones that go. It
-  can be paused, and it can be cleared.
+  can be paused, and it can be cleared, from two icons above the lines.
 
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
@@ -353,6 +353,18 @@ it, and nothing else. Neither of them stops the stream, the polling or the
 tiles, and neither of them says anything to the station: they are the view and
 not the conversation, so the band and the tiles go on saying what the station
 is doing while a reader holds the monitor still.
+
+**The two controls are icons** (#167). The pause is a pause and becomes a play
+while the view is held, so what is drawn is what pressing it will do; the clear
+is the lines going. Each button carries its word — *pause*, *resume*, *clear* —
+as a tooltip and as an aria-label, because a shape is not a word and the phone
+at the layout has no pointer to hover with. The shapes come from `@mdi/js`
+(Apache-2.0), which is a module of path strings and no components, so what is
+bundled is the paths a control names. Drawing one is
+`ui/src/ui/dccex-icon.ts`: a component handed a path, at the size and in the
+colour of whatever it sits in, and hidden from the accessibility tree since the
+control beside it says the word. It is the page's first icon and it is meant
+for the next ones (#168, #169).
 
 Two things a full queue is owed, and did not get until #144. **A line the
 queue drops is forgotten as well as counted.** A status line is shown only when
@@ -478,7 +490,10 @@ opposite of what a check is for. So `vitest` and `happy-dom` are dev
 dependencies of `ui/`, the five cases #1 named are asserted against a DOM
 (`ui/test/band.test.ts`, `ui/test/tiles.test.ts`, `ui/test/releases.test.ts`,
 `ui/test/flash.test.ts`, `ui/test/monitor.test.ts`), and each source-text check
-they replace went with them. **That DOM is not in the gate.** It is an install,
+they replace went with them. The icon is mounted the same way
+(`ui/test/icon.test.ts`): what a path reaches is a shape in the SVG namespace,
+which is what a `<path>` through an HTML parser is not and reads the same off a
+source. **That DOM is not in the gate.** It is an install,
 and `scripts/check.sh` runs with no node on the machine at all; these run in the
 workflow's `node` job beside the modules a bare node runs, which is the same
 split and the same reason (#101, `.github/workflows/ci.yml`).
