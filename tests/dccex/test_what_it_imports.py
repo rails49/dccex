@@ -52,5 +52,8 @@ def test_the_translator_is_all_that_is_here() -> None:
         "__main__.py",
         "commands.py",
         "replies.py",
+        "sample.py",
+        "script.py",
+        "store.py",
         "translator.py",
     }
