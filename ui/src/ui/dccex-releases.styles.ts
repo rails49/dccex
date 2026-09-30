@@ -36,6 +36,15 @@ export const releasesStyles = css`
     padding: 0.5rem;
   }
 
+  /* The other view is showing. Written out because the rule above it beats
+     the hidden attribute on its own: a host with a display of its own is
+     drawn whatever that attribute says. The page hides this pane rather than
+     taking it away, so that a flash in flight is still here to come back to
+     (dccex-app.ts). */
+  :host([hidden]) {
+    display: none;
+  }
+
   details {
     border: 1px solid var(--sl-color-neutral-200);
     border-radius: var(--sl-border-radius-medium);

@@ -130,8 +130,8 @@ a build and the words with none (#127, #168).
 
 One button per **view**, in the rail's one run: the monitor as `mdiConsole`
 and the releases as `mdiFlashAlert`, each carrying the view's own word as a
-tooltip and as a label (#169, #167). Pressing one is the only way the work
-pane changes.
+tooltip and as a label (#169, #167). Pressing one is what a person changes
+the work pane with.
 
 The button for the view in front of the person wears `--band-ink` as a chip
 with `--rail-group` on the glyph, and the other is that ink on the group.
@@ -195,6 +195,13 @@ out. The list is the releases view, and it is open: a reader who pressed
 shuts — a long list on a phone is why — and it was collapsed until it had a
 view of its own, where a list that grew pushed the conversation down the
 screen (#169).
+
+The pane stays in the document while the monitor view is showing, hidden. It
+is the one that does: which step a flash is on and what became of it are this
+pane's, and the minute a write takes is exactly when an operator goes to the
+monitor to watch the station drop and come back. A pane built again on the way
+back would have forgotten a write that is still running, and would offer the
+press that starts a second one (#169).
 
 **The app fetches and the browser does not.** A UI talks to the bus, the store
 and its own app's face and nothing else (the organisation's ADR-0002), so the

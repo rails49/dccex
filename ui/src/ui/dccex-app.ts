@@ -16,18 +16,28 @@
  * the rest of the UI rests on: it is built by node inside the image, served by
  * nginx out of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
  *
- * **Which view that is is kept in the hash** (`view.ts`). The rail's press
+ * **Which one that is is kept in the hash** (`view.ts`). The rail's press
  * writes it and this reads it back, so the address bar says which view a page
  * is on: one can be sent to somebody, a reload comes back where it was, and
  * the back button steps through the views. One direction each, and no field
  * here holding a second answer.
  *
- * The view that is not showing is not drawn. What the page holds crosses a
- * switch — the lines, the queue behind a pause, the readings, the schedule —
- * and what a pane held does not: a reader who comes back to the monitor is at
- * the newest line with an empty box. Keeping it mounted and hidden was the
- * alternative and is worse, because a monitor with no height goes on drawing
- * two thousand rows and measuring a scroller that cannot answer.
+ * **The monitor view is drawn while it is showing and not otherwise.** What
+ * the page holds crosses a switch — the lines, the queue behind a pause, the
+ * readings, the schedule — and what the pane holds does not: a reader who
+ * comes back is at the newest line with an empty box. Keeping it in the
+ * document and hidden is worse than that, because a monitor with no height
+ * goes on drawing two thousand rows and measuring a scroller that cannot
+ * answer.
+ *
+ * **The releases stay in the document and are hidden**, which is the one
+ * exception and is the flash. A flash in flight is that pane's — which step
+ * it is on and what became of it (`dccex-releases.ts`) — and the minute it
+ * takes is exactly when an operator goes to the monitor to watch the station
+ * drop and come back (#9). A pane taken out of the document and built again
+ * would have forgotten a write that is still running, and would offer the
+ * press that starts a second one. It costs a list of three rows nobody is
+ * looking at.
  *
  * **The counterparties are the page's, the flash included** (#9). Choosing a
  * release stops the locomotives, cuts track power and asks the **face** to
@@ -91,7 +101,7 @@
  * layout as on the layout box (ADR-0008 d.6).
  */
 
-import { LitElement, html, type TemplateResult } from "lit";
+import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { flash, releases } from "../face.js";
 import { type Said } from "../framing.js";
@@ -265,7 +275,8 @@ export class DccexApp extends LitElement {
       <dccex-band .readings=${this.readings} .sends=${this.#sends}></dccex-band>
       <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
       <div class="work ${this.view}">
-        ${this.view === "releases" ? this.#releases() : this.#monitor()}
+        ${this.view === "releases" ? nothing : this.#monitor()}
+        ${this.#releases()}
       </div>
     `;
   }
@@ -287,10 +298,15 @@ export class DccexApp extends LitElement {
   }
 
   /** The releases view: what the station could be written with, and the one
-   *  place on the page a release is written onto it. */
+   *  place on the page a release is written onto it.
+   *
+   *  Hidden rather than taken away while the other view is showing, because a
+   *  flash in flight is this pane's and the minute it takes is when an
+   *  operator goes to the monitor to watch. */
   #releases(): TemplateResult {
     return html`
       <dccex-releases
+        ?hidden=${this.view !== "releases"}
         .carried=${this.carried}
         .build=${this.readings.build}
         .sends=${this.#sends}

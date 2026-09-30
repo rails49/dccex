@@ -170,11 +170,11 @@ def test_the_page_hears_the_hash_change_and_lets_it_go_when_it_goes() -> None:
     assert 'window.removeEventListener("hashchange"' in leaving, "a listener outlives"
 
 
-def test_the_work_pane_shows_one_view_and_not_both() -> None:
+def test_the_monitor_view_is_drawn_only_while_it_is_showing() -> None:
     """The releases are a view of their own and the conversation is the other
     (CONTEXT.md **view**, #169).
 
-    Drawn rather than hidden: a monitor left in the document behind the
+    Taken away rather than hidden: a monitor left in the document behind the
     releases would go on measuring a scroller with no height and go on drawing
     two thousand rows nobody is looking at.
     """
@@ -186,6 +186,24 @@ def test_the_work_pane_shows_one_view_and_not_both() -> None:
     ]
     assert "<dccex-tiles" in monitor and "<dccex-monitor" in monitor
     assert "<dccex-releases" not in monitor, "the releases are drawn on both views"
+    assert 'this.view === "releases" ? nothing : this.#monitor()' in drawn
+
+
+def test_the_releases_are_hidden_and_not_taken_away() -> None:
+    """The one pane that stays in the document, and the flash is why (#169).
+
+    Which step a flash is on and what became of it are that pane's
+    (`dccex-releases.ts`), and the minute a write takes is when an operator
+    goes to the monitor to watch the station drop and come back. A pane built
+    again on the way back would have forgotten a write that is still running
+    and would offer the press that starts a second one.
+    """
+    drawn = code(APP.read_text())
+    assert '?hidden=${this.view !== "releases"}' in drawn, "the pane is taken away"
+    assert (
+        ":host([hidden])"
+        in (UI / "src" / "ui" / "dccex-releases.styles.ts").read_text()
+    ), "a host with a display of its own is drawn whatever hidden says"
 
 
 def test_the_readings_are_made_of_what_the_station_said_and_not_of_the_poll() -> None:
