@@ -269,8 +269,8 @@ back to `on` as soon as the broadcast is out.
 The station has an emergency-stop **lock** in later firmware, `<!P>` until
 `<!R>` with `<!Q>` to ask, which would make `stopped` a state rather than an
 act. It is not used, for two reasons
-([#463](https://github.com/rails49/control/issues/463),
-[#464](https://github.com/rails49/control/issues/464)). It is a
+([control#463](https://github.com/rails49/control/issues/463),
+[control#464](https://github.com/rails49/control/issues/464)). It is a
 firmware-branch command of one product, so a `stopped` that meant "under a
 lock" would put a station's private vocabulary inside a bus word every
 railroad shares. And the station on the layout is older than it: below the
@@ -300,9 +300,9 @@ tripped and for one that is powered but watching a rising current, so anything
 else is `off`. `stopped` is the station's own `<!PAUSED>`, over live rails. A
 station that has said nothing reads `off`, which is the direction a state
 topic must fail in
-([#181](https://github.com/rails49/control/issues/181)), and a link that goes
-takes the reading with it: a district that tripped while this app was away
-would otherwise stand as an observation nobody made.
+([control#181](https://github.com/rails49/control/issues/181)), and a link
+that goes takes the reading with it: a district that tripped while this app
+was away would otherwise stand as an observation nobody made.
 
 **`device/link`** is `up` while the station **is answering**, `down`
 otherwise, with `detail` carrying what a person would want to read, on the row
@@ -348,7 +348,7 @@ that actually happen
 **The banner raises the link and goes no further.** It is what `<s>` is
 answered with, so a station that sends one is a station answering — and that
 is the whole of what this app makes of it. Which build is on the box rode on
-this row until #567 and does not any more: the flash gesture went with the
+this row until control#567 and does not any more: the flash gesture went with the
 mirror to `rails49/dccex`, and a microcontroller's firmware is not the
 railroad (the organisation's ADR-0002). A banner this app can read no field off
 raises the link just the same, a message this app reads nothing out of being
@@ -421,7 +421,7 @@ desired rows the broker has retained are waited for last and **before** the
 link is opened, for a second: a value arriving over a link that is already up
 is acted on as it arrives, so the whole picture has to be held before a
 connection is handed it
-([#333](https://github.com/rails49/control/issues/333),
+([control#333](https://github.com/rails49/control/issues/333),
 [ADR-0054](https://github.com/rails49/control/blob/main/docs/adr/0054-the-railroad-comes-up-at-rest-and-points-replay.md)).
 
 The app is also constructed on the bus directly, with where the station is
@@ -496,10 +496,10 @@ seconds later, and no further `<l 3 …>` should appear on the port. This is the
 step that matters and the one the suite cannot take: every check above passes
 against a station that is quietly stopping the train a second later, which is
 exactly what a `<!Q>` in the poll did
-([#463](https://github.com/rails49/control/issues/463)). A speed byte of 129 —
-the direction bit over step 1 — is the emergency stop, and seeing one arrive
-that nobody sent means something on this port is commanding the station rather
-than asking it.
+([control#463](https://github.com/rails49/control/issues/463)). A speed byte
+of 129 — the direction bit over step 1 — is the emergency stop, and seeing one
+arrive that nobody sent means something on this port is commanding the station
+rather than asking it.
 
 Send `<t 3 0 1>` to stop it again. `<!>` stops every locomotive at once and any
 throttle may drive away from it afterwards, which is what `stopped` means here;

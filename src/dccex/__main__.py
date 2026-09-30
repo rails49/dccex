@@ -25,11 +25,11 @@ and the one value that is this deployment's rather than the railroad's:
   store that is not answering is a railroad this app carries out OFF, STOP
   and speeds for and refuses power ON, saying why on its link row, and it
   keeps asking (ADR-0015 d.4).
-- `--id`, the name its link row is keyed by (#368, decision 7), defaulting to
-  the package's. A value and not a contract: it appears in no drawing, no
-  configuration and no list of ours, and it is a key only because one railroad
-  may have several participants and the second's `up` would otherwise erase
-  the first's `down`.
+- `--id`, the name its link row is keyed by (control#368, decision 7),
+  defaulting to the package's. A value and not a contract: it appears in no
+  drawing, no configuration and no list of ours, and it is a key only because
+  one railroad may have several participants and the second's `up` would
+  otherwise erase the first's `down`.
 
 Neither the drain period nor the poll nor the backoff is a flag — nothing
 outside this process has an opinion about how often it takes what the broker's
@@ -62,7 +62,7 @@ stated by the constructor. Last the *desired* picture, which is `layout`'s to
 write and the broker's to retain, waited for **before the link is opened** so
 that the whole of it is held when the first connection is handed it — and
 after the script, so that what a connect replays goes out through the
-handlers that are going to run (#333, control ADR-0054).
+handlers that are going to run (control#333, control ADR-0054).
 
 Then the loop: `DccEx.run()` keeping the link, `DccEx.following()` asking the
 store for the script, and a drain beside them.
@@ -87,9 +87,9 @@ railroad down like any other (ADR-0015 d.3).
 
 `DccEx` is handed a `Bus` and nothing else in the package changes: which
 binding it got is this file's business, and a desired value that cannot be
-read is dropped exactly as it was in one process (#289, BUS.md rule 4) —
-under MQTT whoever published it is another container, and a bug there must not
-take the thing that drives the railroad down with it.
+read is dropped exactly as it was in one process (control#289, BUS.md rule 4)
+— under MQTT whoever published it is another container, and a bug there must
+not take the thing that drives the railroad down with it.
 """
 
 import asyncio
@@ -199,7 +199,7 @@ def _railroad(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     and this comes back the instant it lands. A broker holding none is a
     railroad nobody has chosen, which is an ordinary state of a box — this app
     comes up with no script, says so, and asks again when the row names one
-    (control ADR-0060, #564).
+    (control ADR-0060, control#564).
     """
     retained(bus, RAILROAD, stop, timeout_s)
     bus.drain()
@@ -285,10 +285,10 @@ def main() -> None:
         parser.error(str(refused))
     try:
         # The same parse as the broker's, so the subtlety in it — a bracketed
-        # IPv6 host keeps its colons and loses its brackets (#335) — lives in
-        # one place. The refusal is written here instead, because what a
-        # person mistyped was a station and `lib` would tell them about a
-        # broker.
+        # IPv6 host keeps its colons and loses its brackets (control#335) —
+        # lives in one place. The refusal is written here instead, because
+        # what a person mistyped was a station and `lib` would tell them
+        # about a broker.
         station = address(args.station)
     except ValueError:
         parser.error(
