@@ -1,6 +1,6 @@
 # ADR-0008 — the page talks to the face and reads the build off the banner
 
-- **Status:** accepted, 2026-09-23
+- **Status:** accepted, 2026-09-23; d.5 superseded by [ADR-0011](0011-the-band-commands-track-power.md)
 - **Ticket:** rails49/dccex#1
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (the
   mirror leaves the bus, and what reaches it instead),
