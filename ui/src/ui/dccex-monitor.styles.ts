@@ -41,6 +41,9 @@ import { css } from "lit";
  * at on a phone held at the layout asks for, and the value the controls above
  * are sized by too. The field takes what is left of the width and may shrink
  * to nothing, so a long command never pushes the send off the side.
+ *
+ * The ↑ and ↓ beside the send are drawn quieter than it, as the controls
+ * above are. A sent line can be tapped to recall it, so it shows a pointer.
  */
 export const monitorStyles = css`
   :host {
@@ -149,6 +152,10 @@ export const monitorStyles = css`
     font-size: var(--sl-font-size-x-small);
   }
 
+  .sent {
+    cursor: pointer;
+  }
+
   /* The line as this page sent it. Drawn in the page's own accent beside the
      mark, so the two channels agree. */
   .sent .said {
@@ -186,9 +193,11 @@ export const monitorStyles = css`
      nothing, which is what keeps the send button on the page at the width of
      a phone; the typing is monospaced because a message is. The size is the
      medium one rather than the lines' small, because a field below that is a
-     field a phone zooms the page into. */
+     field a phone zooms the page into. Its width is zero until it grows, so
+     its natural width does not widen the work pane on a phone. */
   .typed {
     flex: 1 1 auto;
+    width: 0;
     min-width: 0;
     box-sizing: border-box;
     min-height: var(--rail-button);
@@ -201,14 +210,26 @@ export const monitorStyles = css`
     font-size: var(--sl-font-size-medium);
   }
 
-  /* Every button on this pane — the send at the foot, and the pause and the
-     clear above it — sized for a thumb here and nowhere else. Each keeps its
-     size whatever the width, because each of the three is something a thumb
-     has to hit on a phone held at the layout.
+  /* The history steps: quiet, and thumb-sized by the rule below. */
+  .box .step {
+    background: var(--sl-color-neutral-100);
+    color: var(--sl-color-neutral-700);
+    border: 1px solid var(--sl-color-neutral-300);
+  }
 
-     The .controls button rule above is the more specific of the two and says
-     nothing about size on purpose: a min-height there would win and take
-     the two controls below a thumb. Both halves of that are held in
+  .box .step:disabled {
+    color: var(--sl-color-neutral-400);
+    cursor: default;
+  }
+
+  /* Every button on this pane — the send and the two steps at the foot, and
+     the pause and the clear above it — sized for a thumb here and nowhere
+     else. Each keeps its size whatever the width, because each is something
+     a thumb has to hit on a phone held at the layout.
+
+     The .controls button and .box .step rules above are more specific than
+     this one and say nothing about size on purpose: a min-height there would
+     win and take those buttons below a thumb. Both halves of that are held in
      tests/ui/test_monitor.py. */
   button {
     flex: none;
