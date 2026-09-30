@@ -215,6 +215,8 @@ test("a flash in flight draws one bar, with the stage beside it", async () => {
 test("the stages nothing counts draw a bar that does not count", async () => {
   const [drawn] = await flashing();
   for (const stage of ["fetching", "checking", "verifying"]) {
+    drawn.flashing = got("writing", 42);
+    await drawn.updateComplete;
     drawn.flashing = got(stage, null);
     await drawn.updateComplete;
     expect(reads(drawn, ".stage")).toBe(stage);

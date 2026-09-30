@@ -216,8 +216,14 @@ def test_the_page_asks_the_face_and_the_row_presses() -> None:
     page = code(APP.read_text())
     assert 'import { flash, flashing, releases } from "../face.js";' in page
     writing = page[page.index("#writes = async (") :]
+    writing = writing[: writing.index("\n  };")]
     assert "await flash(tag)" in writing, "the page asks nobody to write"
-    assert "this.#follows()" in writing, "a write of the page's own is not followed"
+    assert (
+        writing.count("this.#follows();") == 2
+    ), "the write is not followed, or the page decides itself when it is over"
+    assert (
+        "this.flashing = " not in writing
+    ), "the page says what is running rather than asking"
     view = page[page.index("#releases(): TemplateResult {") :]
     assert ".flashing=${this.flashing}" in view, "the row is handed no flash"
     assert ".writes=${this.#writes}" in view, "the row is handed no way to write"

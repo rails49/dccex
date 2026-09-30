@@ -506,10 +506,14 @@ export class DccexApp extends LitElement {
    * The counterparty is the page's, the flash included (the organisation's
    * ADR-0002): what the row does is press, and what asks the mirror is here.
    *
-   * The following starts before the ask and stops where it answers. The mirror
-   * answers when esptool has finished, so there is nothing left to follow from
-   * there — what became of the flash is read off the station, on the banner it
-   * sends when it comes back (ADR-0006 d.3, ADR-0012 d.4).
+   * The following starts before the ask and asks once more where it answers,
+   * rather than the page deciding there that nothing is running. The mirror
+   * answers a write when esptool has finished, so the ordinary answer to that
+   * last ask is that nothing is — but a flash refused because one was already
+   * under way is a flash still running, and what is running is the mirror's
+   * word (ADR-0010, ADR-0012 d.3). What became of the write itself is read off
+   * the station, on the banner it sends when it comes back (ADR-0006 d.3,
+   * ADR-0012 d.4).
    */
   readonly #writes = async (tag: string): Promise<Wrote> => {
     this.#writing = true;
@@ -518,7 +522,7 @@ export class DccexApp extends LitElement {
       return await flash(tag);
     } finally {
       this.#writing = false;
-      this.flashing = null;
+      void this.#follows();
     }
   };
 
