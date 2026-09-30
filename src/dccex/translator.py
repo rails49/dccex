@@ -1,12 +1,13 @@
 """dccex: the translator between the device vocabulary and the command station.
 
-The first of the thin apps that hang under `layout` (control ADR-0043). Above it the
-bus carries the **device vocabulary** — what each device should do, and what
-each is observed to do — and below it is one TCP connection to `dccex-usb`,
-which owns the command station's serial device and serves it on port 2560 so
-that JMRI and hand-held throttles share the same command station. That mirror
-is another repository's app (rails49/dccex) and this one is a client of its
-port beside the others; the USB device is never opened here.
+The first of the thin apps that hang under `layout` (control ADR-0043). Above
+it the bus carries the **device vocabulary** — what each device should do, and
+what each is observed to do — and below it is one TCP connection to
+`dccex-usb`, which owns the command station's serial device and serves it on
+port 2560 so that JMRI and hand-held throttles share the same command station.
+That mirror is the other app in this repository (`src/dccex_usb`) and this one
+is a client of its port beside the others; the USB device is never opened
+here.
 
 **The boundary this app exists to hold.** Every other component is oblivious
 to what powers the layout, and nothing above the layout interface expects
@@ -141,8 +142,11 @@ value and not a contract — the id is whatever the publisher calls itself, it
 appears in no drawing, no configuration and no list of ours, and nothing but
 `layout` reads the row it keys (control ADR-0059)."""
 
-HOST = "host.docker.internal"
+HOST = "mirror"
 PORT = 2560
+"""Where the mirror serves the command station where this app is given no
+other: the service beside this one on the box, on the port `dccex-usb` listens
+on (`compose.box.yaml`)."""
 
 WANTED = "tc49/layout/state/wanted/#"
 
