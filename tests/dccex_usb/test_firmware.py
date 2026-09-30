@@ -24,6 +24,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import sys
 import urllib.error
 from collections.abc import AsyncGenerator, Callable, Sequence
 from email.message import Message
@@ -35,15 +36,20 @@ from dccex_usb.firmware import (
     ASSET,
     LATEST,
     Asset,
+    Doing,
     Flasher,
     Ran,
     Refusal,
+    Saw,
+    Stage,
     Wrote,
     argv,
     asset,
     matches,
+    moved,
     reads_as_release,
     release_url,
+    run,
 )
 from tests.dccex_usb.test_station import Log, Pty, station
 
@@ -59,6 +65,17 @@ A sentence that spelled either of them — whole, or by the host on its own —
 carries this, so one assertion catches the lot (#94)."""
 TIMEOUT_S = 30.0
 SETTLE_S = 5.0
+
+WRITES = "Writing at 0x00010000... (46 %)"
+"""One of the lines esptool prints while it writes, as it prints it down a
+pipe: the block it sent, and how far through it is."""
+
+WROTE = "Wrote 1048576 bytes (600000 compressed) at 0x00000000 in 20.1 seconds"
+"""What esptool says once the bytes are on the station and what is left is the
+hash it takes of them."""
+
+FETCHING = Doing(TAG, Stage.FETCHING, None)
+"""A flash that has got no further than asking the source for the release."""
 
 REFUSED = "refused: "
 """What the log says where a flash was turned down. There is no row and
@@ -104,15 +121,21 @@ class FakeDevice:
     `order` is what the ordering test reads, and the fake runner appends to
     the same list — so "released, ran, resumed" is one sequence rather than
     two that have to be lined up.
+
+    `watched` is called as the device is let go, which is one of the moments
+    the stage a flash says it is at is read at (`Flash.stages`).
     """
 
     def __init__(self, held: bool = True) -> None:
         self.path = DEVICE
         self.held = held
         self.order: list[str] = []
+        self.watched: Callable[[], None] | None = None
 
     @contextlib.asynccontextmanager
     async def released(self) -> AsyncGenerator[None]:
+        if self.watched is not None:
+            self.watched()
         self.order.append("released")
         self.held = False
         try:
@@ -123,7 +146,11 @@ class FakeDevice:
 
 
 class FakeFetch:
-    """What a URL answers with, and a record of what was asked for."""
+    """What a URL answers with, and a record of what was asked for.
+
+    `watched` is called as each URL is asked for, which is where the stage a
+    flash says it is at while it fetches is read (`Flash.stages`).
+    """
 
     def __init__(
         self,
@@ -135,9 +162,12 @@ class FakeFetch:
             DOWNLOAD: binary,
         }
         self.asked: list[str] = []
+        self.watched: Callable[[], None] | None = None
 
     async def __call__(self, url: str) -> bytes:
         self.asked.append(url)
+        if self.watched is not None:
+            self.watched()
         answer = self._answers.get(url, OSError(f"nothing at {url}"))
         if isinstance(answer, Exception):
             raise answer
@@ -149,15 +179,28 @@ FLASHED = Ran(0, "")
 
 
 class FakeRunner:
-    """esptool, faked: what it was given, and what it came to.
+    """esptool, faked: what it was given, what it said while running, and what
+    it came to.
 
     It reads the file it was pointed at as it runs, because the flash writes
     that file into a directory that is gone by the time the test looks — and
     what reached the disk is the thing being asserted anyway.
+
+    `says` is the output it prints before it is done, line by line as the real
+    runner hands esptool's over (ADR-0012 d.1). It is said before `called` is
+    set, so a test that waits on the flash being under way is a test the lines
+    have already reached.
     """
 
-    def __init__(self, ran: Ran = FLASHED, *, waits: bool = False) -> None:
+    def __init__(
+        self,
+        ran: Ran = FLASHED,
+        *,
+        waits: bool = False,
+        says: Sequence[str] = (WRITES,),
+    ) -> None:
         self._ran = ran
+        self._says = says
         self._let_go = asyncio.Event() if waits else None
         self.commands: list[Sequence[str]] = []
         self.timeouts: list[float] = []
@@ -165,12 +208,14 @@ class FakeRunner:
         self.order: list[str] | None = None
         self.called = asyncio.Event()
 
-    async def __call__(self, command: Sequence[str], timeout_s: float) -> Ran:
+    async def __call__(self, command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
         self.commands.append(command)
         self.timeouts.append(timeout_s)
         self.wrote.append(Path(command[-1]).read_bytes())
         if self.order is not None:
             self.order.append("ran")
+        for line in self._says:
+            saw(line)
         self.called.set()
         if self._let_go is not None:
             await self._let_go.wait()
@@ -202,6 +247,16 @@ class Flash:
             timeout_s=TIMEOUT_S,
             log=self.log,
         )
+        self.stages: list[Stage | None] = []
+        self.device.watched = self._reached
+        self.fetch.watched = self._reached
+
+    def _reached(self) -> None:
+        """The stage the flash was at each time it asked the source for
+        something and as the device was let go — one list in the order it got
+        there, the way `FakeDevice.order` is one list."""
+        doing = self.flasher.doing
+        self.stages.append(None if doing is None else doing.stage)
 
     @property
     def refusals(self) -> list[str]:
@@ -323,6 +378,114 @@ def test_the_argv_esptool_is_given() -> None:
     ]
 
 
+def test_a_writing_line_says_the_stage_and_how_far_esptool_has_got() -> None:
+    """The percentage is read off the line and never counted here: esptool
+    knows how many blocks there are to send and this does not."""
+    assert moved(WRITES, FETCHING) == Doing(TAG, Stage.WRITING, 46)
+
+
+def test_the_line_that_says_the_bytes_are_there_says_the_verifying() -> None:
+    """What is left after `Wrote` is the hash esptool takes of what it wrote,
+    and there is no percentage on it: the stage is the reading."""
+    assert moved(WROTE, Doing(TAG, Stage.WRITING, 100)) == Doing(
+        TAG, Stage.VERIFYING, None
+    )
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        pytest.param("esptool v5.4", id="the tool saying what it is"),
+        pytest.param("Chip is ESP32-D0WDQ6 (revision v1.0)", id="the chip it found"),
+        pytest.param(
+            "Flash will be erased from 0x00000000 to 0x000f4fff...", id="erase"
+        ),
+        pytest.param("Hash of data verified.", id="the hash it checked"),
+        pytest.param("Hard resetting via RTS pin...", id="the reset on the way out"),
+        pytest.param("", id="a blank line"),
+    ],
+)
+def test_a_line_that_says_nothing_about_the_writing_moves_a_flash_nowhere(
+    line: str,
+) -> None:
+    """Two lines of esptool's output are readings and the rest is output. A
+    stage moved by the tool saying what chip it found would be a reading
+    nobody made."""
+    assert moved(line, FETCHING) == FETCHING
+
+
+def test_a_writing_line_with_no_percentage_on_it_keeps_the_last_one() -> None:
+    """The tool's wording is the tool's, and a line it printed without a
+    percentage is not a reason to unsay the percentage before it."""
+    assert moved("Writing at 0x00010000...", Doing(TAG, Stage.WRITING, 46)) == Doing(
+        TAG, Stage.WRITING, 46
+    )
+
+
+def test_the_tag_being_written_is_carried_through() -> None:
+    """What a line says is the stage and the percentage. Which build is being
+    written is the gesture's and is not in esptool's output at all."""
+    assert moved(WRITES, FETCHING).tag == TAG
+
+
+# -- the runner ---------------------------------------------------------------
+
+SAYING = """
+import pathlib, sys, time
+print({writes!r}, flush=True)
+seen = pathlib.Path(sys.argv[1])
+for _ in range(500):
+    if seen.exists():
+        print({wrote!r}, flush=True)
+        raise SystemExit(0)
+    time.sleep(0.01)
+raise SystemExit(1)
+"""
+"""A command that says a line, waits for whoever is reading it to have had it,
+and exits non-zero where it waited in vain. esptool in the one respect this is
+about: it prints while it runs, and a runner that read its output at the exit
+would leave a page with nothing to show for a minute or two (ADR-0012 d.1)."""
+
+
+def test_a_commands_output_is_read_while_it_runs_and_not_at_its_exit(
+    tmp_path: Path,
+) -> None:
+    """The one thing here that starts a subprocess, and it is a python and not
+    an esptool: nothing in the gate may need a command station. What the command
+    does is make the claim testable — it goes on only once its first line has
+    been read, so a runner that waited for the exit gets a non-zero one.
+    """
+    seen = tmp_path / "seen"
+    lines: list[str] = []
+
+    def saw(line: str) -> None:
+        lines.append(line)
+        seen.touch()
+
+    said = SAYING.format(writes=WRITES, wrote=WROTE)
+    ran = asyncio.run(run([sys.executable, "-c", said, str(seen)], TIMEOUT_S, saw))
+
+    assert ran.code == 0, "the command waited in vain for its output to be read"
+    assert lines == [WRITES, WROTE]
+    assert ran.said == f"{WRITES}\n{WROTE}\n", "the output was not kept whole"
+
+
+def test_a_command_that_outlives_its_timeout_is_killed(tmp_path: Path) -> None:
+    """What the timeout is for: a tool that has stopped talking to a station
+    that has stopped answering, with the mirror off the port for as long as it
+    lasts. Killed and said to have come to nothing, and the reading a page had
+    is the last one the tool printed."""
+    said = SAYING.format(writes=WRITES, wrote=WROTE)
+    lines: list[str] = []
+
+    ran = asyncio.run(
+        run([sys.executable, "-c", said, str(tmp_path / "never")], 0.25, lines.append)
+    )
+
+    assert ran == Ran(None, "")
+    assert lines == [WRITES], "the line it did print was not read"
+
+
 # -- the flash ---------------------------------------------------------------
 
 
@@ -339,6 +502,68 @@ def test_what_a_flash_came_to_is_answered_to_whoever_asked() -> None:
 
         assert wrote.refusal is None
         assert TAG in wrote.said
+
+    asyncio.run(scenario())
+
+
+def test_nothing_is_flashing_where_no_gesture_has_been_made() -> None:
+    """What GET `/flash` answers when the station is not being written
+    (ADR-0012 d.2, `face.py`)."""
+    assert Flash().flasher.doing is None
+
+
+def test_a_flash_in_flight_says_how_far_esptool_has_got() -> None:
+    """The reading the whole of ADR-0012 is for: the tag being written, the
+    stage, and the percentage esptool printed — while it is printing it, and
+    not a minute later when the tool exits (d.1, d.2)."""
+
+    async def scenario() -> None:
+        runner = FakeRunner(waits=True)
+        flash = Flash(runner=runner)
+
+        gesture = asyncio.create_task(flash.wants())
+        await asyncio.wait_for(runner.called.wait(), SETTLE_S)
+
+        assert flash.flasher.doing == Doing(TAG, Stage.WRITING, 46)
+
+        runner.let_go()
+        assert (await gesture).refusal is None
+        assert flash.flasher.doing is None, "the flash is over and still says it is on"
+
+    asyncio.run(scenario())
+
+
+def test_a_flash_in_flight_says_it_is_verifying_once_the_bytes_are_there() -> None:
+    """The stage after the writing, and no percentage with it: what esptool is
+    doing then is hashing back what it wrote, and it counts nothing."""
+
+    async def scenario() -> None:
+        runner = FakeRunner(waits=True, says=[WRITES, WROTE])
+        flash = Flash(runner=runner)
+
+        gesture = asyncio.create_task(flash.wants())
+        await asyncio.wait_for(runner.called.wait(), SETTLE_S)
+
+        assert flash.flasher.doing == Doing(TAG, Stage.VERIFYING, None)
+
+        runner.let_go()
+        assert (await gesture).refusal is None
+
+    asyncio.run(scenario())
+
+
+def test_a_flash_says_it_is_fetching_and_then_checking_before_the_device() -> None:
+    """The two stages that happen while the mirror still holds the device, in
+    the order control ADR-0065 puts them in: the release asked for, the
+    firmware fetched, what came back checked against the digest, and the device
+    let go only then."""
+
+    async def scenario() -> None:
+        flash = Flash()
+
+        await flash.wants()
+
+        assert flash.stages == [Stage.FETCHING, Stage.FETCHING, Stage.CHECKING]
 
     asyncio.run(scenario())
 
@@ -656,7 +881,7 @@ def test_a_flash_that_went_wrong_in_no_written_down_way_is_still_answered() -> N
     told nothing is a page waiting on a flash that ended minutes ago, so it is
     an answer like the rest — and the app is askable afterwards."""
 
-    async def raising(command: Sequence[str], timeout_s: float) -> Ran:
+    async def raising(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
         raise RuntimeError("the workspace went away")
 
     async def scenario() -> None:
@@ -853,7 +1078,7 @@ def test_the_mirror_is_off_the_port_while_esptool_runs() -> None:
         app = station(cable.path, log)
         held: list[bool] = []
 
-        async def runner(command: Sequence[str], timeout_s: float) -> Ran:
+        async def runner(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
             held.append(app.held)
             return FLASHED
 
