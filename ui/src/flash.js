@@ -37,7 +37,11 @@
  * **Success is not replied to; it is observed.** What comes back from the face
  * says the write was asked for and finished, and what is on the station is
  * read off the station — the stream drops, comes back, and the banner says
- * which **build** it is running (ADR-0006 d.3, ADR-0008 d.3).
+ * which **build** it is running (ADR-0006 d.3, ADR-0008 d.3). So the answer to
+ * the POST is not the end of the flash: the page waits for the station, and a
+ * build that is not the tag is a flash that did not land whatever the mirror
+ * answered (ADR-0012 d.4). That reading is `became()` at the foot of this
+ * module.
  *
  * It reaches nothing itself. What sends a message up the **stream**, what asks
  * the face to write and what shows a step are handed in, so the whole
@@ -114,12 +118,12 @@ export const UNANSWERED =
   "the mirror could not be asked to write it, so what is on the station now" +
   " is what its banner says";
 
-/** What is said where the write finished. What is on the station is not this
- *  sentence's to say: the station says it, on the banner it sends when it
- *  comes back up (ADR-0006 d.3). */
-export const WROTE =
-  "written — the station is coming back, and the build it reports is what is" +
-  " on it";
+/** What is said where the write finished and the station has not said what it
+ *  is running yet. The write being over is not the flash having landed: what is
+ *  on the station is the station's to say, on the banner it sends when it comes
+ *  back up, and until then the true sentence is that the page is waiting for it
+ *  (ADR-0006 d.3, ADR-0012 d.4). */
+export const WAITING = "waiting for the station";
 
 /**
  * The third step, said while it runs.
@@ -312,4 +316,83 @@ export function bar(flashing) {
         : `${flashing.stage} ${Math.round(counted)} %`,
     percent: counted,
   };
+}
+
+/* -- what became of it ----------------------------------------------------- */
+
+/**
+ * What is said where the station came back running the release that was
+ * written.
+ *
+ * @param {string} tag the release that was written
+ * @returns {string}
+ */
+export function running(tag) {
+  return `the station came back running ${tag}`;
+}
+
+/**
+ * What is said where it came back running something else.
+ *
+ * Both are named. Which build came back is what whoever looks into it has to go
+ * on, and a sentence that said only that the flash failed would leave an
+ * operator reading the list to work out what is on the board (ADR-0012 d.4).
+ *
+ * @param {string} tag the release that was written
+ * @param {string} build what the station says it is running
+ * @returns {string}
+ */
+export function instead(tag, build) {
+  return `the station came back running ${build} and not ${tag}`;
+}
+
+/**
+ * What became of a flash once the station has been looked at: whether the
+ * release that was written is the **build** the station reports, and the
+ * sentence that says so.
+ *
+ * `landed` is `null` while the station has not said. It is not a failure and
+ * not a success: the minute a write takes is a minute of the station being
+ * away, and either answer drawn there would be one nobody had made (ADR-0009
+ * d.2).
+ *
+ * @typedef {object} Became
+ * @property {boolean | null} landed whether the station is running what was
+ *   written, and `null` while it has not said
+ * @property {string} says what became of it, in words a person reads
+ */
+
+/**
+ * What became of the last flash, read against what the station says it is
+ * running.
+ *
+ * **Three answers and the station gives the last two** (ADR-0012 d.4). A
+ * refusal is what the face or the sequence said and is what the operator reads,
+ * whatever the station is running: nothing was written, so the build on the
+ * board is not about this gesture. A write that finished is waited on until the
+ * station says which build it is running — the link goes down with the write and
+ * the build goes with the link (ADR-0008 d.3) — and then the build either is the
+ * tag or is not, which is the whole of what says a flash landed (ADR-0006 d.3).
+ *
+ * @param {Wrote | null} wrote what the sequence came back with, or `null` where
+ *   no flash has been asked for
+ * @param {string | null} tag the release it was asked to write
+ * @param {string | null} build what the station says it is running, and `null`
+ *   while it is not answering
+ * @returns {Became | null} what became of it, or `null` where there is nothing
+ *   to say
+ */
+export function became(wrote, tag, build) {
+  if (wrote === null || tag === null) {
+    return null;
+  }
+  if (!wrote.flashed) {
+    return { landed: false, says: wrote.says };
+  }
+  if (build === null) {
+    return { landed: null, says: WAITING };
+  }
+  return build === tag
+    ? { landed: true, says: running(tag) }
+    : { landed: false, says: instead(tag, build) };
 }

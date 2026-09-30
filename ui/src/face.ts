@@ -22,7 +22,7 @@
  * offered to run (control ADR-0042, `firmware.py`).
  */
 
-import { UNANSWERED, WROTE, type Wrote } from "./flash.js";
+import { UNANSWERED, WAITING, type Wrote } from "./flash.js";
 import { carried, type Carried } from "./releases.js";
 
 /** The prefix the mirror's face answers under on this page's own origin, and
@@ -136,7 +136,7 @@ export async function flash(tag: string): Promise<Wrote> {
         ? (said as Record<string, unknown>)
         : {};
     if (answered.ok && typeof fields[FLASHED] === "string") {
-      return { flashed: true, says: WROTE };
+      return { flashed: true, says: WAITING };
     }
     const reason = fields[REASON];
     return {
