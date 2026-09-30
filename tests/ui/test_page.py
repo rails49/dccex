@@ -184,6 +184,26 @@ def test_the_page_follows_a_flash_on_load_and_while_one_is_running() -> None:
     assert joining.count("this.#follows();") == 2, "the page never asks on load"
 
 
+def test_one_ask_about_a_flash_is_in_flight_at_a_time() -> None:
+    """The defect #88 found, in the one request-fed reading the page has again.
+
+    Which order a browser hands back the answers to two requests in is the
+    browser's, so an older answer can land after a newer one and sit there: the
+    count of **client**s drew a number from a minute ago that way, and the
+    numbering that guarded it went when the page stopped drawing it (#111). A
+    stage and a percentage asked for twice a second are that shape of reading
+    once more — a fetch that takes longer than the schedule would have two in
+    flight — so the page keeps one ask out at a time and lets a tick go by
+    rather than numbering them.
+    """
+    page = code(APP.read_text())
+    following = page[page.index("async #follows(): Promise<void> {") :]
+    following = following[: following.index("\n  }")]
+    assert "if (this.#asking)" in following, "the page asks again over an ask"
+    assert "this.#asking = true;" in following
+    assert "} finally {" in following, "an ask that raised stops the following"
+
+
 def test_the_page_asks_the_face_and_the_row_presses() -> None:
     """The counterparty is the page's, the flash included (#9). A pane holding
     one of its own would be a second answer to what the page talks to, which is
