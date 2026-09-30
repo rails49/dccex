@@ -282,6 +282,7 @@ export class DccexReleases extends LitElement {
         <p class="warns" role="alert">${WARNS}</p>
         <button
           class="confirms"
+          ?disabled=${this.step !== null || this.flashing !== null}
           @click=${() => {
             void this.#flashes(tag);
           }}
@@ -320,7 +321,7 @@ export class DccexReleases extends LitElement {
    * and somewhere to put a step.
    */
   async #flashes(tag: string): Promise<void> {
-    if (this.step !== null) {
+    if (this.step !== null || this.flashing !== null) {
       return;
     }
     this.asked = null;

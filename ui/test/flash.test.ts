@@ -241,6 +241,18 @@ test("a flash somebody else started takes the press away", async () => {
   expect((part(drawn, ".chooses") as HTMLButtonElement).disabled).toBe(true);
 });
 
+test("a warning left open when somebody else starts a flash cannot be agreed to", async () => {
+  const [drawn, asked] = await flashing();
+  press(drawn, ".chooses");
+  await drawn.updateComplete;
+  drawn.flashing = got("writing", 42);
+  await drawn.updateComplete;
+  expect((part(drawn, ".confirms") as HTMLButtonElement).disabled).toBe(true);
+  press(drawn, ".confirms");
+  await settled(drawn);
+  expect(asked.typed).toStrictEqual([]);
+});
+
 test("a station that came back running the tag is the flash that landed", async () => {
   const [drawn] = await flashing();
   press(drawn, ".chooses");

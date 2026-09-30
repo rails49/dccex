@@ -404,7 +404,7 @@ def test_a_second_sequence_is_refused_after_the_controls_have_gone_dead() -> Non
     """
     drawn = code(LIST.read_text())
     flashing = drawn[drawn.index("async #flashes(") :]
-    assert flashing.index("if (this.step !== null)") < flashing.index(
+    assert flashing.index("if (this.step !== null") < flashing.index(
         "await sequence("
     ), "a second sequence starts before the first is looked for"
 
