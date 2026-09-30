@@ -62,14 +62,17 @@ def drawn(**scenario: Any) -> dict[str, Any]:
     return run((scenario,))[0]
 
 
-def band(**scenario: Any) -> dict[str, str]:
-    """What the band reads, by the name of each reading on it."""
-    return {shown["of"]: shown["reads"] for shown in drawn(**scenario)["band"]}
+def band(**scenario: Any) -> dict[str, Any]:
+    """What the band carries: the **build**, the **link** and the power
+    button."""
+    carried: dict[str, Any] = drawn(**scenario)["band"]
+    return carried
 
 
-def faults(**scenario: Any) -> list[str]:
-    """The band's readings that are a fault, by name."""
-    return [shown["of"] for shown in drawn(**scenario)["band"] if shown.get("fault")]
+def power(**scenario: Any) -> dict[str, Any]:
+    """What the band's power button is, says and sends."""
+    pressed: dict[str, Any] = band(**scenario)["power"]
+    return pressed
 
 
 def tiles(**scenario: Any) -> dict[str, str]:
@@ -114,41 +117,68 @@ def live() -> dict[str, Any]:
 
 
 @pytest.mark.node
-def test_the_band_carries_two_readings() -> None:
-    """The band is the link and whether the rails are hot, and nothing else
-    (CONTEXT.md, **band**). A reading added without a scenario beside it is a
-    reading an operator can be shown that nobody ever read (ADR-0009 d.3)."""
-    assert [shown["of"] for shown in live()["band"]] == ["link", "rails"]
+def test_the_band_carries_the_build_the_link_and_the_power_button() -> None:
+    """The band is the **build**, the **link** and one control, and nothing
+    else (CONTEXT.md **band**, ADR-0011). A reading added without a scenario
+    beside it is a reading an operator can be shown that nobody ever read
+    (ADR-0009 d.3)."""
+    assert sorted(live()["band"]) == ["answering", "build", "power", "says"]
 
 
 @pytest.mark.node
-def test_the_band_reads_the_link_and_the_rails() -> None:
-    """Both of the band's readings, off a station that is saying them."""
+def test_the_band_reads_the_build_the_link_and_the_power_off_a_station() -> None:
+    """The whole of it, off a station that is answering with its rails hot.
+
+    The words are what a reader who cannot see the dot is given, and the band
+    draws them beside it only while the link is down (`ui/test/band.test.ts`).
+    The button is named for what a press will do, which is cut the power.
+    """
     assert band(said=list(TALKING), now=NOW) == {
-        "link": "answering",
-        "rails": "hot",
+        "build": "9db6d10",
+        "answering": True,
+        "says": "answering",
+        "power": {"hot": True, "does": "power off", "sends": "<0>"},
     }
 
 
 @pytest.mark.node
-def test_the_rails_are_cold_when_the_station_says_the_power_is_off() -> None:
-    assert band(said=[("<p0>", NOW - 10)], now=NOW)["rails"] == "cold"
+def test_the_power_button_turns_power_on_where_the_station_says_it_is_off() -> None:
+    """Red, and a press sends `<1>` (ADR-0011 d.1)."""
+    assert power(said=[("<p0>", NOW - 10)], now=NOW) == {
+        "hot": False,
+        "does": "power on",
+        "sends": "<1>",
+    }
 
 
 @pytest.mark.node
-def test_a_track_named_on_the_line_is_still_the_rails() -> None:
+def test_a_track_named_on_the_line_is_still_the_power_as_a_whole() -> None:
     """`<p1 MAIN>` is the station saying power is on for every MAIN track,
-    which is what the band's rails reading is about."""
-    assert band(said=[("<p1 MAIN>", NOW - 10)], now=NOW)["rails"] == "hot"
+    which is a rail somebody can be shocked by and a button that cuts it."""
+    assert power(said=[("<p1 MAIN>", NOW - 10)], now=NOW)["sends"] == "<0>"
 
 
 @pytest.mark.node
-def test_one_track_going_off_is_its_tile_and_not_the_rails() -> None:
-    """`<p0 C>` is track C's power. The band's rails reading is the station's
-    word on power as a whole, and the track's own tile says C is off."""
+def test_any_track_on_is_a_button_that_cuts_the_power() -> None:
+    """`<p0 C>` is track C's power and the rest of them are still hot, so the
+    press to offer is the one that cuts (ADR-0011 d.1). The track's own tile
+    says C is off."""
     said = [("<p1>", NOW - 20), ("<p0 C>", NOW - 10)]
-    assert band(said=said, now=NOW)["rails"] == "hot"
+    assert power(said=said, now=NOW) == {
+        "hot": True,
+        "does": "power off",
+        "sends": "<0>",
+    }
     assert tiles(said=said, now=NOW)["track C"] == "off"
+
+
+@pytest.mark.node
+def test_a_track_on_with_the_power_as_a_whole_off_still_cuts() -> None:
+    """The station's word on power as a whole and its word on one track are
+    both readings of it, and either one saying `on` is a rail somebody can be
+    shocked by."""
+    said = [("<p0>", NOW - 20), ("<p1 A>", NOW - 10)]
+    assert power(said=said, now=NOW)["sends"] == "<0>"
 
 
 @pytest.mark.node
@@ -223,7 +253,7 @@ def test_a_line_the_decoder_does_not_know_is_still_the_station_speaking() -> Non
     it (ADR-0009 d.5). A line the page cannot gloss is a station that is
     plainly answering, and a **link** that went down under one would be the
     page calling a talking station dead."""
-    assert band(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW)["link"] == "answering"
+    assert band(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW)["answering"] is True
     assert light(said=[("<l 3 0 128 0>", NOW - 10)], now=NOW) is True
 
 
@@ -232,20 +262,42 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     """Before anything has arrived, and with no socket anywhere in it: the
     **link** is the station answering rather than a socket being open
     (ADR-0008, control ADR-0066)."""
-    assert band(now=NOW) == {"link": "not answering", "rails": "unknown"}
+    assert band(now=NOW) == {
+        "build": "",
+        "answering": False,
+        "says": "dcc-ex offline",
+        "power": {"hot": None, "does": "power", "sends": None},
+    }
     assert tiles(now=NOW) == {"link": "", "build": ""}
     assert light(now=NOW) is False
 
 
 @pytest.mark.node
-def test_a_link_that_is_down_is_the_one_fault_on_the_band() -> None:
-    """A station that is not answering is a fault, and the band draws it on
-    the look rules' `--stop` (#138). Nothing else on the band is one: rails
-    that are cold or unknown are a reading, not a fault."""
-    assert faults(now=NOW) == ["link"]
-    assert faults(said=list(TALKING), now=NOW + silent_ms()) == ["link"]
-    assert faults(said=list(TALKING), now=NOW) == []
-    assert faults(said=[("<p0>", NOW - 10)], now=NOW) == []
+def test_a_link_that_is_down_says_so_in_words() -> None:
+    """The dot is the reading for a reader looking at it and the words are the
+    same reading for one who is not, which is why there are words in both
+    states; a station that is not answering is a fault and is owed them beside
+    the dot as well (#138, issue 168, `ui/test/band.test.ts`)."""
+    assert band(now=NOW)["says"] == "dcc-ex offline"
+    assert band(said=list(TALKING), now=NOW + silent_ms())["says"] == "dcc-ex offline"
+    assert band(said=list(TALKING), now=NOW)["says"] == "answering"
+
+
+@pytest.mark.node
+def test_the_power_button_presses_nothing_while_the_link_is_down() -> None:
+    """Power is then unknown and a press would reach a station that is not
+    answering (ADR-0011 d.2). It says what it is rather than what a press
+    would do, because there is no press.
+
+    A station that is answering and has said nothing about power yet is the
+    same case: what nothing has confirmed is not a colour to draw or a message
+    to send (ADR-0009 d.2).
+    """
+    unknown = {"hot": None, "does": "power", "sends": None}
+
+    assert power(now=NOW) == unknown
+    assert power(said=list(TALKING), now=NOW + silent_ms()) == unknown
+    assert power(said=[("<jI 40>", NOW - 10)], now=NOW) == unknown
 
 
 @pytest.mark.node
@@ -259,7 +311,12 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
     """
     gone: dict[str, Any] = {"said": list(TALKING), "now": NOW + silent_ms()}
 
-    assert band(**gone) == {"link": "not answering", "rails": "unknown"}
+    assert band(**gone) == {
+        "build": "",
+        "answering": False,
+        "says": "dcc-ex offline",
+        "power": {"hot": None, "does": "power", "sends": None},
+    }
     assert tiles(**gone) == {"link": "", "build": ""}
     assert light(**gone) is False
 
@@ -272,8 +329,8 @@ def test_the_link_holds_for_as_long_as_the_silence_is_allowed() -> None:
     inside = band(said=said, now=NOW + silent_ms())
     outside = band(said=said, now=NOW + silent_ms() + 1)
 
-    assert inside["link"] == "answering"
-    assert outside["link"] == "not answering"
+    assert inside["answering"] is True
+    assert outside["answering"] is False
 
 
 @pytest.mark.node
@@ -286,11 +343,14 @@ def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
 
     assert tiles(said=flashing, now=NOW + 60_000)["build"] == ""
     assert tiles(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
+    assert band(said=flashing, now=NOW + 60_000)["build"] == ""
+    assert band(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
 
 
 @pytest.mark.node
 def test_what_the_station_last_said_is_what_the_readings_read() -> None:
-    """Power off after power on is cold, and a track switched back on reads
+    """Power off after power on offers the press that turns it on, a track
+    switched back on after that offers the one that cuts, and the track reads
     its current again: a reading is the station's latest word and not its
     first."""
     said = [
@@ -301,7 +361,8 @@ def test_what_the_station_last_said_is_what_the_readings_read() -> None:
         ("<p1 A>", NOW - 10),
     ]
 
-    assert band(said=said, now=NOW)["rails"] == "cold"
+    assert power(said=said[:2], now=NOW)["sends"] == "<1>"
+    assert power(said=said, now=NOW)["sends"] == "<0>"
     assert tiles(said=said, now=NOW)["track A"] == "50 mA"
 
 
