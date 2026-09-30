@@ -48,6 +48,10 @@ a station is `layout` and the translator as separate processes on the broker.
   translator uses the library.
 - Org ADR-0006's rule for the first outside reader is replaced by d.2 for this
   repository. 0006 gets a line pointing here.
+- The translator and the face also call the store's face (ADR-0015), and
+  org ADR-0006 gives the store's face the bus's rule. The same answer holds: no
+  copy. `control` documents the routes, and a test here runs against a fake
+  store.
 - Until the pin moves past `control`'s deletion, the dependency still ships
   `tc49.dccex`. Nothing runs it.
 

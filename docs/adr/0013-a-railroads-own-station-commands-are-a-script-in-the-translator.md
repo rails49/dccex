@@ -1,6 +1,7 @@
 # ADR-0013 — a railroad's own station commands are a script in the translator
 
-- **Status:** accepted, 2026-09-30
+- **Status:** accepted, 2026-09-30; d.1 and d.8 amended by
+  [ADR-0015](0015-the-script-is-a-railroads-document-in-the-store.md)
 - **Related:** `control` ADR-0050 (broken hardware is reported, never worked
   around), `control` ADR-0054 (the railroad comes up at rest and points replay)
 

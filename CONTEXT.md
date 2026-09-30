@@ -53,11 +53,12 @@ mirror's port like any other, and the one app here on the bus, as a client of
 
 ## script
 
-The one Python file of a railroad's own that the translator loads at start.
-It holds the **handler**s, and it is where this railroad's `<…>` that the bus
+A railroad's Python document in `control`'s store, one per railroad, that the
+translator loads at start and the page edits. It holds the **handler**s, and it is where this railroad's `<…>` that the bus
 has no word for is written: which mode a track is set to, what current it
 may draw, what a turnout throwing does to a track or a signal
-([ADR-0013](docs/adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+([ADR-0013](docs/adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md),
+[ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)).
 
 **Not:** *config*, *plugin*, *automation* (an automation is EXRAIL's, and runs
 on the station), *the startup file* (the file it replaced).
