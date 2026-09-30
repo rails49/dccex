@@ -39,6 +39,21 @@
  * under the row rather than inside it — the row can be shut while the station
  * is being written, and a minute of nothing at all is what reads as a hang.
  *
+ * **And how far the write has got is drawn as one bar** (ADR-0012, issue 172).
+ * The stage is beside it in the mirror's own words, and the bar counts only
+ * while esptool is writing, because that is the one stage anything counts
+ * (`flash.js`'s `bar()`). It is handed down like everything else here: the page
+ * polls the face and this draws what it is handed, so a page opened while
+ * somebody else's flash is running shows that flash and offers no press while
+ * it does.
+ *
+ * **The flash is not over when the answer comes back.** What is on the station
+ * is the station's to say, so the row says it is waiting for the station until
+ * the **build** arrives and then says whether it is the tag that was written —
+ * a build that is something else is a failure whatever the mirror answered
+ * (ADR-0006 d.3, ADR-0012 d.4). The reading is `flash.js`'s `became()` and what
+ * is here is the three ways it is drawn.
+ *
  * **A release is chosen once at a time.** While a sequence is running there is
  * nothing to press: a second flash is a second station reset, and what the
  * mirror does with one asked for anyway is refuse it rather than queue it
@@ -60,7 +75,12 @@ import {
   CONFIRMS,
   UNANSWERED,
   WARNS,
+  type Bar,
+  type Became,
+  type Flashing,
   type Wrote,
+  bar,
+  became,
   sequence,
 } from "../flash.js";
 import {
@@ -84,10 +104,12 @@ export class DccexReleases extends LitElement {
   static override readonly properties = {
     carried: { attribute: false },
     build: { attribute: false },
+    flashing: { attribute: false },
     sends: { attribute: false },
     writes: { attribute: false },
     asked: { state: true },
     step: { state: true },
+    written: { state: true },
     wrote: { state: true },
   };
 
@@ -100,6 +122,14 @@ export class DccexReleases extends LitElement {
    *  goes with the **link**: a station that is not answering has no build and
    *  nothing is marked (ADR-0008 d.3). */
   build: string | null = null;
+
+  /** How far the flash in flight has got, as the page's poll of the face
+   *  answers it, or `null` where none is running (ADR-0012 d.3, `face.ts`).
+   *
+   *  Any flash and not only this page's: what the mirror answers is what it is
+   *  doing, so a page opened or reloaded while a release is being written shows
+   *  that write and has nothing to press while it runs. */
+  flashing: Flashing | null = null;
 
   /** What puts one whole message up the stream, as the page hands it down: the
    *  message that went, or `null` where nothing did.
@@ -132,9 +162,18 @@ export class DccexReleases extends LitElement {
    *  is in flight. */
   step: string | null = null;
 
-  /** What became of the last flash, or `null` where none has been asked for.
-   *  The sentence is the sequence's or the face's and never this component's
-   *  (`flash.js`, control ADR-0050). */
+  /** The release the last flash was asked to write, or `null` where none has
+   *  been. It is what the **build** the station comes back with is read
+   *  against (ADR-0012 d.4). */
+  written: string | null = null;
+
+  /** What the face answered the last flash with, or `null` where none has been
+   *  asked for. The sentence is the sequence's or the face's and never this
+   *  component's (`flash.js`, control ADR-0050).
+   *
+   *  It is what the face said and not what became of the flash: the write
+   *  finishing is not the release being on the station, which is read off the
+   *  station afterwards (`became()`). */
   wrote: Wrote | null = null;
 
   override render(): TemplateResult {
@@ -157,7 +196,7 @@ export class DccexReleases extends LitElement {
                 ${release.flashable
                   ? html`<button
                       class="chooses"
-                      ?disabled=${this.step !== null}
+                      ?disabled=${this.step !== null || this.flashing !== null}
                       @click=${() => {
                         this.#chosen(release.tag);
                       }}
@@ -176,20 +215,58 @@ export class DccexReleases extends LitElement {
       ${this.step === null
         ? nothing
         : html`<p class="step" aria-live="polite">${this.step}</p>`}
-      ${this.wrote === null ? nothing : this.#became(this.wrote)}
+      ${this.#bar()} ${this.#became()}
     `;
   }
 
-  /** What became of the last flash: written, or refused and why.
+  /** How far the write has got: one bar, and the stage beside it in the
+   *  mirror's own words.
    *
-   * The sentence is the sequence's or the face's own — a page that wrote its
-   * own over a refusal it was given would be guessing at an answer it has
-   * (control ADR-0050) — and what is here is which of the two it is drawn
-   * as. */
-  #became(wrote: Wrote): TemplateResult {
-    return html`<p class=${wrote.flashed ? "became wrote" : "became refused"}>
-      ${wrote.says}
-    </p>`;
+   * The bar counts while esptool is writing and runs without a number for the
+   * stages nothing counts, which is the `value` attribute being there or not —
+   * a bar drawn at a percentage nobody measured is a reading nobody took
+   * (ADR-0009 d.2, `flash.js`'s `bar()`).
+   *
+   * The words are on the page beside it rather than only on the bar, because a
+   * reader who cannot see how full it is is owed the stage in words, and the
+   * percentage a `progress` carries is read out by a browser on being asked.
+   */
+  #bar(): TemplateResult | typeof nothing {
+    const shown: Bar | null = bar(this.flashing);
+    if (shown === null) {
+      return nothing;
+    }
+    return html`
+      <p class="progress">
+        <progress
+          class="bar"
+          max="100"
+          value=${shown.percent === null ? nothing : shown.percent}
+          aria-label=${shown.says}
+        ></progress>
+        <span class="stage">${shown.says}</span>
+      </p>
+    `;
+  }
+
+  /** What became of the last flash: waiting for the station, the release that
+   *  was written running on it, or a failure — a refusal, or a build that is
+   *  something else (ADR-0012 d.4).
+   *
+   * The reading is `became()`'s and the sentence is the sequence's or the
+   * face's own — a page that wrote its own over a refusal it was given would be
+   * guessing at an answer it has (control ADR-0050). What is here is which of
+   * the three it is drawn as, and that it is drawn where the step is: the row
+   * can be shut, and this is what is on the page while the station comes
+   * back. */
+  #became(): TemplateResult | typeof nothing {
+    const came: Became | null = became(this.wrote, this.written, this.build);
+    if (came === null) {
+      return nothing;
+    }
+    const how =
+      came.landed === null ? "waiting" : came.landed ? "landed" : "failed";
+    return html`<p class="became ${how}" aria-live="polite">${came.says}</p>`;
   }
 
   /** What an operator is told, and the press that answers it.
@@ -248,6 +325,7 @@ export class DccexReleases extends LitElement {
     }
     this.asked = null;
     this.wrote = null;
+    this.written = tag;
     const wrote = await sequence(tag, {
       sends: (typed: string) => this.sends(typed),
       writes: (chosen: string) => this.writes(chosen),

@@ -9,6 +9,11 @@
  * a press, a warning that opens under the release it is about, a second press,
  * and three steps in the order they are drawn (#126).
  *
+ * **And the bar is read off the page the same way.** How far a flash has got is
+ * the page's poll of the face handed down (`dccex-app.ts`), so what is asserted
+ * here is what a `flashing` on the row draws: one bar, what it reads, and
+ * whether it counts (ADR-0012 d.3).
+ *
  * **Why the steps are drawn now rather than awaited.** `flash.js` says its
  * first two steps and sends the two messages between them without awaiting
  * anything, so Lit's one drawing per turn would show the last of the three and
@@ -27,7 +32,10 @@ import {
   STOPS,
   WAITING,
   WARNS,
+  type Flashing,
   type Wrote,
+  instead,
+  running,
   writing,
 } from "../src/flash.js";
 import { type Carried } from "../src/releases.js";
@@ -81,6 +89,18 @@ async function flashing(): Promise<[DccexReleases, Asked]> {
     return await Promise.resolve(WRITTEN);
   };
   return [await mounted(drawn), { typed, steps, pressable }];
+}
+
+/** How far a flash the mirror is running has got, as the page's poll answers
+ *  it. */
+function got(stage: string, percent: number | null): Flashing {
+  return { tag: CHOSEN, stage, percent };
+}
+
+/** What the one bar the row drew says its value is, or `null` where it is
+ *  drawn without one — a bar that is running and not counting. */
+function counts(drawn: DccexReleases): string | null {
+  return (part(drawn, ".bar") as HTMLProgressElement).getAttribute("value");
 }
 
 /** Everything the press set going, finished and drawn. */
@@ -147,7 +167,7 @@ test("the step goes when the flash is over and what became of it is drawn", asyn
   press(drawn, ".confirms");
   await settled(drawn);
   expect(all(drawn, ".step")).toStrictEqual([]);
-  expect(reads(drawn, ".became.wrote")).toBe(WAITING);
+  expect(reads(drawn, ".became.waiting")).toBe(WAITING);
 });
 
 test("the step is drawn outside the row, which can be shut while it runs", async () => {
@@ -181,4 +201,63 @@ test("a flash that was declined and then made reads the same as any other", asyn
   await drawn.updateComplete;
   expect(reads(drawn, ".warns")).toBe(WARNS);
   expect(reads(drawn, ".cancels")).toBe(CANCELS);
+});
+
+test("a flash in flight draws one bar, with the stage beside it", async () => {
+  const [drawn] = await flashing();
+  drawn.flashing = got("writing", 42);
+  await drawn.updateComplete;
+  expect(all(drawn, ".bar")).toHaveLength(1);
+  expect(reads(drawn, ".stage")).toBe("writing 42 %");
+  expect(counts(drawn)).toBe("42");
+});
+
+test("the stages nothing counts draw a bar that does not count", async () => {
+  const [drawn] = await flashing();
+  for (const stage of ["fetching", "checking", "verifying"]) {
+    drawn.flashing = got(stage, null);
+    await drawn.updateComplete;
+    expect(reads(drawn, ".stage")).toBe(stage);
+    expect(counts(drawn)).toBeNull();
+  }
+});
+
+test("no flash in flight draws no bar", async () => {
+  const [drawn] = await flashing();
+  expect(all(drawn, ".bar")).toStrictEqual([]);
+  drawn.flashing = got("writing", 42);
+  await drawn.updateComplete;
+  drawn.flashing = null;
+  await drawn.updateComplete;
+  expect(all(drawn, ".bar")).toStrictEqual([]);
+});
+
+test("a flash somebody else started takes the press away", async () => {
+  const [drawn] = await flashing();
+  drawn.flashing = got("writing", 42);
+  await drawn.updateComplete;
+  expect((part(drawn, ".chooses") as HTMLButtonElement).disabled).toBe(true);
+});
+
+test("a station that came back running the tag is the flash that landed", async () => {
+  const [drawn] = await flashing();
+  press(drawn, ".chooses");
+  await drawn.updateComplete;
+  press(drawn, ".confirms");
+  await settled(drawn);
+  expect(reads(drawn, ".became.waiting")).toBe(WAITING);
+  drawn.build = CHOSEN;
+  await drawn.updateComplete;
+  expect(reads(drawn, ".became.landed")).toBe(running(CHOSEN));
+});
+
+test("a station that came back running something else is a failure", async () => {
+  const [drawn] = await flashing();
+  press(drawn, ".chooses");
+  await drawn.updateComplete;
+  press(drawn, ".confirms");
+  await settled(drawn);
+  drawn.build = "v5.2.75";
+  await drawn.updateComplete;
+  expect(reads(drawn, ".became.failed")).toBe(instead(CHOSEN, "v5.2.75"));
 });
