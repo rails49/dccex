@@ -4,7 +4,7 @@
  *
  * What a press does with the answer is the page's — it writes the hash and
  * the page reads it back (`ui/src/view.ts`, `tests/ui/test_page.py`) — so what
- * is asserted here is that the rail offers both views, says each one's word,
+ * is asserted here is that the rail offers every view, says each one's word,
  * marks the one being shown and hands the press on.
  *
  * Nothing here asserts a width or a colour: happy-dom does no layout and has
@@ -12,7 +12,7 @@
  * (`ui/test/mounted.ts`, `tests/ui/test_rail.py`).
  */
 
-import { mdiConsole, mdiFlashAlert } from "@mdi/js";
+import { mdiConsole, mdiFlashAlert, mdiScriptTextOutline } from "@mdi/js";
 import { expect, test } from "vitest";
 
 import { type DccexIcon } from "../src/ui/dccex-icon.js";
@@ -55,21 +55,25 @@ function button(
 
 test("the rail carries one button per view and no others", async () => {
   const { drawn } = await rail();
-  expect(drawn.renderRoot.querySelectorAll("button")).toHaveLength(2);
+  // Written out rather than read off `VIEWS`, for the reason the list of views
+  // is written out in `ui/test/view.test.ts`: a count taken from the thing
+  // being checked would pass on whatever that list happened to say.
+  expect(drawn.renderRoot.querySelectorAll("button")).toHaveLength(3);
 });
 
 test("each button carries its view's word as a tooltip and as a label", async () => {
   const { drawn } = await rail();
-  for (const view of ["monitor", "releases"] as const) {
+  for (const view of ["monitor", "releases", "script"] as const) {
     expect(button(drawn, view).tooltip).toBe(view);
     expect(button(drawn, view).label).toBe(view);
   }
 });
 
-test("the monitor is drawn as a console and the releases as a firmware", async () => {
+test("each view is drawn as its own shape", async () => {
   const { drawn } = await rail();
   expect(button(drawn, "monitor").path).toBe(mdiConsole);
   expect(button(drawn, "releases").path).toBe(mdiFlashAlert);
+  expect(button(drawn, "script").path).toBe(mdiScriptTextOutline);
 });
 
 test("a button drawn as an icon says nothing in text", async () => {
@@ -78,29 +82,33 @@ test("a button drawn as an icon says nothing in text", async () => {
   const { drawn } = await rail();
   expect(reads(drawn, "button.monitor")).toBe("");
   expect(reads(drawn, "button.releases")).toBe("");
+  expect(reads(drawn, "button.script")).toBe("");
 });
 
 test("the view being shown is the one marked, and it is the only one", async () => {
   const { drawn } = await rail("releases");
   expect(button(drawn, "releases").current).toBe("page");
   expect(button(drawn, "monitor").current).toBe(null);
+  expect(button(drawn, "script").current).toBe(null);
 });
 
 test("a rail nobody told which view is showing marks the one a page opens on", async () => {
   const { drawn } = await rail();
   expect(button(drawn, "monitor").current).toBe("page");
   expect(button(drawn, "releases").current).toBe(null);
+  expect(button(drawn, "script").current).toBe(null);
 });
 
 test("pressing a button picks that view", async () => {
   const { drawn, picked } = await rail();
   press(drawn, "button.releases");
+  press(drawn, "button.script");
   press(drawn, "button.monitor");
-  expect(picked).toStrictEqual(["releases", "monitor"]);
+  expect(picked).toStrictEqual(["releases", "script", "monitor"]);
 });
 
 test("a rail nobody handed a picking to picks nothing", async () => {
-  // It draws both buttons and pressing one does nothing, for the reason a
+  // It draws every button and pressing one does nothing, for the reason a
   // band nobody handed a sending to presses nothing: which view is in front
   // of a person is the page's and not this component's.
   const drawn = await mounted(new DccexRail());

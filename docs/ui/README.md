@@ -966,8 +966,11 @@ Two things the prototype left open and the tickets settle while building:
   row wrapping rather than running off the side. What is not: the tiles onto
   more rows — there is no station behind the page in that job, so there are no
   tiles to measure — the flash's warning taking its own line above the two
-  presses that answer it, and the bar a flash fills, which wants a flash in
-  flight and there is no face behind the page in that job to run one. And what
+  presses that answer it, the bar a flash fills, which wants a flash in
+  flight and there is no face behind the page in that job to run one, and the
+  **script** view's box and controls, which want a face with a store behind it
+  for the same reason — every button on the rail is measured there, including
+  that view's, and the pane behind it is not (#185). And what
   the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the
   thing that is still open is somebody holding one up to it. Mounting the
