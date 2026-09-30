@@ -86,7 +86,8 @@ the fact and replaces nothing.
 
 This is the interface, and it is `dccex/sample.py` in this repository: the
 tests load it, fire events and assert the bytes sent, and it is what a
-railroad with no script of its own is offered to start from
+railroad with no script of its own opens with on the page, commented out, so
+that applying it unchanged is a railroad whose script does nothing
 ([#185](https://github.com/rails49/dccex/issues/185)).
 
 ```python
