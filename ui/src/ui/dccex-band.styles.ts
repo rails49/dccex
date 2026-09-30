@@ -22,9 +22,18 @@ import { css } from "lit";
  * page's own would be a seventh, and one of Shoelace's would follow the
  * system's light or dark setting while the chrome around it did not.
  *
+ * **Neither of those colours reads on the band's blue**, which is the one
+ * measurement in this sheet: `--rail-group` on `--band` is 1.8 to 1 and
+ * `--stop-ink` on it is 1.3, where a control needs 3. So the colour is never
+ * laid straight on the band — the dot is ringed in the band's ink, the words
+ * sit on `--stop`, and the power button is a chip of the band's ink with the
+ * colour on it.
+ *
  * **Grey is the band's own ink at half strength**, for a power button that
  * presses nothing while the link is down (ADR-0011 d.2). None of the six is a
- * dimmer ink.
+ * dimmer ink. The chip goes with it: a dim glyph on the blue is what a control
+ * that cannot be pressed looks like, and it is the difference a reader who
+ * cannot tell the green from the red is left with.
  */
 export const bandStyles = css`
   :host {
@@ -116,10 +125,12 @@ export const bandStyles = css`
     font-weight: 600;
   }
 
-  /* The power button: the one control on this chrome (ADR-0011 d.1). It paints
-     no ground of its own — the colour is the reading and it reaches the icon
-     through currentColor — and it is a thumb wide and a thumb high, because
-     it is pressed on the phone at the layout. */
+  /* The power button: the one control on this chrome (ADR-0011 d.1). A chip of
+     the band's own ink with the reading's colour on it, which is what either
+     colour reads against; the colour reaches the icon through currentColor, and
+     the font size is what the icon is a multiple of (dccex-icon.styles.ts). It
+     is a thumb wide and a thumb high, because it is pressed on the phone at the
+     layout. */
   .power {
     display: inline-flex;
     flex: none;
@@ -130,7 +141,8 @@ export const bandStyles = css`
     min-height: var(--rail-button);
     padding: 0;
     border: none;
-    background: none;
+    border-radius: 4px;
+    background: var(--band-ink);
     color: var(--band-ink);
     font-size: 1.2em;
     cursor: pointer;
@@ -147,8 +159,10 @@ export const bandStyles = css`
   }
 
   /* Grey and dead while the link is down: power is then unknown and a press
-     would reach a station that is not answering (ADR-0011 d.2). */
+     would reach a station that is not answering (ADR-0011 d.2). The chip goes
+     with the colour, so what is left is a dim glyph on the blue. */
   .power:disabled {
+    background: none;
     color: var(--band-ink);
     cursor: default;
     opacity: 0.5;
