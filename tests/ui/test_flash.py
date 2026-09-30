@@ -307,7 +307,7 @@ def test_an_answer_the_page_cannot_read_reads_as_no_flash() -> None:
     another app over a wire (`releases.js`'s `carried()`): an answer that names
     no tag or no stage is not a flash this page can say anything about, and a
     bar over it would be a reading nobody made (ADR-0009 d.2)."""
-    for answer in (
+    unreadable: tuple[Any, ...] = (
         {},
         {"stage": "writing", "percent": 42},
         {"tag": "", "stage": "writing"},
@@ -317,7 +317,8 @@ def test_an_answer_the_page_cannot_read_reads_as_no_flash() -> None:
         7,
         [],
         True,
-    ):
+    )
+    for answer in unreadable:
         assert progress(answer) is None, f"{answer!r} reads as a flash in flight"
 
 
@@ -361,7 +362,8 @@ def test_the_stages_nothing_counts_are_a_bar_that_does_not() -> None:
 def test_a_writing_with_no_percentage_the_page_can_read_does_not_count() -> None:
     """esptool has not printed one yet, or the number is not one a bar can be
     drawn at. The stage is still the stage; what goes is the count."""
-    for percent in (None, "42", 140, -1, True):
+    uncounted: tuple[Any, ...] = (None, "42", 140, -1, True)
+    for percent in uncounted:
         assert bar({"tag": TAG, "stage": "writing", "percent": percent}) == {
             "says": "writing",
             "percent": None,
