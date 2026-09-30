@@ -372,14 +372,13 @@ function says(letter, hot) {
 }
 
 /**
- * One **tile** per track in use, in letter order (CONTEXT.md **tile**, issue
- * 170).
+ * One **tile** per track the station names, in letter order (CONTEXT.md
+ * **tile**, issue 170).
  *
- * In use is a mode that is not `NONE`: a track the station has switched off
- * altogether is not a reading anybody wants four of. A track the station has
- * given a current for and not yet a mode is in use all the same — the current
- * is the station talking about it — and its mode is blank until the answer to
- * `<=>` arrives.
+ * The station's answer to `<=>` lists every track its firmware is built with,
+ * so a track set to `NONE` has a tile too. A track the station has given a
+ * current for and not yet a mode has one as well, and its mode is blank until
+ * the answer to `<=>` arrives.
  *
  * **The whole row goes when the link goes down**, because `asOf` has taken the
  * tracks away: the tiles are the station talking and the station is not
@@ -392,7 +391,6 @@ function says(letter, hot) {
  */
 export function tiles(readings) {
   return Object.entries(readings.tracks)
-    .filter(([, track]) => track.mode !== "NONE")
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([letter, track]) => ({
       track: letter,

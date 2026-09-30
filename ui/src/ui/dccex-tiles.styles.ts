@@ -1,16 +1,17 @@
 import { css } from "lit";
 
 /**
- * The tiles: one per track in use, in a row across the top of the monitor
+ * The tiles: one per track, in a row across the top of the monitor
  * view, wrapping onto more rows at the width of a phone.
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
  * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
  *
- * **A tile is a column and it is centred.** The power symbol is the first thing
- * read and the largest, and the three words go under it: what the track is set
- * to, the current it draws, and the most it may draw (issue 170).
+ * **A tile is a column and it is centred.** The track's letter heads it, the
+ * power symbol is the largest thing on it, and the three words go under it:
+ * what the track is set to, the current it draws, and the most it may draw
+ * (issue 170).
  *
  * **The row keeps its height when it is empty.** The tiles go together when the
  * link goes down — a tile is one track and the station is not saying it has any
@@ -45,6 +46,16 @@ export const tilesStyles = css`
     border-radius: var(--sl-border-radius-medium);
     background: var(--sl-color-neutral-50);
     text-align: center;
+  }
+
+  /* Which track: the letter the station names it by. */
+  .track {
+    color: var(--sl-color-neutral-600);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-x-small);
+    font-weight: var(--sl-font-weight-semibold);
+    letter-spacing: 0.04em;
+    line-height: 1rem;
   }
 
   /* Whether the track has power: the one reading on a tile that is a colour

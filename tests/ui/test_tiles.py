@@ -44,7 +44,7 @@ def test_the_reading_is_the_module_s_and_the_page_hands_it_down() -> None:
 
 
 def test_a_tile_is_one_track_and_the_link_and_the_build_are_the_band_s() -> None:
-    """One per track in use and nothing else on the row (CONTEXT.md **tile**,
+    """One per track and nothing else on the row (CONTEXT.md **tile**,
     issue 170).
 
     The **link** and the **build** are the **band**'s, which carries both at
