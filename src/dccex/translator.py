@@ -89,7 +89,7 @@ not by itself an instruction to the railroad — the station goes on running
 whatever it was last told — and a session that exits over a rolling
 locomotive leaves it rolling, which is not recoverable the way switching the
 power back on is. Whoever constructs this app calls it before letting the
-loop go (`bench/runner.py`).
+loop go (`__main__.py`).
 
 **No `device/point` is ever published.** This railroad's turnouts have no
 feedback and the station's answer to a throw is one it faked (control ADR-0022), so
@@ -683,7 +683,7 @@ class DccEx:
         the loop that drives the railroad waits for nothing but the railroad.
         What the answer is made of happens back here, on the loop, because the
         bus is the loop thread's — one binding of it is single-threaded by
-        contract (`lib/bus.py`) and this app's own rows are published from
+        contract (`tc49.lib.bus`) and this app's own rows are published from
         whichever thread drains it.
 
         Where there is no store there is nothing to ask and this never comes

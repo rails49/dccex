@@ -51,7 +51,7 @@ still the same station. What the row does decide is which railroad's script
 is asked for, and a script whose text differs from the running one ends this
 process rather than being loaded in place (ADR-0015 d.3).
 
-The startup order is `lib/startup.py`'s. The broker first, then `DccEx` on it,
+The startup order is `tc49.lib.startup`'s. The broker first, then `DccEx` on it,
 the constructor stating this app's two opening rows — `device/link/<id>: down`
 and a dark `device/track` carrying why. Then **the row that names the
 railroad**, waited for by name because there is one of it, and the script
@@ -74,7 +74,7 @@ drains the bus is the thread that writes to the station. With the loop owning
 the process every subscriber runs on the loop thread and that write is already
 where it belongs; the MQTT client's callback only appends to a queue on its
 own network thread, and the drain here is what hands those frames to the loop
-(lib/mqtt.py). A daemon thread under a synchronous owner would mean
+(`tc49.lib.mqtt`). A daemon thread under a synchronous owner would mean
 marshalling a cross-thread write that does not exist today.
 
 The railroad is stood down before the process ends, on the signal, on the
@@ -195,7 +195,7 @@ def _railroad(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     """Wait for the row that names the railroad, and deliver it, before the
     script it decides is asked for.
 
-    Waited for **by name**, which `lib/startup.py` can do here where the
+    Waited for **by name**, which `tc49.lib.startup` can do here where the
     desired picture below leaves it nothing to name: there is one railroad row
     and this comes back the instant it lands. A broker holding none is a
     railroad nobody has chosen, which is an ordinary state of a box — this app
@@ -210,7 +210,7 @@ def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     """Give the broker its moment to hand over the desired rows it holds, and
     deliver them, before anything opens a link they could go out over.
 
-    The window is waited out **whole**, for the reason `lib/startup.py` gives
+    The window is waited out **whole**, for the reason `tc49.lib.startup` gives
     a wait with nothing to name: what is being waited for is a row per address
     `layout` has written to, and this app holds no list of which. A second on
     the way up, once, against a locomotive commanded ahead of the power it
