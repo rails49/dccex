@@ -1,6 +1,6 @@
 /**
  * The releases: every **release** the **mirror** is configured to read, in a
- * row that opens under the tiles, and the one place on the page one is written
+ * row on a **view** of its own, and the one place on the page one is written
  * onto the **station**.
  *
  * Newest first, each with the day it was published, the one that is on the
@@ -14,10 +14,13 @@
  * the station said (`releases.js`) — and this component is handed them and
  * draws them, as the tiles are handed their readings.
  *
- * **It is collapsed.** What the page is when nobody has asked about firmware
- * is the station's particulars and its conversation; the releases are a thing
- * to go and look at, and a list that pushed the monitor down the screen would
- * cost every reader for the sake of the one asking.
+ * **It is open on its own view.** The row was collapsed while it sat between
+ * the tiles and the monitor, where a list that grew pushed the conversation
+ * down the screen and cost every reader for the sake of the one asking. It is
+ * a **view** of its own now and the rail is what goes to it, so there is
+ * nothing left to push down and a reader who pressed *releases* is reading
+ * them (issue 169). The row still opens and shuts: a long list on a phone is
+ * why it is a row at all.
  *
  * **And choosing one flashes it** (#9). A release that carries a firmware
  * with a digest to check it against is pressed, the operator is told what flashing does — the station resets, the
@@ -69,7 +72,7 @@ import {
 } from "../releases.js";
 import { releasesStyles } from "./dccex-releases.styles.js";
 
-/** What the row is called while it is shut. The word is the glossary's
+/** What the row is called. The word is the glossary's
  *  (CONTEXT.md, **release**): what is published elsewhere and can be written
  *  onto the station, which is not what the station is running now — that is
  *  the **build**, and it is a tile. */
@@ -137,7 +140,7 @@ export class DccexReleases extends LitElement {
   override render(): TemplateResult {
     const shown = listing(this.carried, this.build);
     return html`
-      <details>
+      <details open>
         <summary>${HEADING}</summary>
         ${shown.says === ""
           ? nothing

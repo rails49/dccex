@@ -8,12 +8,26 @@
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
- * The work pane is the **tile**s, the **release**s under them and the
- * **monitor** under those: the station's particulars, what the station could be
- * written with, and its conversation as it arrives (#4, #6, #7, #8). What the
- * page around them proves is the installation the rest of the UI rests on: it
- * is built by node inside the image, served by nginx out of it, and draws in
- * the look rules (docs/ui/README.md, ADR-0008).
+ * The work pane shows one **view** and the **rail** picks it (CONTEXT.md,
+ * issue 169). There are two: the monitor view, which is the **tile**s and the
+ * **monitor** under them — the station's particulars and its conversation as
+ * it arrives (#4, #6, #7) — and the releases, which is what the station could
+ * be written with (#8). What the page around them proves is the installation
+ * the rest of the UI rests on: it is built by node inside the image, served by
+ * nginx out of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
+ *
+ * **Which view that is is kept in the hash** (`view.ts`). The rail's press
+ * writes it and this reads it back, so the address bar says which view a page
+ * is on: one can be sent to somebody, a reload comes back where it was, and
+ * the back button steps through the views. One direction each, and no field
+ * here holding a second answer.
+ *
+ * The view that is not showing is not drawn. What the page holds crosses a
+ * switch — the lines, the queue behind a pause, the readings, the schedule —
+ * and what a pane held does not: a reader who comes back to the monitor is at
+ * the newest line with an empty box. Keeping it mounted and hidden was the
+ * alternative and is worse, because a monitor with no height goes on drawing
+ * two thousand rows and measuring a scroller that cannot answer.
  *
  * **The counterparties are the page's, the flash included** (#9). Choosing a
  * release stops the locomotives, cuts track power and asks the **face** to
@@ -97,6 +111,7 @@ import {
 } from "../readings.js";
 import { type Carried } from "../releases.js";
 import { Stream } from "../stream.js";
+import { OPENS, type View, hashed, viewed } from "../view.js";
 import { appStyles } from "./dccex-app.styles.js";
 import "./dccex-band.js";
 import "./dccex-monitor.js";
@@ -161,6 +176,7 @@ export class DccexApp extends LitElement {
     conversation: { state: true },
     readings: { state: true },
     carried: { state: true },
+    view: { state: true },
   };
 
   /** The conversation: what the station has said and what this page sent,
@@ -179,6 +195,11 @@ export class DccexApp extends LitElement {
    *  not answered — which is also where it has not been asked yet, and the
    *  list says the releases could not be read until it has. */
   carried: Carried[] | null = null;
+
+  /** Which view the work pane is showing, as the hash names it. The view a
+   *  page opens on until the hash has been read, which is what a page with
+   *  nothing in its hash shows anyway. */
+  view: View = OPENS;
 
   /** What the station and the face have said, which the readings are worked
    *  out of. It is not reactive: what a component draws is `readings`, and a
@@ -207,6 +228,8 @@ export class DccexApp extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+    this.#shows();
+    window.addEventListener("hashchange", this.#shows);
     this.#stream.open();
     void this.#list();
     this.#polling = setInterval(() => {
@@ -217,7 +240,7 @@ export class DccexApp extends LitElement {
     }, TICK_MS);
   }
 
-  /** Let the stream go and stop asking.
+  /** Let the stream go, stop asking, and stop reading the hash.
    *
    * A page that is closed stops polling, which is the conversation being quiet
    * when nobody is watching — the correct conversation rather than one a
@@ -225,6 +248,7 @@ export class DccexApp extends LitElement {
    */
   override disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener("hashchange", this.#shows);
     this.#stream.close();
     if (this.#polling !== null) {
       clearInterval(this.#polling);
@@ -239,24 +263,39 @@ export class DccexApp extends LitElement {
   override render(): TemplateResult {
     return html`
       <dccex-band .readings=${this.readings} .sends=${this.#sends}></dccex-band>
-      <dccex-rail></dccex-rail>
-      <div class="work">
-        <dccex-tiles .readings=${this.readings}></dccex-tiles>
-        <dccex-releases
-          .carried=${this.carried}
-          .build=${this.readings.build}
-          .sends=${this.#sends}
-          .writes=${flash}
-        ></dccex-releases>
-        <dccex-monitor
-          .said=${this.conversation.said}
-          .sends=${this.#sends}
-          .paused=${this.conversation.paused}
-          .behind=${this.conversation.behind}
-          .pauses=${this.#pauses}
-          .clears=${this.#clears}
-        ></dccex-monitor>
+      <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
+      <div class="work ${this.view}">
+        ${this.view === "releases" ? this.#releases() : this.#monitor()}
       </div>
+    `;
+  }
+
+  /** The monitor view: the station's particulars, and its conversation under
+   *  them. The particulars are above the conversation they are made of. */
+  #monitor(): TemplateResult {
+    return html`
+      <dccex-tiles .readings=${this.readings}></dccex-tiles>
+      <dccex-monitor
+        .said=${this.conversation.said}
+        .sends=${this.#sends}
+        .paused=${this.conversation.paused}
+        .behind=${this.conversation.behind}
+        .pauses=${this.#pauses}
+        .clears=${this.#clears}
+      ></dccex-monitor>
+    `;
+  }
+
+  /** The releases view: what the station could be written with, and the one
+   *  place on the page a release is written onto it. */
+  #releases(): TemplateResult {
+    return html`
+      <dccex-releases
+        .carried=${this.carried}
+        .build=${this.readings.build}
+        .sends=${this.#sends}
+        .writes=${flash}
+      ></dccex-releases>
     `;
   }
 
@@ -274,6 +313,26 @@ export class DccexApp extends LitElement {
       this.#keep([{ at: new Date(), line: sent, sent: true }]);
     }
     return sent;
+  };
+
+  /** Show the view the hash names.
+   *
+   * On joining the document and on every change of the hash after it, which
+   * is the rail's press, the back button and anybody editing the address bar.
+   * A hash that names no view is the monitor (`view.ts`).
+   */
+  readonly #shows = (): void => {
+    this.view = viewed(location.hash);
+  };
+
+  /** Pick a view, which is writing the hash.
+   *
+   * And nothing else: what the work pane draws changes when the hash change
+   * comes back through `#shows`, so there is one answer to which view is
+   * showing and the address bar is it.
+   */
+  readonly #picks = (view: View): void => {
+    location.hash = hashed(view);
   };
 
   /** Hold the view, or let it go and append what waited.

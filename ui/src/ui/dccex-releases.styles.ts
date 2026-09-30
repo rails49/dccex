@@ -1,7 +1,7 @@
 import { css } from "lit";
 
 /**
- * The releases: a row that opens under the tiles, one release to a line.
+ * The releases: the row a view of their own is, one release to a line.
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
@@ -42,7 +42,8 @@ export const releasesStyles = css`
     background: var(--sl-color-neutral-50);
   }
 
-  /* What the row is called while it is shut, and the handle that opens it. */
+  /* What the row is called, and the handle that shuts it and opens it
+     again. */
   summary {
     padding: 0.5rem 0.75rem;
     color: var(--sl-color-neutral-700);
