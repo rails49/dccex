@@ -49,10 +49,10 @@
  *  that was coasting when the power went is a locomotive nobody stopped. */
 export const STOPS = "<!>";
 
-/** What cuts track power. The one thing on this page that commands it — the
- *  **band** presses nothing, because this page is on no bus for anything to
- *  check first (ADR-0008 d.5) — and it is a step of this sequence rather than
- *  a control of its own. */
+/** What cuts track power. It is a step of this sequence rather than a control
+ *  of its own: the one control that commands power is the **band**'s button,
+ *  which sends this same message where any track is on (ADR-0011 d.1), and
+ *  what a flash cuts is cut because a release is about to be written. */
 export const CUTS = "<0>";
 
 /** What an operator is told before they are asked, and the whole reason the

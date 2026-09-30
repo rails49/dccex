@@ -24,7 +24,10 @@ Everything — six colours and two sizes — which is the dcc-ex UI's row in
 LOOK.md. The **band** across the top and the rail down the left are both drawn
 here, so every token has something on the page that is its colour or its size.
 `--stop` and `--stop-ink` are the band's link reading while the station is not
-answering, which is a fault (#138).
+answering, which is a fault (#138), and its power button while every track is
+off, which is the stop. `--rail-group` is the one green this chrome has, so the
+band's dot and a power button with the rails hot take it as well as the rail's
+groups (#168, ADR-0011 d.1).
 
 ## The copy is inert
 

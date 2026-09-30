@@ -62,35 +62,60 @@ them. The band and the rail are LOOK.md's and do not vary between rails49 UIs.
 
 ### The band
 
-Two readings, and no controls (#7). Whether the station is answering — the
-**link** — and whether the rails are hot: `link answering` and `rails hot`, or
-`link not answering` and `rails unknown`, in the band's own ink. **The link
-says so when the station stops answering**, rather than leaving the page
-looking merely idle, which is the difference between a dead station and a quiet
-one and the reason any of this exists. The rails go to `unknown` with it: what
-the station last said about power is not a reading once it has stopped
-talking.
+The UI's name and the **build** on the left; on the right the **link** and one
+control, the power button (#168, ADR-0011).
 
-**Nothing on this page commands track power.** `control`'s band presses ON,
-STOP and OFF because `layout` checks the railroad is drained before anything
-reaches the wire; this page is on no bus, so a press here would go down the
-cable with nothing having checked (ADR-0008 d.5). The one caller that cuts
-power is the flash sequence, which cuts it as its own step and asks the
-operator first. The command box can still type `<0>`, which is what a raw
-monitor is.
+The build is the `G-` field of the station's banner and is blank while the link
+is down: a build from before a flash reported as the one on the board would be
+the page saying what it cannot see (ADR-0008 d.3).
 
-No emergency stop is drawn on the chrome. The one red on it is the link while
-the station is not answering: LOOK.md keeps red on the chrome for stop or a
-fault, and that is a fault. It wears `--stop` and `--stop-ink` and still says
-`not answering` in words (#138).
+The link is a dot, green while the station is answering and red with `dcc-ex
+offline` beside it while it is not. **The link says so when the station stops
+answering**, rather than leaving the page looking merely idle, which is the
+difference between a dead station and a quiet one and the reason any of this
+exists. The words are the dot's label in either state, so a reader who cannot
+see it is told which reading it is.
 
-Below 560px the band drops the track reading and keeps the link. A station
-that is not answering makes the other reading meaningless, and a band that kept
-the rails instead would show a power state nothing has confirmed since the link
-went. 560px is this page's own number rather than a look rule, written in
-`dccex-band.styles.ts` beside the rule it is about, and a browser is what does
-it: `tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
-reads back a link with a size and a track reading with none (#127).
+**The band commands track power** (ADR-0011, superseding ADR-0008 d.5).
+`control`'s band presses it because `layout` checks the railroad is drained
+first, and that check never guarded the station: any client of the mirror's
+port sends `<0>` or `<1>` — JMRI, a throttle, the command box at the foot of
+the monitor — and the operator already switches power at this level when
+working below `control`. So the button is a reading and a control at once:
+`mdiPower`, green while any track is on, where a press sends `<0>`, and red
+while every one is off, where a press sends `<1>`. It carries the word for
+what a press will do as a tooltip and as a label (#167).
+
+Grey and disabled while the link is down (ADR-0011 d.2): power is then unknown
+and a press would reach a station that is not answering. A station that is
+answering and has said nothing about power yet is the same case. The page asks
+for no confirmation — the guard is the operator, as for a flash (ADR-0011 d.4,
+ADR-0006) — and a press goes up the **stream** as anything typed does, so it is
+written to the monitor as the page's own line and the station's `<p…>` answer
+is what turns the button's colour.
+
+It is the only control on the chrome and the only power control on the page:
+the per-track readings in the monitor view show state and press nothing
+(ADR-0011 d.3). The flash sequence cuts power as its own step and asks the
+operator first.
+
+No emergency stop is drawn on the chrome. LOOK.md keeps red there for stop or a
+fault, and both reds on this band are one of those: the link that is down is
+the fault, in words on `--stop` with the dot in `--stop-ink` (#138), and rails
+with no power is the stop. The green is `--rail-group`, which is the one green
+this chrome has; grey is the band's own ink at half strength, because none of
+the six colours is a dimmer ink.
+
+The band gives things up at two widths rather than wrapping. Below 560px the
+build goes: it is the longest thing on the band and it is on a tile beside the
+releases as well. Below 400px the link's words go and the link is the dot
+alone, the dot being the reading and the words that reading a second time. The
+dot and the power button stay at every width — a thumb has to reach the button
+on the phone at the layout. Both numbers are this page's own rather than a look
+rule, written in `dccex-band.styles.ts` beside the rules they are about, and a
+browser is what does it: `tests/ui/test_page_at_a_phones_width.py` loads the
+built page at 375px and reads back a dot and a thumb-sized button with a size,
+a build and the words with none (#127, #168).
 
 ### The tiles
 
@@ -102,9 +127,8 @@ The station's particulars, at the top of the work pane (#7):
 | build | the `G-` field of the station's banner | blank |
 | track A · MAIN, … | the track's current in mA, or `off` | gone |
 
-The light is the band's **link** reading made visible at a glance; it is in
-the work pane because the chrome's red means a fault and nothing else, and a
-green light has no token there.
+The light is the same reading as the band's dot (#168), in the work pane beside
+the particulars the link takes away.
 
 **A tile per track the station uses**, by letter, with its mode (`<=>` →
 `<= A MAIN>`). A track set to `NONE` gets no tile. A track reads `off` when the
@@ -714,12 +738,12 @@ process it starts runs in (#113).
 the layout, and until #127 nothing here had drawn it at one:
 `tests/ui/test_page_at_a_phones_width.py` runs the image this section is
 about, loads it in a Chromium at 375px and at 1280px, and holds five things
-there — no horizontal scroll at either width, the band keeping the **link** and
-dropping the track reading below 560px, the command box inside the viewport and
-a line typed into it coming back out of it, a release row with a long **tag**
-wrapping with nothing off the side of it, and the track reading back at a
-desktop width, which is what keeps the narrow claims from passing on a page
-that drew no band. There is no face behind the page in that job, so the
+there — no horizontal scroll at either width, the band keeping its dot and a
+thumb-sized power button where the **build** and the link's words are dropped,
+the command box inside the viewport and a line typed into it coming back out of
+it, a release row with a long **tag** wrapping with nothing off the side of it,
+and the link's words back at a desktop width, which is what keeps the narrow
+claims from passing on a page that drew no band. There is no face behind the page in that job, so the
 **stream** never opens and the link reads as not answering — the state a page
 with nothing behind it draws, and enough for layout. The one thing stood up is
 the release list, because rows are what the wrap rule is about and that state
@@ -732,10 +756,11 @@ rule as the two checks above it.
 - **Anything about a railroad.** No turnout names, no roster, no run state —
   none of them is a thing a command station says. Somebody wanting them wants
   `control`'s UI, which is next door on the layout box.
-- **Commanding track power**, beyond the flash sequence's own step. The band
-  presses nothing — there is no button on it, nothing listening for a press and
-  no form — and no emergency stop is drawn on the chrome. Its one red is the
-  link while the station is not answering, which is a fault (#138).
+- **Commanding track power anywhere but the band and the flash sequence's own
+  step.** The band's power button is the one control on the page that sends
+  `<0>` or `<1>` (ADR-0011 d.1, d.3), and no emergency stop is drawn on the
+  chrome: the tiles press nothing, and `<!>` is the sequence's own step and what
+  the command box can type.
 - **Station configuration.** There is none at runtime: the fork sets
   `DISABLE_EEPROM` so the station persists nothing, the translator drives
   points with raw accessory packets so the station holds no definitions, and
@@ -754,9 +779,10 @@ Two things the prototype left open and the tickets settle while building:
   entries. It is a collapsed row as of #8, and what would change it is somebody
   reading a long one on the box;
 - narrow widths are drawn in a browser as of #127, and not all of them are
-  asserted there. What is: no horizontal scroll, the band dropping the track
-  reading below 560px, the command box on screen and typed into, and a release
-  row wrapping rather than running off the side. What is not: the tiles onto a
+  asserted there. What is: no horizontal scroll, the band dropping the build and
+  the link's words and keeping the dot and the power button, the command box on
+  screen and typed into, and a release row wrapping rather than running off the
+  side. What is not: the tiles onto a
   second row, and the flash's warning taking its own line above the two presses
   that answer it. And what the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the

@@ -74,7 +74,11 @@ What asks an idle station to say any of it is the page, on its own schedule,
 as a throttle would — the mirror gains a face and a page and still originates
 nothing
 ([ADR-0010](docs/adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
-Nothing on the page commands track power but the flash sequence's own step.
+The **band** commands track power: one button, green where any track is on and
+red where every one is off, disabled while the link is down, and the guard is
+the operator
+([ADR-0011](docs/adr/0011-the-band-commands-track-power.md)). It and the flash
+sequence's own step are the only presses that do.
 
 One origin carries both: the page takes the label and the face is the same
 label under a path prefix the door strips, so the monitor's stream is `wss://`
