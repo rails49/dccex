@@ -557,7 +557,8 @@ and
 `tests/ui/test_flash.py` puts a flash through the sequence and reads back what
 went down the cable, in what order, what the page said while it did, what it
 made of the mirror's answer about how far the write had got, and what became of
-the flash once the station came back (`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
+the flash once the station came back (`tests/ui/flash.mjs`), and
+`tests/ui/test_stream.py` puts a page's own address
 and a conversation arriving on the socket through the rules that answer where
 the stream is and where a line ends (`tests/ui/framing.mjs`), and
 `tests/ui/test_monitor.py` puts a scroller, a time and whole conversations —
@@ -882,7 +883,8 @@ Two things the prototype left open and the tickets settle while building:
   more rows — there is no station behind the page in that job, so there are no
   tiles to measure — the flash's warning taking its own line above the two
   presses that answer it, and the bar a flash fills, which wants a flash in
-  flight and there is no face behind the page in that job to run one. And what the check drives is a Chromium at a phone's width
+  flight and there is no face behind the page in that job to run one. And what
+  the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the
   thing that is still open is somebody holding one up to it. Mounting the
   components settled none of it and could not: happy-dom does no layout
