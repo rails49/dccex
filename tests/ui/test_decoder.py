@@ -82,6 +82,9 @@ CASES: dict[str, str] = {
     " <p0> ": "track power is off",
     "<p0 B>": "B track power is off",
     "<jI 13 2 0 0>": "the tracks are drawing 13, 2, 0, 0 milliamps",
+    "<jG 1233 1233 250 250>": (
+        "the tracks may draw up to 1233, 1233, 250, 250 milliamps"
+    ),
     "<= A MAIN>": "track A is MAIN",
     "<= C DC 3>": "track C is DC",
 }
@@ -97,16 +100,19 @@ FACTS: dict[str, dict[str, object]] = {
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>": {"build": "9db6d10"},
     "<p0 B>": {"hot": False, "track": "B"},
     "<jI 13 2 0 0>": {"currents": [13, 2, 0, 0]},
+    "<jG 1233 1233 250 250>": {"limits": [1233, 1233, 250, 250]},
     "<= A MAIN>": {"track": "A", "mode": "MAIN"},
     "<= C DC 3>": {"track": "C", "mode": "DC"},
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
 #: A malformed payload, a truncated message, and a whole message the station
-#: says in a letter the page has never learned — which is the common one. This
-#: fork answers a subset of DCC-EX's vocabulary and upstream adds to it, so a
-#: station saying something new degrades to a stream of raw lines rather than
-#: to a page of confident nonsense (ADR-0009).
+#: says in a letter the page has never learned — which is the common one.
+#: `<jV …>` is that inside a letter the page has: `<jI …>` and `<jG …>` are
+#: read and nothing else under the `j` is (issue 170). This fork answers a
+#: subset of DCC-EX's vocabulary and upstream adds to it, so a station saying
+#: something new degrades to a stream of raw lines rather than to a page of
+#: confident nonsense (ADR-0009).
 SILENT: tuple[str, ...] = (
     "<p>",
     "<p3>",
@@ -115,8 +121,9 @@ SILENT: tuple[str, ...] = (
     "<H twelve 1>",
     "<X 1>",
     "<c CurrentMAIN>",
-    "<jG 1233 1233 1233 1233>",
     "<jI>",
+    "<jG>",
+    "<jV 1 2>",
     "<= Z MAIN>",
     "<= A>",
     "<c CurrentMAIN 123 C Amps 0 0 4000 1000>",

@@ -5,9 +5,10 @@
  * What it makes of a line is two things and they are one reading: the **gloss**
  * the monitor puts beside the bytes, and the fact the band and the tiles are
  * built out of — the rails hot, the **build** on the station, each track's
- * power, mode and milliamps. Both come off the same line and the same regular
- * expression, so the page cannot show a sentence it has not made a reading of
- * or a reading it cannot say (ADR-0008 d.2).
+ * power, mode, the milliamps it draws and the most it may draw. Both come off
+ * the same line and the same regular expression, so the page cannot show a
+ * sentence it has not made a reading of or a reading it cannot say
+ * (ADR-0008 d.2).
  *
  * A pure function of the line and nothing else (ADR-0009 d.1) — no socket, no
  * state carried between calls, no clock and no DOM — so what it makes of a
@@ -55,6 +56,8 @@ const CLOSE = ">";
  * @property {string} [track] which track, A to H, a power or mode line is about
  * @property {string} [mode] what a track is set to: MAIN, PROG, DC and so on
  * @property {number[]} [currents] the milliamps on each track, A first
+ * @property {number[]} [limits] the most each track may draw, in milliamps, A
+ *   first
  */
 
 /**
@@ -153,25 +156,33 @@ function current(rest) {
 }
 
 /**
- * The current on every track, as the station measures it: `<jI 13 2 0 0>`,
- * in milliamps, track A first. `<JI>` asks for it.
+ * The milliamps on every track, as the station measures them, track A first:
+ * what each is drawing (`<jI 13 2 0 0>`) and the most each may draw
+ * (`<jG 1233 1233 1233 1233>`). `<JI>` and `<JG>` ask for them.
  *
- * Only the `I` form is read. `<jG …>` is the same shape and is each track's
- * limit rather than what it is drawing.
+ * The two are one shape and are read together because they are one **tile**'s
+ * reading in two halves: the current, and the limit under it (CONTEXT.md
+ * **tile**, issue 170). The letter says which. A `j` line in any other letter
+ * is not read.
  *
  * @param {string} rest what follows the `j`
  * @returns {Reading | null}
  */
-function currents(rest) {
-  const said = /^I((?: -?\d+)+)$/.exec(rest);
+function measured(rest) {
+  const said = /^([IG])((?: -?\d+)+)$/.exec(rest);
   if (said === null) {
     return null;
   }
-  const milliamps = said[1].trim().split(" ").map(Number);
-  return {
-    say: `the tracks are drawing ${milliamps.join(", ")} milliamps`,
-    currents: milliamps,
-  };
+  const milliamps = said[2].trim().split(" ").map(Number);
+  return said[1] === "I"
+    ? {
+        say: `the tracks are drawing ${milliamps.join(", ")} milliamps`,
+        currents: milliamps,
+      }
+    : {
+        say: `the tracks may draw up to ${milliamps.join(", ")} milliamps`,
+        limits: milliamps,
+      };
 }
 
 /**
@@ -215,7 +226,7 @@ const READS = {
   H: turnout,
   i: banner,
   c: current,
-  j: currents,
+  j: measured,
   "=": mode,
   X: rejected,
 };
