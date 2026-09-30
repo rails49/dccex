@@ -75,7 +75,7 @@ better answer where a station has one, and nothing has to be asked before
 using it: each translator implements `stopped` as well as its own hardware
 allows and never by removing power (control ADR-0063, decision 3). One product's
 firmware-branch command is dialect this app absorbs, not a word the bus
-learns (control ADR-0058, #463, #464).
+learns (control ADR-0058, control#463, control#464).
 
 **An overload is polled for.** A district that trips is not broadcast on TCP
 — the station cuts it and says so on its USB diagnostics only — so this app
@@ -403,7 +403,7 @@ class DccEx:
         self._commanded: dict[str, None] = {}
         # What the station says about itself, and forgotten with the link:
         # an outage is not an observation, and what cannot be read may not be
-        # called good (#181).
+        # called good (control#181).
         self._answered = False
         # When the station last said anything, and `None` where it has said
         # nothing this app has heard. What the poll measures its silence
@@ -845,7 +845,8 @@ class DccEx:
         anything sent here that a station acts on rather than answers is acted
         on for as long as the railroad is up — which is what a lock query was,
         on a station whose `!` opcode takes no suffix: an emergency stop every
-        second, and a train that moved a few centimetres and stood (#463).
+        second, and a train that moved a few centimetres and stood
+        (control#463).
         `<s>` asks and changes nothing, which is the property a polled command
         has to have.
         """
@@ -987,17 +988,18 @@ class DccEx:
         track that is fully on and `0` both for one that has tripped and for
         one that is powered but watching a rising current, so anything else
         is `off`. A station that has said nothing reads `off` too, which is
-        the direction a state topic must fail in (#181) — a supply that
-        cannot be read is not one a train may move over.
+        the direction a state topic must fail in (control#181) — a supply
+        that cannot be read is not one a train may move over.
 
         `stopped` is the station's own report of a lock, which this app does
         not command and so never reads back from a stop of its own: the
         one-shot it sends leaves nothing standing to observe, so a `stopped`
         this app was asked for shows here as `on` the moment the broadcast is
-        out (#463). What is left is a station that has a lock and has been put
-        under it by another throttle, which is a supply no train may move over
-        whoever caused it. It reaches here only over live rails, an emergency
-        stop being every locomotive told to stand with the track still on.
+        out (control#463). What is left is a station that has a lock and has
+        been put under it by another throttle, which is a supply no train may
+        move over whoever caused it. It reaches here only over live rails, an
+        emergency stop being every locomotive told to stand with the track
+        still on.
         """
         if not self._answered:
             return OFF
@@ -1079,7 +1081,7 @@ def _asked(scripts: Scripts, railroad: str) -> Asked:
 
     A railroad nobody has named is nothing to ask about rather than a route
     with an empty name: a box that has chosen no railroad is an ordinary
-    state of one (control ADR-0060, #564).
+    state of one (control ADR-0060, control#564).
     """
     if not railroad:
         return Asked(None, f"no railroad is named on {RAILROAD}")

@@ -72,7 +72,7 @@ person to notice. `<s>` makes it restate every track's power.
 Nothing else is asked, because a station is polled only for what it can
 answer. A question this one does not know is not passed over: the `!` opcode
 takes no suffix here, so a lock query reads as the emergency stop itself and
-every locomotive on the railroad stands once a second (#463)."""
+every locomotive on the railroad stands once a second (control#463)."""
 
 
 def traction(addr: str, speed: float) -> bytes:
@@ -137,7 +137,7 @@ def signal(addr: str, aspect: str) -> bytes | None:
     Extended and not basic, because a head shows three aspects where a basic
     packet has two positions. What each aspect is worth to the head is
     `ASPECTS` and is wiring, not contract: the dispatcher publishes a name
-    and what a signal makes of it is a translator's (#203).
+    and what a signal makes of it is a translator's (control#203).
     """
     address = _number(addr, EXTENDED_MAX, least=0)
     if address is None or aspect not in ASPECTS:
@@ -158,14 +158,14 @@ def track(power: str) -> bytes:
     shared port may drive away from it, this app's own included, and that is
     the intended reading rather than a defect in it — who may move a train is
     the operator's to decide, and the operator is the one holding the layout
-    (#463).
+    (control#463).
 
     A station's emergency-stop *lock* would make `stopped` a state rather than
     an act, which is the better answer where a station has one and is not
     asked for here: it is one product's firmware-branch command, and a
     `stopped` that meant "under a lock" would put a station's private
-    vocabulary inside a bus word every railroad shares (control ADR-0043, control ADR-0063,
-    #464).
+    vocabulary inside a bus word every railroad shares (control ADR-0043,
+    control ADR-0063, control#464).
     """
     if power == ON:
         return b"<1>"
