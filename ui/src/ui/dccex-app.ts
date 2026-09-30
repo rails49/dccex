@@ -4,7 +4,7 @@
  * **The conversation is held here.** The page opens the **stream**, keeps the
  * lines that arrive on it and the lines it sent, and hands them down — because
  * what is made of that conversation is the whole page and not one pane of it:
- * the band's two readings and the tiles' particulars are the same bytes the
+ * the band's readings and the tiles' particulars are the same bytes the
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
@@ -23,6 +23,12 @@
  * as anything typed does and are marked as this page's in the monitor, and the
  * face's own `flash`, because a pane holding a counterparty of its own would be
  * a second answer to what the page talks to (the organisation's ADR-0002).
+ *
+ * **And the band presses power** (ADR-0011 d.1). What its button sends goes up
+ * the same `#sends`, so a press is a line on the stream like any other client's
+ * and is marked as this page's in the monitor, and the station's `<p…>` answer
+ * is what turns the button's colour. The page checks nothing before it goes:
+ * the guard is the operator, as for a flash (ADR-0011 d.4, ADR-0006).
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
@@ -112,8 +118,8 @@ const CURRENTS = "<JI>";
  *
  * The status request, which is what a throttle asks with and what an operator
  * types most: the station answers it with the power state and its banner, and
- * those are the band's second reading, each track's power and the **build**
- * (ADR-0008 d.2, d.3). `<=>` asks what each track is set to. The answer to
+ * those are the band's power button, each track's power and the **build**
+ * (ADR-0008 d.2, d.3, ADR-0011 d.1). `<=>` asks what each track is set to. The answer to
  * `<s>` is eight lines and every client on the port receives it, so it is not
  * asked every second.
  *
@@ -232,7 +238,7 @@ export class DccexApp extends LitElement {
 
   override render(): TemplateResult {
     return html`
-      <dccex-band .readings=${this.readings}></dccex-band>
+      <dccex-band .readings=${this.readings} .sends=${this.#sends}></dccex-band>
       <dccex-rail></dccex-rail>
       <div class="work">
         <dccex-tiles .readings=${this.readings}></dccex-tiles>

@@ -5,7 +5,8 @@
  * Every reading about the station is the conversation, decoded on the page —
  * there is no second channel and nothing is inferred on one (ADR-0008 d.2) —
  * so what goes in here is lines and the moments they arrived, and what comes
- * out is the words on the chrome and on the tiles.
+ * out is the words on the chrome and on the tiles, and what the one control on
+ * the chrome sends (ADR-0011).
  *
  * **A pure function of what was said and of the moment it is asked for.** No
  * socket, no clock and no DOM: the page hands in its own clock, which is what
@@ -37,11 +38,34 @@ import { read } from "./decoder.js";
  */
 export const SILENT_MS = 5000;
 
-/** What a tile reads where the page has no reading to put there. Blank rather
- *  than a dash or a zero: the tiles are the station talking, and a station
- *  that is not talking is an absence rather than a value (ADR-0008 d.3,
- *  ADR-0009 d.2). */
+/** What the band and a tile read where the page has no reading to put there.
+ *  Blank rather than a dash or a zero: they are the station talking, and a
+ *  station that is not talking is an absence rather than a value (ADR-0008
+ *  d.3, ADR-0009 d.2). */
 const BLANK = "";
+
+/** What a press of the power button sends: the two messages any other client
+ *  of the mirror's port sends to switch track power, and the two an operator
+ *  types into the box at the foot of the monitor (ADR-0011 d.1). */
+const CUTS = "<0>";
+const HEATS = "<1>";
+
+/** What the power button says, which is what a press will do rather than the
+ *  state it is in — as the monitor's pause is named, so that a reader on a
+ *  busy station is never working out which state they are in. While the link
+ *  is down it says what it is and nothing about a press, because there is
+ *  none. */
+const CUTTING = "power off";
+const HEATING = "power on";
+const POWER = "power";
+
+/** What the link reads in words. The dot is the reading for a reader looking
+ *  at it, and these are the same reading for one who is not: the band draws
+ *  them beside the dot while the station is not answering, because a fault is
+ *  owed a sentence, and a station that is answering is the dot alone (issue
+ *  168, #138). */
+const ANSWERING = "answering";
+const OFFLINE = "dcc-ex offline";
 
 /**
  * How many current readings the shown one is the mean of: two seconds' worth
@@ -137,8 +161,36 @@ export const QUIET = /** @type {Kept} */ ({
  * @property {string} of which reading it is
  * @property {string} reads the words a person sees
  * @property {boolean} [lit] for a light rather than words: whether it is on
- * @property {boolean} [fault] whether the reading is a fault, which the band
- * draws in the look rules' red
+ */
+
+/**
+ * What the band's power button is, says and sends (ADR-0011 d.1).
+ *
+ * @typedef {object} Power
+ * @property {boolean | null} hot whether any track is on, which is what
+ *   colours the button: `null` where nothing has said so, which is every
+ *   moment the link is down
+ * @property {string} does the word it carries, which is what a press will do
+ * @property {string | null} sends the message a press sends, and `null` where
+ *   it presses nothing
+ */
+
+/**
+ * What the band carries: the **build**, the **link** and the power button.
+ *
+ * One value rather than a list of readings, because the three are three
+ * different things — a word the station said, a light, and a control — and
+ * what they have in common is only the chrome they sit on.
+ *
+ * @typedef {object} Band
+ * @property {string} build what the station says it is running, blank while
+ *   the link is down
+ * @property {boolean} answering whether the station is answering — the link,
+ *   which is the dot's colour
+ * @property {string} says what the link reads in words, which is what a reader
+ *   who cannot see the dot is given: `answering`, or `dcc-ex offline` while the
+ *   station is not answering, where it is drawn beside the dot as well
+ * @property {Power} power
  */
 
 /**
@@ -211,45 +263,73 @@ export function asOf(kept, now) {
 }
 
 /**
- * What the band reads: the **link** first, then whether the rails are hot.
+ * Whether any track is on, which is what colours the power button.
  *
- * Two readings and no controls. Nothing on this page commands track power —
- * `control`'s band presses ON, STOP and OFF because `layout` checks the
- * railroad is drained first, and this page is on no bus for anything to check
- * (ADR-0008 d.5) — so what the band has to say it says in words.
- *
- * The link comes first because it is the reading that survives where the band
- * is too narrow to carry both: a station that is not answering makes the other
- * reading meaningless, and a page that dropped the link to keep the rails
- * would be showing a power state nothing has confirmed for a quarter of a
- * minute (`dccex-band.styles.ts`).
- *
- * A link that is down is a **fault**, and the only one on the band: the rails
- * reading `cold` or `unknown` is a reading, not a fault (#138).
+ * The station's word on power as a whole and its word on one track are both
+ * readings of it (`decoder.js`), and either of them saying `on` is a rail
+ * somebody can be shocked by, so either makes the button green. `null` where
+ * neither has said anything — a station nobody has asked yet, and every moment
+ * the link is down, where `asOf` has taken both away.
  *
  * @param {Readings} readings
- * @returns {Shown[]}
+ * @returns {boolean | null}
+ */
+function anyOn(readings) {
+  const tracks = Object.values(readings.tracks);
+  if (readings.hot === null && tracks.every((track) => track.hot === null)) {
+    return null;
+  }
+  return readings.hot === true || tracks.some((track) => track.hot === true);
+}
+
+/**
+ * What the band carries: the **build**, the **link**, and the power button
+ * (ADR-0011, CONTEXT.md **band**).
+ *
+ * **The band presses power.** `control`'s band presses it because `layout`
+ * checks the railroad is drained first; this page is on no bus, and that check
+ * never guarded the station — any client of the mirror's port sends `<0>` or
+ * `<1>`, the monitor's command box included, and the guard is the operator
+ * (ADR-0011, ADR-0006 d.2). So the button is a reading and a control at once:
+ * green where any track is on and a press cuts power, red where every one is
+ * off and a press turns it on.
+ *
+ * **It presses nothing while the link is down** (ADR-0011 d.2). Power is then
+ * unknown, a press would reach a station that is not answering, and what the
+ * station last said about power is not a reading once it has stopped talking.
+ *
+ * The link is a light rather than words, with the words beside it while it is
+ * down: a station that is not answering is a fault and is owed a sentence, and
+ * one that is answering is owed a glance (issue 168). The words are there in
+ * either state all the same, because the band is what a reader who cannot see
+ * the dot is given them by. The **build** goes with
+ * the link, blanked by `asOf`, because a build from before a flash reported as
+ * the one on the board would be this page saying what it cannot see.
+ *
+ * @param {Readings} readings
+ * @returns {Band}
  */
 export function band(readings) {
-  return [
-    readings.answering
-      ? { of: "link", reads: "answering" }
-      : { of: "link", reads: "not answering", fault: true },
-    {
-      of: "rails",
-      reads:
-        readings.hot === null ? "unknown" : readings.hot ? "hot" : "cold",
+  const hot = anyOn(readings);
+  return {
+    build: readings.build ?? BLANK,
+    answering: readings.answering,
+    says: readings.answering ? ANSWERING : OFFLINE,
+    power: {
+      hot,
+      does: hot === null ? POWER : hot ? CUTTING : HEATING,
+      sends: hot === null ? null : hot ? CUTS : HEATS,
     },
-  ];
+  };
 }
 
 /**
  * What the tiles read, in the order they are drawn: a light for the **link**,
  * the **build**, then a tile per track.
  *
- * The light is the link at a glance, green or red, where the band says it in
- * words. The **build** is a tile rather than a reading on the band because it
- * is long and because it belongs beside the releases it gets compared against.
+ * The light is the link at a glance, green or red, which the **band** carries
+ * as a dot of its own as well (issue 168). The **build** is on the band too,
+ * and the tile keeps it beside the releases it gets compared against.
  *
  * A track reads `off` when the station says its power is off, whatever
  * current was last measured on it, and its current in milliamps otherwise. A

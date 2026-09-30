@@ -25,15 +25,21 @@ FACE = UI / "src" / "face.ts"
 
 #: What a page that commanded track power would type at the station. The box
 #: at the foot can still be typed into with any of them, which is what a raw
-#: monitor is; what may not exist is a control on the page that sends one
-#: (ADR-0008 d.5).
+#: monitor is; what is counted here is a control on the page that sends one.
 COMMANDS = ("<0>", "<1>", "<!>")
 
-#: The one module that may carry one of them: the flash sequence, which stops
-#: the locomotives and cuts track power as its own steps, after an operator has
-#: been told what flashing does and has said yes (#9, ADR-0006 d.2). It is the
-#: exception docs/ui/README.md already names, and it is one module wide.
+#: The one module that may carry the emergency stop: the flash sequence, which
+#: stops the locomotives and cuts track power as its own steps, after an
+#: operator has been told what flashing does and has said yes (#9, ADR-0006
+#: d.2). It is the exception docs/ui/README.md already names, and it is one
+#: module wide.
 SEQUENCE = "flash.js"
+
+#: The one module that may carry the two power messages: the readings, which
+#: answer what the band's power button sends for what the station last said
+#: about power (ADR-0011 d.1). The colour and the message are one answer there,
+#: so a component cannot draw one and send the other.
+POWER = "readings.js"
 
 
 def test_the_page_polls_the_station_on_its_own_schedule() -> None:
@@ -150,26 +156,40 @@ def test_the_link_can_go_down_with_nothing_arriving() -> None:
     assert "asOf(this.#kept, Date.now())" in page, "the readings are never worked out"
 
 
-def test_nothing_on_the_page_commands_track_power() -> None:
-    """`control`'s band presses ON, STOP and OFF because `layout` checks the
-    railroad is drained first; this page is on no bus for anything to check,
-    so a press here would go down the cable with nothing having checked
-    (ADR-0008 d.5).
+def test_two_modules_command_track_power_and_the_rest_of_the_page_does_not() -> None:
+    """The band's power button and the flash sequence, and nothing else.
+
+    `control`'s band presses power because `layout` checks the railroad is
+    drained first; this page is on no bus, and that check never guarded the
+    station — any client of the mirror's port sends `<0>` or `<1>` and the
+    guard is the operator (ADR-0011, superseding ADR-0008 d.5). So the two
+    messages are in the readings, where what the button says and what it sends
+    are one answer, and the emergency stop is in the sequence, which is held
+    below.
 
     Held against the literals rather than the prose, because saying what the
-    page does not command is not commanding it — and because the one thing
-    that may still carry `<0>` is what an operator types into the box, which
-    is not a literal anywhere.
-
-    The flash sequence is the one exception and is held below: it cuts power as
-    a step of writing a release, which is the one caller docs/ui/README.md has
-    always named (#9).
+    page does not command is not commanding it — and because the one thing that
+    may still carry `<0>` anywhere is what an operator types into the box,
+    which is not a literal at all.
     """
     for name, module in modules().items():
-        if name == SEQUENCE:
+        if name in (SEQUENCE, POWER):
             continue
         for literal in quoted(module):
             assert literal not in COMMANDS, f"{name} sends {literal}"
+
+
+def test_the_readings_carry_the_two_the_power_button_sends_and_no_stop() -> None:
+    """`<0>` and `<1>`, which are the two a press offers depending on what the
+    station last said about power (ADR-0011 d.1).
+
+    Not the emergency stop: stopping the locomotives is a step of writing a
+    release and is the sequence's, and a band that could send `<!>` would be
+    one press from halting a railroad nobody warned.
+    """
+    sent = [literal for literal in quoted(modules()[POWER]) if literal in COMMANDS]
+
+    assert set(sent) == {"<0>", "<1>"}, f"the readings send {sent}"
 
 
 def test_the_flash_sequence_is_the_one_caller_that_cuts_power() -> None:
