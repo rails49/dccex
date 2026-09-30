@@ -38,7 +38,7 @@ TIMEOUT_S = 5.0
 """How long one ask waits for the store before it counts as unanswered. A
 store that has accepted the connection and then gone quiet is the same outage
 as one that never accepted it, and this treats them as one — the same number
-`lib/documents.py` gives the documents beside it."""
+`tc49.lib.documents` gives the documents beside it."""
 
 
 class Unanswered(Exception):
