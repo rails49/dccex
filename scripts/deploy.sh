@@ -137,6 +137,22 @@ if [ ! -d "\$(dirname "\$record")" ]; then
 fi
 touch "\$record"
 
+# The translator's startup file, mounted by \`compose.box.yaml\` until #175.
+# Made where there is none and never written over: its values are edited on
+# the box. \`/etc/rails49\` is root's, so this account may not be able to make
+# it; the deploy says what to run and goes on, because the file may be empty.
+# The same lines as \`control\`'s deploy (control#387, control#536).
+startup=/etc/rails49/dccex-startup.txt
+remedy="[ -f \$startup ] || { sudo rm -rf \$startup && sudo install -m 644 /dev/null \$startup; }"
+if [ ! -f "\$startup" ]; then
+  touch "\$startup" 2>/dev/null || true
+fi
+if [ ! -f "\$startup" ]; then
+  echo "no \$startup and this account cannot make one: the translator" \
+    "runs at the limits the station's firmware was built with until" \
+    "'\$remedy' is run on the box" >&2
+fi
+
 # What the project's own .env says, and whether there is one at all. It is read
 # once and kept, because both things this deploy wants of it come out of the one
 # text: what is running, and what to put back if the \`up\` fails (#83).

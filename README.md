@@ -22,7 +22,11 @@ top of them.
   [SOURCE.md](src/SOURCE.md)).
 - **`dccex`**, the translator. It turns the layout interface's desired values
   into the station's `<…>` bytes and reports what it hears back on the bus.
-  Not here yet.
+  **It is here** — `src/dccex`, moved out of `control`, on the bus through
+  `control`'s `tc49` package and a client of the mirror's port
+  ([the page](docs/dccex/README.md),
+  [ADR-0014](docs/adr/0014-the-translator-is-on-the-bus-through-controls-package.md),
+  [SOURCE.md](src/SOURCE.md)).
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
   with a box to type into. **The page is here and the work pane is full**
@@ -93,7 +97,7 @@ page on the stream is one of its clients like they are
 ## How it gets on the box
 
 One **image**, built from this repository's source at one commit and named by
-it, which the mirror runs as and the translator will. The name never moves, so
+it, which the mirror and the translator run as. The name never moves, so
 what a box is running is a commit anybody can read off it; a deploy writes
 down what it replaced, where a person on the box can `tail` it; and going back
 to the one before is a command naming that commit rather than a digest

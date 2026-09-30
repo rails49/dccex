@@ -143,3 +143,45 @@ a reader sorting the diff is told which side of it is ours:
   along with every other tree a reader reads, so the next one is red in the
   gate rather than found by a range review. Docstrings only: nothing in any file's
   code moved, and no decision says anything different than it did.
+
+# Where the translator came from
+
+`src/dccex` is a copy too. It was written in `control` and moved here by #180,
+because it is about a command station. Unlike the mirror it stays on the bus,
+through `control`'s `tc49` package, which is a dependency and not a copy
+([ADR-0014](../docs/adr/0014-the-translator-is-on-the-bus-through-controls-package.md)).
+
+- **Repository:** `rails49/control`
+- **Commit:** `d3176157229cf848ae2dd74195ddb2c0068d2911`
+- **Copied:** 2026-09-30
+
+`uv.lock` pinned `tc49` at the same commit when the copy was made, so the
+library the translator was copied against is the one it first ran on here.
+
+## What came from where
+
+| In `control` at `d317615` | Here |
+| --- | --- |
+| `src/tc49/dccex/*` | `src/dccex/*` |
+| `tests/dccex/*` | `tests/dccex/*` |
+| `docs/dccex/README.md` | `docs/dccex/README.md` |
+| `tests/brokers.py` | `tests/brokers.py` |
+| `tests/ports.py` | `tests/ports.py` |
+
+## What the copy changed
+
+The first commit of #180 is the copy untouched. The second:
+
+- `tc49.dccex` became `dccex`, in imports, in the command line's name and in
+  the prose.
+- Every decision of `control`'s the prose cites names `control`, and the
+  page's relative links into `control`'s tree point at `control` on GitHub.
+  The issue numbers in the prose are `control`'s and are left as they are.
+- `tests/dccex/test_main.py` carries the `broker` marker, and the imports are
+  sorted where `ruff` sorts them.
+
+`tests/dccex/test_layout_to_station.py` and `tests/dccex/test_what_it_imports.py`
+are this repository's.
+
+`control` deletes its copy in control#587. From then on a defect in the
+translator is fixed here (ADR-0003).

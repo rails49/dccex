@@ -270,6 +270,40 @@ def test_the_mirror_runs_the_device_and_the_port_the_mapping_names() -> None:
     assert f'"--device", "{INSIDE}", "--port", "2560"' in services(BOX)["mirror"]
 
 
+def test_the_translator_runs_on_a_box_alone() -> None:
+    """A clean clone has no broker to dial (ADR-0008), so the base does not
+    run it."""
+    assert "translator" in services(BOX)
+    assert "translator" not in services(BASE)
+
+
+def test_the_translator_is_the_mirrors_image_run_as_the_other_package() -> None:
+    """One image of one commit, so d.7's rollback moves both (ADR-0005)."""
+    block = services(BOX)["translator"]
+    assert "image: dccex:${DCCEX_COMMIT:-dev}" in block
+    assert 'entrypoint: ["python", "-m", "dccex"]' in block
+
+
+def test_the_translator_dials_the_broker_on_rails49_and_the_mirror_here() -> None:
+    """`control`'s broker is on the installation's network under its service
+    name, and the mirror on this project's own (ADR-0014 d.5)."""
+    block = services(BOX)["translator"]
+    assert entries(block, "networks") == ["default", "rails49"]
+    assert '"--broker", "broker:1883"' in block
+    assert '"--station", "mirror:2560"' in block
+    assert "ports:" not in block
+
+
+def test_the_startup_file_the_translator_mounts_is_the_one_the_deploy_makes() -> None:
+    """Until #175. A bind mount of a path that is not there makes a directory
+    of it, which the translator then fails to read."""
+    (mount,) = entries(services(BOX)["translator"], "volumes")
+    path = mount.split(":")[0]
+    assert mount == f"{path}:{path}:ro"
+    assert f'"--startup", "{path}"' in services(BOX)["translator"]
+    assert f"startup={path}\n" in DEPLOY.read_text()
+
+
 def test_the_mirrors_grace_is_a_flashs_and_names_the_page_a_stop_is_on() -> None:
     """330 seconds, and the reasons beside it (#15).
 

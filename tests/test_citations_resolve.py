@@ -234,6 +234,7 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
     """
     read = [(page.relative_to(ROOT).as_posix(), page.read_text()) for page in prose()]
     assert {name for name, text in read if OWNED.search(text)} == {
+        "docs/dccex/README.md",
         "docs/ui/README.md",
         "src/SOURCE.md",
         "src/dccex_usb/face.py",

@@ -54,6 +54,12 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# `tc49` is a git dependency (ADR-0014 d.2), and uv fetches one with `git`.
+# This stage only: the shipping stage carries the venv and not the tool.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # The dependencies in a layer of their own, ahead of the sources, for the
 # reason `ui.Dockerfile` does it: the sources change on nearly every commit
 # and the lock file seldom does.

@@ -82,3 +82,21 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm test
+
+  # The translator's suites that run against a real broker, which the gate
+  # does not collect (#180). `mosquitto` is installed here and nowhere else,
+  # and `CI` being set makes a missing one a failure (`tests/brokers.py`).
+  #
+  # This job is required on the default branch beside `ci`, `docker` and
+  # `node`.
+  broker:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: sudo apt-get update && sudo apt-get install -y mosquitto
+      - name: the translator against a broker
+        run: uv run --frozen pytest -q -m broker
