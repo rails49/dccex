@@ -185,12 +185,30 @@ def test_the_power_button_is_grey_and_not_red_while_the_link_is_down() -> None:
     d.2, ADR-0009 d.2).
 
     Grey is the band's own ink at half strength: none of the six colours is a
-    dimmer ink, and a seventh would be a colour of this page's own.
+    dimmer ink, and a seventh would be a colour of this page's own. The chip it
+    wears while it can be pressed goes with the colour, so a reader who cannot
+    tell the green from the red is still left a difference.
     """
     dead = rule(STYLES.read_text(), ".power:disabled")
     assert "color: var(--band-ink)" in dead
+    assert "background: none" in dead, "the button keeps its chip while it is dead"
     assert "opacity" in dead, "the button is drawn as brightly as a live one"
     assert "--stop" not in dead and "--rail-group" not in dead
+
+
+def test_neither_colour_is_laid_straight_on_the_bands_blue() -> None:
+    """`--rail-group` on `--band` is 1.8 to 1 and `--stop-ink` on it is 1.3,
+    where a control a person has to read needs 3.
+
+    So the dot is ringed in the band's ink, the words sit on `--stop`, and the
+    power button is a chip of the band's ink with the colour on it. What is held
+    is the ring and the chip; what the numbers are is `look.css`'s and this is
+    the reason they are not drawn against.
+    """
+    styles = STYLES.read_text()
+    assert "border: 2px solid var(--band-ink)" in rule(styles, ".dot")
+    assert "background: var(--band-ink)" in rule(styles, ".power")
+    assert "background: var(--stop)" in rule(styles, ".says")
 
 
 def test_the_power_button_is_a_thumb_wide_and_a_thumb_high() -> None:

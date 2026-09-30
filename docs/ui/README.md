@@ -106,6 +106,13 @@ with no power is the stop. The green is `--rail-group`, which is the one green
 this chrome has; grey is the band's own ink at half strength, because none of
 the six colours is a dimmer ink.
 
+Neither of those colours is laid straight on the band's blue: `--rail-group` on
+`--band` is 1.8 to 1 and `--stop-ink` on it is 1.3, where a control a person has
+to read needs 3. So the dot is ringed in the band's ink, the words sit on
+`--stop`, and the power button is a chip of the band's ink with the colour on
+it. The chip goes when the button does, which is the difference a reader who
+cannot tell the green from the red is left with.
+
 The band gives things up at two widths rather than wrapping. Below 560px the
 build goes: it is the longest thing on the band and it is on a tile beside the
 releases as well. Below 400px the link's words go and the link is the dot
