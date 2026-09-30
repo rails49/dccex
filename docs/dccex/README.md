@@ -229,7 +229,7 @@ the comparison is the text and never the name.
 | `wanted/track` `stopped` | `<!>`, the one-shot emergency stop |
 | `wanted/function/<addr>/<n>` `value` | `<F addr n 0\|1>`, the boolean as the bit — every value the row carries is one the station can be told |
 
-Every row is a pure function in `commands.py`, asserted as "this value in,
+Every row is a pure function in `dccex/commands.py`, asserted as "this value in,
 these bytes out" with no socket and no hardware.
 
 **A speed is a fraction and a step never leaves this app.** The magnitude is
@@ -451,20 +451,19 @@ startup, and the power is the one that is not (ADR-0013 d.6).
 **No dependency is added**: the whole of it is `asyncio` streams and
 `urllib`, and the image builds with `uv sync --frozen`.
 
-**asyncio owns this app's process, and the session's only where a station is
-named.** `_send` writes to an `asyncio.StreamWriter` from inside a bus
-subscriber, so whichever thread drains the bus is the thread that writes to the
-station: with the loop owning the process every subscriber already runs on the
-loop thread and that write is where it belongs. Under `python -m dccex`
-the drain is a coroutine beside `run()`, and the MQTT client's network thread
-only appends to the queue that drain empties. Putting this app on a daemon
-thread under a synchronous owner would mean marshalling with
-`call_soon_threadsafe` — a cross-thread write where none exists today. A
-session on the simulator keeps the synchronous loop it has always had; the two
-share a signature and nothing else.
+**asyncio owns this app's process.** `_send` writes to an
+`asyncio.StreamWriter` from inside a bus subscriber, so whichever thread drains
+the bus is the thread that writes to the station: with the loop owning the
+process every subscriber already runs on the loop thread and that write is
+where it belongs. Under `python -m dccex` the drain is a coroutine beside
+`run()`, and the MQTT client's network thread only appends to the queue that
+drain empties. Putting this app on a daemon thread under a synchronous owner
+would mean marshalling with `call_soon_threadsafe` — a cross-thread write where
+none exists today.
 
 A signal is what ends the process, and the railroad is stood down on the way
-out: the same `shutdown()` a session calls, before the link is let go.
+out: the same `shutdown()` whoever constructed the app calls, before the link
+is let go.
 
 ## Checking it against a real station
 
