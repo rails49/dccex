@@ -138,15 +138,17 @@ def test_a_stream_that_comes_back_leaves_one_schedule_running() -> None:
     the cable goes (`REOPEN_MS`, `stream.ts`), and a schedule started on the
     open would be one more poller each time — a page asking the station a dozen
     times every five seconds, which is not the schedule ADR-0010 d.1 gives it.
-    Both timers are started where the page joins the document and stopped where
-    it leaves, and nowhere else.
+    All three timers are started where the page joins the document and stopped
+    where it leaves, and nowhere else. The third is the flash's, and it is on
+    the same rule for the same reason: one started on a press would be a second
+    poller for every release an operator chose (ADR-0012 d.3).
     """
     page = APP.read_text()
     joining = page[
         page.index("override connectedCallback(") : page.index("/** Let the stream go")
     ]
-    assert joining.count("setInterval(") == 2, "a timer is started somewhere else"
-    assert page.count("setInterval(") == 2, "the page starts a timer off the schedule"
+    assert joining.count("setInterval(") == 3, "a timer is started somewhere else"
+    assert page.count("setInterval(") == 3, "the page starts a timer off the schedule"
 
 
 def test_the_page_stops_asking_when_it_goes() -> None:
@@ -155,8 +157,50 @@ def test_the_page_stops_asking_when_it_goes() -> None:
     would be a poller nobody is reading the answers of."""
     page = APP.read_text()
     leaving = page[page.index("override disconnectedCallback(") :]
-    assert leaving.count("clearInterval(") == 2, "a timer outlives the page"
+    assert leaving.count("clearInterval(") == 3, "a timer outlives the page"
     assert "this.#stream.close()" in leaving
+
+
+def test_the_page_follows_a_flash_on_load_and_while_one_is_running() -> None:
+    """Twice a second while a flash is in flight, and once on load so that a tab
+    opened or reloaded mid-flash shows it (ADR-0012 d.3).
+
+    And nothing the rest of the time. The schedule runs for as long as the page
+    is in the document, as the other two do, and asks only where there is a
+    flash to follow: one the mirror said is running, or one this page asked for
+    and has not been answered about. A page polling a route about a flash
+    nobody asked for would be asking a question with one answer, four times a
+    minute each, for every tab left open on the box (ADR-0010).
+    """
+    page = APP.read_text()
+    assert re.search(r"FOLLOW_MS\s*=\s*\d+", page) is not None, "there is no schedule"
+    joining = page[
+        page.index("override connectedCallback(") : page.index("/** Let the stream go")
+    ]
+    assert "FOLLOW_MS)" in joining, "the flash is followed off the schedule"
+    assert (
+        "this.flashing !== null || this.#writing" in joining
+    ), "the page asks about a flash where none is running"
+    assert joining.count("this.#follows();") == 2, "the page never asks on load"
+
+
+def test_the_page_asks_the_face_and_the_row_presses() -> None:
+    """The counterparty is the page's, the flash included (#9). A pane holding
+    one of its own would be a second answer to what the page talks to, which is
+    the rule `tests/ui/test_flash.py` names the owner of.
+
+    What the row does is press; what asks the mirror to write and what asks how
+    far that write has got are both here, and the row is handed the answer as it
+    is handed the releases and the **build** (ADR-0012 d.3).
+    """
+    page = code(APP.read_text())
+    assert 'import { flash, flashing, releases } from "../face.js";' in page
+    writing = page[page.index("#writes = async (") :]
+    assert "await flash(tag)" in writing, "the page asks nobody to write"
+    assert "this.#follows()" in writing, "a write of the page's own is not followed"
+    view = page[page.index("#releases(): TemplateResult {") :]
+    assert ".flashing=${this.flashing}" in view, "the row is handed no flash"
+    assert ".writes=${this.#writes}" in view, "the row is handed no way to write"
 
 
 def test_the_view_the_work_pane_shows_is_kept_in_the_hash() -> None:

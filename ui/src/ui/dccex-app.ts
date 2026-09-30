@@ -32,7 +32,8 @@
  *
  * **The releases stay in the document and are hidden**, which is the one
  * exception and is the flash. A flash in flight is that pane's — which step
- * it is on and what became of it (`dccex-releases.ts`) — and the minute it
+ * it is on, how far the write has got and what became of it
+ * (`dccex-releases.ts`) — and the minute it
  * takes is exactly when an operator goes to the monitor to watch the station
  * drop and come back (#9). A pane taken out of the document and built again
  * would have forgotten a write that is still running, and would offer the
@@ -44,9 +45,11 @@
  * write, in that order and with the operator warned first (`flash.js`,
  * ADR-0006 d.2) — and what the row runs it with is handed down from here: the
  * same `#sends` the monitor is handed, so the stop and the cut go up the stream
- * as anything typed does and are marked as this page's in the monitor, and the
- * face's own `flash`, because a pane holding a counterparty of its own would be
- * a second answer to what the page talks to (the organisation's ADR-0002).
+ * as anything typed does and are marked as this page's in the monitor, and a
+ * hand of this page's that asks the face's own `flash`, because a pane holding
+ * a counterparty of its own would be a second answer to what the page talks to (the organisation's ADR-0002).
+ * That hand is also where the following of the write starts, which is the
+ * paragraph below on the flash's own schedule.
  *
  * **And the band presses power** (ADR-0011 d.1). What its button sends goes up
  * the same `#sends`, so a press is a line on the stream like any other client's
@@ -94,6 +97,16 @@
  * held or not, and calls them. The monitor draws the two controls and is
  * handed what they do the way it is handed its lines and its sending.
  *
+ * **A flash in flight is followed on a schedule of its own** (ADR-0012 d.3,
+ * issue 172). The mirror reads esptool's output as it writes and answers how far
+ * it has got at a route of its own, so the page asks — twice a second while
+ * there is a flash to follow, and once on load, which is how a tab opened or
+ * reloaded in the middle of a write shows it. And nothing the rest of the time:
+ * a page asking a question with one answer four times a minute, for every tab
+ * left open on the box, is the poll ADR-0010 d.1 bought the right to and not one
+ * worth spending. What it is told goes down to the releases pane, which draws
+ * the bar (`dccex-releases.ts`).
+ *
  * **The releases are asked for once and not on the poll** (#8). What the
  * station is doing changes under the eye, which is what the schedule above is
  * for; what the configured source carries changes when somebody publishes, and
@@ -109,7 +122,8 @@
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
-import { flash, releases } from "../face.js";
+import { flash, flashing, releases } from "../face.js";
+import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
 import {
   OPENED,
@@ -187,6 +201,19 @@ const SLOW_EVERY = 60;
  */
 export const POLL_MS = 250;
 
+/** How often the page asks how far a flash has got.
+ *
+ * About twice a second, which is what a bar filling under somebody's eye wants
+ * and is all it wants: esptool prints a percentage rather more often than that,
+ * and a page drawing every one of them would be asking the mirror sixty
+ * questions a minute to move a bar by a pixel (ADR-0012 d.3).
+ *
+ * It is asked of the **face** and not up the stream: how far a write has got is
+ * this app's own business about itself, and the station is away for the whole of
+ * it.
+ */
+export const FOLLOW_MS = 500;
+
 /** How often the readings are worked out again with nothing having arrived.
  *
  * The **link** going down is the absence of a line, so it is a thing that
@@ -203,6 +230,7 @@ export class DccexApp extends LitElement {
     conversation: { state: true },
     readings: { state: true },
     carried: { state: true },
+    flashing: { state: true },
     view: { state: true },
   };
 
@@ -223,6 +251,14 @@ export class DccexApp extends LitElement {
    *  list says the releases could not be read until it has. */
   carried: Carried[] | null = null;
 
+  /** How far the flash in flight has got, as the face last answered, or `null`
+   *  where none is running and where it did not say (`face.ts`).
+   *
+   *  Any flash and not only the one this page asked for: what the mirror answers
+   *  is what it is doing, and a page reloaded in the middle of a write is
+   *  reading about that write (ADR-0012 d.3). */
+  flashing: Flashing | null = null;
+
   /** Which view the work pane is showing, as the hash names it. The view a
    *  page opens on until the hash has been read, which is what a page with
    *  nothing in its hash shows anyway. */
@@ -235,6 +271,14 @@ export class DccexApp extends LitElement {
 
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
+  #following: ReturnType<typeof setInterval> | null = null;
+
+  /** Whether a write this page asked for is still in flight.
+   *
+   *  The mirror answers a POST when esptool has finished, so between the ask and
+   *  that answer there is a flash to follow whatever the last poll said — the
+   *  first of those polls goes out before the tool has printed anything. */
+  #writing = false;
 
   /** The stream, and the two things it hands up: the lines that arrive, and
    *  the socket being open — which is when the page asks, because a poll sent
@@ -265,6 +309,12 @@ export class DccexApp extends LitElement {
     this.#ticking = setInterval(() => {
       this.#now();
     }, TICK_MS);
+    this.#following = setInterval(() => {
+      if (this.flashing !== null || this.#writing) {
+        void this.#follows();
+      }
+    }, FOLLOW_MS);
+    void this.#follows();
   }
 
   /** Let the stream go, stop asking, and stop reading the hash.
@@ -284,6 +334,10 @@ export class DccexApp extends LitElement {
     if (this.#ticking !== null) {
       clearInterval(this.#ticking);
       this.#ticking = null;
+    }
+    if (this.#following !== null) {
+      clearInterval(this.#following);
+      this.#following = null;
     }
   }
 
@@ -326,8 +380,9 @@ export class DccexApp extends LitElement {
         ?hidden=${this.view !== "releases"}
         .carried=${this.carried}
         .build=${this.readings.build}
+        .flashing=${this.flashing}
         .sends=${this.#sends}
-        .writes=${flash}
+        .writes=${this.#writes}
       ></dccex-releases>
     `;
   }
@@ -435,6 +490,43 @@ export class DccexApp extends LitElement {
    */
   async #list(): Promise<void> {
     this.carried = await releases();
+  }
+
+  /** Ask the face to write a named release, and follow the write while it runs.
+   *
+   * The counterparty is the page's, the flash included (the organisation's
+   * ADR-0002): what the row does is press, and what asks the mirror is here.
+   *
+   * The following starts before the ask and stops where it answers. The mirror
+   * answers when esptool has finished, so there is nothing left to follow from
+   * there — what became of the flash is read off the station, on the banner it
+   * sends when it comes back (ADR-0006 d.3, ADR-0012 d.4).
+   */
+  readonly #writes = async (tag: string): Promise<Wrote> => {
+    this.#writing = true;
+    void this.#follows();
+    try {
+      return await flash(tag);
+    } finally {
+      this.#writing = false;
+      this.flashing = null;
+    }
+  };
+
+  /** Ask the face how far the flash in flight has got.
+   *
+   * On load, and twice a second while there is one to follow — a flash the
+   * mirror said is running, or a write this page asked for and has not been
+   * answered about (ADR-0012 d.3). A page that is told on load that a write is
+   * under way follows it to the end whether or not it was the one that pressed:
+   * the answer is about the mirror and not about who asked.
+   *
+   * A face that could not be asked reads as no flash running, which is `face.ts`'s
+   * answer and is drawn as no bar: a bar left standing for an answer nobody got
+   * would say the station was being written (ADR-0009 d.2).
+   */
+  async #follows(): Promise<void> {
+    this.flashing = await flashing();
   }
 
   /** Hear the station's lines into the readings, and hand them all to the
