@@ -49,7 +49,7 @@ from dccex_usb.face import (
     Writes,
     response,
 )
-from dccex_usb.firmware import Flasher, Ran, Refusal, Wrote
+from dccex_usb.firmware import Flasher, Ran, Refusal, Saw, Wrote
 from dccex_usb.framing import MAX_MESSAGE
 from dccex_usb.station import READ_SIZE, to_stderr
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
@@ -1030,7 +1030,7 @@ def test_a_tag_asked_for_on_the_face_is_written_by_the_mirror_that_holds_it() ->
         mirror = station(cable.path, log)
         held: list[bool] = []
 
-        async def runner(command: Sequence[str], timeout_s: float) -> Ran:
+        async def runner(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
             held.append(mirror.held)
             return Ran(0, "")
 

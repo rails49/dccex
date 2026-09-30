@@ -38,14 +38,17 @@ keeps its failures off this process: it manipulates the port and exits on
 error, and this is the process every throttle, DecoderPro and the translator
 depend on being up.
 
-**What became of the gesture is answered, and there is still no progress.**
-`wanted` comes back with a `Wrote` — what it was refused for, or nothing where
-the build was written, and the sentence that says which — so whoever asked is
-told rather than sent to read a log on the box (control ADR-0050). Every
-refusal is still said on the box as well, because the device is the railroad's
-and what was done to it is the box's record. What a flash is *doing* meanwhile
-is read off the station itself and not from here: the link goes down while it
-is written and comes back carrying the `build` it now reports.
+**What became of the gesture is answered, and how far it has got is asked
+for.** `wanted` comes back with a `Wrote` — what it was refused for, or nothing
+where the build was written, and the sentence that says which — so whoever
+asked is told rather than sent to read a log on the box (control ADR-0050).
+Every refusal is still said on the box as well, because the device is the
+railroad's and what was done to it is the box's record. While the flash runs
+there is `doing`: the stage it is at and, where esptool is writing, the
+percentage the tool prints, kept as its output arrives and read by whoever asks
+(ADR-0012, #171). The step after the answer is still the station's own and not
+this app's — the link goes down while it is written and comes back carrying the
+`build` it now reports (ADR-0012 d.4).
 
 **The refusals are this file's terms and not a protocol's.** A `Refusal` says
 what went wrong with a station and a release; the status that carries it to a
@@ -71,6 +74,7 @@ import asyncio
 import enum
 import hashlib
 import json
+import re
 import tempfile
 import urllib.error
 import urllib.request
@@ -80,7 +84,7 @@ from pathlib import Path
 from typing import NamedTuple, Protocol, cast
 from urllib.parse import quote
 
-from dccex_usb.station import to_stderr
+from dccex_usb.station import READ_SIZE, to_stderr
 
 RELEASES = "https://api.github.com/repos/rails49/CommandStation-EX/releases"
 """Where releases are read from unless a box says otherwise: this
@@ -125,6 +129,18 @@ by that tag. Any other answer is the source failing to answer the question,
 which is a different refusal (#46). Not a status this app replies with — that
 is `face.py`'s — but the one it reads."""
 
+WRITING_AT = "Writing at"
+"""What esptool opens a line with each time it has sent a block. The
+percentage on the end of it is the whole of what a flash says about itself
+while it writes; the address is where the block went and is nobody's reading."""
+
+WROTE = "Wrote "
+"""What esptool says once the bytes are on the station. What is left after it
+is the hash it takes of what it wrote."""
+
+PERCENT = re.compile(r"\((\d+)\s*%\)")
+"""How far esptool says it has got, as it prints it."""
+
 
 class Asset(NamedTuple):
     """The firmware a release carries: where to fetch it, and the digest the
@@ -141,6 +157,36 @@ class Ran(NamedTuple):
 
     code: int | None
     said: str
+
+
+class Stage(enum.StrEnum):
+    """The part of a flash that is under way, as whoever asks how far it has
+    got is told it (ADR-0012 d.2).
+
+    Four, in the flash's own order: the release fetched, what came back checked
+    against the digest the source published, the station written, and what was
+    written hashed back. The word is the value, because the word is what goes
+    on the wire (`face.py`).
+    """
+
+    FETCHING = "fetching"
+    CHECKING = "checking"
+    WRITING = "writing"
+    VERIFYING = "verifying"
+
+
+class Doing(NamedTuple):
+    """How far the flash in flight has got: the tag being written, the stage it
+    is at, and the percentage esptool printed where it is writing.
+
+    `percent` is None outside `WRITING`. esptool counts the blocks it sends and
+    nothing counts a fetch or a hash, so a number here would be a reading
+    nobody made.
+    """
+
+    tag: str
+    stage: Stage
+    percent: int | None
 
 
 class Refusal(enum.Enum):
@@ -210,9 +256,14 @@ class Wrote(NamedTuple):
 Fetch = Callable[[str], Awaitable[bytes]]
 """How bytes are read off a URL, injected so the suite reaches no network."""
 
-Runner = Callable[[Sequence[str], float], Awaitable[Ran]]
-"""How a command is run to its end, injected so the suite runs no esptool:
-nothing in the gate may need a command station (docs/dccex_usb/README.md)."""
+Saw = Callable[[str], None]
+"""What each line of a command's output is handed to as it arrives. How a flash
+says where it has got to without waiting for esptool to exit (ADR-0012 d.1)."""
+
+Runner = Callable[[Sequence[str], float, Saw], Awaitable[Ran]]
+"""How a command is run to its end, its output handed on line by line as it
+arrives, injected so the suite runs no esptool: nothing in the gate may need a
+command station (docs/dccex_usb/README.md)."""
 
 
 class Device(Protocol):
@@ -291,6 +342,34 @@ def asset(document: object, name: str = ASSET) -> Asset | None:
     return None
 
 
+def moved(line: str, doing: Doing) -> Doing:
+    """Where one line of esptool's output moves a flash to, and the flash as it
+    was where the line says nothing about it.
+
+    Pure, and the two lines it reads are the two esptool prints about the
+    writing: a block gone out with how far that is, and the `Wrote` that says
+    the bytes are there and what is left is the hash. The chip it found, the
+    port it opened, the erase — output, and not a reading: a line this does not
+    know moves a flash nowhere, the way a line the page's decoder does not know
+    gets no gloss (ADR-0009).
+
+    A `Writing at` line with no percentage on it is the stage and the
+    percentage before it: the tool's wording is the tool's, and a line it
+    printed without one is not a reason to unsay the last one.
+    """
+    said = line.strip()
+    if said.startswith(WRITING_AT):
+        reading = PERCENT.search(said)
+        return Doing(
+            doing.tag,
+            Stage.WRITING,
+            int(reading.group(1)) if reading else doing.percent,
+        )
+    if said.startswith(WROTE):
+        return Doing(doing.tag, Stage.VERIFYING, None)
+    return doing
+
+
 def matches(binary: bytes, digest: str) -> bool:
     """Whether what was fetched is what the release says it published.
 
@@ -353,12 +432,18 @@ def _read(url: str) -> bytes:
         return cast(bytes, answer.read())
 
 
-async def run(command: Sequence[str], timeout_s: float) -> Ran:
-    """Run a command to its end, killing it where it outlives `timeout_s`.
+async def run(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
+    """Run a command to its end, handing each line of its output to `saw` as it
+    arrives, and killing the command where it outlives `timeout_s`.
 
-    Its output is kept whole and both streams are one: what a refusal carries
-    is the last thing the tool said, and which stream it said it on is not
-    something a person reading a bus row has any use for.
+    Its output is kept whole as well and both streams are one: what a refusal
+    carries is the last thing the tool said, and which stream it said it on is
+    not something a person reading a bus row has any use for.
+
+    **Read as it runs and not at the exit** (ADR-0012 d.1). A flash is a minute
+    or two, and how far it has got is a question asked while it is running: a
+    tool whose output is collected and read afterwards can only be asked once
+    it has nothing left to say.
     """
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -366,12 +451,42 @@ async def run(command: Sequence[str], timeout_s: float) -> Ran:
         stderr=asyncio.subprocess.STDOUT,
     )
     try:
-        said, _ = await asyncio.wait_for(process.communicate(), timeout_s)
+        return await asyncio.wait_for(_told(process, saw), timeout_s)
     except TimeoutError:
         process.kill()
         await process.wait()
         return Ran(None, "")
-    return Ran(process.returncode, said.decode(errors="replace"))
+
+
+async def _told(process: asyncio.subprocess.Process, saw: Saw) -> Ran:
+    """What the command said, handed to `saw` as each line of it closes, and
+    what the command then exited with.
+
+    Read in bounded chunks and broken into lines here, rather than a line at a
+    time off the stream, because a tool that prints a megabyte without a
+    newline is one that would be buffered whole or raise. A carriage return
+    closes a line as a newline does: esptool ends a progress line with one
+    where it is talking to a terminal and with the other where it is talking to
+    a pipe, which this is, and what it has got to does not depend on which.
+    """
+    out = process.stdout
+    if out is None:
+        # Piped above, so this is the type checker's branch and not a case.
+        return Ran(await process.wait(), "")
+    said: list[str] = []
+    rest = ""
+    while True:
+        chunk = await out.read(READ_SIZE)
+        if not chunk:
+            break
+        arrived = chunk.decode(errors="replace")
+        said.append(arrived)
+        *whole, rest = (rest + arrived).replace("\r", "\n").split("\n")
+        for line in whole:
+            saw(line)
+    if rest:
+        saw(rest)
+    return Ran(await process.wait(), "".join(said))
 
 
 def said(output: str) -> str:
@@ -416,11 +531,24 @@ class Flasher:
         # rather than queued, and so that the process ending can wait for the
         # one in flight rather than leaving a station half written.
         self._flashing: asyncio.Task[Wrote] | None = None
+        # How far that flash has got, kept beside it and read by whoever asks
+        # (ADR-0012 d.2). None whenever there is no flash, so the two never
+        # disagree about whether the station is being written.
+        self._doing: Doing | None = None
 
     @property
     def flashing(self) -> bool:
         """Whether a flash is in flight. What a second gesture is refused on."""
         return self._flashing is not None
+
+    @property
+    def doing(self) -> Doing | None:
+        """How far the flash in flight has got, or None where none is running.
+
+        Read and never pushed: the page asks twice a second while it waits and
+        the mirror originates nothing (ADR-0010, ADR-0012 d.3).
+        """
+        return self._doing
 
     async def settled(self) -> None:
         """Come back once the flash in flight, if there is one, is over.
@@ -495,6 +623,7 @@ class Flasher:
         said what became of this one.
         """
         self._log(f"flashing '{tag}' from {self._releases}")
+        self._doing = Doing(tag, Stage.FETCHING, None)
         try:
             wrote = await self._written(tag)
         except Exception as raised:  # noqa: BLE001 — reported, never absorbed
@@ -504,6 +633,7 @@ class Flasher:
             )
         finally:
             self._flashing = None
+            self._doing = None
         self._log(wrote.said if wrote.refusal is None else f"refused: {wrote.said}")
         return wrote
 
@@ -549,6 +679,7 @@ class Flasher:
                 Refusal.NO_ASSET,
                 f"{ASSET} for '{tag}' could not be fetched: {away}",
             )
+        self._doing = Doing(tag, Stage.CHECKING, None)
         if not matches(binary, found.digest):
             return Wrote(
                 Refusal.NOT_PUBLISHED,
@@ -589,6 +720,17 @@ class Flasher:
             f" release, so '{tag}' was not written",
         )
 
+    def _saw(self, line: str) -> None:
+        """One line of esptool's output, read for where the flash has got to.
+
+        Nothing is kept of a line that says nothing, and nothing is kept at all
+        once the flash is over: a percentage left standing after the tool exited
+        would be a page showing a flash that is not running (`moved`).
+        """
+        doing = self._doing
+        if doing is not None:
+            self._doing = moved(line, doing)
+
     async def _runs(self, tag: str, binary: bytes) -> Wrote:
         """The device handed over, esptool run on it, and the device taken
         back — the one ordering that can leave the railroad with a closed port
@@ -598,7 +740,8 @@ class Flasher:
             firmware.write_bytes(binary)
             command = argv(self._device.path, firmware)
             async with self._device.released():
-                ran = await self._runner(command, self._timeout_s)
+                self._doing = Doing(tag, Stage.WRITING, None)
+                ran = await self._runner(command, self._timeout_s, self._saw)
         if ran.code is None:
             return Wrote(
                 Refusal.TOOL_KILLED,
