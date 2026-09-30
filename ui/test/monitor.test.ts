@@ -175,3 +175,8 @@ test("a monitor nobody handed the controls to does nothing when pressed", async 
   expect(all(drawn, ".line")).toHaveLength(2);
   expect(reads(drawn, ".hold")).toBe("pause");
 });
+
+test("the box says a command can be typed with or without its brackets", async () => {
+  const drawn = await monitor([]);
+  expect(part(drawn, ".typed").getAttribute("placeholder")).toBe("s or <s>");
+});

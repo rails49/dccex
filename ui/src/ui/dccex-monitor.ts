@@ -107,9 +107,9 @@ import { monitorStyles } from "./dccex-monitor.styles.js";
  *  put on the railroad. */
 const SENT_MARK = "»";
 
-/** What the box says before anything is typed into it. The shortest whole
- *  message there is, which is also the one an operator types most. */
-const PLACEHOLDER = "<s>";
+/** What the box says before anything is typed into it: the command an
+ *  operator types most, with and without its brackets. */
+const PLACEHOLDER = "s or <s>";
 
 /** What the control that holds the view says, and what it says while it is
  *  holding. One control and not two, named for what pressing it will do, so a
