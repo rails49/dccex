@@ -1,10 +1,13 @@
-"""What the page itself does: opens the stream, polls, and keeps the readings.
+"""What the page itself does: opens the stream, polls, keeps the readings, and
+shows the **view** its hash names.
 
 Read off the sources rather than run, for the reason `tests/ui/test_stream.py`
-gives — there is no browser in a Python gate to hold a timer or a socket. What
-the readings *are* is run instead, scenarios through the real functions
-(`tests/ui/test_readings.py`); what is held here is that the page feeds them
-the station's own lines and asks the station anything at all.
+gives — there is no browser in a Python gate to hold a timer, a socket or an
+address bar. What the readings *are* is run instead, scenarios through the
+real functions (`tests/ui/test_readings.py`), and so is which view a hash
+names (`ui/test/view.test.ts`); what is held here is that the page feeds the
+readings the station's own lines, asks the station anything at all, and reads
+the view off the one place it is kept.
 
 **That the mirror originates nothing is held on the mirror's side**, where it
 can be: `tests/dccex_usb/test_station.py` runs the app's whole life against a
@@ -15,7 +18,7 @@ are the one message a client sent (ADR-0010 d.5).
 import re
 
 from tests.ui.test_look import UI
-from tests.ui.test_stream import modules, quoted
+from tests.ui.test_stream import code, modules, quoted
 
 #: The page: the chrome, the work pane, and the conversation they are made of.
 APP = UI / "src" / "ui" / "dccex-app.ts"
@@ -132,6 +135,57 @@ def test_the_page_stops_asking_when_it_goes() -> None:
     leaving = page[page.index("override disconnectedCallback(") :]
     assert leaving.count("clearInterval(") == 2, "a timer outlives the page"
     assert "this.#stream.close()" in leaving
+
+
+def test_the_view_the_work_pane_shows_is_kept_in_the_hash() -> None:
+    """One place, and the page reads it rather than remembering it (#169).
+
+    A view kept in a field of the page's own would be a view nobody could send
+    to anybody, a reload would open on the monitor whatever was in front of a
+    person, and the browser's back button would step off the page. So a press
+    on the **rail** writes the hash and the page reads the hash: one direction
+    each, and no second answer to which view is showing. Which view a hash
+    names is `ui/src/view.js`'s and is run rather than read.
+    """
+    page = APP.read_text()
+    assert 'from "../view.js"' in page, "the page names the views itself"
+    assert "viewed(location.hash)" in page, "the page does not read the hash"
+    assert "location.hash = hashed(" in page, "a press does not reach the address bar"
+
+
+def test_the_page_hears_the_hash_change_and_lets_it_go_when_it_goes() -> None:
+    """The hash changes under the page: the rail writes it, and so does the
+    back button and anybody editing the address bar.
+
+    Heard where the page joins the document and let go where it leaves, as the
+    two schedules are — a listener that outlived the page would be drawing a
+    view for a page that is gone.
+    """
+    page = APP.read_text()
+    joining = page[
+        page.index("override connectedCallback(") : page.index("/** Let the stream go")
+    ]
+    assert 'window.addEventListener("hashchange"' in joining, "the hash is read once"
+    leaving = page[page.index("override disconnectedCallback(") :]
+    assert 'window.removeEventListener("hashchange"' in leaving, "a listener outlives"
+
+
+def test_the_work_pane_shows_one_view_and_not_both() -> None:
+    """The releases are a view of their own and the conversation is the other
+    (CONTEXT.md **view**, #169).
+
+    Drawn rather than hidden: a monitor left in the document behind the
+    releases would go on measuring a scroller with no height and go on drawing
+    two thousand rows nobody is looking at.
+    """
+    drawn = code(APP.read_text())
+    monitor = drawn[
+        drawn.index("#monitor(): TemplateResult {") : drawn.index(
+            "#releases(): TemplateResult {"
+        )
+    ]
+    assert "<dccex-tiles" in monitor and "<dccex-monitor" in monitor
+    assert "<dccex-releases" not in monitor, "the releases are drawn on both views"
 
 
 def test_the_readings_are_made_of_what_the_station_said_and_not_of_the_poll() -> None:

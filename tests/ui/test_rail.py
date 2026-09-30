@@ -81,3 +81,11 @@ def test_the_view_being_shown_is_marked_by_a_swap_and_not_by_a_shade() -> None:
     assert "background: var(--band-ink)" in showing
     assert "color: var(--rail-group)" in showing
     assert "opacity" not in showing + rule(styles, "button")
+
+
+def test_the_page_hands_the_rail_the_view_and_what_picks_one() -> None:
+    """Both, and nothing else: the rail draws what it is given and offers what
+    it is handed."""
+    assert (
+        "<dccex-rail .view=${this.view} .picks=${this.#picks}>" in APP.read_text()
+    ), "the page does not hand the rail the view it is showing"

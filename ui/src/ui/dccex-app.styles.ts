@@ -29,10 +29,11 @@ export const appStyles = css`
     grid-area: rail;
   }
 
-  /* Where everything the page is about goes: the tiles across the top, the
-     releases under them, and the monitor under those, which takes the rest of
-     it and scrolls its own lines. The first two take what they need and the
-     pane scrolls once there is more in it than fits.
+  /* Where everything the page is about goes: one view, which the rail picks
+     (issue 169). The rows are the monitor view's, which is the one with two
+     things in it — the tiles across the top, and the monitor under them
+     taking the rest of it and scrolling its own lines. The tiles take what
+     they need and the pane scrolls once there is more in it than fits.
 
      The monitor's row is minmax(12rem, 1fr) rather than 1fr. A bare 1fr
      grows to fit what is in it, so a long conversation made the pane scroll
@@ -41,10 +42,17 @@ export const appStyles = css`
   .work {
     display: grid;
     grid-area: work;
-    grid-template-rows: auto auto minmax(12rem, 1fr);
+    grid-template-rows: auto minmax(12rem, 1fr);
     min-height: 0;
     overflow: auto;
     background: var(--sl-color-neutral-0);
+  }
+
+  /* The releases view is one thing and takes what it needs: a list given the
+     height of the pane would put its last row at the foot of the window. */
+  .work.releases {
+    grid-template-rows: auto;
+    align-content: start;
   }
 
   @media (max-height: ${unsafeCSS(RAIL_TURNS_PX)}px) {

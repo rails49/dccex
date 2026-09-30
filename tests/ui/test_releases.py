@@ -49,7 +49,7 @@ RELEASES = UI / "src" / "releases.js"
 #: What puts a scenario through it.
 RUNNER = Path(__file__).resolve().parent / "releases.mjs"
 
-#: The row under the tiles.
+#: The row the releases view is.
 LIST = UI / "src" / "ui" / "dccex-releases.ts"
 
 #: What it is drawn with.
@@ -307,22 +307,33 @@ def test_the_row_writes_none_of_the_module_s_sentences_out_again() -> None:
         assert sentence not in drawn, f"the row writes {sentence!r} out a second time"
 
 
-def test_the_row_is_under_the_tiles_and_over_the_monitor() -> None:
-    """Under the **build** it is compared against and over the conversation it
-    is not part of (docs/ui/README.md)."""
-    app = APP.read_text()
+def test_the_row_is_the_whole_of_a_view_of_its_own() -> None:
+    """One of the two views the **rail** picks between, and the only thing on
+    it (CONTEXT.md **view**, #169).
+
+    It sat under the tiles and over the conversation until the rail had
+    buttons. What it is compared against — the **build** — is on the band over
+    every view and on a tile on the monitor view, so nothing went with the
+    move that the list needs beside it.
+    """
+    app = code(APP.read_text())
     assert 'import "./dccex-releases.js";' in app
-    assert app.index("<dccex-tiles") < app.index("<dccex-releases")
-    assert app.index("<dccex-releases") < app.index("<dccex-monitor")
+    view = app[app.index("#releases(): TemplateResult {") :]
+    assert "<dccex-releases" in view
+    assert app.count("<dccex-releases") == 1, "the releases are drawn twice"
     assert 'customElements.define("dccex-releases"' in LIST.read_text()
 
 
-def test_the_list_is_collapsed_under_the_tiles() -> None:
-    """A row that opens, so that the station's particulars and its
-    conversation are what the page is when nobody has asked about firmware
-    (docs/ui/README.md)."""
+def test_the_list_is_open_on_the_view_that_is_nothing_else() -> None:
+    """A row that is already open, because a reader who pressed *releases* on
+    the rail has asked for them (#169).
+
+    It stays a row: it opens and shuts, which is what a long list on a phone
+    wants, and the step a flash is on is drawn under the row so that a shut
+    one still says a station is being written (docs/ui/README.md).
+    """
     drawn = LIST.read_text()
-    assert "<details" in drawn and "<summary" in drawn
+    assert "<details open>" in drawn and "<summary" in drawn
 
 
 def test_the_row_holds_no_counterparty_of_its_own() -> None:
