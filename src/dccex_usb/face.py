@@ -7,19 +7,22 @@ station talks to and the only thing it talks to: a command station is not a
 fact about a railroad, so there is no bus here to carry the question and no
 store to keep the answer (ADR-0001).
 
-**Four things are asked of it: what releases the source carries, that one of
-them be written onto the station, the station's own conversation, both ways,
-and how many clients are on the mirror's port.** The second is what the face
-was wanted for; the fourth is this app's own business about itself, and it is
-the one reading the page drew that the station could not say — which the page
-no longer draws, though the face still answers it (ADR-0008 d.4, #111,
+**Five things are asked of it: what releases the source carries, that one of
+them be written onto the station, how far that writing has got, the station's
+own conversation, both ways, and how many clients are on the mirror's port.**
+The second is what the face was wanted for, and the third is what it answers
+while the second is still in flight: a flash is a minute or two, and the page
+asks about it rather than being told (ADR-0010, ADR-0012, #171). The fifth is
+this app's own business about itself, and it is the one reading the page drew
+that the station could not say — which the page no longer draws, though the
+face still answers it (ADR-0008 d.4, #111,
 `docs/ui/README.md`). Writing means owning the
 serial port, so the app that holds the device is the only thing that can do it
 (control ADR-0065, `firmware.py`); what this adds is that whoever asked is
 told what happened, where a refusal used to be a line in a log addressed to
 nobody (ADR-0001 d.2, control ADR-0050).
 
-**The third is the monitor's stream, and it is one more client of the mirror
+**The fourth is the monitor's stream, and it is one more client of the mirror
 and not a second mirror** (ADR-0007, #14). A browser opens it by upgrading a
 request on the page's own origin, and what is on the other end of the upgrade
 is a client of 2560 like JMRI or a throttle: the bytes come off the same
@@ -73,7 +76,7 @@ from http import HTTPStatus
 from typing import NamedTuple, Protocol, cast
 from urllib.parse import urlsplit
 
-from dccex_usb.firmware import RELEASES, Fetch, Refusal, Wrote, asset, fetch
+from dccex_usb.firmware import RELEASES, Doing, Fetch, Refusal, Wrote, asset, fetch
 from dccex_usb.station import HOST, READ_SIZE, to_stderr
 from dccex_usb.stream import (
     CLOSE,
@@ -179,9 +182,10 @@ not sent to a tag there would be nothing to write for or nothing to check it
 against (#8, #81, `firmware.py`)."""
 
 FLASH_PATH = "/flash"
-"""What a build is asked to be written at, with the door's prefix already off
-it (ADR-0004). Asked for and not read: there is nothing at this path to see,
-and a page that reloaded one would write the station twice."""
+"""What a build is asked to be written at, and what how far that has got is
+read at, with the door's prefix already off it (ADR-0004). Two things and no
+third: a POST writes the station and a GET says what the writing has come to,
+so a page that reloaded the read does not write anything (ADR-0012 d.2)."""
 
 ASKED_TAG = "tag"
 """What the body of a flash names the release to write. A tag and nothing
@@ -192,6 +196,21 @@ source just the same, because nothing here looks for one."""
 FLASHED = "flashed"
 """What an answer says a build was written under. The tag goes back with it,
 so the page can say which one it was rather than which one it asked for."""
+
+FLASHING = "flashing"
+"""What how far a flash has got goes back under: the flash in flight, or null
+where none is running, which is the ordinary answer on a box where nobody is
+writing the station. One key, so that a page asking twice a second has one
+thing to read and no flag to read beside it (ADR-0012 d.2, d.3)."""
+
+STAGE = "stage"
+"""What the part of the flash that is under way goes back under, in the
+flasher's own words: `fetching`, `checking`, `writing`, `verifying`."""
+
+PERCENT = "percent"
+"""What the percentage esptool prints goes back under. Null outside the
+writing, because the tool counts the blocks it sends and nothing counts a
+fetch or a hash (`firmware.py`)."""
 
 STREAM_PATH = "/stream"
 """What the station's conversation is asked for at, with the door's prefix
@@ -252,15 +271,24 @@ when what happened is that somebody typed a tag that does not exist.
 
 class Writes(Protocol):
     """What the face needs of the thing that writes a release onto the
-    command station: a tag asked for, and what became of it.
+    command station: a tag asked for, what became of it, and how far the one in
+    flight has got.
 
-    `Flasher` satisfies it by having the member. Narrow on purpose — the face
+    `Flasher` satisfies it by having the members. Narrow on purpose — the face
     is routing, and the whole of what it may do to the railroad's one live
     port is ask for a named release to be written on it, so a test stands in
-    for all of that with an object that answers one call.
+    for all of that with an object that answers one call and one question.
+
+    The second is read and never pushed, for the reason the count of clients is
+    read: a stage kept here would be a second copy of what the flash already
+    knows, going stale between the tool saying something and somebody asking
+    (ADR-0010, ADR-0012 d.2).
     """
 
     async def wanted(self, tag: str) -> Wrote: ...
+
+    @property
+    def doing(self) -> Doing | None: ...
 
 
 class Counts(Protocol):
@@ -357,6 +385,21 @@ def says(release: Carried) -> dict[str, object]:
         LISTED_TAG: release.tag,
         PUBLISHED: release.published,
         FLASHABLE: release.flashable,
+    }
+
+
+def progress(doing: Doing | None) -> dict[str, object] | None:
+    """How far the flash in flight has got as it goes on the wire, or None
+    where no flash is running.
+
+    The tag under the same word a flash is asked for by, because it is the same
+    thing being named."""
+    if doing is None:
+        return None
+    return {
+        ASKED_TAG: doing.tag,
+        STAGE: doing.stage.value,
+        PERCENT: doing.percent,
     }
 
 
@@ -468,8 +511,10 @@ class Face:
         what holds a page somewhere else off the command station (ADR-0004
         d.4).
 
-        The body is read by one route, which is the flash: it names the tag to
-        write and nothing else (#13).
+        The body is read by one route, which is the flash asked for: it names
+        the tag to write and nothing else (#13). How far that flash has got is
+        read at the same path with a GET, which reads no body and writes
+        nothing (ADR-0012 d.2).
         """
         if elsewhere(origin, host):
             return refused(
@@ -495,10 +540,15 @@ class Face:
                 )
             return await self._listed()
         if asked == FLASH_PATH:
+            if method == "GET":
+                return Answered(
+                    HTTPStatus.OK, {FLASHING: progress(self._flasher.doing)}
+                )
             if method != "POST":
                 return refused(
                     HTTPStatus.METHOD_NOT_ALLOWED,
-                    f"{asked} is asked for with POST, and this was {method}",
+                    f"{asked} is asked for with POST and read with GET,"
+                    f" and this was {method}",
                 )
             return await self._writes(body)
         if asked == CLIENTS_PATH:

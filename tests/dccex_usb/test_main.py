@@ -40,7 +40,7 @@ import pytest
 from dccex_usb.__main__ import command_line, mirroring
 from dccex_usb.face import PORT as FACE_PORT
 from dccex_usb.face import Ends, Face, Server
-from dccex_usb.firmware import RELEASES, Flasher, Wrote
+from dccex_usb.firmware import RELEASES, Doing, Flasher, Wrote
 from dccex_usb.station import HOST, Station
 
 DEVICE = "/dev/dccex-that-is-not-there"
@@ -178,6 +178,8 @@ class Unasked:
     this file asks the face for a flash. What the face does with one is
     `test_face.py`'s, and what a flash does to a device is
     `test_firmware.py`'s."""
+
+    doing: Doing | None = None
 
     async def wanted(self, tag: str) -> Wrote:
         raise AssertionError(f"the gate asked for '{tag}' to be written")
