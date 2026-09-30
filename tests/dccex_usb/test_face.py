@@ -1245,6 +1245,39 @@ def test_a_request_on_the_port_is_answered_with_what_routing_said() -> None:
     assert body == {"releases": CARRIED}
 
 
+def test_a_script_applied_on_the_port_reaches_the_store(store: Fake) -> None:
+    """The one route with a body that is not a tag, over TCP (#185).
+
+    Routing is asked directly everywhere else in this file, because routing is
+    a function; what is asserted here is the step between — a `PUT` with a
+    page of Python in it, read off the connection by the length it named and
+    handed to the route that stores it.
+    """
+    store.opens()
+
+    async def asked() -> tuple[int, object]:
+        server = served(holding(store))
+        await server.start()
+        try:
+            return await ask(
+                server.port,
+                request(
+                    "PUT",
+                    f"/scripts/{RAILROAD}",
+                    json.dumps({"text": SCRIPT}).encode(),
+                    origin=PAGE,
+                ),
+            )
+        finally:
+            await server.close()
+
+    status, body = asyncio.run(asyncio.wait_for(asked(), TIMEOUT_S))
+
+    assert status == HTTPStatus.OK
+    assert body == {"applied": RAILROAD}
+    assert store.saved == [(RAILROAD, {"script": RAILROAD, "text": SCRIPT})]
+
+
 @pytest.mark.parametrize(
     "asked, status",
     [
