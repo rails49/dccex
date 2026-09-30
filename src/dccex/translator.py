@@ -87,9 +87,9 @@ appears in no drawing, no configuration and no list of ours, and nothing but
 
 HOST = "mirror"
 PORT = 2560
-"""Where the mirror serves the command station where this app is given no
-other: the service beside this one on the box, on the port `dccex-usb` listens
-on (`compose.box.yaml`)."""
+"""The mirror's address where this app is given no other: the service of that
+name beside this one on the box, on the port `dccex-usb` listens on
+(`compose.box.yaml`)."""
 
 WANTED = "tc49/layout/state/wanted/#"
 
@@ -778,9 +778,8 @@ class DccEx:
         on for as long as the railroad is up — which is what a lock query was,
         on a station whose `!` opcode takes no suffix: an emergency stop every
         second, and a train that moved a few centimetres and stood
-        (control#463).
-        `<s>` asks and changes nothing, which is the property a polled command
-        has to have.
+        (control#463). `<s>` asks and changes nothing, which is the property a
+        polled command has to have.
         """
         while True:
             await asyncio.sleep(self._poll_s)

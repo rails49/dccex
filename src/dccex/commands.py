@@ -5,8 +5,7 @@ and each is **pure** — no socket, no state, no clock — so the whole protocol
 is asserted as "this value, these bytes" on a machine with nothing plugged
 in. The `<…>` syntax is this app's private business and appears nowhere else
 in the repository (control ADR-0043);
-[docs/dccex/README.md](../../docs/dccex/README.md) is where it is written
-down.
+[docs/dccex/README.md](../../docs/dccex/README.md) is where it is written down.
 
 Three of the six functions answer `None`. A value this app cannot put on a
 wire — a position that is neither `closed` nor `thrown`, an aspect no head
