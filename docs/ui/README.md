@@ -6,21 +6,22 @@ about nothing else.
 
 **The page is here, the monitor is a full client of the mirror, the page says
 what the station is doing, it lists what the station could be written with, and
-it writes one of them.** `ui/` holds the band, the rail and the work pane, built and served the
-way this page says (#3) — which is the tracer bullet, and it is the
-installation everything below rests on. The work pane shows one **view** and
+it writes one of them.** `ui/` holds the band, the rail and the work pane, built
+and served the way this page says (#3) — which is the tracer bullet, and it is
+the installation everything below rests on. The work pane shows one **view** and
 the rail picks it (#169): the monitor view, which is the **tile**s and the
 **monitor** under them — the station's conversation as it arrives, every line
 stamped with the time it arrived, newest at the bottom (#4), and a box at the
-foot that types a whole `<…>` message back (#6) — or the **release**s. The band carries the **build**, the **link** and the
-power button and the tiles carry the particulars, all of them made of what the
-station said and kept live by the page's own polling (#7, #168). The releases are listed newest first with the one on
-the station marked (#8), and choosing one writes it onto the station — which is
-the last thing here that needed a terminal (#9). What it says was decided in
-rails49/dccex#1 and the tickets under that spec are each a part of it, as [the
-cutover page](../cutover.md) was written ahead of its evening. What is already here besides is the other end: the
-**mirror**'s **face**, which is the one thing the page talks to
-([the mirror's page](../dccex_usb/README.md)).
+foot that types a whole `<…>` message back (#6) — or the **release**s. The band
+carries the **build**, the **link** and the power button and the tiles carry the
+particulars, all of them made of what the station said and kept live by the
+page's own polling (#7, #168). The releases are listed newest first with the one
+on the station marked (#8), and choosing one writes it onto the station — which
+is the last thing here that needed a terminal (#9). What it says was decided in
+rails49/dccex#1 and the tickets under that spec are each a part of it, as
+[the cutover page](../cutover.md) was written ahead of its evening. What is
+already here besides is the other end: the **mirror**'s **face**, which is the
+one thing the page talks to ([the mirror's page](../dccex_usb/README.md)).
 
 ## What it talks to
 
@@ -120,14 +121,15 @@ cannot tell the green from the red is left with.
 The band gives things up at two widths rather than wrapping. Below 560px the
 build goes: it is the longest thing on the band, and it is the one reading on it
 that does not change while the station is up — what the station is doing is on
-the tiles and what it is running is not. Below 400px the link's words go and the link is the dot
-alone, the dot being the reading and the words that reading a second time. The
-dot and the power button stay at every width — a thumb has to reach the button
-on the phone at the layout. Both numbers are this page's own rather than a look
-rule, written in `dccex-band.styles.ts` beside the rules they are about, and a
-browser is what does it: `tests/ui/test_page_at_a_phones_width.py` loads the
-built page at 375px and reads back a dot and a thumb-sized button with a size,
-a build and the words with none (#127, #168).
+the tiles and what it is running is not. Below 400px the link's words go and the
+link is the dot alone, the dot being the reading and the words that reading a
+second time. The dot and the power button stay at every width — a thumb has to
+reach the button on the phone at the layout. Both numbers are this page's own
+rather than a look rule, written in `dccex-band.styles.ts` beside the rules they
+are about, and a browser is what does it:
+`tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
+reads back a dot and a thumb-sized button with a size, a build and the words
+with none (#127, #168).
 
 ### The rail
 
@@ -170,9 +172,9 @@ the station names, in letter order (#7, #170).
 The letter heads the tile, and the symbol and the three words are centred under
 it. The power is the symbol's label as well — `track A power is on` — because a
 reader who cannot see the colour is owed the same reading, which is how the
-**link** is drawn on the band (#168). `<=>` lists every track the firmware is built with,
-so a track set to `NONE` has a tile too. One the station has given a current for
-and not yet a mode has a tile with a blank mode.
+**link** is drawn on the band (#168). `<=>` lists every track the firmware is
+built with, so a track set to `NONE` has a tile too. One the station has given a
+current for and not yet a mode has a tile with a blank mode.
 
 The current is the station's own measure (`<JI>` → `<jI 120 2 0 0>`, A first),
 asked four times a second and shown as the mean of the last eight readings. The
@@ -298,13 +300,13 @@ that did not go leaves the locomotives stopped and the power still on, which is
 a railroad nobody should walk up to thinking it is dead (#93).
 
 The control is on the release's own row and only on the releases that carry a
-firmware with a digest to check the write against (#81, #109) — a tag the
-mirror would refuse is not a thing to offer. The warning opens under it and the yes is a press of its own
-beside a cancel, because a sequence the operator declines is a flash that was
-not asked for rather than one that was refused. The step is drawn under the row
-rather than inside it, since the row can be shut while the station is away. And
-while a sequence is running there is nothing to press: a second flash is a
-second station reset.
+firmware with a digest to check the write against (#81, #109) — a tag the mirror
+would refuse is not a thing to offer. The warning opens under it and the yes is
+a press of its own beside a cancel, because a sequence the operator declines is
+a flash that was not asked for rather than one that was refused. The step is
+drawn under the row rather than inside it, since the row can be shut while the
+station is away. And while a sequence is running there is nothing to press: a
+second flash is a second station reset.
 
 What goes down the cable, in what order, and what is said at each step is
 `ui/src/flash.js`'s — a module with no socket, no face and no DOM of its own, so
@@ -645,20 +647,19 @@ monitor (`ui/test/monitor.test.ts`), handed the facts a page would hand it.
 
 **The page is what polls** (#7). The station volunteers a banner and a `<p…>`,
 and an idle one says nothing; on a box with no **translator** running, nothing
-else asks. So the page asks on its own schedule — `<JI>` four times a
-second, and `<s>` and `<=>` every fifteen seconds, because every client on the port receives
-the eight lines `<s>` is answered with — and `<JG>` once each time the **link**
-comes up, because the most a track may draw is compiled into the build and does
-not move while the station is running (#170) — up the stream, through the same send an operator's typing goes through, though
-the poll itself is not written to the monitor — and the mirror goes on
-originating nothing
+else asks. So the page asks on its own schedule — `<JI>` four times a second,
+and `<s>` and `<=>` every fifteen seconds, because every client on the port
+receives the eight lines `<s>` is answered with — and `<JG>` once each time the
+**link** comes up, because the most a track may draw is compiled into the build
+and does not move while the station is running (#170) — up the stream, through
+the same send an operator's typing goes through, though the poll itself is not
+written to the monitor — and the mirror goes on originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
 Five seconds without a word, which is twenty polls, and the **link** is down.
-The readings are worked out again on a one-second tick as well, because the
-link going down is the absence of a line rather than the arrival of one; and a
-page that has left stops asking, because a conversation that is quiet when
-nobody is watching is the correct conversation (this repository's ADR-0010
-d.4).
+The readings are worked out again on a one-second tick as well, because the link
+going down is the absence of a line rather than the arrival of one; and a page
+that has left stops asking, because a conversation that is quiet when nobody is
+watching is the correct conversation (this repository's ADR-0010 d.4).
 
 **The first one is asked when the stream is open, not when the page joins**
 (#82). Opening a stream dials a socket, and a socket that is connecting cannot
@@ -807,26 +808,26 @@ daemon answers it skips and says so.
 `compose.yaml`'s own, and `tests/ui/test_compose_serves.py` is what runs it
 rather than reading it (#53): `docker compose up -d --build` against this
 repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
-page fetched over HTTP on the port `docker compose port web 80` says it got,
-the image name, the commit the project handed the build, and the eight route
-labels read back off the running container — which is where a door reads them
-from — and `docker compose down` with its
-volumes, its network and the image it built, in a `finally`, so a red assertion
-leaves nothing behind either. It carries the same `docker` marker and the same
-no-daemon rule as the check above it. Two things it does not hold: what a route
-*does*, which wants a door and is #40's, and the shared network, which is
-declared external in `compose.box.yaml` and deliberately not here, so that `up`
-works on a clean clone at all. A project already up under the name the file pins — `name: dccex`
-— fails the check with a sentence saying so, because taking down a project it
-did not start is not its to do. The other guard — that nothing left in a shell
-can point those commands at a project nobody here named — is a `monkeypatch`
-over the environment the commands are run in and needs no daemon at all, so it
-is asserted in `tests/ui/test_commands_run_clean.py`, which the gate does
-collect (#112). That environment is on every command the check runs and not
-only on the `docker compose` ones: the plain `docker` helper the two checks
-share takes an environment, the compose check hands it one at each call, and
-the same daemonless module holds that what the helper is handed is what the
-process it starts runs in (#113).
+page fetched over HTTP on the port `docker compose port web 80` says it got, the
+image name, the commit the project handed the build, and the eight route labels
+read back off the running container — which is where a door reads them from —
+and `docker compose down` with its volumes, its network and the image it built,
+in a `finally`, so a red assertion leaves nothing behind either. It carries the
+same `docker` marker and the same no-daemon rule as the check above it. Two
+things it does not hold: what a route *does*, which wants a door and is #40's,
+and the shared network, which is declared external in `compose.box.yaml` and
+deliberately not here, so that `up` works on a clean clone at all. A project
+already up under the name the file pins — `name: dccex` — fails the check with a
+sentence saying so, because taking down a project it did not start is not its to
+do. The other guard — that nothing left in a shell can point those commands at a
+project nobody here named — is a `monkeypatch` over the environment the commands
+are run in and needs no daemon at all, so it is asserted in
+`tests/ui/test_commands_run_clean.py`, which the gate does collect (#112). That
+environment is on every command the check runs and not only on the
+`docker compose` ones: the plain `docker` helper the two checks share takes an
+environment, the compose check hands it one at each call, and the same
+daemonless module holds that what the helper is handed is what the process it
+starts runs in (#113).
 
 **And it is laid out at a phone's width.** The page is read on a phone held at
 the layout, and until #127 nothing here had drawn it at one:
