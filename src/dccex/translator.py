@@ -376,11 +376,13 @@ class DccEx:
         # it is running. `None` where no script is loaded, which is a
         # railroad this app carries out OFF, STOP and speeds for and refuses
         # power ON (ADR-0015 d.4); `_text` is what the running script was
-        # loaded from and `_refused` the text that would not load.
+        # loaded from, `_refused` the text that would not load and `_refusal`
+        # what the row said about it.
         self._railroad = ""
         self._script: script.Script | None = None
         self._text: str | None = None
         self._refused: str | None = None
+        self._refusal: str | None = None
         self._trouble: str | None = None
         self._changed = False
         # What was last said on each of the two rows this app writes. The
@@ -576,7 +578,7 @@ class DccEx:
             except Exception as broken:  # noqa: BLE001 - so is loading one
                 _log.exception("the script for '%s' does not load", self._railroad)
                 self._script, self._refused = None, text
-                self._trouble = (
+                self._trouble = self._refusal = (
                     f"the script for '{self._railroad}' does not load: {broken}"
                 )
             else:
@@ -658,6 +660,10 @@ class DccEx:
             self._changed = True
             return True
         if text is not None and text == self._refused:
+            if self._trouble != self._refusal:
+                self._trouble = self._refusal
+                self._said_link()
+                self._publish_track()
             return False
         self.load(text)
         return False
