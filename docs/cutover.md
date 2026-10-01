@@ -218,7 +218,9 @@ that started it without the network would take 2560 back and publish nothing,
 which is the state `control`'s dispatcher reads as the mirror being gone. This
 repository's mirror needs no such flag: it has no broker, which is what
 ADR-0001 is about. The translator goes back with `control`'s
-previous deploy; nothing in this repository repoints it.
+previous deploy; nothing in this repository repoints it. Since #189 this stack
+runs a translator too, so stop it first, as under
+[The translator alone](#the-translator-alone).
 
 **Nothing is pruned until the cutover is accepted.** No `docker image prune`,
 no `docker system prune`, nothing removed by hand. Not because a prune would
@@ -234,6 +236,24 @@ whether something is broken, that difference is worth keeping on disk. After
 the acceptance in #16 it is the box's to prune.
 This repository's own images keep one step back by the deploy's rule rather
 than by anybody remembering this line (ADR-0005 d.6).
+
+### The translator alone
+
+Since #189 the translator runs from this stack and `control` has none. To put
+`control`'s translator back while this stack's mirror keeps 2560, stop this
+stack's translator first, so that two translators are never on the bus:
+
+```
+cd ~/dccex
+docker compose -f compose.yaml -f compose.box.yaml \
+  --env-file /etc/rails49/box.env --env-file .env rm -sf translator
+cd ~/control
+git checkout 02839e0^           # the last commit with the translator
+docker compose --profile hardware -f deploy/compose.yaml up -d --build
+```
+
+`control`'s translator asks for `host.docker.internal:2560`, which is this
+stack's published mirror.
 
 ## The checks
 
@@ -377,6 +397,16 @@ Filed as [control#578](https://github.com/rails49/control/issues/578).
 - From the laptop the broker answered at `192.168.178.56` and not at
   `gleis49.org`, which gave "no route to host".
 - A person connected on 2560 and drove a locomotive.
+
+## What happened, 2026-10-01
+
+- #189: `control` was deployed at its `main`, and `--remove-orphans` removed
+  `tc49-dccex-1`. This stack was then deployed at `9b5947e`, and
+  `dccex-translator-1` came up next to the mirror.
+- The startup file on the box was kept as it was.
+- `device/link/dccex` read up, connected to `mirror:2560`. A power ON from
+  `control`'s UI reached the track in two seconds.
+- `store:8765` resolves from this stack on the `rails49` network and answers.
 
 ## Not on this page
 
