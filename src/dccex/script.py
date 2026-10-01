@@ -126,10 +126,12 @@ def load(text: str) -> Script:
     raises on load is one the translator has no handlers from, and it is the
     translator that says so on its link row and goes on asking (ADR-0015 d.4).
 
-    The globals the text runs in are this script's own and carry `on` alone.
-    They are what the script's module-level names land in, so a handler may
-    call a helper written beside it, which is how one turnout's mode and a
-    power-on's set the same thing from the same lines (the sample).
+    The globals the text runs in are this script's own. The translator puts
+    `on` in them; Python's builtins are there too, so a script can import,
+    open files and open sockets. They are what the script's module-level
+    names land in, so a handler may call a helper written beside it, which is
+    how one turnout's mode and a power-on's set the same thing from the same
+    lines (the sample).
     """
     script = Script()
     names: dict[str, Any] = {"on": script.on}
