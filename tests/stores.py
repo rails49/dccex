@@ -58,6 +58,11 @@ class Store:
         # the things the reader tells apart. `holds()` below adds a name the
         # way saving a script does.
         self.drawings: list[Any] = []
+        # Set by a test to have every answer carry this status instead, and
+        # to have every answer dropped halfway through its body: a store
+        # restarting while it answers.
+        self.fails: int | None = None
+        self.cuts = False
         self._serving: ThreadingHTTPServer | None = None
         self._lock = threading.Lock()
 
@@ -139,11 +144,12 @@ class Store:
 
             def _said(self, status: int, body: dict[str, Any]) -> None:
                 said = json.dumps(body).encode()
-                self.send_response(status)
+                self.send_response(store.fails or status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(said)))
                 self.end_headers()
-                self.wfile.write(said)
+                self.wfile.write(said[: len(said) // 2] if store.cuts else said)
+                self.close_connection = store.cuts
 
             def log_message(self, format: str, *args: Any) -> None:
                 """Quiet: what the suite reads is the translator's rows and

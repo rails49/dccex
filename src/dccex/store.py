@@ -24,6 +24,7 @@ Standard library only, as the library's own reader is: the whole of it is one
 `GET`.
 """
 
+import http.client
 import json
 import urllib.error
 import urllib.request
@@ -76,11 +77,11 @@ class Scripts:
             if answered.code == 404:
                 return None
             raise Unanswered(f"{where}: {_reason(answered)}") from None
-        except (OSError, ValueError) as away:
-            # `URLError` is an `OSError`, which is also what a connection
-            # dropped mid-reply raises, and a reply that is not JSON is a
-            # `ValueError`: every one of them is a store that has not
-            # answered this ask.
+        except (OSError, ValueError, http.client.HTTPException) as away:
+            # `URLError` is an `OSError`, a reply that is not JSON is a
+            # `ValueError`, and a connection dropped mid-reply is an
+            # `HTTPException` (`IncompleteRead`): every one of them is a store
+            # that has not answered this ask.
             raise Unanswered(f"{where}: {away}") from None
         said = (
             cast(dict[str, Any], body).get("text") if isinstance(body, dict) else None
@@ -95,7 +96,7 @@ def _reason(answered: urllib.error.HTTPError) -> str:
     `error`. A body that is not one of ours leaves the status to speak."""
     try:
         body = json.load(answered)
-    except ValueError:
+    except (OSError, ValueError, http.client.HTTPException):
         return f"{answered.code} {answered.reason}"
     said = cast(dict[str, Any], body).get("error") if isinstance(body, dict) else None
     return said if isinstance(said, str) else f"{answered.code} {answered.reason}"
