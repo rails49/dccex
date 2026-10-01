@@ -109,10 +109,8 @@ WIDTHS = {"phone": PHONE, "desktop": DESKTOP}
 #: of them carries and the page keeps in its hash (`ui/src/view.ts`, #169).
 #: The browser opens on the first and presses the rail to reach the second,
 #: which is the one gesture a reader has for getting there. The **script** view
-#: is a third and is not walked: what is in it is a box with no face behind the
-#: page to fill it, so every button on the rail is measured below and only
-#: these two panes are (#185, docs/ui/README.md).
-MONITOR, RELEASES_VIEW = "monitor", "releases"
+#: is reached the same way, with one railroad answered for it (#185).
+MONITOR, RELEASES_VIEW, SCRIPT_VIEW = "monitor", "releases", "script"
 
 #: What the browser answers the face's release request with. Three releases,
 #: because rows are what the wrap rule is about and the nothing-said state has
@@ -178,7 +176,11 @@ from playwright.sync_api import Route, sync_playwright
 URL, RELEASES, TYPED = sys.argv[1], sys.argv[2], sys.argv[3]
 CARRIED = json.loads(sys.argv[4])
 WIDTHS = json.loads(sys.argv[5])
-MONITOR, RELEASES_VIEW = sys.argv[6], sys.argv[7]
+MONITOR, RELEASES_VIEW, SCRIPT_VIEW = sys.argv[6], sys.argv[7], sys.argv[8]
+
+#: One railroad, and its script with a line longer than a phone is wide.
+RAILROAD = "crossover-yard"
+SCRIPT = "# " + "a line longer than a phone is wide " * 4 + "\\n"
 
 #: What the page drew, on one view, at one width. Each view is measured while
 #: it is the one showing: the other is not in the document, which is what a
@@ -194,6 +196,14 @@ MEASURE = """
   };
   const app = document.querySelector("dccex-app");
   const wide = document.documentElement.scrollWidth;
+  if (view === "script") {
+    const pane = app.renderRoot.querySelector("dccex-script");
+    return {
+      hash: location.hash,
+      scrollWidth: wide,
+      box: box(pane.renderRoot.querySelector("textarea.script")),
+    };
+  }
   if (view === "releases") {
     const releases = app.renderRoot.querySelector("dccex-releases");
     return {
@@ -277,6 +287,10 @@ def measured(page, width, height):
     page.click(f"dccex-rail button.{RELEASES_VIEW}")
     page.wait_for_selector(".release")
     drawn[RELEASES_VIEW] = page.evaluate(MEASURE, RELEASES_VIEW)
+    page.click(f"dccex-rail button.{SCRIPT_VIEW}")
+    page.click("dccex-script .railroad")
+    page.wait_for_selector("dccex-script textarea.script")
+    drawn[SCRIPT_VIEW] = page.evaluate(MEASURE, SCRIPT_VIEW)
     return drawn
 
 
@@ -284,6 +298,14 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch()
     context = browser.new_context()
     context.route(RELEASES, answered)
+    context.route(
+        "**/dccex-usb/railroads",
+        lambda route: route.fulfill(json={"railroads": [RAILROAD]}),
+    )
+    context.route(
+        "**/dccex-usb/scripts/*",
+        lambda route: route.fulfill(json={"text": SCRIPT}),
+    )
     page = context.new_page()
     drawn = {
         name: measured(page, width, height) for name, (width, height) in WIDTHS.items()
@@ -375,6 +397,7 @@ def drawn() -> Iterator[dict[str, Any]]:
             json.dumps(WIDTHS),
             MONITOR,
             RELEASES_VIEW,
+            SCRIPT_VIEW,
             seconds=DRIVE_SECONDS,
         )
         # The last line, because a pull writes to this stream too.
@@ -400,17 +423,30 @@ def test_the_page_does_not_scroll_sideways_at_either_width(
     rendered produces, and it is invisible to every check that reads the
     stylesheet.
 
-    On both **view**s, because each is measured while it is the one showing
-    and the widest thing on the page is a long **tag** on the other one.
+    On every **view**, because each is measured while it is the one showing.
+    The widest things on the page are a long **tag** on the releases and a
+    long line of a script.
     """
     for width, page in drawn.items():
-        for view in (MONITOR, RELEASES_VIEW):
+        for view in (MONITOR, RELEASES_VIEW, SCRIPT_VIEW):
             measured = page if view == MONITOR else page[view]
             wide = measured["scrollWidth"]
             assert wide <= page["innerWidth"] + SLACK, (
                 f"the page is {wide}px wide in a {page['innerWidth']}px {width}"
                 f" on the {view} view"
             )
+
+
+def test_the_script_box_is_inside_a_phone_s_screen(drawn: dict[str, Any]) -> None:
+    """The box a script is typed into fits across the screen; a long line
+    scrolls inside it and not the page (#185)."""
+    for width, page in drawn.items():
+        box = page[SCRIPT_VIEW]["box"]
+        assert box["width"] > 0, f"no script box in a {width}"
+        assert box["left"] >= -SLACK, f"the script box is off the left of a {width}"
+        assert (
+            box["right"] <= page["innerWidth"] + SLACK
+        ), f"the script box is off the side of a {width}: {box}"
 
 
 def test_the_rail_offers_both_views_and_is_pressed_to_reach_one(
