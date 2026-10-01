@@ -395,6 +395,11 @@ export class DccexScript extends LitElement {
     const applied = this.box;
     try {
       const became = await this.applies(railroad, applied);
+      if (this.railroad !== railroad) {
+        // Another railroad was picked while this one was applied: the answer
+        // is about a railroad nobody is looking at, as in `#shows`.
+        return;
+      }
       this.became = became;
       if (became.applied) {
         this.opened = { text: applied, stored: true, says: "" };
