@@ -307,6 +307,31 @@ test("declining the warning leaves the edits and sends nothing", async () => {
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
+test("an apply that lands after another railroad is picked stays with its own", async () => {
+  const other = "# the bench\n";
+  const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT, [RAILROADS[1]]: other });
+  let lands: (became: Applied) => void = () => undefined;
+  drawn.applies = () =>
+    new Promise<Applied>((resolve) => {
+      lands = resolve;
+    });
+  await picks(drawn, RAILROADS[0]);
+  await typed(drawn, "# applied\n");
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+  press(drawn, ".confirms");
+  await drawn.updateComplete;
+
+  await picks(drawn, RAILROADS[1]);
+  lands({ applied: true, says: stored(RAILROADS[0]) });
+  await drawn.updateComplete;
+  await drawn.updateComplete;
+
+  expect(box(drawn).value).toBe(other);
+  expect(drawn.renderRoot.querySelector(".unapplied")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".became")).toBeNull();
+});
+
 test("a script the mirror refuses is shown in the mirror's own words", async () => {
   const refused = "the script does not compile: line 2: expected ':'";
   const [drawn, asked] = await pane({ [RAILROADS[0]]: SCRIPT }, () => ({
