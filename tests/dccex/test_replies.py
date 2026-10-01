@@ -127,8 +127,12 @@ def test_normal_ends_a_trip() -> None:
 
 
 def test_an_alert_is_a_rising_current() -> None:
-    said = b"<* TRACK A ALERT MAIN 2900mA *>"
-    assert replies.reply(said) == replies.Diagnostic(track="A", kind=replies.ALERT)
+    for said in (
+        b"<* TRACK A ALERT  2900mA *>",
+        b"<* TRACK A ALERT FAULT 2900mA *>",
+        b"<* TRACK A ALERT FAULT *>",
+    ):
+        assert replies.reply(said) == replies.Diagnostic(track="A", kind=replies.ALERT)
 
 
 def test_a_diagnostic_this_app_does_not_read_is_nothing() -> None:

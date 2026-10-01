@@ -89,7 +89,8 @@ signal is a lineside device).
 
 A district the station cut itself, after an overload or a fault on its driver.
 The station says so in a diagnostic line and retries on its own; the district
-is tripped until the station says it is normal, or until power is turned off
+is tripped until the station says it is normal or on, or until the translator
+turns power off
 ([ADR-0016](docs/adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
 
 **Not:** *short* (one cause of a trip), *fault* (what control's band calls

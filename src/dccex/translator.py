@@ -852,6 +852,16 @@ class DccEx:
                 # them is on, or none is, so it says the same of each.
                 self._every = told.on
                 self._tracks = {name: told.on for name in self._tracks}
+            if told.on:
+                # `1` is printed only for a district that is on, which ends a
+                # trip or an alert the station said no `NORMAL` for: power
+                # switched off and on by another throttle (ADR-0016 d.3).
+                if told.track:
+                    self._tripped.discard(told.track)
+                    self._alerted.discard(told.track)
+                else:
+                    self._tripped.clear()
+                    self._alerted.clear()
         elif isinstance(told, replies.Diagnostic):
             self._diagnosed(told)
         elif isinstance(told, replies.Lock):

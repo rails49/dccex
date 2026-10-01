@@ -1195,7 +1195,7 @@ OVERLOAD_B = (
 )
 RESTORE_B = b"<* TRACK B POWER RESTORE (after   40ms) *>"
 NORMAL_B = b"<* TRACK B NORMAL (after 20ms/40ms) 180mA *>"
-ALERT_B = b"<* TRACK B ALERT MAIN 2900mA *>"
+ALERT_B = b"<* TRACK B ALERT  2900mA *>"
 
 
 async def supply(
@@ -1256,6 +1256,37 @@ async def _normal_ends_a_trip() -> None:
         assert said[-1] == {"power": "on"}
 
 
+def test_a_district_the_station_says_is_on_is_no_longer_tripped() -> None:
+    asyncio.run(_district_the_station_says_is_on_is_no_longer_tripped())
+
+
+async def _district_the_station_says_is_on_is_no_longer_tripped() -> None:
+    """Another throttle turns the power off and on: the district goes back to
+    ON with no `NORMAL`, and the station prints `1` only for a district that
+    is on."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        said = await supply(station, bus, tap, b"<p0>", b"<p1 B>", b"<p1 A>")
+        assert said[-1] == {"power": "on"}
+
+
+def test_the_line_naming_no_track_ends_every_trip_when_on() -> None:
+    asyncio.run(_line_naming_no_track_ends_every_trip_when_on())
+
+
+async def _line_naming_no_track_ends_every_trip_when_on() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        said = await supply(station, bus, tap, b"<p1>")
+        assert said[-1] == {"power": "on"}
+
+
 def test_a_commanded_off_ends_every_trip() -> None:
     asyncio.run(_commanded_off_ends_every_trip())
 
@@ -1307,7 +1338,6 @@ async def _dead_short_retrying_publishes_once() -> None:
             OVERLOAD_B,
             b"<p0 B>",
             RESTORE_B,
-            b"<p1 B>",
             OVERLOAD_B,
             b"<p0 B>",
             RESTORE_B,

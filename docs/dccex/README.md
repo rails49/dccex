@@ -284,8 +284,9 @@ centimetres and stand.
 **A trip is read from the station's diagnostics.** The firmware cuts a
 district and prints `<* TRACK B POWER OVERLOAD … *>` or `<* TRACK B FAULT PIN
 detected … *>` to USB, and the mirror passes every USB line to every client.
-The district is tripped until `<* TRACK B NORMAL … *>`; a commanded OFF and a
-lost link end every trip. Against the station's own TCP port no such line
+The district is tripped until `<* TRACK B NORMAL … *>` or `<p1 B>`, which the
+station prints only for a district that is on; a commanded OFF and a lost link
+end every trip. Against the station's own TCP port no such line
 arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
 
 **The station is polled with `<s>` and nothing else**, and the answers are
