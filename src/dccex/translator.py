@@ -960,10 +960,10 @@ class DccEx:
         """The power this app can say it sees, folded from what the station
         has reported.
 
-        `on` where no district is off and at least one is not tripped. A
-        district is tripped from the station's trip line until its `NORMAL`,
-        powered while near its limit, and otherwise what its digit says: `0`
-        with no line to explain it is off (ADR-0016 d.3-d.5). A station that has said nothing reads `off` too, which is
+        `on` where at least one district is powered and not tripped. A
+        district is tripped from the station's trip line until its `NORMAL`
+        or a `1`, powered while near its limit, and otherwise what its digit
+        says (ADR-0016 d.3-d.5). A station that has said nothing reads `off` too, which is
         the direction a state topic must fail in (control#181) — a supply
         that cannot be read is not one a train may move over.
 
@@ -981,15 +981,13 @@ class DccEx:
             return OFF
         named = set(self._tracks) | self._tripped | self._alerted
         if named:
-            # A district is powered where it is near its limit or its digit
-            # reads `1`, and off where a `0` has no trip to explain it.
-            off = [
-                district
+            # Powered is a district near its limit or one whose digit reads
+            # `1`, and not tripped. A district that is off is one this
+            # railroad may not use, and says nothing about the rest.
+            powered = any(
+                district in self._alerted or self._tracks.get(district, False)
                 for district in named - self._tripped
-                if district not in self._alerted
-                and not self._tracks.get(district, self._every is True)
-            ]
-            powered = not off and named != self._tripped
+            )
         else:
             powered = self._every is True
         if not powered:

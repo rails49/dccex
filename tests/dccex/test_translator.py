@@ -1157,32 +1157,6 @@ async def _answer_this_app_cannot_parse_is_still_the_station_answering() -> None
         assert [value["link"] for value in said] == ["down", "up"]
 
 
-def test_a_district_reading_0_with_no_line_to_explain_it_reads_off() -> None:
-    asyncio.run(_district_reading_0_with_no_line_to_explain_it_reads_off())
-
-
-async def _district_reading_0_with_no_line_to_explain_it_reads_off() -> None:
-    """A district another throttle turned off: the station prints no trip,
-    and its `0` is off (ADR-0016 d.4)."""
-    bus, tap = bus_and_tap()
-    port = Port()
-    async with running(bus, port):
-        station = await port.opened()
-        station.says(b"<p1 A>", b"<p1 B>", b"<p1>")
-        await asyncio.sleep(QUIET_S)
-        bus.drain()
-        assert [value["power"] for value in tap.values(DEVICE_TRACK)] == ["off", "on"]
-
-        station.says(b"<p0 A>")
-        await asyncio.sleep(QUIET_S)
-        bus.drain()
-        assert [value["power"] for value in tap.values(DEVICE_TRACK)] == [
-            "off",
-            "on",
-            "off",
-        ]
-
-
 # -- a district the station cut itself (ADR-0016) -------------------------
 
 OVERLOAD_A = (
@@ -1360,6 +1334,52 @@ async def _alert_district_reads_powered() -> None:
         await supply(station, bus, tap, b"<p1 A>", b"<p1 B>")
         said = await supply(station, bus, tap, ALERT_B, b"<p0 B>")
         assert said[-1] == {"power": "on"}
+
+
+def test_districts_that_are_off_leave_the_supply_on() -> None:
+    asyncio.run(_districts_that_are_off_leave_the_supply_on())
+
+
+async def _districts_that_are_off_leave_the_supply_on() -> None:
+    """A district nobody uses is off and says nothing about the rest: the
+    supply is `on` while one district is (ADR-0016 d.5, amended)."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        said = await supply(
+            station, bus, tap, b"<p1 A>", b"<p1 B>", b"<p0 C>", b"<p0 D>"
+        )
+        assert said[-1] == {"power": "on"}
+
+
+def test_every_district_off_reads_off() -> None:
+    asyncio.run(_every_district_off_reads_off())
+
+
+async def _every_district_off_reads_off() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p0 B>")
+        said = await supply(station, bus, tap, b"<p0 A>")
+        assert said[-1] == {"power": "off"}
+
+
+def test_a_trip_beside_an_unused_district_leaves_the_supply_on() -> None:
+    asyncio.run(_trip_beside_an_unused_district_leaves_the_supply_on())
+
+
+async def _trip_beside_an_unused_district_leaves_the_supply_on() -> None:
+    """The bench on 2026-10-01: A and B on, C and D unused, A shorted."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", b"<p0 C>", b"<p0 D>")
+        said = await supply(station, bus, tap, OVERLOAD_A, b"<p0 A>")
+        assert said[-1] == {"power": "on", "reason": "district A tripped"}
 
 
 def test_the_lock_the_station_reports_reads_stopped() -> None:
