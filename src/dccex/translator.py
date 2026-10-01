@@ -36,8 +36,9 @@ ADR-0015).
 Two rules are not a row of the mapping table. **The stop is the one-shot, and
 no row of this app's holds it** — each translator implements `stopped` as well
 as its own hardware allows and never by removing power (`commands.track`,
-control ADR-0063 d.3). **An overload is polled for**, a district that trips
-being broadcast nowhere (`_poll`, `commands.STATUS`).
+control ADR-0063 d.3). **A trip is read from the station's diagnostics**,
+which the mirror passes to every client; the poll restates every district's
+power (`_diagnosed`, `commands.STATUS`, ADR-0016).
 
 **A clean exit stands the railroad down**: zero to every locomotive this app
 has commanded, then the track off. Whoever constructs this app calls it before
@@ -129,8 +130,8 @@ DOWN = "down"
 
 POLL_S = 1.0
 """How often the station is asked what it is doing, which bounds how long a
-tripped district reads as live and how long a fresh connection reads as
-`down`. A second is far inside what a person recovering from either would
+district switched by another throttle reads as it was and how long a fresh
+connection reads as `down`. A second is far inside what a person recovering from either would
 notice, and the two questions are two short lines on a port that carries the
 whole railroad's traffic."""
 
@@ -366,6 +367,10 @@ class DccEx:
         self._last_heard: float | None = None
         self._tracks: dict[str, bool] = {}
         self._every: bool | None = None
+        # Districts the station said it cut, and districts it said are near
+        # their limit with no trip since (ADR-0016 d.3, d.4).
+        self._tripped: set[str] = set()
+        self._alerted: set[str] = set()
         self._paused = False
         # The last report the station made of each thing a handler can be
         # keyed on, by row and address. What a report event fires on a change
@@ -472,6 +477,10 @@ class DccEx:
         if power == ON and self._script is None:
             _log.warning("power ON refused: %s", self._trouble or "no script")
             return
+        if power == OFF:
+            # A commanded OFF ends every trip (ADR-0016 d.3).
+            self._tripped.clear()
+            self._alerted.clear()
         if wanted.row == WANTED_TRACTION:
             self._commanded[wanted.address] = None
         # The power's topic has no address under it, which is the row having
@@ -843,6 +852,8 @@ class DccEx:
                 # them is on, or none is, so it says the same of each.
                 self._every = told.on
                 self._tracks = {name: told.on for name in self._tracks}
+        elif isinstance(told, replies.Diagnostic):
+            self._diagnosed(told)
         elif isinstance(told, replies.Lock):
             # A lock this app never sets and never lifts. It is read all the
             # same, because a station that has one and is put under it by
@@ -855,8 +866,25 @@ class DccEx:
         self._publish_track()
         self._reports(told)
 
+    def _diagnosed(self, told: replies.Diagnostic) -> None:
+        """A district tripped, back to normal, or near its limit
+        (ADR-0016 d.3, d.4). A retry changes nothing: the district stays
+        tripped until the station says it is normal."""
+        district = told.track
+        if told.kind == replies.TRIP:
+            self._tripped.add(district)
+            self._alerted.discard(district)
+        elif told.kind == replies.NORMAL:
+            self._tripped.discard(district)
+            self._alerted.discard(district)
+        elif told.kind == replies.ALERT and district not in self._tripped:
+            self._alerted.add(district)
+
     def _reports(
-        self, told: replies.Power | replies.Lock | replies.Turnout | None
+        self,
+        told: (
+            replies.Power | replies.Lock | replies.Turnout | replies.Diagnostic | None
+        ),
     ) -> None:
         """The script's handlers for what the station just reported, run after
         the fact.
@@ -902,6 +930,8 @@ class DccEx:
         self._last_heard = None
         self._tracks.clear()
         self._every = None
+        self._tripped.clear()
+        self._alerted.clear()
         self._paused = False
         self._reported.clear()
 
@@ -920,10 +950,10 @@ class DccEx:
         """The power this app can say it sees, folded from what the station
         has reported.
 
-        `on` only where every track it named is on: the digit is `1` for a
-        track that is fully on and `0` both for one that has tripped and for
-        one that is powered but watching a rising current, so anything else
-        is `off`. A station that has said nothing reads `off` too, which is
+        `on` where no district is off and at least one is not tripped. A
+        district is tripped from the station's trip line until its `NORMAL`,
+        powered while near its limit, and otherwise what its digit says: `0`
+        with no line to explain it is off (ADR-0016 d.3-d.5). A station that has said nothing reads `off` too, which is
         the direction a state topic must fail in (control#181) — a supply
         that cannot be read is not one a train may move over.
 
@@ -939,35 +969,46 @@ class DccEx:
         """
         if not self._answered:
             return OFF
-        if self._tracks:
-            powered = all(self._tracks.values())
+        named = set(self._tracks) | self._tripped | self._alerted
+        if named:
+            # A district is powered where it is near its limit or its digit
+            # reads `1`, and off where a `0` has no trip to explain it.
+            off = [
+                district
+                for district in named - self._tripped
+                if district not in self._alerted
+                and not self._tracks.get(district, self._every is True)
+            ]
+            powered = not off and named != self._tripped
         else:
             powered = self._every is True
         if not powered:
             return OFF
         return STOPPED if self._paused else ON
 
-    def _unreachable(self) -> str | None:
-        """Why the supply reads `off` where this app cannot reach the
-        station, or None where the station is answering and the reading is
-        the station's own.
+    def _reason(self) -> str | None:
+        """Why the supply reads as it does, or None where there is nothing
+        to say.
 
-        It is the link row's own words, said again on the supply, so a person
-        reading why the railroad is dark needs no second row (control ADR-0059). A
-        district that has tripped gets none: the station reported that and
-        said nothing about why, and a reason this app invented would be worse
-        than none (control ADR-0050).
+        Where this app cannot reach the station it is the link row's own
+        words, said again on the supply, so a person reading why the railroad
+        is dark needs no second row (control ADR-0059). Otherwise it names the
+        districts the station tripped (ADR-0016 d.5).
         """
-        if self._link is None or self._link[0]:
+        if self._link is not None and not self._link[0]:
+            return self._link[1]
+        if not self._tripped:
             return None
-        return self._link[1]
+        districts = sorted(self._tripped)
+        named = "district" if len(districts) == 1 else "districts"
+        return f"{named} {', '.join(districts)} tripped"
 
     def _publish_track(self) -> None:
         """The supply, on a last-value topic and only when the fold moves —
         the word or the reason beside it: a state topic republishing what it
         already holds is noise on the trace and news to nobody. Published
         after the link, so the reason a frame carries is the current one."""
-        said = (self._observed(), self._unreachable())
+        said = (self._observed(), self._reason())
         if said == self._track:
             return
         self._track = said

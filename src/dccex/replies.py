@@ -5,8 +5,8 @@ broadcasts alike, and one byte stream cannot say which a line is —
 `dccex-usb` fans the whole conversation to everybody and routes nothing
 (control ADR-0043). So what arrives here is everything the station has to say to
 anyone, and the reading is deliberately narrow: the power each track is in,
-whether the emergency-stop lock is on, and the turnouts the station keeps of
-its own, which are read for a **script** to be keyed on and for nothing else
+whether the emergency-stop lock is on, the diagnostic lines that say a district
+tripped (ADR-0016), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
 (ADR-0013 d.3). Everything else — the banner, a slot's speed, a sensor it
 polls, a fast clock — is another client's business and is passed over unread.
 
@@ -22,6 +22,7 @@ mirrors a device and holds its own copy for the same reason it imports
 nothing else of ours.
 """
 
+import re
 from dataclasses import dataclass
 
 MAX_MESSAGE = 1024
@@ -47,8 +48,8 @@ class Power:
     `track` is empty on the line that names none, which the station sends
     only when every track is on or none is. The digit is `1` only for a track
     that is fully on — one that is powered but watching a rising current, and
-    one that has tripped, both print `0` — so `on` here is "on", and anything
-    else is a district a train may not move over.
+    one that has tripped, both print `0`. The diagnostic lines tell those two
+    apart (`Diagnostic`, ADR-0016).
     """
 
     track: str
@@ -86,6 +87,31 @@ class Lock:
     locked: bool
 
 
+TRIP = "trip"
+RESTORE = "restore"
+NORMAL = "normal"
+ALERT = "alert"
+"""The kinds of `<* TRACK X … *>` line this app reads (ADR-0016)."""
+
+_DIAGNOSTIC = re.compile(
+    rb"\* TRACK ([A-H]) "
+    rb"(?:(?P<trip>POWER OVERLOAD|FAULT PIN detected)"
+    rb"|(?P<restore>POWER RESTORE)|(?P<normal>NORMAL)|(?P<alert>ALERT))\b"
+)
+"""The station's words, from `MotorDriver.cpp` at fork tag
+`v5.6.4-rails49.1`. The rails49 fork owns them (ADR-0016, consequences)."""
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    """What one `<* TRACK X … *>` line says about district X: it tripped,
+    the station is retrying it, it is back to normal, or its current is
+    rising (ADR-0016 d.3, d.4)."""
+
+    track: str
+    kind: str
+
+
 def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     """Fold `arrived` into `buffered`: what is still partial, and the
     messages that completed, delimiters included and in the order they
@@ -112,10 +138,12 @@ def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     return partial, whole
 
 
-def reply(message: bytes) -> Power | Lock | Turnout | None:
-    """The fact one whole message states, or None where it states none of the
-    three this app reads."""
+def reply(message: bytes) -> Power | Lock | Turnout | Diagnostic | None:
+    """The fact one whole message states, or None where it states none of
+    those this app reads."""
     body = message[1:-1]
+    if body.startswith(b"*"):
+        return _diagnostic(body)
     if body == b"!PAUSED":
         return Lock(locked=True)
     if body == b"!RESUMED":
@@ -146,3 +174,13 @@ def _turnout(named: bytes) -> Turnout | None:
         return None
     point = fields[0].decode(errors="replace")
     return Turnout(point=point, thrown=fields[1] == b"1")
+
+
+def _diagnostic(body: bytes) -> Diagnostic | None:
+    """A `<* TRACK X … *>` line read, or None where it is any other
+    diagnostic."""
+    found = _DIAGNOSTIC.match(body)
+    if found is None:
+        return None
+    kind = next(name for name, said in found.groupdict().items() if said)
+    return Diagnostic(track=found.group(1).decode(), kind=kind)

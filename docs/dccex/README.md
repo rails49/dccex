@@ -281,14 +281,17 @@ and `<!Q>` are all read as `<!>` and none of them says so. That is what made a
 `<!Q>` in the poll an emergency stop once a second, and every train move a few
 centimetres and stand.
 
-**An overload is polled for, with `<s>` and with nothing else**, and the
-answers are what the link is measured by. A district that trips is not
-broadcast on TCP: the firmware cuts the output directly and prints the
-diagnostic to USB serial only, so no client sees a `<p…>` line for it. Once a
-second this app sends `<s>`, which makes the station restate every track's
-power, so `device/track` telling the truth does not depend on a person
-noticing — and ten of those questions going unanswered is what says the
-station has stopped answering at all, below. Nothing else goes in the poll. A
+**A trip is read from the station's diagnostics.** The firmware cuts a
+district and prints `<* TRACK B POWER OVERLOAD … *>` or `<* TRACK B FAULT PIN
+detected … *>` to USB, and the mirror passes every USB line to every client.
+The district is tripped until `<* TRACK B NORMAL … *>`; a commanded OFF and a
+lost link end every trip. Against the station's own TCP port no such line
+arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
+
+**The station is polled with `<s>` and nothing else**, and the answers are
+what the link is measured by. Once a second `<s>` makes the station restate
+every track's power, and ten of those questions going unanswered is what says
+the station has stopped answering at all, below. Nothing else goes in the poll. A
 poll runs for as long as the link does, so a command in it that a station acts
 on rather than answers is acted on for as long as the railroad is up, and a
 station says nothing about a command it does not know.
@@ -296,10 +299,9 @@ station says nothing about a command it does not know.
 ## What it publishes back
 
 **`device/track`** is folded from what the station says and never from what
-this app commanded. `on` only where every track the station named is on — the
-digit is `1` for a track that is fully on, and `0` both for one that has
-tripped and for one that is powered but watching a rising current, so anything
-else is `off`. `stopped` is the station's own `<!PAUSED>`, over live rails. A
+this app commanded. `on` where no district is off and at least one is not
+tripped. A district near its limit (`ALERT`) counts as powered until `NORMAL`;
+otherwise its digit decides, and a `0` no line explains is off. `stopped` is the station's own `<!PAUSED>`, over live rails. A
 station that has said nothing reads `off`, which is the direction a state
 topic must fail in
 ([control#181](https://github.com/rails49/control/issues/181)), and a link
@@ -317,9 +319,9 @@ to pass
 ([ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
 The same words go on `device/track` as its `reason` while the station is
 unreachable, so a person reading why the railroad is dark reads it off the
-supply itself rather than off a second row. A district that has tripped gets
-none: the station reported that and said nothing about why, and an invented
-reason would be worse than none.
+supply itself rather than off a second row. Otherwise, while a district is
+tripped, the `reason` names it: `district B tripped`, `districts B, C
+tripped` (ADR-0016 d.5).
 
 **A script that will not load rides on the same `detail`**, said beside what
 the station is doing, and leaves the word alone: the link is the station
