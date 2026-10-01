@@ -52,3 +52,22 @@ def test_the_railroad_is_one_level_of_the_route(store: Store) -> None:
     store.opens()
     assert Scripts(store.url).text("a/b") is None
     assert store.asked == ["a%2Fb"]
+
+
+def test_a_reply_dropped_halfway_is_unanswered(store: Store) -> None:
+    """A store restarting while it answers: the body stops short of the
+    length it declared."""
+    store.holds("bench", SCRIPT)
+    store.cuts = True
+    store.opens()
+    with pytest.raises(Unanswered):
+        Scripts(store.url).text("bench")
+
+
+def test_a_refusal_dropped_halfway_is_unanswered(store: Store) -> None:
+    """The same, on a `5xx` whose body is read for the store's own words."""
+    store.fails = 500
+    store.cuts = True
+    store.opens()
+    with pytest.raises(Unanswered):
+        Scripts(store.url).text("bench")
