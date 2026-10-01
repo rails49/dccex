@@ -44,12 +44,13 @@
  * release stops the locomotives, cuts track power and asks the **face** to
  * write, in that order and with the operator warned first (`flash.js`,
  * ADR-0006 d.2) — and what the row runs it with is handed down from here: the
- * same `#sends` the monitor is handed, so the stop and the cut go up the stream
- * as anything typed does and are marked as this page's in the monitor, and a
- * hand of this page's that asks the face's own `flash`, because a pane holding
- * a counterparty of its own would be a second answer to what the page talks to (the organisation's ADR-0002).
- * That hand is also where the following of the write starts, which is the
- * paragraph below on the flash's own schedule.
+ * same `#sends` the monitor is handed, so the stop and the cut go up the
+ * stream as anything typed does and are marked as this page's in the monitor,
+ * and a hand of this page's that asks the face's own `flash`, because a pane
+ * holding a counterparty of its own would be a second answer to
+ * what the page talks to (the organisation's ADR-0002). That hand is also
+ * where the following of the write starts, which is the paragraph below on the
+ * flash's own schedule.
  *
  * **And the band presses power** (ADR-0011 d.1). What its button sends goes up
  * the same `#sends`, so a press is a line on the stream like any other client's
