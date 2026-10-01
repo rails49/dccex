@@ -300,9 +300,10 @@ station says nothing about a command it does not know.
 ## What it publishes back
 
 **`device/track`** is folded from what the station says and never from what
-this app commanded. `on` where no district is off and at least one is not
-tripped. A district near its limit (`ALERT`) counts as powered until `NORMAL`;
-otherwise its digit decides, and a `0` no line explains is off. `stopped` is the station's own `<!PAUSED>`, over live rails. A
+this app commanded. `on` where at least one district is powered and not
+tripped; a district that is off, such as one this railroad does not use, says
+nothing about the rest. A district near its limit (`ALERT`) counts as powered
+until `NORMAL`; otherwise its digit decides. `stopped` is the station's own `<!PAUSED>`, over live rails. A
 station that has said nothing reads `off`, which is the direction a state
 topic must fail in
 ([control#181](https://github.com/rails49/control/issues/181)), and a link

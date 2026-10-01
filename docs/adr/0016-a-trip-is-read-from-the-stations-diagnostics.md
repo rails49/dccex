@@ -1,6 +1,6 @@
 # ADR-0016 — a trip is read from the station's diagnostics
 
-- **Status:** accepted, 2026-09-30
+- **Status:** accepted, 2026-09-30; d.5 amended 2026-10-01
 - **Ticket:** #188, rails49/control#601
 - **Amends:** ADR-0009 d.4 (the translator now reads one kind of diagnostic
   line)
@@ -44,6 +44,12 @@ when no district is off and at least one is not tripped, and `off`
 otherwise. While a district is tripped, `reason` names it:
 `"district B tripped"`, `"districts B, C tripped"`. A link reason takes
 precedence.
+
+> **Amended 2026-10-01:** `power` is `on` when at least one district is
+> powered and not tripped, and `off` otherwise. A district that is off no
+> longer turns the supply off: on the bench, C and D are unused and off, and
+> the supply read `off` with A and B on. This is the wording `control` BUS.md
+> took in rails49/control#601.
 
 ## Consequences
 
