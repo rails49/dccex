@@ -29,6 +29,7 @@ throttle this app stopped mirroring for (`firmware.py`'s `fetch`).
 """
 
 import asyncio
+import http.client
 import json
 import urllib.error
 import urllib.request
@@ -162,11 +163,11 @@ class Store:
         except urllib.error.HTTPError as answered:
             said = f"{where}: {_reason(answered)}"
             raise (_Missing(said) if answered.code == 404 else Away(said)) from None
-        except (OSError, ValueError) as away:
-            # `URLError` is an `OSError`, which is also what a connection
-            # dropped mid-reply raises, and a reply that is not JSON is a
-            # `ValueError`: every one of them is a store that has not
-            # answered this ask.
+        except (OSError, ValueError, http.client.HTTPException) as away:
+            # `URLError` is an `OSError`, a reply that is not JSON is a
+            # `ValueError`, and a connection dropped mid-reply is an
+            # `HTTPException` (`IncompleteRead`): every one of them is a store
+            # that has not answered this ask.
             raise Away(f"{where}: {away}") from None
         if not isinstance(body, dict):
             raise Away(f"{where}: answered with {type(body).__name__}, not a document")
@@ -181,7 +182,7 @@ class Store:
                 answer.read()
         except urllib.error.HTTPError as answered:
             raise Away(f"{where}: {_reason(answered)}") from None
-        except (OSError, ValueError) as away:
+        except (OSError, ValueError, http.client.HTTPException) as away:
             raise Away(f"{where}: {away}") from None
 
 
@@ -190,7 +191,7 @@ def _reason(answered: urllib.error.HTTPError) -> str:
     `error`. A body that is not one of ours leaves the status to speak."""
     try:
         body = json.load(answered)
-    except ValueError:
+    except (OSError, ValueError, http.client.HTTPException):
         return f"{answered.code} {answered.reason}"
     said = cast(dict[str, Any], body).get("error") if isinstance(body, dict) else None
     return said if isinstance(said, str) else f"{answered.code} {answered.reason}"

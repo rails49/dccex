@@ -137,3 +137,22 @@ def test_the_store_says_where_it_is(store: Fake) -> None:
     """What the face names in a refusal: the address a person reading the page
     has to go and look at."""
     assert Store(f"{store.url}/").where == store.url
+
+
+def test_a_reply_dropped_halfway_is_away(store: Fake) -> None:
+    """A store restarting while it answers is a store that is away, which
+    the page says in its own sentence."""
+    store.holds("bench", SCRIPT)
+    store.cuts = True
+    store.opens()
+    with pytest.raises(Away):
+        asyncio.run(Store(store.url).text("bench"))
+
+
+def test_a_refusal_dropped_halfway_is_away(store: Fake) -> None:
+    """The same, on a `5xx` whose body is read for the store's own words."""
+    store.fails = 500
+    store.cuts = True
+    store.opens()
+    with pytest.raises(Away):
+        asyncio.run(Store(store.url).puts("bench", SCRIPT))
