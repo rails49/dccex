@@ -64,10 +64,10 @@ one: it takes an aspect rather than a pair of positions, so nothing is split
 off it."""
 
 STATUS = b"<s>"
-"""What a poll is made of, and the whole of it. An overload trip is **not
-broadcast**: the station cuts the district and says so only on its USB
-diagnostics, so `device/track` telling the truth would otherwise wait for a
-person to notice. `<s>` makes it restate every track's power.
+"""What a poll is made of, and the whole of it. `<s>` makes the station
+restate every track's power. A trip is read from the station's diagnostics,
+which the mirror passes on, and not from the poll: the digit reads `0` for a
+tripped district and for a powered one near its limit (ADR-0016).
 
 Nothing else is asked, because a station is polled only for what it can
 answer. A question this one does not know is not passed over: the `!` opcode

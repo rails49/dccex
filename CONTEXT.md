@@ -85,6 +85,17 @@ has already happened.
 **Not:** *message* (a message is one `<…>`), *topic*, *trigger*, *signal* (a
 signal is a lineside device).
 
+## trip
+
+A district the station cut itself, after an overload or a fault on its driver.
+The station says so in a diagnostic line and retries on its own; the district
+is tripped until the station says it is normal or on, or until the translator
+turns power off
+([ADR-0016](docs/adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
+
+**Not:** *short* (one cause of a trip), *fault* (what control's band calls
+it), *off* (a district someone turned off).
+
 ## face
 
 An app's own interface, served on the UI's origin and behind the same door,

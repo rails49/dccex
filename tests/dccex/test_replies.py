@@ -94,3 +94,48 @@ def test_everything_else_on_the_port_reads_as_nothing() -> None:
         b"<>",
     ):
         assert replies.reply(other) is None
+
+
+# -- a district the station cut itself (ADR-0016) -------------------------
+#
+# Each line as `MotorDriver.cpp` prints it, at fork tag `v5.6.4-rails49.1`:
+# `%4M` pads the milliseconds to four places.
+
+
+def test_an_overload_is_a_trip() -> None:
+    said = b"<* TRACK B POWER OVERLOAD 3120mA (max 3000mA) detected after    2ms. Pause   40ms *>"
+    assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.TRIP)
+
+
+def test_a_fault_pin_is_a_trip() -> None:
+    said = b"<* TRACK C FAULT PIN detected after    2ms. Pause   40ms) *>"
+    assert replies.reply(said) == replies.Diagnostic(track="C", kind=replies.TRIP)
+
+
+def test_a_fault_pin_that_is_ignored_is_nothing() -> None:
+    assert replies.reply(b"<* TRACK C FAULT PIN (100ms ignore) *>") is None
+
+
+def test_a_restore_is_a_retry() -> None:
+    said = b"<* TRACK B POWER RESTORE (after   40ms) *>"
+    assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.RESTORE)
+
+
+def test_normal_ends_a_trip() -> None:
+    said = b"<* TRACK B NORMAL (after 20ms/40ms) 180mA *>"
+    assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.NORMAL)
+
+
+def test_an_alert_is_a_rising_current() -> None:
+    for said in (
+        b"<* TRACK A ALERT  2900mA *>",
+        b"<* TRACK A ALERT FAULT 2900mA *>",
+        b"<* TRACK A ALERT FAULT *>",
+    ):
+        assert replies.reply(said) == replies.Diagnostic(track="A", kind=replies.ALERT)
+
+
+def test_a_diagnostic_this_app_does_not_read_is_nothing() -> None:
+    assert replies.reply(b"<* TRACK A INVERT *>") is None
+    assert replies.reply(b"<* TRACK J NORMAL (after 20ms/40ms) 180mA *>") is None
+    assert replies.reply(b"<* Calling EXRAIL *>") is None

@@ -1157,14 +1157,13 @@ async def _answer_this_app_cannot_parse_is_still_the_station_answering() -> None
         assert [value["link"] for value in said] == ["down", "up"]
 
 
-def test_a_status_reporting_an_overload_reads_the_track_off() -> None:
-    asyncio.run(_status_reporting_an_overload_reads_the_track_off())
+def test_a_district_reading_0_with_no_line_to_explain_it_reads_off() -> None:
+    asyncio.run(_district_reading_0_with_no_line_to_explain_it_reads_off())
 
 
-async def _status_reporting_an_overload_reads_the_track_off() -> None:
-    """A district that trips is not broadcast, so the poll is what finds it —
-    and the digit is `0` for a track that has tripped, which is the whole of
-    what the fold needs."""
+async def _district_reading_0_with_no_line_to_explain_it_reads_off() -> None:
+    """A district another throttle turned off: the station prints no trip,
+    and its `0` is off (ADR-0016 d.4)."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port):
@@ -1182,6 +1181,185 @@ async def _status_reporting_an_overload_reads_the_track_off() -> None:
             "on",
             "off",
         ]
+
+
+# -- a district the station cut itself (ADR-0016) -------------------------
+
+OVERLOAD_A = (
+    b"<* TRACK A POWER OVERLOAD 3120mA (max 3000mA) detected after    2ms."
+    b" Pause   40ms *>"
+)
+OVERLOAD_B = (
+    b"<* TRACK B POWER OVERLOAD 3120mA (max 3000mA) detected after    2ms."
+    b" Pause   40ms *>"
+)
+RESTORE_B = b"<* TRACK B POWER RESTORE (after   40ms) *>"
+NORMAL_B = b"<* TRACK B NORMAL (after 20ms/40ms) 180mA *>"
+ALERT_B = b"<* TRACK B ALERT  2900mA *>"
+
+
+async def supply(
+    station: Station, bus: InProcessBus, tap: Tap, *said: bytes
+) -> list[Payload]:
+    """Every `device/track` frame so far, once the station has said `said`,
+    without its timestamp."""
+    station.says(*said)
+    await asyncio.sleep(QUIET_S)
+    bus.drain()
+    return [
+        {key: value for key, value in frame.items() if key != "at"}
+        for frame in tap.values(DEVICE_TRACK)
+    ]
+
+
+def test_a_district_that_trips_leaves_the_others_on() -> None:
+    asyncio.run(_district_that_trips_leaves_the_others_on())
+
+
+async def _district_that_trips_leaves_the_others_on() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>")
+        said = await supply(station, bus, tap, OVERLOAD_B, b"<p0 B>")
+        assert said[-1] == {"power": "on", "reason": "district B tripped"}
+
+
+def test_every_district_tripped_reads_off() -> None:
+    asyncio.run(_every_district_tripped_reads_off())
+
+
+async def _every_district_tripped_reads_off() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>")
+        said = await supply(
+            station, bus, tap, OVERLOAD_A, OVERLOAD_B, b"<p0 A>", b"<p0 B>"
+        )
+        assert said[-1] == {"power": "off", "reason": "districts A, B tripped"}
+
+
+def test_normal_ends_a_trip() -> None:
+    asyncio.run(_normal_ends_a_trip())
+
+
+async def _normal_ends_a_trip() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        said = await supply(station, bus, tap, NORMAL_B, b"<p1 B>")
+        assert said[-1] == {"power": "on"}
+
+
+def test_a_district_the_station_says_is_on_is_no_longer_tripped() -> None:
+    asyncio.run(_district_the_station_says_is_on_is_no_longer_tripped())
+
+
+async def _district_the_station_says_is_on_is_no_longer_tripped() -> None:
+    """Another throttle turns the power off and on: the district goes back to
+    ON with no `NORMAL`, and the station prints `1` only for a district that
+    is on."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        said = await supply(station, bus, tap, b"<p0>", b"<p1 B>", b"<p1 A>")
+        assert said[-1] == {"power": "on"}
+
+
+def test_the_line_naming_no_track_ends_every_trip_when_on() -> None:
+    asyncio.run(_line_naming_no_track_ends_every_trip_when_on())
+
+
+async def _line_naming_no_track_ends_every_trip_when_on() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        said = await supply(station, bus, tap, b"<p1>")
+        assert said[-1] == {"power": "on"}
+
+
+def test_a_commanded_off_ends_every_trip() -> None:
+    asyncio.run(_commanded_off_ends_every_trip())
+
+
+async def _commanded_off_ends_every_trip() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        wanted(bus, TRACK, "", {"power": "off"})
+        bus.drain()
+        said = await supply(station, bus, tap, b"<p0>")
+        assert said[-1] == {"power": "off"}
+
+
+def test_a_lost_link_says_the_link_and_not_the_trip() -> None:
+    asyncio.run(_lost_link_says_the_link_and_not_the_trip())
+
+
+async def _lost_link_says_the_link_and_not_the_trip() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", OVERLOAD_B, b"<p0 B>")
+        station.hangs_up()
+        await port.opened(2)
+        bus.drain()
+        said = tap.values(DEVICE_TRACK)[-1]
+        assert said["power"] == "off"
+        assert "tripped" not in said["reason"]
+
+
+def test_a_dead_short_retrying_publishes_once() -> None:
+    asyncio.run(_dead_short_retrying_publishes_once())
+
+
+async def _dead_short_retrying_publishes_once() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        before = len(await supply(station, bus, tap, b"<p1 A>", b"<p1 B>"))
+        said = await supply(
+            station,
+            bus,
+            tap,
+            OVERLOAD_B,
+            b"<p0 B>",
+            RESTORE_B,
+            OVERLOAD_B,
+            b"<p0 B>",
+            RESTORE_B,
+            OVERLOAD_B,
+        )
+        assert said[before:] == [{"power": "on", "reason": "district B tripped"}]
+
+
+def test_an_alert_district_reads_powered() -> None:
+    asyncio.run(_alert_district_reads_powered())
+
+
+async def _alert_district_reads_powered() -> None:
+    """The `<s>` digit is `0` for a district the station is watching for a
+    rising current, which is still powered (ADR-0016 d.4)."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>")
+        said = await supply(station, bus, tap, ALERT_B, b"<p0 B>")
+        assert said[-1] == {"power": "on"}
 
 
 def test_the_lock_the_station_reports_reads_stopped() -> None:
