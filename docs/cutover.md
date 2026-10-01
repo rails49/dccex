@@ -245,7 +245,8 @@ stack's translator first, so that two translators are never on the bus:
 
 ```
 cd ~/dccex
-docker compose -f compose.yaml -f compose.box.yaml rm -sf translator
+docker compose -f compose.yaml -f compose.box.yaml \
+  --env-file /etc/rails49/box.env --env-file .env rm -sf translator
 cd ~/control
 git checkout 02839e0^           # the last commit with the translator
 docker compose --profile hardware -f deploy/compose.yaml up -d --build
