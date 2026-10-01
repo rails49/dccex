@@ -877,6 +877,30 @@ def test_the_railroad_the_bus_names_is_the_script_that_is_asked_for(
     assert store.asked == ["bench"]
 
 
+def test_a_script_that_does_not_load_says_so_again_when_the_store_is_back(
+    store: Store,
+) -> None:
+    """A store that goes away and comes back with the same text that would
+    not load: the row says the script does not load, not that the store is
+    away."""
+    store.holds("bench", "1 / 0\n")
+    store.opens()
+    bus, tap = bus_and_tap()
+    app = asking(bus, store)
+    named(bus, "bench")
+    assert app.asks() is False
+
+    store.closes()
+    assert app.asks() is False
+    bus.drain()
+    assert "does not load" not in tap.values(DEVICE_LINK)[-1]["detail"]
+
+    store.opens()
+    assert app.asks() is False
+    bus.drain()
+    assert "does not load" in tap.values(DEVICE_LINK)[-1]["detail"]
+
+
 def test_a_new_script_text_ends_the_process(store: Store) -> None:
     """A script applied on the page is a document that changed under a
     running translator. It exits, standing the railroad down as every exit
