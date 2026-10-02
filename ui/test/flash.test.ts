@@ -97,8 +97,7 @@ function got(stage: string, percent: number | null): Flashing {
   return { tag: CHOSEN, stage, percent };
 }
 
-/** What the one bar the row drew says its value is, or `null` where it is
- *  drawn without one — a bar that is running and not counting. */
+/** What the one bar the row drew says its value is. */
 function counts(drawn: DccexReleases): string | null {
   return (part(drawn, ".bar") as HTMLProgressElement).getAttribute("value");
 }
@@ -212,15 +211,19 @@ test("a flash in flight draws one bar, with the stage beside it", async () => {
   expect(counts(drawn)).toBe("42");
 });
 
-test("the stages nothing counts draw a bar that does not count", async () => {
+test("the stages nothing counts draw an empty or a full bar", async () => {
   const [drawn] = await flashing();
-  for (const stage of ["fetching", "checking", "verifying"]) {
+  for (const [stage, value] of [
+    ["fetching", "0"],
+    ["checking", "0"],
+    ["verifying", "100"],
+  ]) {
     drawn.flashing = got("writing", 42);
     await drawn.updateComplete;
     drawn.flashing = got(stage, null);
     await drawn.updateComplete;
     expect(reads(drawn, ".stage")).toBe(stage);
-    expect(counts(drawn)).toBeNull();
+    expect(counts(drawn)).toBe(value);
   }
 });
 

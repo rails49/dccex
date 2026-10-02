@@ -34,6 +34,11 @@ and on load, so a tab opened mid-flash shows it.
 the link is back. A build that differs from the tag is shown as a failure.
 That last step is read off the station, not the mirror (ADR-0006 d.3).
 
+**d.5** The bar always has a value: 0 % for `fetching` and `checking`, and for
+`writing` until the first percentage; the percentage while `writing`; 100 % for
+`verifying`. A bar with no value is drawn by the browser as an animation that
+runs back and forth, which reads as a fault (#201).
+
 ## Consequences
 
 - POST `/flash` is unchanged. Its answer is still what became of the flash.

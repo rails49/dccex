@@ -356,10 +356,9 @@ refused and not queued.
 esptool's output as it runs and answers the stage and, while esptool writes, the
 percentage; the page asks twice a second while there is a flash to follow and
 once on load, and draws a bar with the stage beside it in the mirror's own
-words — *fetching*, *checking*, *writing NN %*, *verifying*. The bar counts for
-the writing and runs without a number for the other three, because esptool
-counts the blocks it sends and nothing counts a fetch or a hash: a bar drawn at
-a percentage nobody measured is a reading nobody took (ADR-0009 d.2).
+words — *fetching*, *checking*, *writing NN %*, *verifying*. The bar is empty
+before the writing, fills with esptool's percentage while it writes, and is
+full for the verify (ADR-0012 d.5, #201).
 
 The answer is about the mirror and not about who pressed, so a page opened or
 reloaded in the middle of a write shows that write, and offers no press while it
