@@ -66,7 +66,9 @@ carries this, so one assertion catches the lot (#94)."""
 TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 
-WRITES = "Writing at 0x00010000... (46 %)"
+WRITES = (
+    "Writing at 0x00010000 ━━━━━━━━━━━━━╸                 46.0% 482345/1048576 [0s] "
+)
 """One of the lines esptool prints while it writes, as it prints it down a
 pipe: the block it sent, and how far through it is."""
 
