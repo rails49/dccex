@@ -381,10 +381,10 @@ LIMITS = """\
 def power(t):
     t.default()
     for district, ma in {"A": 3000, "B": 1500}.items():
-        t.send(f"<= {district} LIMIT {ma}>")
+        t.send(f"<JG {district} {ma}>")
 """
 
-SENT = [b"<= A LIMIT 3000>", b"<= B LIMIT 1500>"]
+SENT = [b"<JG A 3000>", b"<JG B 1500>"]
 
 REVERSER = """\
 @on("point", "12")
@@ -723,23 +723,25 @@ def test_the_sample_powers_the_railroad_on() -> None:
 
 async def _sample_powers_the_railroad_on() -> None:
     """The sample is the interface and the documentation both, so what it
-    sends is asserted as bytes: the track-on command, this installation's
-    four district limits, and the mode of the track the reversing loop is
-    on, which the power handler sets from the point that decides it rather
-    than relying on the point's own handler (ADR-0013 d.5)."""
+    sends is asserted as bytes: this installation's four track modes and
+    four district limits, and then the track-on command. The modes go first
+    because the station does not power a track in NONE."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
         station = await port.opened()
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(6) == [
+        assert await station.heard(9) == [
+            b"<= A MAIN>",
+            b"<= B PROG>",
+            b"<= C MAIN_AUTO>",
+            b"<= D MAIN_AUTO>",
+            b"<JG A 300>",
+            b"<JG B 250>",
+            b"<JG C 1500>",
+            b"<JG D 1500>",
             b"<1>",
-            b"<= A LIMIT 3000>",
-            b"<= B LIMIT 3000>",
-            b"<= C LIMIT 1500>",
-            b"<= D LIMIT 1500>",
-            b"<= D MAIN>",
         ]
         await station.heard_nothing_more()
 
@@ -749,45 +751,34 @@ def test_the_sample_reverses_the_district_behind_point_12() -> None:
 
 
 async def _sample_reverses_the_district_behind_point_12() -> None:
-    """The turnout throws and the track behind it changes mode with it, and
-    an ON afterwards sets the same mode from the same desired value."""
+    """The turnout throws and the track behind it is inverted with it. A
+    mode change cuts the track's power, so with the railroad's power on the
+    handler turns that track back on; with it off it does not."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
         station = await port.opened()
         wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
         bus.drain()
-        assert await station.heard(2) == [b"<a 3 3 1>", b"<= D MAIN_INV>"]
+        assert await station.heard(3) == [
+            b"<a 3 3 1>",
+            b"<= D MAIN_AUTO>",
+            b"<= D INV>",
+        ]
+        await station.heard_nothing_more()
 
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert (await station.heard(6))[-1] == b"<= D MAIN_INV>"
+        await station.heard(9)
 
-
-def test_the_sample_sets_signal_5_from_two_turnouts() -> None:
-    asyncio.run(_sample_sets_signal_5_from_two_turnouts())
-
-
-async def _sample_sets_signal_5_from_two_turnouts() -> None:
-    """One handler on two events: each turnout throws, and the head clears
-    only where both are closed. The turnout nobody has thrown reads `None`,
-    which is not `closed`, so the first of the two leaves the signal at
-    stop."""
-    bus, _ = bus_and_tap()
-    port = Port()
-    async with running(bus, port, text=sample.TEXT):
-        station = await port.opened()
-        wanted(bus, POINT, "20", {"addr": "20", "position": "closed"})
+        wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
         bus.drain()
-        assert await station.heard(2) == [b"<a 5 3 0>", b"<A 5 0>"]
-
-        wanted(bus, POINT, "21", {"addr": "21", "position": "closed"})
-        bus.drain()
-        assert await station.heard(2) == [b"<a 6 0 0>", b"<A 5 2>"]
-
-        wanted(bus, POINT, "20", {"addr": "20", "position": "thrown"})
-        bus.drain()
-        assert await station.heard(2) == [b"<a 5 3 1>", b"<A 5 0>"]
+        assert await station.heard(3) == [
+            b"<a 3 3 0>",
+            b"<= D MAIN_AUTO>",
+            b"<1 D>",
+        ]
+        await station.heard_nothing_more()
 
 
 # -- a railroad with no script this app could load ------------------------

@@ -105,8 +105,8 @@ def test_a_script_with_no_handlers_loads() -> None:
 
 def test_the_sample_registers_the_events_it_names() -> None:
     """The sample is the interface, and loading it is the first thing asked
-    of a script: four handlers on five events, one function keyed twice, and
-    a helper the handlers call rather than a handler of its own.
+    of a script: a handler on the power and one on point 12. The signal
+    handler is commented out and registers nothing.
 
     What each one sends is asserted where the bytes are
     (`test_translator.py`).
@@ -114,14 +114,9 @@ def test_the_sample_registers_the_events_it_names() -> None:
     loaded = script.load(sample.TEXT)
     assert [handler.__name__ for handler in loaded.handlers("power")] == ["power"]
     assert [handler.__name__ for handler in loaded.handlers("point", "12")] == [
-        "point_12"
+        "wx310_crossing"
     ]
-    assert [handler.__name__ for handler in loaded.handlers("point", "20")] == [
-        "signal_5"
-    ]
-    assert [handler.__name__ for handler in loaded.handlers("point", "21")] == [
-        "signal_5"
-    ]
+    assert loaded.handlers("point", "20") == []
     assert loaded.handlers("point", "5") == []
     assert loaded.handlers("reported_point", "12") == []
 
