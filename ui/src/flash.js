@@ -212,6 +212,10 @@ export const STAGES = ["fetching", "checking", "writing", "verifying"];
  *  arrives for and the one the bar fills for (ADR-0012 d.2). */
 const COUNTED = "writing";
 
+/** The stage that comes after the writing. The bar is full for it
+ *  (ADR-0012 d.5). */
+const WRITTEN = "verifying";
+
 /**
  * How far the flash in flight has got, as the face answers it.
  *
@@ -288,18 +292,15 @@ export function progress(answer) {
  * @typedef {object} Bar
  * @property {string} says the stage, with the percentage beside it where there
  *   is one
- * @property {number | null} percent how full, out of a hundred, and `null`
- *   where there is nothing to count — a bar that is running and not counting
+ * @property {number} percent how full, out of a hundred
  */
 
 /**
  * The bar over the flash in flight, or `null` where none is running.
  *
  * **The writing is the one stage that counts.** esptool prints how far it has
- * got as it sends blocks and nothing prints anything for a fetch, a hash or a
- * verify, so those stages are a bar that runs without a number: a bar drawn at
- * a percentage nobody measured is a reading nobody took (ADR-0009 d.2,
- * ADR-0012 d.2).
+ * got as it sends blocks. The bar is empty before that, and full once the
+ * verify starts (ADR-0012 d.2, d.5).
  *
  * @param {Flashing | null} flashing how far the flash has got
  * @returns {Bar | null}
@@ -309,12 +310,15 @@ export function bar(flashing) {
     return null;
   }
   const counted = flashing.stage === COUNTED ? flashing.percent : null;
+  if (counted !== null) {
+    return {
+      says: `${flashing.stage} ${Math.round(counted)} %`,
+      percent: counted,
+    };
+  }
   return {
-    says:
-      counted === null
-        ? flashing.stage
-        : `${flashing.stage} ${Math.round(counted)} %`,
-    percent: counted,
+    says: flashing.stage,
+    percent: flashing.stage === WRITTEN ? FULL : 0,
   };
 }
 

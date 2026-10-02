@@ -348,26 +348,44 @@ def test_the_bar_counts_the_writing_and_says_how_far() -> None:
 
 
 @pytest.mark.node
-def test_the_stages_nothing_counts_are_a_bar_that_does_not() -> None:
-    """Nothing counts a fetch, a hash or a verify, so the bar over them reads
-    the stage and runs without a number: a bar drawn at a percentage nobody
-    measured is a reading nobody took (ADR-0009 d.2, `firmware.py`)."""
-    for stage in ("fetching", "checking", "verifying"):
+def test_the_stages_before_the_writing_are_an_empty_bar() -> None:
+    """Nothing counts a fetch or a hash. The bar is empty and reads the stage
+    (ADR-0012 d.5)."""
+    for stage in ("fetching", "checking"):
         assert bar({"tag": TAG, "stage": stage, "percent": None}) == {
             "says": stage,
-            "percent": None,
+            "percent": 0,
         }
 
 
 @pytest.mark.node
-def test_a_writing_with_no_percentage_the_page_can_read_does_not_count() -> None:
+def test_the_verify_is_a_full_bar() -> None:
+    """The bytes are written. The bar is full and reads the stage
+    (ADR-0012 d.5)."""
+    assert bar({"tag": TAG, "stage": "verifying", "percent": None}) == {
+        "says": "verifying",
+        "percent": 100,
+    }
+
+
+@pytest.mark.node
+def test_a_stage_the_page_does_not_know_is_an_empty_bar() -> None:
+    """Drawn under the word the face said, and at nothing."""
+    assert bar({"tag": TAG, "stage": "wiping", "percent": None}) == {
+        "says": "wiping",
+        "percent": 0,
+    }
+
+
+@pytest.mark.node
+def test_a_writing_with_no_percentage_the_page_can_read_is_an_empty_bar() -> None:
     """esptool has not printed one yet, or the number is not one a bar can be
-    drawn at. The stage is still the stage; what goes is the count."""
+    drawn at. The stage is still the stage; the bar is empty."""
     uncounted: tuple[Any, ...] = (None, "42", 140, -1, True)
     for percent in uncounted:
         assert bar({"tag": TAG, "stage": "writing", "percent": percent}) == {
             "says": "writing",
-            "percent": None,
+            "percent": 0,
         }, f"{percent!r} is drawn as a percentage"
 
 

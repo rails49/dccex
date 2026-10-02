@@ -222,10 +222,8 @@ export class DccexReleases extends LitElement {
   /** How far the write has got: one bar, and the stage beside it in the
    *  mirror's own words.
    *
-   * The bar counts while esptool is writing and runs without a number for the
-   * stages nothing counts, which is the `value` attribute being there or not —
-   * a bar drawn at a percentage nobody measured is a reading nobody took
-   * (ADR-0009 d.2, `flash.js`'s `bar()`).
+   * The bar counts while esptool is writing, is empty before it and full
+   * after it (ADR-0012 d.5, `flash.js`'s `bar()`). It always has a `value`.
    *
    * The words are on the page beside it rather than only on the bar, because a
    * reader who cannot see how full it is is owed the stage in words, and the
@@ -241,7 +239,7 @@ export class DccexReleases extends LitElement {
         <progress
           class="bar"
           max="100"
-          value=${shown.percent === null ? nothing : shown.percent}
+          value=${shown.percent}
           aria-label=${shown.says}
         ></progress>
         <span class="stage">${shown.says}</span>
