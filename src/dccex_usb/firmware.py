@@ -138,7 +138,7 @@ WROTE = "Wrote "
 """What esptool says once the bytes are on the station. What is left after it
 is the hash it takes of what it wrote."""
 
-PERCENT = re.compile(r"\((\d+)\s*%\)")
+PERCENT = re.compile(r"(\d+)(?:\.\d+)?\s*%")
 """How far esptool says it has got, as it prints it."""
 
 

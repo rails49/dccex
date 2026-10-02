@@ -1511,7 +1511,9 @@ def test_how_far_a_flash_has_got_is_read_while_the_flash_is_still_running() -> N
         let_go = asyncio.Event()
 
         async def runner(command: Sequence[str], timeout_s: float, saw: Saw) -> Ran:
-            saw("Writing at 0x00010000... (46 %)")
+            saw(
+                "Writing at 0x00010000 ━━━━━━━━━━━━━╸                 46.0% 482345/1048576 [0s] "
+            )
             writing.set()
             await let_go.wait()
             return Ran(0, "")
