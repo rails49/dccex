@@ -185,24 +185,35 @@ function measured(rest) {
       };
 }
 
+/** The modifier letters the station puts after MAIN or BOOST, and the word
+ *  the `<=` command takes for each.
+ *  @type {Record<string, string>} */
+const MODIFIERS = { A: "AUTO", I: "INV" };
+
 /**
  * What a track is set to: `<= A MAIN>`. `<=>` asks for every track.
  *
  * A DC track carries its cab after the mode (`<= C DC 3>`); the mode is what
  * is read, and the cab is left on the line.
  *
+ * MAIN and BOOST may carry a modifier: `A` for auto-reverse, `I` for inverted
+ * (`<= C MAIN A>`). The mode is read as the word the `<=` command takes for it,
+ * `MAIN_AUTO` or `MAIN_INV`. The station names AUTO alone where both are set.
+ *
  * @param {string} rest what follows the `=`
  * @returns {Reading | null}
  */
 function mode(rest) {
-  const said = /^([A-H]) ([A-Z]+)(?: \d+)?$/.exec(rest);
+  const said =
+    /^([A-H]) (?:(MAIN|BOOST) ([AI])|([A-Z]+)(?: \d+)?)$/.exec(rest);
   if (said === null) {
     return null;
   }
+  const named = said[4] ?? `${said[2]}_${MODIFIERS[said[3]]}`;
   return {
-    say: `track ${said[1]} is ${said[2]}`,
+    say: `track ${said[1]} is ${named}`,
     track: said[1],
-    mode: said[2],
+    mode: named,
   };
 }
 

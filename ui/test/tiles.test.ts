@@ -90,3 +90,16 @@ test("tiles nobody handed readings to are the empty row of a quiet page", async 
   const drawn = await mounted(new DccexTiles());
   expect(all(drawn, ".tile")).toStrictEqual([]);
 });
+
+test("a track with a modifier shows the word the command takes", async () => {
+  const drawn = new DccexTiles();
+  drawn.readings = asOf(
+    ["<= C MAIN A>", "<= D MAIN I>"].reduce(
+      (kept, line) => heard(kept, line, SPOKE),
+      QUIET,
+    ),
+    SOON,
+  );
+  await mounted(drawn);
+  expect(all(drawn, ".tile .mode")).toStrictEqual(["MAIN_AUTO", "MAIN_INV"]);
+});

@@ -87,6 +87,10 @@ CASES: dict[str, str] = {
     ),
     "<= A MAIN>": "track A is MAIN",
     "<= C DC 3>": "track C is DC",
+    "<= C MAIN A>": "track C is MAIN_AUTO",
+    "<= D MAIN I>": "track D is MAIN_INV",
+    "<= E BOOST A>": "track E is BOOST_AUTO",
+    "<= E BOOST I>": "track E is BOOST_INV",
 }
 
 #: The lines that carry a fact as well as a sentence, and the fact they carry.
@@ -103,6 +107,10 @@ FACTS: dict[str, dict[str, object]] = {
     "<jG 1233 1233 250 250>": {"limits": [1233, 1233, 250, 250]},
     "<= A MAIN>": {"track": "A", "mode": "MAIN"},
     "<= C DC 3>": {"track": "C", "mode": "DC"},
+    "<= C MAIN A>": {"track": "C", "mode": "MAIN_AUTO"},
+    "<= D MAIN I>": {"track": "D", "mode": "MAIN_INV"},
+    "<= E BOOST A>": {"track": "E", "mode": "BOOST_AUTO"},
+    "<= E BOOST I>": {"track": "E", "mode": "BOOST_INV"},
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
@@ -126,6 +134,8 @@ SILENT: tuple[str, ...] = (
     "<jV 1 2>",
     "<= Z MAIN>",
     "<= A>",
+    "<= C MAIN X>",
+    "<= C PROG A>",
     "<c CurrentMAIN 123 C Amps 0 0 4000 1000>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10",
