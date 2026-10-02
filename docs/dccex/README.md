@@ -92,53 +92,69 @@ that applying it unchanged is a railroad whose script does nothing
 
 ```python
 # Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015).
-#
-# `on(row, address=None)` keys a handler on an event. The rows are power,
-# point, signal, traction, function, and for what the station reported
-# reported_power and reported_point.
-#
-# A handler on a desired value runs in place of the command the translator
-# would have sent; `t.default()` sends that command as well. `t.send(text)`
-# sends one raw message. `t.desired(row, address=None)` reads the desired
-# picture and `t.reported(row, address=None)` the last reports; a value the
-# bus has not given reads None.
+
+'''
+Event listeners:
+* `on(row, address=None)` keys a handler on an event.
+* Valid rows are
+    power,
+    point,
+    signal,
+    traction,
+    function,
+    reported_power, (reported by station)
+    reported_point.
+
+Handlers:
+* ordinary Python functions
+* run in place of the command the translator would have sent;
+  `t.default()` sends that command as well.
+* `t.send(text)` sends one raw message.
+* `t.desired(row, address=None)` reads the desired value.
+* `t.reported(row, address=None)` the last reports;
+* a value the bus has not given reads None.
+'''
 
 
 @on("power")
 def power(t):
+    # configure tracks:
+    #      A Claro
+    #      B Programming
+    #      C Auto reverse section in ramp
+    #      D Airolo (switches polarity depending on how wx310 crossing is set)
+    for district, mode in {"A": "MAIN", "B": "PROG", "C": "MAIN_AUTO", "D": "MAIN_AUTO"}.items():
+        t.send(f"<= {district} {mode}>")
+    # set current limits
+    for district, ma in {"A": 300, "B": 250, "C": 1500, "D": 1500}.items():
+        t.send(f"<JG {district} {ma}>")
     t.default()
-    for district, ma in {"A": 3000, "B": 3000, "C": 1500, "D": 1500}.items():
-        t.send(f"<= {district} LIMIT {ma}>")
-    reverser(t)
 
 
 @on("point", "12")
-def point_12(t):
+def wx310_crossing(t):
+    # set correct track polarity depending on turnout position
     t.default()
-    reverser(t)
+    t.send("<= D MAIN_AUTO>")
+    if t.desired("point", "12") == "thrown":
+        t.send("<= D INV>")          # implies MAIN_AUTO and MAIN_INV (not documented)
+    if t.desired("power") == "on":
+        t.send("<1 D>")
 
 
-def reverser(t):
-    # District D is the reversing loop behind point 12.
-    mode = "MAIN_INV" if t.desired("point", "12") == "thrown" else "MAIN"
-    t.send(f"<= D {mode}>")
-
-
-@on("point", "20")
-@on("point", "21")
-def signal_5(t):
-    t.default()
-    closed = t.desired("point", "20") == t.desired("point", "21") == "closed"
-    t.send("<A 5 2>" if closed else "<A 5 0>")
+# @on("point", "20")
+# @on("point", "21")
+# def signal_5(t):
+#     t.default()
+#     closed = t.desired("point", "20") == t.desired("point", "21") == "closed"
+#     t.send("<A 5 2>" if closed else "<A 5 0>")
 ```
 
 **The values in it are this installation's**, not defaults and not a
 recommendation: what a district can take is what is wired to it, and which
 track the reversing loop is on is this railroad's wiring. The command
-spellings are the station's, and the per-district limit wants firmware that
-has it — that patch, the command and flashing it are a separate project and
-not this repository's work
-([rails49/CommandStation-EX#1](https://github.com/rails49/CommandStation-EX/issues/1)).
+spellings are the station's. `<JG district mA>` is in the rails49 firmware
+([rails49/CommandStation-EX](https://github.com/rails49/CommandStation-EX)).
 
 ### What a script is written with
 
