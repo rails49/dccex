@@ -77,10 +77,13 @@ reported, it runs after the fact and replaces nothing.
 ## event
 
 What a **handler** is keyed on: a desired value the translator is applying
-(the track's power, a point, a signal, a locomotive's speed or function), or
-something the station reported (a turnout thrown, a track's mode). The two are
+(the track's power, a point, a signal, a locomotive's speed or function),
+something the station reported (a turnout thrown, a track's mode), or `start`,
+the translator beginning on a station whose settings it has not set, when it
+connects and when the station restarts
+([ADR-0018](docs/adr/0018-the-stations-setup-runs-at-start.md)). The three are
 different kinds and are never confused: the first can be replaced, the second
-has already happened.
+has already happened, and the third replaces nothing.
 
 **Not:** *message* (a message is one `<…>`), *topic*, *trigger*, *signal* (a
 signal is a lineside device).
@@ -101,7 +104,8 @@ it), *off* (a district someone turned off).
 An app's own interface, served on the UI's origin and behind the same door,
 about that app rather than about a railroad (the organisation's
 [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
-The UI talks to one face and nothing else. A face is private to its app: it is
+The UI talks to one face and to the bus, and nothing else
+([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md)). A face is private to its app: it is
 not somewhere else to get at the railroad. Its address is a path prefix on the
 page's own origin, which the door strips before the app sees it, and a page
 from anywhere else is refused (ADR-0004). The mirror's face answers what
@@ -250,11 +254,11 @@ reading goes is an observation the page did not make (ADR-0009,
 
 The chrome across the top of every rails49 UI, carrying what is true of the
 whole system. Here that is the UI's name and the **build** on the left, and on
-the right two readings — the **link**, and whether the rails are hot — and one
-control: the power button, which sends `<1>` or `<0>` like
-any other client of the mirror's port
-([ADR-0011](docs/adr/0011-the-band-commands-track-power.md), superseding
-ADR-0008 d.5). The **rail** down the side is its counterpart, and both are
+the right two readings — the **link**, and the railroad's power as `layout`
+reports it — and one control: the power button, which asks `layout` for power
+on the bus as `control`'s does
+([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md), superseding
+ADR-0011 d.1). The **rail** down the side is its counterpart, and both are
 LOOK.md's rather than this repository's.
 
 **Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
