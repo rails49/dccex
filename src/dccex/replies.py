@@ -102,11 +102,11 @@ _DIAGNOSTIC = re.compile(
 `v5.6.4-rails49.1`. The rails49 fork owns them (ADR-0016, consequences)."""
 
 
-READY = b"* LCD3:Ready *"
-"""The last line `setup()` prints, `LCD(3, F("Ready"))`, which reaches the
-port as a diagnostic whether or not a display is fitted
-(`CommandStation-EX.ino`, `StringFormatter::lcd`). The station reads its port
-from here on (ADR-0018 d.2)."""
+READY = b'@ 0 3 "Ready"'
+"""The last line `setup()` prints, `LCD(3, F("Ready"))`. The virtual LCD
+starts out on the USB port (`CommandDistributor::virtualLCDSerial`), so at boot
+it reaches the port in this form. The station reads its port from here on
+(ADR-0018 d.2)."""
 
 
 @dataclass(frozen=True)

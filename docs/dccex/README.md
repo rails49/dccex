@@ -59,7 +59,7 @@ stay as the station reports them and come back when a person presses ON
 the topics were first heard.
 
 **A station restart is handled as a connect.** The station's last boot line,
-`<* LCD3:Ready *>`, runs `start` and the replay again, because a reset can be
+`<@ 0 3 "Ready">`, runs `start` and the replay again, because a reset can be
 shorter than the ten polls that lower the link (ADR-0018).
 
 ## The script
@@ -195,7 +195,7 @@ turns D back on where the station last reported it on, rather than relying on
 what `start` or an earlier handler left. A restart forgets the station's
 reports, so a replay after one leaves D off (ADR-0018 d.3).
 
-**`start` runs before the replay**, on a connect and on `<* LCD3:Ready *>`, so a
+**`start` runs before the replay**, on a connect and on `<@ 0 3 "Ready">`, so a
 point handler that sets a district's mode runs after `start` set them all
 (ADR-0018 d.3).
 
@@ -539,7 +539,7 @@ throttle may drive away from it afterwards, which is what `stopped` means here;
 sending it is safe and leaves nothing to clear.
 
 **Reset the station** with the translator connected and watch the same
-port. After `<* LCD3:Ready *>` the translator sends the script's `start` lines
+port. After `<@ 0 3 "Ready">` the translator sends the script's `start` lines
 — the sample's four `<= …>` and four `<JG …>` — and then the replay. `<=`
 with no arguments lists the modes the station now has (ADR-0018).
 
