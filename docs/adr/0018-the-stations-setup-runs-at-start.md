@@ -1,6 +1,6 @@
 # ADR-0018 — the station's setup runs at `start`
 
-- **Status:** accepted, 2026-10-08; d.2, d.3 and d.6 amended 2026-10-08 (#207)
+- **Status:** accepted, 2026-10-08; d.2, d.3 and d.6 amended 2026-10-08 (#207); d.2 amended again 2026-10-08
 - **Ticket:** #207
 - **Amends:** [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
   d.6 (a station restart replays like a connect) and d.9 (the setup is a
@@ -26,13 +26,16 @@ with a JMRI translator as well.
 **d.1** A script event `start`. The translator runs its handler when it
 connects to the station and when the station restarts.
 
-**d.2** A restart is the station's boot line `<* LCD3:Ready *>`, the last
-line `setup()` prints (`CommandStation-EX.ino`, `LCD(3, F("Ready"))`). It is
-printed as a diagnostic whether or not a display is fitted.
+**d.2** A restart is the station's boot line `<@ 0 3 "Ready">`, the last
+line `setup()` prints (`CommandStation-EX.ino`, `LCD(3, F("Ready"))`). The
+virtual LCD starts out on the USB port, so this is its form at boot.
 
 > **Amended 2026-10-08:** d.2 named the licence line, the first line of
 > `setup()`. It comes before `TrackManager::Setup` sets the firmware's modes and
 > before the station reads its port.
+>
+> **Amended again 2026-10-08:** d.2 then named `<* LCD3:Ready *>`. The station
+> on the box printed `<@ 0 3 "Ready">` after `<D RESET>`, and nothing ran.
 
 **d.3** On a restart the translator does what it does on a connect: `start`
 first, then the retained desired state, power excepted (ADR-0013 d.6). A point

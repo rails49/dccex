@@ -145,13 +145,14 @@ def test_a_diagnostic_this_app_does_not_read_is_nothing() -> None:
 
 
 def test_the_last_line_of_the_boot_is_a_restart() -> None:
-    """`LCD(3, F("Ready"))` near the end of `setup()`, printed as a diagnostic
-    whether or not a display is fitted (`StringFormatter::lcd`)."""
-    assert replies.reply(b"<* LCD3:Ready *>") == replies.Restarted()
+    """`LCD(3, F("Ready"))` near the end of `setup()`, as the station on the
+    box printed it after `<D RESET>` (fork tag `v5.6.4-rails49.6-ocp-test`)."""
+    assert replies.reply(b'<@ 0 3 "Ready">') == replies.Restarted()
 
 
 def test_the_rest_of_the_boot_is_nothing() -> None:
     """The licence line comes before the tracks are set up and before the
     station reads its port, so a restart is not read off it."""
     assert replies.reply(b"<* License GPLv3 fsf.org (c) dcc-ex.com *>") is None
-    assert replies.reply(b"<* LCD0:DCC-EX v5.6.4 *>") is None
+    assert replies.reply(b'<@ 0 0 "DCC-EX v5.6.4">') is None
+    assert replies.reply(b'<@ 0 3 "Free RAM=  312Kb">') is None

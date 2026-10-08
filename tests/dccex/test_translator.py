@@ -723,7 +723,7 @@ def configure(t):
     t.send("<= D MAIN>")
 """
 
-READY = b"<* LCD3:Ready *>"
+READY = b'<@ 0 3 "Ready">'
 
 
 def test_start_runs_on_connect_before_the_replay() -> None:
