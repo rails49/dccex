@@ -1,0 +1,62 @@
+# ADR-0018 — the station's setup runs at `start`
+
+- **Status:** accepted, 2026-10-08
+- **Ticket:** #207
+- **Amends:** [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
+  d.6 (a station restart replays like a connect) and d.9 (the setup is a
+  `start` handler, not a power handler)
+- **Related:** ADR-0016 (the firmware's wording is part of the contract),
+  ADR-0017 (the band asks `layout` for power)
+
+## Context
+
+The sample's power handler sets each district's mode and `<JG>` limit, then
+sends `<1>`. A `<1>` from JMRI, a throttle or the monitor's command box skips
+it, and the station powers its districts as they are. After a restart that is
+the firmware's defaults.
+
+Modes and limits outlast a power OFF and are lost on a restart. The translator
+lowers the link after ten missed polls, which a reset can be shorter than.
+
+These commands are this repository's. `control` sees only the bus, and works
+with a JMRI translator as well.
+
+## Decision
+
+**d.1** A script event `start`. The translator runs its handler when it
+connects to the station and when the station restarts.
+
+**d.2** A restart is the station's boot line
+`<* License GPLv3 fsf.org (c) dcc-ex.com *>`, printed once from `setup()`
+(`CommandStation-EX.ino:88`).
+
+**d.3** On a restart the translator does what it does on a connect: `start`
+first, then the retained desired state, power excepted (ADR-0013 d.6). A point
+handler may set a district's mode, so it runs after `start`.
+
+**d.4** `start` has no default. `t.default()` in its handler sends nothing.
+
+**d.5** Nothing about `start` reaches the bus.
+
+**d.6** The sample sets modes and limits at `start`. Its power handler keeps
+`t.default()`.
+
+## Consequences
+
+- While the translator runs, a `<1>` from any client powers districts the
+  script has set.
+- A restart while the translator is down leaves the firmware's defaults until
+  it comes back.
+- The boot line is part of the contract, as the trip lines are (ADR-0016).
+- A railroad's script in the store moves its setup to `start` by hand.
+- CONTEXT.md's **event** entry has a third kind.
+
+## Considered
+
+- **The setup in the power handler**, as before. Only a power-on through the
+  bus gets it.
+- **EXRAIL at the station's boot.** It is compiled into the firmware, so a
+  release would carry one railroad's settings.
+- **A restart read from the link going down.** Ten seconds of silence; a reset
+  can be shorter.
+- **`reported_start`.** A connect is not something the station reports.

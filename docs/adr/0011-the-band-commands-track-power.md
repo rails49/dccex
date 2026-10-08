@@ -1,6 +1,7 @@
 # ADR-0011 — the band commands track power
 
-- **Status:** accepted, 2026-09-30
+- **Status:** accepted, 2026-09-30; d.1, d.2 and d.4 superseded by
+  [ADR-0017](0017-the-band-asks-layout-for-power.md)
 - **Supersedes:** [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md) d.5
 - **Related:** [ADR-0006](0006-the-operator-is-the-only-guard-on-a-flash.md)
   (the operator is the only guard on a flash)
