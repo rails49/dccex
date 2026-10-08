@@ -35,6 +35,7 @@ import {
   PICK,
   SAMPLE,
   STOPS,
+  UNANSWERED,
   UNAPPLIED,
   UNLISTED,
   UNREAD,
@@ -42,6 +43,7 @@ import {
   type Opened,
   commented,
   opened,
+  refusal,
   stored,
   unapplied,
 } from "../src/script.js";
@@ -363,10 +365,10 @@ test("an apply that lands after another railroad is picked stays with its own", 
 });
 
 test("a script the mirror refuses is shown in the mirror's own words", async () => {
-  const refused = "the script does not compile: line 2: expected ':'";
+  const says = "the script does not compile: line 2: expected ':'";
   const [drawn, asked] = await pane({ [RAILROADS[0]]: SCRIPT }, () => ({
     applied: false,
-    says: refused,
+    says,
   }));
   await picks(drawn, RAILROADS[0]);
   await typed(drawn, "def power(t)\n    pass\n");
@@ -378,7 +380,7 @@ test("a script the mirror refuses is shown in the mirror's own words", async () 
   await drawn.updateComplete;
 
   expect(asked.applied).toHaveLength(1);
-  expect(reads(drawn, ".became.failed")).toBe(refused);
+  expect(reads(drawn, ".became.failed")).toBe(says);
   expect(edited(drawn)).toBe("def power(t)\n    pass\n");
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
@@ -467,6 +469,26 @@ test("the store's text is what is edited, and the sample is not stored", () => {
   });
   expect(opened(null).stored).toBe(false);
   expect(opened(undefined).text).toBeNull();
+});
+
+test("the line the mirror's refusal names is read off its sentence", () => {
+  expect(
+    refusal("the script does not compile: line 3: invalid syntax"),
+  ).toStrictEqual({ line: 3, message: "invalid syntax" });
+  expect(
+    refusal("the script does not compile: line 12: expected ':'"),
+  ).toStrictEqual({ line: 12, message: "expected ':'" });
+});
+
+test("a refusal that names no line marks nothing", () => {
+  expect(
+    refusal(
+      "the script does not compile: source code string cannot contain null" +
+        " bytes",
+    ),
+  ).toBeNull();
+  expect(refusal(UNANSWERED)).toBeNull();
+  expect(refusal(stored(RAILROADS[0]))).toBeNull();
 });
 
 test("edits are unapplied where the editor is not the text that was applied", () => {

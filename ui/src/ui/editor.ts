@@ -2,9 +2,10 @@
  * The **editor** the **script** view edits a railroad's Python in: CodeMirror
  * 6, built from its modules (ADR-0019 d.1).
  *
- * What is here is the editor's state — the language, the indent unit, the keys
- * and which tags carry which class — and nothing about the view it sits on.
- * The pane makes one `EditorView` over this and keeps it (`dccex-script.ts`).
+ * What is here is the editor's state — the language, the indent unit, the keys,
+ * which tags carry which class, and the mark a refused Apply leaves on the line
+ * it named — and nothing about the view it sits on. The pane makes one
+ * `EditorView` over this and keeps it (`dccex-script.ts`).
  *
  * **The colours are not here.** Every tag gets a class and the classes are
  * coloured in the pane's stylesheet, which is the one place the view's colours
@@ -30,9 +31,24 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import {
+  EditorState,
+  RangeSet,
+  StateEffect,
+  StateField,
+  type Line,
+} from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  GutterMarker,
+  gutterLineClass,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+
+import { type Refusal } from "../script.js";
 
 /** How far one indent goes. Spaces and not a tab: a script is Python, where a
  *  mixed indentation is a document that does not compile, and four is what the
@@ -72,6 +88,98 @@ const COLOURED = HighlightStyle.define([
   { tag: tags.definition(tags.className), class: "tok-function" },
 ]);
 
+/** What the line a failed Apply named is drawn with: the text under a rule,
+ *  and the line's number in the gutter told apart. The colours are the pane's
+ *  like every other class here (`dccex-script.styles.ts`). */
+const MARK = "refused";
+const MARK_GUTTER = "refused-line";
+
+/** What tells the field below which line to mark, or that there is none. */
+const MARKS = StateEffect.define<Refusal | null>();
+
+/** The line marked, or `null` where none is (ADR-0019 d.4).
+ *
+ *  Set by `mark()` below and cleared by any change to the document: the line
+ *  the face named is a line of the text that was applied, so a mark left
+ *  standing over typing would point at a line that has moved — and the person
+ *  typing is answering the refusal. */
+const MARKED = StateField.define<Refusal | null>({
+  create: () => null,
+  update(marked, change) {
+    if (change.docChanged) {
+      return null;
+    }
+    for (const effect of change.effects) {
+      if (effect.is(MARKS)) {
+        return effect.value;
+      }
+    }
+    return marked;
+  },
+});
+
+/** The line the mark is on, or `null` where there is no mark or where the
+ *  number is not a line this document has.
+ *
+ *  A number past the end marks nothing rather than the last line: a mark is an
+ *  answer about where the fault is, and the nearest line to one is a guess
+ *  (ADR-0009 d.2). */
+function at(state: EditorState): Line | null {
+  const marked = state.field(MARKED);
+  return marked === null || marked.line > state.doc.lines
+    ? null
+    : state.doc.line(marked.line);
+}
+
+/** The rule under the marked line's text, and the message on it: hovering says
+ *  what the face said about that line.
+ *
+ *  A line with nothing on it is the gutter's mark alone — there is no text to
+ *  draw a rule under, and a decoration over no characters is not a thing
+ *  CodeMirror draws. */
+const UNDERLINED = EditorView.decorations.compute([MARKED], (state) => {
+  const line = at(state);
+  const marked = state.field(MARKED);
+  if (line === null || marked === null || line.from === line.to) {
+    return Decoration.none;
+  }
+  return Decoration.set([
+    Decoration.mark({
+      class: MARK,
+      attributes: { title: marked.message },
+    }).range(line.from, line.to),
+  ]);
+});
+
+/** The marked line's number, told apart in the gutter the lines are numbered
+ *  in. The number is what a reader matches the face's sentence against, so the
+ *  mark is on that rather than in a gutter of its own. */
+const IN_GUTTER = new (class extends GutterMarker {
+  override elementClass = MARK_GUTTER;
+})();
+
+const NUMBERED = gutterLineClass.compute([MARKED], (state) => {
+  const line = at(state);
+  return line === null
+    ? RangeSet.empty
+    : RangeSet.of(IN_GUTTER.range(line.from));
+});
+
+/**
+ * Mark the line a failed Apply named in `view`, or take the mark away with
+ * `null` (ADR-0019 d.4).
+ *
+ * What is marked is read off the face's own sentence and is the pane's to pass
+ * on (`script.ts`'s `refusal()`, `dccex-script.ts`). Nothing here reads the
+ * text: which line is wrong is Python's answer and not a page's.
+ *
+ * @param view the editor
+ * @param marked the line and the message, or `null` for no mark
+ */
+export function mark(view: EditorView, marked: Refusal | null): void {
+  view.dispatch({ effects: MARKS.of(marked) });
+}
+
 /**
  * What the editor is made of, less the document.
  *
@@ -85,9 +193,15 @@ const COLOURED = HighlightStyle.define([
  * Line numbers and the matching bracket, and nothing that closes a bracket or
  * a quote and no search: a script is a page of Python somebody reads before
  * they change it, and a page that put a `)` in uninvited is a page editing it.
+ *
+ * The mark goes with the numbers, because the number is what a reader matches
+ * the face's sentence against (ADR-0019 d.4).
  */
 const EDITS = [
   lineNumbers(),
+  MARKED,
+  UNDERLINED,
+  NUMBERED,
   history(),
   bracketMatching(),
   indentUnit.of(" ".repeat(INDENT)),

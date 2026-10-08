@@ -19,7 +19,7 @@
 import { EditorView } from "@codemirror/view";
 import { afterEach, expect, test } from "vitest";
 
-import { INDENT, editing } from "../src/ui/editor.js";
+import { INDENT, editing, mark } from "../src/ui/editor.js";
 
 /** One indent. */
 const DEEP = " ".repeat(INDENT);
@@ -54,6 +54,13 @@ function press(view: EditorView, key: string, held: KeyboardEventInit = {}): voi
 /** What is in the editor. */
 function reads(view: EditorView): string {
   return view.state.doc.toString();
+}
+
+/** The line numbers drawn with a mark on them. */
+function numbered(view: EditorView): (string | null)[] {
+  return [...view.dom.querySelectorAll(".cm-lineNumbers .refused-line")].map(
+    (drawn) => drawn.textContent,
+  );
 }
 
 /** The classes every coloured run of `view` was drawn with. */
@@ -211,6 +218,56 @@ test("every change says the whole text", () => {
   press(view, "z", { ctrlKey: true });
 
   expect(said).toStrictEqual([`${DEEP}x = 1\n`, "x = 1\n"]);
+});
+
+test("a failed apply marks the line it names, and hovering says why", () => {
+  const view = editor("a = 1\nb = 2\nc = (\n");
+
+  mark(view, { line: 3, message: "invalid syntax" });
+
+  const underlined = view.contentDOM.querySelector(".refused");
+  expect(underlined?.textContent).toBe("c = (");
+  expect(underlined?.getAttribute("title")).toBe("invalid syntax");
+  expect(numbered(view)).toStrictEqual(["3"]);
+});
+
+test("any edit clears the mark", () => {
+  const view = editor("a = 1\nb = 2\nc = (\n");
+  mark(view, { line: 3, message: "invalid syntax" });
+  caret(view, 0);
+
+  press(view, "Tab");
+
+  expect(view.contentDOM.querySelector(".refused")).toBeNull();
+  expect(numbered(view)).toStrictEqual([]);
+});
+
+test("a refusal naming a line the document has not marks nothing", () => {
+  const view = editor("a = 1\nb = 2\n");
+
+  mark(view, { line: 9, message: "unexpected EOF while parsing" });
+
+  expect(view.contentDOM.querySelector(".refused")).toBeNull();
+  expect(numbered(view)).toStrictEqual([]);
+});
+
+test("a mark on a line with nothing on it is the gutter's alone", () => {
+  const view = editor("a = 1\n\nc = 3\n");
+
+  mark(view, { line: 2, message: "invalid syntax" });
+
+  expect(view.contentDOM.querySelector(".refused")).toBeNull();
+  expect(numbered(view)).toStrictEqual(["2"]);
+});
+
+test("nothing marked takes the mark away", () => {
+  const view = editor("a = 1\nb = 2\n");
+  mark(view, { line: 1, message: "invalid syntax" });
+
+  mark(view, null);
+
+  expect(view.contentDOM.querySelector(".refused")).toBeNull();
+  expect(numbered(view)).toStrictEqual([]);
 });
 
 test("a screen reader is told what it is", () => {

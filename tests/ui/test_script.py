@@ -316,6 +316,31 @@ def test_the_editors_colours_are_the_themes_and_are_in_the_sheet() -> None:
         ), f"the {drawn} is not drawn in a theme token"
 
 
+def test_a_failed_apply_is_marked_on_the_line_in_the_sheets_ink() -> None:
+    """Two classes, the text under a rule and the number in the gutter, and the
+    colours are the sheet's (ADR-0019 d.3, d.4).
+
+    What marks a line and what clears it is run on an editor
+    (`ui/test/editor.test.ts`). The ink is what that machine cannot see —
+    happy-dom draws no boxes — so it is held here, and it is the one the
+    refusal under the editor is drawn in: a mark in some other colour would be
+    a second answer to which of them is the fault.
+    """
+    built = code(EDITOR.read_text())
+    assert 'const MARK = "refused";' in built, "the marked text has no class"
+    assert (
+        'const MARK_GUTTER = "refused-line";' in built
+    ), "the marked line's number has no class"
+    styles = STYLES.read_text()
+    underlined = rule(styles, ".script.cm-editor .refused")
+    assert "text-decoration: underline" in underlined, "the line is not underlined"
+    numbered = rule(styles, ".script.cm-editor .refused-line")
+    for marked, drawn in (("text", underlined), ("number", numbered)):
+        assert re.search(
+            r"var\(--sl-color-danger-[0-9]+\)", drawn
+        ), f"the marked {marked} is not drawn in the refusal's ink"
+
+
 def test_the_pane_is_the_work_panes_and_not_the_chromes() -> None:
     """The chrome's values say *this is the same project* across rails49's UIs
     and stay on the chrome; a pane follows the system's theme, which is

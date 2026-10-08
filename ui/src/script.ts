@@ -260,6 +260,47 @@ export function unapplied(edited: string, applied: string | null): boolean {
 }
 
 /**
+ * The line a refusal names and what it says about it, or `null` where it names
+ * none.
+ *
+ * The face refuses a text that is not Python with `line N: message`, which is
+ * what Python said about it (`face.py`'s `uncompiled`). The sentence is shown
+ * as it came, and this is the line out of it, so that the editor can mark
+ * where the fault is rather than leave somebody reading a page of Python for
+ * it (ADR-0019 d.4).
+ *
+ * A refusal with no line in it marks nothing — a text Python turned down with
+ * no line to name, a store that was away, a face that could not be asked —
+ * because a mark on a line nobody named is this page guessing (ADR-0009 d.2).
+ */
+export type Refusal = {
+  /** The line it names, counting from one, as the editor numbers them. */
+  line: number;
+  /** What it says about that line, in Python's own words. */
+  message: string;
+};
+
+/** The `line N: message` in a refusal, wherever in the sentence it falls.
+ *
+ *  A line is at least one, so a sentence that said `line 0` names none: the
+ *  face only puts a number there when Python gave it one (`face.py`). */
+const NAMES = /\bline ([1-9]\d*): (.+)$/;
+
+/**
+ * What a refusal marks: the line it names and the message, or `null`.
+ *
+ * Reading is the whole of it, and the reading is here rather than in the pane
+ * because it is a rule about a sentence and needs no browser
+ * (`ui/test/script.test.ts`).
+ *
+ * @param says what the face said the Apply came to
+ */
+export function refusal(says: string): Refusal | null {
+  const named = NAMES.exec(says);
+  return named === null ? null : { line: Number(named[1]), message: named[2] };
+}
+
+/**
  * What is said where the text is the railroad's script now.
  *
  * It names the railroad: a page with several railroads listed is a page where

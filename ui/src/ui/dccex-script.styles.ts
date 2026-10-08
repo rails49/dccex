@@ -146,6 +146,21 @@ export const scriptStyles = css`
     background: var(--sl-color-primary-200);
   }
 
+  /* The line a failed Apply named: the text under a rule carrying the face's
+     message, and that line's number told apart in the gutter (ADR-0019 d.4,
+     editor.ts). The ink is the one the refusal itself is drawn in at the foot
+     of this sheet, and the number is marked by a weight as well as a colour,
+     for the reason the picked railroad is. */
+  .script.cm-editor .refused {
+    text-decoration: underline wavy var(--sl-color-danger-600);
+    text-underline-offset: 0.2em;
+  }
+
+  .script.cm-editor .refused-line {
+    color: var(--sl-color-danger-700);
+    font-weight: var(--sl-font-weight-semibold);
+  }
+
   /* What a reader of Python needs told apart (ADR-0019 d.3). The classes are
      the editor's and the colours are the theme's, so both halves follow the
      system's light or dark setting. A tag with no rule here is drawn as the
