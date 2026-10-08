@@ -1,9 +1,9 @@
 """What the page edits a railroad's **script** in, held against the sources.
 
 The rules the view is made of — the text a railroad with no script opens with,
-whether the box holds unapplied edits, what a Tab puts in it — are run through
-the real functions, and the gesture is made on a mounted pane, and both are in
-the UI's own toolchain (`ui/test/script.test.ts`, #126). They run in the
+whether the editor holds unapplied edits, what a Tab puts in it — are run
+through the real functions, and the gesture is made on a mounted pane, and both
+are in the UI's own toolchain (`ui/test/script.test.ts`, #126). They run in the
 workflow's `node` job and not in the gate (`scripts/check.sh`).
 
 **So what is here is what that toolchain cannot say and the gate must.** The
@@ -18,7 +18,7 @@ than taken away — because unapplied edits are held in it and nowhere else
 (ADR-0015 d.5).
 
 Read off the sources, for the reason `tests/ui/test_page.py` gives: there is no
-browser in a Python gate to hold a box, a listener or an address bar.
+browser in a Python gate to hold an editor, a listener or an address bar.
 """
 
 import re
@@ -120,7 +120,7 @@ def test_the_pane_works_no_reading_out_of_its_own() -> None:
     the page handed it and what somebody typed (ADR-0009 d.1).
 
     `window` is the one thing it reaches, and it reaches it for one question:
-    the page being closed with unapplied edits in the box, which is a thing
+    the page being closed with unapplied edits in the editor, which is a thing
     only the browser can tell it (ADR-0015 d.5).
     """
     drawn = code(PANE.read_text())
@@ -201,17 +201,17 @@ def test_a_railroad_with_no_script_is_told_apart_from_one_that_is_away() -> None
     assert "} catch {" in reading, "a face that is away takes the page with it"
 
 
-def test_the_box_is_monospace_and_takes_a_tab() -> None:
+def test_the_editor_is_monospace_and_takes_a_tab() -> None:
     """A script is Python, where the indentation is the structure: a
-    proportional font hides which lines line up, and a Tab in a box is a
+    proportional font hides which lines line up, and a Tab in a text area is a
     browser moving to the next control unless the page takes it (#185)."""
-    box = rule(STYLES.read_text(), ".script")
-    assert "font-family: var(--sl-font-mono)" in box, "the box is not monospace"
+    editor = rule(STYLES.read_text(), ".script")
+    assert "font-family: var(--sl-font-mono)" in editor, "the editor is not monospace"
     drawn = code(PANE.read_text())
-    assert "<textarea" in drawn, "the editor is not a box"
+    assert "<textarea" in drawn, "the editor is not a text area"
     assert (
         'event.key !== "Tab"' in drawn and "event.preventDefault()" in drawn
-    ), "a Tab leaves the box"
+    ), "a Tab leaves the editor"
     assert "tabbed(" in drawn, "what a Tab puts in is the pane's own"
 
 
