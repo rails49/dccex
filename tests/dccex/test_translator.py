@@ -773,6 +773,33 @@ async def _restart_runs_start_and_the_replay_again() -> None:
         await station.heard_nothing_more()
 
 
+def test_a_restart_forgets_what_the_station_reported() -> None:
+    asyncio.run(_restart_forgets_what_the_station_reported())
+
+
+async def _restart_forgets_what_the_station_reported() -> None:
+    """The station comes back with every track off, and says so only after
+    its last boot line. A handler the replay runs reads no report from
+    before the restart, so the sample's point 12 handler leaves D off."""
+    bus, _ = bus_and_tap()
+    wanted(bus, TRACK, "", {"power": "on"})
+    wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
+    port = Port()
+    async with running(bus, port, text=sample.TEXT):
+        station = await port.opened()
+        await station.heard(8 + 2)
+
+        station.says(b"<p1 D>")
+        await station.heard_nothing_more()
+
+        station.says(READY)
+        assert await station.heard(8 + 2) == SAMPLE_START + [
+            b"<a 3 3 0>",
+            b"<= D MAIN_AUTO>",
+        ]
+        await station.heard_nothing_more()
+
+
 # -- the sample script ----------------------------------------------------
 
 SAMPLE_START = [
@@ -815,8 +842,8 @@ def test_the_sample_reverses_the_district_behind_point_12() -> None:
 
 async def _sample_reverses_the_district_behind_point_12() -> None:
     """The turnout throws and the track behind it is inverted with it. A
-    mode change cuts the track's power, so with the railroad's power on the
-    handler turns that track back on; with it off it does not."""
+    mode change cuts the track's power, so where the station reported D on
+    the handler turns it back on; where D is off it does not."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
@@ -832,10 +859,8 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
         ]
         await station.heard_nothing_more()
 
-        wanted(bus, TRACK, "", {"power": "on"})
-        bus.drain()
-        await station.heard(1)
-
+        station.says(b"<p1 D>")
+        await station.heard_nothing_more()
         wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
         bus.drain()
         assert await station.heard(3) == [

@@ -1,6 +1,6 @@
 # ADR-0018 — the station's setup runs at `start`
 
-- **Status:** accepted, 2026-10-08; d.2 and d.6 amended 2026-10-08 (#207)
+- **Status:** accepted, 2026-10-08; d.2, d.3 and d.6 amended 2026-10-08 (#207)
 - **Ticket:** #207
 - **Amends:** [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
   d.6 (a station restart replays like a connect) and d.9 (the setup is a
@@ -37,6 +37,10 @@ printed as a diagnostic whether or not a display is fitted.
 **d.3** On a restart the translator does what it does on a connect: `start`
 first, then the retained desired state, power excepted (ADR-0013 d.6). A point
 handler may set a district's mode, so it runs after `start`.
+
+> **Amended 2026-10-08:** a restart first forgets what the station reported
+> before it. A handler the replay runs reads no report from before the
+> restart.
 
 **d.4** `start` has no default. `t.default()` in its handler sends nothing.
 

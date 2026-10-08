@@ -145,8 +145,8 @@ def wx310_crossing(t):
     t.send("<= D MAIN_AUTO>")
     if t.desired("point", "12") == "thrown":
         t.send("<= D INV>")          # implies MAIN_AUTO and MAIN_INV (not documented)
-    if t.desired("power") == "on":
-        t.send("<1 D>")
+    if t.reported("power", "D") == "on":
+        t.send("<1 D>")              # the mode change cut D's power
 
 
 # @on("point", "20")
@@ -191,8 +191,9 @@ event names spell out.
 
 **A handler sets everything it depends on each time it runs, from the desired
 picture** (d.5). Point 12's handler above sets district D's whole mode and
-turns D back on where the power is wanted on, rather than relying on what
-`start` or an earlier handler left.
+turns D back on where the station last reported it on, rather than relying on
+what `start` or an earlier handler left. A restart forgets the station's
+reports, so a replay after one leaves D off (ADR-0018 d.3).
 
 **`start` runs before the replay**, on a connect and on `<* LCD3:Ready *>`, so a
 point handler that sets a district's mode runs after `start` set them all

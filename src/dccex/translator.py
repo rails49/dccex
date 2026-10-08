@@ -856,6 +856,10 @@ class DccEx:
         this app reads no field off — raises it just the same.
         """
         told = replies.reply(message)
+        if isinstance(told, replies.Restarted):
+            # What it said before the restart is no longer true of it, and a
+            # handler `start` replays reads its reports (ADR-0018 d.3).
+            self._forget()
         if isinstance(told, replies.Power):
             if told.track:
                 self._tracks[told.track] = told.on
