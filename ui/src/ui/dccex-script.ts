@@ -35,13 +35,18 @@
  * organisation's ADR-0002, `dccex-app.ts`).
  *
  * **What it works out without drawing is `script.ts`'s** — the text a railroad
- * with no script opens with, whether what is in the editor is what was applied,
- * and what a Tab does to it — so those are run rather than read
- * (`ui/test/script.test.ts`). What is decided here is the drawing: where the
- * list sits, where the warnings open, and that the editor is monospace and
- * takes a Tab.
+ * with no script opens with, and whether what is in the editor is what was
+ * applied — so those are run rather than read (`ui/test/script.test.ts`).
+ * What is decided here is the drawing: where the list sits, where the warnings
+ * open, and where the editor goes.
+ *
+ * **The editor is CodeMirror and it is not Lit's** (ADR-0019). What it is made
+ * of is `editor.ts`'s; what is here is one of them, made over the place the
+ * template leaves and kept across every draw, because the document, the
+ * selection and the undo history are in it.
  */
 
+import { EditorView } from "@codemirror/view";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import {
@@ -58,10 +63,10 @@ import {
   UNLISTED,
   type Applied,
   type Opened,
-  tabbed,
   unapplied,
 } from "../script.js";
 import { scriptStyles } from "./dccex-script.styles.js";
+import { editing } from "./editor.js";
 
 /** What the view is called. The word is the glossary's (CONTEXT.md,
  *  **script**): a railroad's document in the store, which the translator loads
@@ -136,6 +141,28 @@ export class DccexScript extends LitElement {
    *  component's (control ADR-0050). */
   became: Applied | null = null;
 
+  /** The editor, or `null` where there is nothing to edit.
+   *
+   *  It is not Lit's. CodeMirror holds its own DOM, its own selection and its
+   *  own undo history, and a template that drew it would make a second one on
+   *  every draw — which is the history this view was losing (ADR-0019). So the
+   *  template draws a place for it and `updated` puts one there. */
+  #editor: EditorView | null = null;
+
+  /** The railroad the editor is open on, or `null` where no editor is. It is
+   *  what says when to open a new document: a railroad picked is a new script
+   *  and a new history, and an Apply is neither. */
+  #open: string | null = null;
+
+  /** The editor, for a check to read the document off.
+   *
+   *  happy-dom lays CodeMirror out nowhere, so what is asserted on a mounted
+   *  pane is the editor's state and never a rectangle (ADR-0019,
+   *  `ui/test/mounted.ts`). */
+  get editor(): EditorView | null {
+    return this.#editor;
+  }
+
   override connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("beforeunload", this.#unloading);
@@ -151,12 +178,16 @@ export class DccexScript extends LitElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("beforeunload", this.#unloading);
+    this.#editor?.destroy();
+    this.#editor = null;
+    this.#open = null;
   }
 
   override render(): TemplateResult {
     return html`
       <h2>${HEADING}</h2>
-      ${this.#railroads()} ${this.#says()} ${this.#edited()} ${this.#controls()}
+      ${this.#railroads()} ${this.#says()} ${this.#editing()}
+      ${this.#controls()}
       ${this.became === null
         ? nothing
         : html`<p
@@ -218,28 +249,56 @@ export class DccexScript extends LitElement {
     return says === "" ? nothing : html`<p class="says">${says}</p>`;
   }
 
-  /** The editor: the text, monospace, and a Tab that puts spaces in it.
+  /** Where the editor goes: an empty element, and `updated` below puts one in
+   *  it.
    *
-   * There is no editor before a railroad is picked and none for a script that
-   * could not be read: an editor offering the sample for a railroad whose
-   * script this page never saw would be inviting somebody to overwrite a
-   * document it does not know the contents of (ADR-0009 d.2).
+   * The editor is not drawn here because Lit owns what it draws, and what
+   * CodeMirror holds is a document, a selection and an undo history that must
+   * outlive a draw (ADR-0019 d.1, `editor.ts`).
+   *
+   * There is no place for one before a railroad is picked and none for a
+   * script that could not be read: an editor offering the sample for a
+   * railroad whose script this page never saw would be inviting somebody to
+   * overwrite a document it does not know the contents of (ADR-0009 d.2).
    */
-  #edited(): TemplateResult | typeof nothing {
+  #editing(): TemplateResult | typeof nothing {
     if (this.opened === null || this.opened.text === null) {
       return nothing;
     }
-    return html`
-      <textarea
-        class="script"
-        spellcheck="false"
-        autocapitalize="off"
-        aria-label=${HEADING}
-        .value=${this.edited}
-        @input=${this.#typed}
-        @keydown=${this.#key}
-      ></textarea>
-    `;
+    return html`<div class="editing"></div>`;
+  }
+
+  /** The editor, put where the draw left a place for it, or taken away where
+   *  the draw left none.
+   *
+   * Three cases, and they are the three states above. Nothing to edit lets the
+   * editor go. A railroad that is not the one it was open on opens a new
+   * document in it, which is a new history: an undo that reached back into
+   * another railroad's script would be an edit nobody made. Anything else — an
+   * Apply, a warning opening, the railroads arriving — leaves it alone,
+   * because what is in it is what somebody typed.
+   *
+   * It is opened on `edited` and not on `opened.text`. The two are the same
+   * text when a railroad opens, and where they differ it is because there are
+   * edits nothing else in the system is holding a copy of (ADR-0015 d.5).
+   */
+  protected override updated(): void {
+    const into = this.renderRoot.querySelector(".editing");
+    if (into === null) {
+      this.#editor?.destroy();
+      this.#editor = null;
+      this.#open = null;
+      return;
+    }
+    if (this.#editor === null) {
+      this.#editor = new EditorView({
+        parent: into,
+        state: editing(this.edited, HEADING, this.#typed),
+      });
+    } else if (this.#open !== this.railroad) {
+      this.#editor.setState(editing(this.edited, HEADING, this.#typed));
+    }
+    this.#open = this.railroad;
   }
 
   /** Apply, and the warning it opens under.
@@ -409,29 +468,11 @@ export class DccexScript extends LitElement {
     }
   }
 
-  /** What was typed, kept where the page keeps it. */
-  readonly #typed = (event: Event): void => {
-    this.edited = (event.target as HTMLTextAreaElement).value;
-  };
-
-  /** A Tab in the editor: spaces, and the caret after them.
-   *
-   * Tab in a text area is a browser moving to the next control, which in a
-   * page of Python is the key an editor needs most. What it puts in and where
-   * the caret goes are `script.ts`'s; what is here is taking the key and
-   * putting the caret back, which needs a text area.
-   */
-  readonly #key = (event: KeyboardEvent): void => {
-    if (event.key !== "Tab") {
-      return;
-    }
-    event.preventDefault();
-    const area = event.target as HTMLTextAreaElement;
-    const put = tabbed(area.value, area.selectionStart, area.selectionEnd);
-    area.value = put.text;
-    area.selectionStart = put.caret;
-    area.selectionEnd = put.caret;
-    this.edited = put.text;
+  /** What was typed, kept where the page keeps it. The editor says this after
+   *  every change it makes — the indent keys' and an undo's as well as a
+   *  keystroke's (`editor.ts`). */
+  readonly #typed = (text: string): void => {
+    this.edited = text;
   };
 
   /** The page being closed with unapplied edits in the editor.

@@ -13,6 +13,13 @@ import { css } from "lit";
  * which lines line up, and an editor that grew with its text would push the
  * controls off a phone. So the editor scrolls and the pane does not.
  *
+ * **The editor's own colours are here** and not in the module that builds it:
+ * every highlighting tag is given a class and the classes are coloured below,
+ * so the view's colours are in one sheet and the sheet is what a check reads
+ * (ADR-0019 d.3, `editor.ts`, `tests/ui/test_script.py`). CodeMirror mounts
+ * its base rules in this shadow root ahead of these, so a rule here of the
+ * same weight wins — which is what the `.cm-` selectors are written to.
+ *
  * **The dangerous press is drawn as one**, and the warning above it in the
  * theme's warning ink — the same pair the flash is drawn with, because this is
  * the other gesture on this page that stops a railroad (ADR-0006,
@@ -80,25 +87,91 @@ export const scriptStyles = css`
     font-size: var(--sl-font-size-small);
   }
 
-  /* The editor. Monospace, and it scrolls its own text: the pane is the height
-     of the window and the controls under it are what a person has to reach. */
-  .script {
+  /* Where the editor is put. The pane draws this and puts a CodeMirror in it
+     (dccex-script.ts), so the rule is about the room it gets and not about
+     what is in it. */
+  .editing {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 12rem;
+    min-width: 0;
+  }
+
+  /* The editor. It scrolls its own text: the pane is the height of the window
+     and the controls under it are what a person has to reach. */
+  .script.cm-editor {
     flex: 1 1 auto;
     box-sizing: border-box;
-    width: 100%;
-    min-height: 12rem;
-    padding: 0.5rem;
+    min-width: 0;
     border: 1px solid var(--sl-color-neutral-300);
     border-radius: var(--sl-border-radius-medium);
     background: var(--sl-color-neutral-0);
     color: var(--sl-color-neutral-900);
+    overflow: hidden;
+  }
+
+  /* Which one has the keyboard, in the theme's own ink rather than the dotted
+     outline CodeMirror falls back to. */
+  .script.cm-editor.cm-focused {
+    outline: 1px solid var(--sl-color-primary-600);
+  }
+
+  /* The text, monospace, and it is what scrolls — a long line goes sideways
+     inside the editor rather than widening the pane. */
+  .script .cm-scroller {
     font-family: var(--sl-font-mono);
     font-size: var(--sl-font-size-small);
     line-height: 1.4;
-    resize: vertical;
-    white-space: pre;
     overflow: auto;
-    tab-size: 4;
+  }
+
+  /* The caret follows the theme. CodeMirror's base rules set it from a light
+     or a dark flag of their own, and this page has neither: the Shoelace
+     tokens are what follow the system here (theme.ts). */
+  .script.cm-editor .cm-content {
+    caret-color: var(--sl-color-neutral-900);
+  }
+
+  /* The line numbers, quieter than the text and with a rule between. A
+     compile error names a line, so the numbers are what a reader matches it
+     against (ADR-0019). */
+  .script.cm-editor .cm-gutters {
+    border-right: 1px solid var(--sl-color-neutral-200);
+    background: var(--sl-color-neutral-50);
+    color: var(--sl-color-neutral-500);
+  }
+
+  /* The bracket under the caret and the one that closes it. */
+  .script.cm-editor.cm-focused .cm-matchingBracket {
+    background: var(--sl-color-primary-200);
+  }
+
+  /* What a reader of Python needs told apart (ADR-0019 d.3). The classes are
+     the editor's and the colours are the theme's, so both halves follow the
+     system's light or dark setting. A tag with no rule here is drawn as the
+     text around it. */
+  .tok-keyword {
+    color: var(--sl-color-violet-600);
+  }
+
+  .tok-string {
+    color: var(--sl-color-green-600);
+  }
+
+  .tok-comment {
+    color: var(--sl-color-neutral-500);
+  }
+
+  .tok-number {
+    color: var(--sl-color-cyan-600);
+  }
+
+  .tok-decorator {
+    color: var(--sl-color-amber-600);
+  }
+
+  .tok-function {
+    color: var(--sl-color-blue-600);
   }
 
   /* Apply, and the note beside it where the editor is not what was applied. */

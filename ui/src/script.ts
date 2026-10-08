@@ -9,10 +9,11 @@
  * d.5).
  *
  * What is here is everything about that a browser is not needed for — the text
- * a railroad with no script opens with, whether what is in the editor is the
- * text that was applied, and what a Tab does to it — so that the rules can be
- * run rather than read (`ui/test/script.test.ts`, the seam `view.ts` is split
- * on). The asking is `face.ts`'s and the drawing is `dccex-script.ts`'s.
+ * a railroad with no script opens with, and whether what is in the editor is
+ * the text that was applied — so that the rules can be run rather than read
+ * (`ui/test/script.test.ts`, the seam `view.ts` is split on). The asking is
+ * `face.ts`'s, the drawing is `dccex-script.ts`'s, and the indenting is the
+ * editor's (ADR-0019, `ui/src/ui/editor.ts`).
  *
  * **The sample is the translator's own**, copied here rather than fetched: the
  * mirror imports nothing but the standard library and itself, so the app that
@@ -93,11 +94,6 @@ def wx310_crossing(t):
 #     closed = t.desired("point", "20") == t.desired("point", "21") == "closed"
 #     t.send("<A 5 2>" if closed else "<A 5 0>")
 `;
-
-/** What a Tab puts in the editor. Spaces and not a tab: a script is Python,
- *  where a mixed indentation is a document that does not compile, and four is
- *  what the sample and every module of the package are written with (PEP 8). */
-export const SPACES = 4;
 
 /** What is said where the railroads could not be read: the face did not
  *  answer, or the store behind it did not. Nothing said is not no railroads,
@@ -261,31 +257,6 @@ export function opened(text: string | null | undefined): Opened {
  */
 export function unapplied(edited: string, applied: string | null): boolean {
   return applied !== null && edited !== applied;
-}
-
-/**
- * What one Tab does: the editor's text with spaces where the selection was,
- * and where the caret goes after it.
- *
- * Tab in a text area is a browser moving to the next control, which in a page
- * of Python is the one key an editor needs most. So the key is taken here and
- * turned into `SPACES` spaces, and a selection is replaced by them the way
- * typing over one is.
- *
- * @param edited what is in the editor
- * @param from where the selection starts
- * @param to where it ends, which is `from` where nothing is selected
- */
-export function tabbed(
-  edited: string,
-  from: number,
-  to: number,
-): { text: string; caret: number } {
-  const spaces = " ".repeat(SPACES);
-  return {
-    text: edited.slice(0, from) + spaces + edited.slice(to),
-    caret: from + SPACES,
-  };
 }
 
 /**

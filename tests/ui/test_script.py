@@ -1,9 +1,10 @@
 """What the page edits a railroad's **script** in, held against the sources.
 
 The rules the view is made of — the text a railroad with no script opens with,
-whether the editor holds unapplied edits, what a Tab puts in it — are run
-through the real functions, and the gesture is made on a mounted pane, and both
-are in the UI's own toolchain (`ui/test/script.test.ts`, #126). They run in the
+whether the editor holds unapplied edits — are run through the real functions,
+the gesture is made on a mounted pane, and what the keys in the editor do is
+made of keystrokes on one, all three in the UI's own toolchain
+(`ui/test/script.test.ts`, `ui/test/editor.test.ts`, #126). They run in the
 workflow's `node` job and not in the gate (`scripts/check.sh`).
 
 **So what is here is what that toolchain cannot say and the gate must.** The
@@ -21,6 +22,7 @@ Read off the sources, for the reason `tests/ui/test_page.py` gives: there is no
 browser in a Python gate to hold an editor, a listener or an address bar.
 """
 
+import json
 import re
 
 from dccex.sample import TEXT
@@ -36,6 +38,12 @@ PANE = UI / "src" / "ui" / "dccex-script.ts"
 
 #: What it is drawn with.
 STYLES = UI / "src" / "ui" / "dccex-script.styles.ts"
+
+#: What the editor in it is made of.
+EDITOR = UI / "src" / "ui" / "editor.ts"
+
+#: Where the page says what it depends on, and in which half.
+MANIFEST = UI / "package.json"
 
 #: The page that hands it the railroads and the two hands.
 APP = UI / "src" / "ui" / "dccex-app.ts"
@@ -201,18 +209,111 @@ def test_a_railroad_with_no_script_is_told_apart_from_one_that_is_away() -> None
     assert "} catch {" in reading, "a face that is away takes the page with it"
 
 
-def test_the_editor_is_monospace_and_takes_a_tab() -> None:
-    """A script is Python, where the indentation is the structure: a
-    proportional font hides which lines line up, and a Tab in a text area is a
-    browser moving to the next control unless the page takes it (#185)."""
-    editor = rule(STYLES.read_text(), ".script")
-    assert "font-family: var(--sl-font-mono)" in editor, "the editor is not monospace"
-    drawn = code(PANE.read_text())
-    assert "<textarea" in drawn, "the editor is not a text area"
+def test_the_editor_is_monospace() -> None:
+    """A script is Python, where the indentation is the structure, and a
+    proportional font hides which lines line up (#185). The rule is the
+    scroller's: that is the element CodeMirror puts the text in."""
+    text = rule(STYLES.read_text(), ".script .cm-scroller")
+    assert "font-family: var(--sl-font-mono)" in text, "the editor is not monospace"
+
+
+def test_the_editor_is_codemirrors_modules_and_not_basic_setup() -> None:
+    """Five of them, named (ADR-0019 d.1).
+
+    `basicSetup` is the bundle that would decide this instead, and what it
+    carries is bracket closing, quote closing and a search panel — three
+    things ADR-0019 d.2 says the editor does not have. What it offers is
+    written out, so a module nobody asked for cannot arrive with a version
+    bump.
+    """
+    built = code(EDITOR.read_text())
+    for module in (
+        "@codemirror/commands",
+        "@codemirror/lang-python",
+        "@codemirror/language",
+        "@codemirror/state",
+        "@codemirror/view",
+    ):
+        assert f'from "{module}"' in built, f"the editor is built without {module}"
+    for refused in ("basicSetup", "closeBrackets", "@codemirror/search", "search("):
+        assert refused not in built, f"the editor brings {refused}"
+
+
+def test_the_editor_numbers_its_lines_and_matches_brackets() -> None:
+    """Two of ADR-0019 d.2's, and this is where the second one is held.
+
+    A compile error comes back from the face naming a line, so the numbers are
+    what a reader matches it against. That they are drawn is asserted on a
+    mounted editor (`ui/test/editor.test.ts`); the matching bracket is not,
+    because CodeMirror marks it only while the editor has the keyboard and
+    focusing one in happy-dom is not a thing that machine can do.
+    """
+    built = code(EDITOR.read_text())
+    assert "lineNumbers()" in built, "the lines are not numbered"
+    assert "bracketMatching()" in built, "the brackets are not matched"
+
+
+def test_the_editor_is_in_the_main_bundle() -> None:
+    """A dependency and not a development one (ADR-0019 d.5).
+
+    Loading it on the script view alone was considered and left out: the view
+    would need a loading state. So it rides on every load, and what keeps it
+    there is which half of the manifest it is in — `vite` builds one chunk
+    from `dependencies` and nothing from the other half.
+    """
+    manifest = json.loads(MANIFEST.read_text())
+    named = {
+        module
+        for module in manifest["dependencies"]
+        if module.startswith(("@codemirror/", "@lezer/"))
+    }
+    assert named, "the page does not depend on CodeMirror"
+    held = set(manifest["devDependencies"]) & named
+    assert not held, f"{sorted(held)} is a development dependency"
+
+
+def test_the_indent_unit_is_four_spaces() -> None:
+    """Spaces and not a tab: a script is Python, where a mixed indentation is a
+    document that does not compile, and four is what the sample and every
+    module of the package are written with (PEP 8).
+
+    What a key does with it is run (`ui/test/editor.test.ts`); what is here is
+    that the number the editor is configured with is the one number.
+    """
+    built = code(EDITOR.read_text())
+    assert "export const INDENT = 4;" in built, "the indent unit is not four"
     assert (
-        'event.key !== "Tab"' in drawn and "event.preventDefault()" in drawn
-    ), "a Tab leaves the editor"
-    assert "tabbed(" in drawn, "what a Tab puts in is the pane's own"
+        'indentUnit.of(" ".repeat(INDENT))' in built
+    ), "the editor indents by something else"
+
+
+def test_the_editors_colours_are_the_themes_and_are_in_the_sheet() -> None:
+    """Six of them — a keyword, a string, a comment, a number, a decorator and
+    the name of a function — each a Shoelace token, so both halves of the
+    highlighting follow the system's light or dark setting (ADR-0019 d.3).
+
+    The classes are the editor's and the colours are the sheet's. That is what
+    keeps the view's colours in one file and in the file the scan for a written
+    colour already reads (`tests/ui/test_look.py`), and it is why the module
+    that builds the editor asks for no colour at all.
+    """
+    built = code(EDITOR.read_text())
+    assert "color:" not in built, "the editor writes a colour of its own"
+    assert "--sl-" not in built, "the editor asks for a colour itself"
+    styles = STYLES.read_text()
+    for drawn in (
+        "keyword",
+        "string",
+        "comment",
+        "number",
+        "decorator",
+        "function",
+    ):
+        assert f'class: "tok-{drawn}"' in built, f"no {drawn} is told apart"
+        painted = rule(styles, f".tok-{drawn}")
+        assert re.search(
+            r"color: var\(--sl-color-[a-z0-9-]+\)", painted
+        ), f"the {drawn} is not drawn in a theme token"
 
 
 def test_the_pane_is_the_work_panes_and_not_the_chromes() -> None:

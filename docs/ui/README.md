@@ -397,15 +397,22 @@ reading this page can make. A list that could not be read says so, and a store
 with no railroads in it says that instead — two sentences, because they are
 two different things (ADR-0009 d.2).
 
-Picking one opens its script in a `<textarea>`: monospace, because the
-indentation is the structure of a Python document, and Tab puts four spaces in
-rather than moving to the next control. **A railroad the store has no script
-for opens on the translator's sample, commented out** — the shape a script
-has, in front of somebody writing their first one, and applying it unchanged
-is a railroad whose script does nothing rather than one running values a page
-suggested (`ui/src/script.ts`, `src/dccex/sample.py`). A script that could not
-be read opens no editor at all: offering the sample for a document the page
-never saw would be inviting somebody to overwrite it.
+Picking one opens its script in a CodeMirror 6 editor
+([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)): monospace and
+numbered, because the indentation is the structure of a Python document and a
+compile error comes back naming a line, with the Python coloured in the
+theme's own tokens. Tab and Shift-Tab indent and dedent the lines the
+selection covers, Enter indents and indents one more after a `:`, Backspace in
+leading spaces takes one indent, and Ctrl-/ comments. Undo and redo cover all
+of it. Nothing closes a bracket or a quote and there is no search, and nothing
+is loaded on demand — the editor is in the main bundle, so there is no view
+that opens on a loading state. **A railroad the store has no script for opens
+on the translator's sample, commented out** — the shape a script has, in front
+of somebody writing their first one, and applying it unchanged is a railroad
+whose script does nothing rather than one running values a page suggested
+(`ui/src/script.ts`, `src/dccex/sample.py`). A script that could not be read
+opens no editor at all: offering the sample for a document the page never saw
+would be inviting somebody to overwrite it.
 
 **Edits stay in the page until Apply.** Nothing is sent as it is typed —
 applying a script stands the railroad down, so there is no version of this that
