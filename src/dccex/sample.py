@@ -53,7 +53,7 @@ def configure(t):
     for district, mode in {"A": "MAIN", "B": "PROG", "C": "MAIN_AUTO", "D": "MAIN_AUTO"}.items():
         t.send(f"<= {district} {mode}>")
     # set current limits
-    for district, ma in {"A": 300, "B": 250, "C": 1500, "D": 1500}.items():
+    for district, ma in {"A": 2000, "B": 250, "C": 500, "D": 1500}.items():
         t.send(f"<JG {district} {ma}>")
 
 

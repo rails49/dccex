@@ -807,9 +807,9 @@ SAMPLE_START = [
     b"<= B PROG>",
     b"<= C MAIN_AUTO>",
     b"<= D MAIN_AUTO>",
-    b"<JG A 300>",
+    b"<JG A 2000>",
     b"<JG B 250>",
-    b"<JG C 1500>",
+    b"<JG C 500>",
     b"<JG D 1500>",
 ]
 
