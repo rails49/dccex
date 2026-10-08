@@ -714,35 +714,98 @@ async def _reports_a_script_reads_go_with_the_link() -> None:
         assert await second.heard(1) == [b"<A 9 2>"]
 
 
+# -- the station as this app has not set it (ADR-0018) -------------------
+
+SETS_UP = """\
+@on("start")
+def configure(t):
+    t.default()
+    t.send("<= D MAIN>")
+"""
+
+READY = b"<* LCD3:Ready *>"
+
+
+def test_start_runs_on_connect_before_the_replay() -> None:
+    asyncio.run(_start_runs_on_connect_before_the_replay())
+
+
+async def _start_runs_on_connect_before_the_replay() -> None:
+    """A point handler may set a district's mode, so it runs after `start`
+    sets them all (ADR-0018 d.3). `start` has no default: `t.default()` in
+    it sends nothing (d.4). The power is not replayed."""
+    bus, _ = bus_and_tap()
+    wanted(bus, TRACK, "", {"power": "on"})
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+        station = await port.opened()
+        assert await station.heard(3) == [
+            b"<= D MAIN>",
+            b"<a 3 3 1>",
+            b"<= D MAIN_INV>",
+        ]
+        await station.heard_nothing_more()
+
+
+def test_a_restart_runs_start_and_the_replay_again() -> None:
+    asyncio.run(_restart_runs_start_and_the_replay_again())
+
+
+async def _restart_runs_start_and_the_replay_again() -> None:
+    """A reset can be shorter than the ten polls that lower the link, so the
+    station's own last boot line is what says it restarted (ADR-0018 d.2).
+    What follows is what a connect does (d.3)."""
+    bus, _ = bus_and_tap()
+    wanted(bus, TRACK, "", {"power": "on"})
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+        station = await port.opened()
+        await station.heard(3)
+
+        station.says(READY)
+        assert await station.heard(3) == [
+            b"<= D MAIN>",
+            b"<a 3 3 1>",
+            b"<= D MAIN_INV>",
+        ]
+        await station.heard_nothing_more()
+
+
 # -- the sample script ----------------------------------------------------
 
+SAMPLE_START = [
+    b"<= A MAIN>",
+    b"<= B PROG>",
+    b"<= C MAIN_AUTO>",
+    b"<= D MAIN_AUTO>",
+    b"<JG A 300>",
+    b"<JG B 250>",
+    b"<JG C 1500>",
+    b"<JG D 1500>",
+]
 
-def test_the_sample_powers_the_railroad_on() -> None:
-    asyncio.run(_sample_powers_the_railroad_on())
+
+def test_the_sample_sets_the_tracks_up_and_power_on_is_the_default() -> None:
+    asyncio.run(_sample_sets_the_tracks_up_and_power_on_is_the_default())
 
 
-async def _sample_powers_the_railroad_on() -> None:
+async def _sample_sets_the_tracks_up_and_power_on_is_the_default() -> None:
     """The sample is the interface and the documentation both, so what it
     sends is asserted as bytes: this installation's four track modes and
-    four district limits, and then the track-on command. The modes go first
-    because the station does not power a track in NONE."""
+    four district limits at `start`, and the track-on command alone at ON
+    (ADR-0018 d.6)."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
         station = await port.opened()
+        assert await station.heard(8) == SAMPLE_START
+        await station.heard_nothing_more()
+
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        assert await station.heard(9) == [
-            b"<= A MAIN>",
-            b"<= B PROG>",
-            b"<= C MAIN_AUTO>",
-            b"<= D MAIN_AUTO>",
-            b"<JG A 300>",
-            b"<JG B 250>",
-            b"<JG C 1500>",
-            b"<JG D 1500>",
-            b"<1>",
-        ]
+        assert await station.heard(1) == [b"<1>"]
         await station.heard_nothing_more()
 
 
@@ -758,6 +821,8 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
     port = Port()
     async with running(bus, port, text=sample.TEXT):
         station = await port.opened()
+        await station.heard(8)
+
         wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
         bus.drain()
         assert await station.heard(3) == [
@@ -769,7 +834,7 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
 
         wanted(bus, TRACK, "", {"power": "on"})
         bus.drain()
-        await station.heard(9)
+        await station.heard(1)
 
         wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
         bus.drain()

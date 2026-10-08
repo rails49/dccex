@@ -1,6 +1,6 @@
 # ADR-0018 — the station's setup runs at `start`
 
-- **Status:** accepted, 2026-10-08
+- **Status:** accepted, 2026-10-08; d.2 and d.6 amended 2026-10-08 (#207)
 - **Ticket:** #207
 - **Amends:** [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
   d.6 (a station restart replays like a connect) and d.9 (the setup is a
@@ -26,9 +26,13 @@ with a JMRI translator as well.
 **d.1** A script event `start`. The translator runs its handler when it
 connects to the station and when the station restarts.
 
-**d.2** A restart is the station's boot line
-`<* License GPLv3 fsf.org (c) dcc-ex.com *>`, printed once from `setup()`
-(`CommandStation-EX.ino:88`).
+**d.2** A restart is the station's boot line `<* LCD3:Ready *>`, the last
+line `setup()` prints (`CommandStation-EX.ino`, `LCD(3, F("Ready"))`). It is
+printed as a diagnostic whether or not a display is fitted.
+
+> **Amended 2026-10-08:** d.2 named the licence line, the first line of
+> `setup()`. It comes before `TrackManager::Setup` sets the firmware's modes and
+> before the station reads its port.
 
 **d.3** On a restart the translator does what it does on a connect: `start`
 first, then the retained desired state, power excepted (ADR-0013 d.6). A point
@@ -38,8 +42,11 @@ handler may set a district's mode, so it runs after `start`.
 
 **d.5** Nothing about `start` reaches the bus.
 
-**d.6** The sample sets modes and limits at `start`. Its power handler keeps
-`t.default()`.
+**d.6** The sample sets modes and limits at `start`. It has no power
+handler.
+
+> **Amended 2026-10-08:** d.6 kept a power handler that only called
+> `t.default()`. With no handler the translator sends the same command.
 
 ## Consequences
 

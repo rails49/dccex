@@ -48,7 +48,13 @@ REPORTED_ROWS = (REPORTED_POWER, REPORTED_POINT)
 replaces nothing. Power and turnouts are the two; others are added when a
 script needs one (ADR-0013 d.3)."""
 
-ROWS = DESIRED_ROWS + REPORTED_ROWS
+START = "start"
+"""The station as the translator has not set it: on a connect, and after the
+station restarts. A handler on it sets what the station loses on a restart,
+which mode each track is in and what current it may draw, and replaces
+nothing (ADR-0018)."""
+
+ROWS = (START,) + DESIRED_ROWS + REPORTED_ROWS
 
 Handler = Callable[[Any], None]
 """A function in the script. It takes one argument — the event, which is

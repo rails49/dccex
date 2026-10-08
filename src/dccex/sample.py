@@ -17,12 +17,13 @@ track the reversing loop is on is this railroad's wiring.
 """
 
 TEXT = """\
-# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015).
+# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015, ADR-0018).
 
 '''
 Event listeners:
 * `on(row, address=None)` keys a handler on an event.
 * Valid rows are
+    start, (connected, or the station restarted)
     power,
     point,
     signal,
@@ -42,8 +43,8 @@ Handlers:
 '''
 
 
-@on("power")
-def power(t):
+@on("start")
+def configure(t):
     # configure tracks:
     #      A Claro
     #      B Programming
@@ -54,7 +55,6 @@ def power(t):
     # set current limits
     for district, ma in {"A": 300, "B": 250, "C": 1500, "D": 1500}.items():
         t.send(f"<JG {district} {ma}>")
-    t.default()
 
 
 @on("point", "12")
