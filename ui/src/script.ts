@@ -34,12 +34,13 @@
  *  which a template literal cannot carry unescaped. The gate holds the two
  *  equal (`tests/ui/test_script.py`), so the values in it stay this
  *  installation's rather than drifting into a second recommendation. */
-export const SAMPLE = `# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015).
+export const SAMPLE = `# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015, ADR-0018).
 
 '''
 Event listeners:
 * \`on(row, address=None)\` keys a handler on an event.
 * Valid rows are
+    start, (connected, or the station restarted)
     power,
     point,
     signal,
@@ -59,8 +60,8 @@ Handlers:
 '''
 
 
-@on("power")
-def power(t):
+@on("start")
+def configure(t):
     # configure tracks:
     #      A Claro
     #      B Programming
@@ -71,7 +72,6 @@ def power(t):
     # set current limits
     for district, ma in {"A": 300, "B": 250, "C": 1500, "D": 1500}.items():
         t.send(f"<JG {district} {ma}>")
-    t.default()
 
 
 @on("point", "12")
@@ -81,8 +81,8 @@ def wx310_crossing(t):
     t.send("<= D MAIN_AUTO>")
     if t.desired("point", "12") == "thrown":
         t.send("<= D INV>")          # implies MAIN_AUTO and MAIN_INV (not documented)
-    if t.desired("power") == "on":
-        t.send("<1 D>")
+    if t.reported("power", "D") == "on":
+        t.send("<1 D>")              # the mode change cut D's power
 
 
 # @on("point", "20")

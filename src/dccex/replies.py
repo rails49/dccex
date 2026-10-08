@@ -6,7 +6,7 @@ broadcasts alike, and one byte stream cannot say which a line is —
 (control ADR-0043). So what arrives here is everything the station has to say to
 anyone, and the reading is deliberately narrow: the power each track is in,
 whether the emergency-stop lock is on, the diagnostic lines that say a district
-tripped (ADR-0016), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
+tripped (ADR-0016), the last line of the station's boot (ADR-0018), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
 (ADR-0013 d.3). Everything else — the banner, a slot's speed, a sensor it
 polls, a fast clock — is another client's business and is passed over unread.
 
@@ -102,6 +102,19 @@ _DIAGNOSTIC = re.compile(
 `v5.6.4-rails49.1`. The rails49 fork owns them (ADR-0016, consequences)."""
 
 
+READY = b"* LCD3:Ready *"
+"""The last line `setup()` prints, `LCD(3, F("Ready"))`, which reaches the
+port as a diagnostic whether or not a display is fitted
+(`CommandStation-EX.ino`, `StringFormatter::lcd`). The station reads its port
+from here on (ADR-0018 d.2)."""
+
+
+@dataclass(frozen=True)
+class Restarted:
+    """The station has restarted, and has the firmware's track modes and
+    limits rather than the script's (ADR-0018)."""
+
+
 @dataclass(frozen=True)
 class Diagnostic:
     """What one `<* TRACK X … *>` line says about district X: it tripped,
@@ -138,10 +151,14 @@ def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     return partial, whole
 
 
-def reply(message: bytes) -> Power | Lock | Turnout | Diagnostic | None:
+def reply(
+    message: bytes,
+) -> Power | Lock | Turnout | Diagnostic | Restarted | None:
     """The fact one whole message states, or None where it states none of
     those this app reads."""
     body = message[1:-1]
+    if body == READY:
+        return Restarted()
     if body.startswith(b"*"):
         return _diagnostic(body)
     if body == b"!PAUSED":

@@ -50,12 +50,17 @@ What this station has no packet for — a turnout numbered outside the accessory
 range — falls away in the mapping below. An address nothing answers to does no
 harm, as a packet nobody picks up does.
 
-**On connect it applies the retained desired state, power excepted.** The
-desired values are the whole picture, so there is no handshake and no session
-state to agree. The power is the one value a connect does not carry out:
-after a station or a translator restart the rails stay as the station reports
-them and come back when a person presses ON (ADR-0013 d.6). Every other value
-replays through its handler, in the order the topics were first heard.
+**On connect it runs the script's `start`, then applies the retained desired
+state, power excepted.** The desired values are the whole picture, so there is
+no handshake and no session state to agree. The power is the one value a
+connect does not carry out: after a station or a translator restart the rails
+stay as the station reports them and come back when a person presses ON
+(ADR-0013 d.6). Every other value replays through its handler, in the order
+the topics were first heard.
+
+**A station restart is handled as a connect.** The station's last boot line,
+`<* LCD3:Ready *>`, runs `start` and the replay again, because a reset can be
+shorter than the ten polls that lower the link (ADR-0018).
 
 ## The script
 
@@ -76,11 +81,13 @@ turnout throwing does to a track or a signal
 It replaced the startup file, which could only send raw commands after the
 first `<1>` of a session (ADR-0013 d.9).
 
-A **handler** is a function in it, run when its **event** happens. Two kinds,
-and they are never confused. A handler keyed on a **desired value** runs in
-place of the command this app would have sent for it, and sends that too only
-by asking. A handler keyed on something the **station reported** runs after
-the fact and replaces nothing.
+A **handler** is a function in it, run when its **event** happens. Three
+kinds, and they are never confused. A handler keyed on a **desired value** runs
+in place of the command this app would have sent for it, and sends that too
+only by asking. A handler keyed on something the **station reported** runs
+after the fact and replaces nothing. A handler keyed on **`start`** runs on a
+connect and after the station restarts, before the replay, and sets what a
+restart loses: track modes and current limits (ADR-0018).
 
 ### The sample
 
@@ -91,12 +98,13 @@ that applying it unchanged is a railroad whose script does nothing
 ([#185](https://github.com/rails49/dccex/issues/185)).
 
 ```python
-# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015).
+# Handlers for this railroad's DCC-EX station (ADR-0013, ADR-0015, ADR-0018).
 
 '''
 Event listeners:
 * `on(row, address=None)` keys a handler on an event.
 * Valid rows are
+    start, (connected, or the station restarted)
     power,
     point,
     signal,
@@ -116,8 +124,8 @@ Handlers:
 '''
 
 
-@on("power")
-def power(t):
+@on("start")
+def configure(t):
     # configure tracks:
     #      A Claro
     #      B Programming
@@ -128,7 +136,6 @@ def power(t):
     # set current limits
     for district, ma in {"A": 300, "B": 250, "C": 1500, "D": 1500}.items():
         t.send(f"<JG {district} {ma}>")
-    t.default()
 
 
 @on("point", "12")
@@ -138,8 +145,8 @@ def wx310_crossing(t):
     t.send("<= D MAIN_AUTO>")
     if t.desired("point", "12") == "thrown":
         t.send("<= D INV>")          # implies MAIN_AUTO and MAIN_INV (not documented)
-    if t.desired("power") == "on":
-        t.send("<1 D>")
+    if t.reported("power", "D") == "on":
+        t.send("<1 D>")              # the mode change cut D's power
 
 
 # @on("point", "20")
@@ -158,12 +165,13 @@ spellings are the station's. `<JG district mA>` is in the rails49 firmware
 
 ### What a script is written with
 
-`on(row, address=None)` registers a handler. The rows are `power`, `point`,
-`signal`, `traction` and `function` for the desired values, and
-`reported_power` and `reported_point` for what the station said. The address
+`on(row, address=None)` registers a handler. The rows are `start` for the
+station as this app has not set it, `power`, `point`, `signal`, `traction` and
+`function` for the desired values, and `reported_power` and `reported_point`
+for what the station said. The address
 is the string the bus carries and the hardware answers to; left out, the
-handler runs for **every** address of its row, which is the only form `power`
-has. Two of these stack on one function, which is how one signal is set from
+handler runs for **every** address of its row, which is the only form `start`
+and `power` have. Two of these stack on one function, which is how one signal is set from
 two turnouts. A row that is no event, or an address that is not a string, is
 a script that does not load.
 
@@ -172,7 +180,7 @@ it:
 
 | written | does |
 | --- | --- |
-| `t.default()` | sends this app's own command for the value that fired, once per firing whoever asks; nothing at all for a report |
+| `t.default()` | sends this app's own command for the value that fired, once per firing whoever asks; nothing at all for `start` or a report |
 | `t.send(text)` | sends one raw `<…>` message, as typed |
 | `t.desired(row, address=None)` | reads the desired picture: a position, an aspect, a speed, a function's bit, or the word the power is wanted in. `None` where the bus has not said |
 | `t.reported(row, address=None)` | reads the last reports: `power` by the track the station named — the empty address on the line that names none — and `point` by the id it named. `None` where the station has not said this session |
@@ -182,10 +190,14 @@ The rows `reported` reads are `power` and `point`, the verb carrying what the
 event names spell out.
 
 **A handler sets everything it depends on each time it runs, from the desired
-picture** (d.5). The power handler above sets district D's mode from the
-point that decides it, even though point 12's own handler sets the same
-thing: a handler that relied on an earlier one would be wrong on the first
-power-on of a session.
+picture** (d.5). Point 12's handler above sets district D's whole mode and
+turns D back on where the station last reported it on, rather than relying on
+what `start` or an earlier handler left. A restart forgets the station's
+reports, so a replay after one leaves D off (ADR-0018 d.3).
+
+**`start` runs before the replay**, on a connect and on `<* LCD3:Ready *>`, so a
+point handler that sets a district's mode runs after `start` set them all
+(ADR-0018 d.3).
 
 **The power handler runs on every value of the row** — `on`, `off` and the
 stop — and on every ON rather than only on a change from off (d.7). There is
@@ -525,6 +537,11 @@ rather than asking it.
 Send `<t 3 0 1>` to stop it again. `<!>` stops every locomotive at once and any
 throttle may drive away from it afterwards, which is what `stopped` means here;
 sending it is safe and leaves nothing to clear.
+
+**Reset the station** with the translator connected and watch the same
+port. After `<* LCD3:Ready *>` the translator sends the script's `start` lines
+— the sample's four `<= …>` and four `<JG …>` — and then the replay. `<=`
+with no arguments lists the modes the station now has (ADR-0018).
 
 The version in the banner is worth reading. This station is older than the
 firmware the mapping was researched against, and the difference is silent: an

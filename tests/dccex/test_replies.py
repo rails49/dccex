@@ -139,3 +139,19 @@ def test_a_diagnostic_this_app_does_not_read_is_nothing() -> None:
     assert replies.reply(b"<* TRACK A INVERT *>") is None
     assert replies.reply(b"<* TRACK J NORMAL (after 20ms/40ms) 180mA *>") is None
     assert replies.reply(b"<* Calling EXRAIL *>") is None
+
+
+# -- the station restarted (ADR-0018) -------------------------------------
+
+
+def test_the_last_line_of_the_boot_is_a_restart() -> None:
+    """`LCD(3, F("Ready"))` near the end of `setup()`, printed as a diagnostic
+    whether or not a display is fitted (`StringFormatter::lcd`)."""
+    assert replies.reply(b"<* LCD3:Ready *>") == replies.Restarted()
+
+
+def test_the_rest_of_the_boot_is_nothing() -> None:
+    """The licence line comes before the tracks are set up and before the
+    station reads its port, so a restart is not read off it."""
+    assert replies.reply(b"<* License GPLv3 fsf.org (c) dcc-ex.com *>") is None
+    assert replies.reply(b"<* LCD0:DCC-EX v5.6.4 *>") is None

@@ -75,6 +75,16 @@ def test_a_handler_with_no_address_runs_for_every_address_of_its_row() -> None:
     assert other == ["every"]
 
 
+def test_start_is_an_event() -> None:
+    """The station as the translator has not set it: on a connect and after
+    a restart (ADR-0018 d.1)."""
+    ran: list[str] = []
+    script.load('@on("start")\ndef s(t):\n    t.append("start")\n').handlers("start")[
+        0
+    ](ran)
+    assert ran == ["start"]
+
+
 def test_a_row_that_is_no_event_does_not_load() -> None:
     """A typo is caught at load, where the translator says it on its link
     row, rather than becoming a handler that never fires."""
@@ -105,14 +115,15 @@ def test_a_script_with_no_handlers_loads() -> None:
 
 def test_the_sample_registers_the_events_it_names() -> None:
     """The sample is the interface, and loading it is the first thing asked
-    of a script: a handler on the power and one on point 12. The signal
-    handler is commented out and registers nothing.
+    of a script: a handler on `start` and one on point 12. The signal
+    handler is commented out and registers nothing, and the power has none.
 
     What each one sends is asserted where the bytes are
     (`test_translator.py`).
     """
     loaded = script.load(sample.TEXT)
-    assert [handler.__name__ for handler in loaded.handlers("power")] == ["power"]
+    assert [handler.__name__ for handler in loaded.handlers("start")] == ["configure"]
+    assert loaded.handlers("power") == []
     assert [handler.__name__ for handler in loaded.handlers("point", "12")] == [
         "wx310_crossing"
     ]

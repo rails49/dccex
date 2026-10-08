@@ -21,8 +21,9 @@ beside it; what is here is where in this module it is kept.
 **It acts on an address only if it recognises it**, and there is no ownership
 table anywhere (`_recognises`, control ADR-0059).
 
-**On connect it applies the retained desired state, power excepted**
-(`_applied`, ADR-0013 d.6).
+**On connect it runs the script's `start`, then applies the retained desired
+state, power excepted**, and does the same when the station restarts
+(`_started`, ADR-0013 d.6, ADR-0018).
 
 **It runs one railroad's script**: a handler keyed on a desired value runs in
 place of the command this app would have sent, one keyed on something the
@@ -531,6 +532,18 @@ class DccEx:
         if raised:
             firing.default()
 
+    def _started(self) -> None:
+        """The station as this app has not set it: on a connect, and after
+        the station restarts. The script's `start` first, then every desired
+        value but the power, so a point handler that sets a district's mode
+        runs after `start` set them all (ADR-0018 d.3). `start` has no
+        default (d.4)."""
+        handlers = self._handlers(script.START, None)
+        if handlers:
+            self._ran(handlers, self._firing(script.START, None, None))
+        for wanted in self._applied():
+            self._act(wanted)
+
     def _applied(self) -> list[Wanted]:
         """The desired picture in the order a fresh connection is handed it:
         every row but the power, in the order the topics were first heard.
@@ -747,8 +760,7 @@ class DccEx:
         lengthening interval as a port that accepts and drops.
         """
         self._writer = writer
-        for wanted in self._applied():
-            self._act(wanted)
+        self._started()
         polling = asyncio.create_task(self._poll())
         try:
             await self._listen(reader)
@@ -844,6 +856,10 @@ class DccEx:
         this app reads no field off — raises it just the same.
         """
         told = replies.reply(message)
+        if isinstance(told, replies.Restarted):
+            # What it said before the restart is no longer true of it, and a
+            # handler `start` replays reads its reports (ADR-0018 d.3).
+            self._forget()
         if isinstance(told, replies.Power):
             if told.track:
                 self._tracks[told.track] = told.on
@@ -875,6 +891,8 @@ class DccEx:
         self._publish_link(True, f"connected to {self._where}")
         self._publish_track()
         self._reports(told)
+        if isinstance(told, replies.Restarted):
+            self._started()
 
     def _diagnosed(self, told: replies.Diagnostic) -> None:
         """A district tripped, back to normal, or near its limit
@@ -893,7 +911,12 @@ class DccEx:
     def _reports(
         self,
         told: (
-            replies.Power | replies.Lock | replies.Turnout | replies.Diagnostic | None
+            replies.Power
+            | replies.Lock
+            | replies.Turnout
+            | replies.Diagnostic
+            | replies.Restarted
+            | None
         ),
     ) -> None:
         """The script's handlers for what the station just reported, run after
