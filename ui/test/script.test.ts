@@ -1,14 +1,19 @@
 /**
- * The **script** edited on a mounted pane: a railroad picked, a text typed,
- * and the two warnings a person reads before anything is lost or stopped.
+ * The **script** edited on a mounted pane: a railroad picked, a text typed, and
+ * the two warnings a person reads before anything is lost or stopped.
  *
- * What the rules come to — the text a railroad with no script opens with,
- * whether the box holds unapplied edits, what a Tab puts in it — is run
- * through them below, the way `view.test.ts` runs the hash's; what is asserted
- * on the page is the gesture: the pick, the box, the question that opens when
- * edits would be discarded, the warning that says applying stops the railroad,
- * and the mirror's own sentence where the script does not compile (issue 185,
+ * What the rules come to — the text a railroad with no script opens with, and
+ * whether the editor holds unapplied edits — is run through them below, the
+ * way `view.test.ts` runs the hash's; what is asserted on the page is the
+ * gesture: the pick, the editor, the question that opens when edits would be
+ * discarded, the warning that says applying stops the railroad, and the
+ * mirror's own sentence where the script does not compile (issue 185,
  * ADR-0015 d.5).
+ *
+ * **The editor is read off its own state** and not off a box's value
+ * (ADR-0019). What the keys in it do is the editor's own suite's
+ * (`editor.test.ts`); what is here is that the pane opens one, keeps it across
+ * a draw, and opens a new document in it for a new railroad.
  *
  * The facts are the ones a page would hand it: the railroads the **face**
  * answered, and the two hands that ask the face for a script and apply one
@@ -16,6 +21,8 @@
  * what a test records and answers.
  */
 
+import { EditorSelection } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { expect, test } from "vitest";
 
 import {
@@ -27,7 +34,6 @@ import {
   NO_RAILROADS,
   PICK,
   SAMPLE,
-  SPACES,
   STOPS,
   UNAPPLIED,
   UNLISTED,
@@ -37,11 +43,10 @@ import {
   commented,
   opened,
   stored,
-  tabbed,
   unapplied,
 } from "../src/script.js";
 import { DccexScript } from "../src/ui/dccex-script.js";
-import { all, mounted, part, press, reads } from "./mounted.js";
+import { all, mounted, press, reads } from "./mounted.js";
 
 /** The railroads the store holds, as the face lists them. */
 const RAILROADS = ["crossover-yard", "bench"];
@@ -85,17 +90,42 @@ async function pane(
   return [await mounted(drawn), asked];
 }
 
-/** The box, once the pane has drawn one. */
-function box(drawn: DccexScript): HTMLTextAreaElement {
-  return part(drawn, ".script") as HTMLTextAreaElement;
+/** The editor, once the pane has made one. */
+function editor(drawn: DccexScript): EditorView {
+  const made = drawn.editor;
+  expect(made, "the pane made no editor").not.toBeNull();
+  return made as EditorView;
 }
 
-/** Type `text` into the box, which is what an `input` on it is. */
+/** What is in the editor. */
+function edited(drawn: DccexScript): string {
+  return editor(drawn).state.doc.toString();
+}
+
+/** Type `text` into the editor, over whatever was in it. */
 async function typed(drawn: DccexScript, text: string): Promise<void> {
-  const into = box(drawn);
-  into.value = text;
-  into.dispatchEvent(new Event("input"));
+  const into = editor(drawn);
+  into.dispatch({
+    changes: { from: 0, to: into.state.doc.length, insert: text },
+    selection: EditorSelection.cursor(text.length),
+  });
   await drawn.updateComplete;
+}
+
+/** Press a key in the editor. */
+function key(
+  drawn: DccexScript,
+  name: string,
+  held: KeyboardEventInit = {},
+): void {
+  editor(drawn).contentDOM.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: name,
+      cancelable: true,
+      bubbles: true,
+      ...held,
+    }),
+  );
 }
 
 /** Press the railroad whose name is `railroad`, and let the ask it makes come
@@ -118,13 +148,13 @@ test("the railroads the store holds are listed and none is marked", async () => 
   expect(drawn.renderRoot.querySelector(".script")).toBeNull();
 });
 
-test("a railroad picked opens its script in the box", async () => {
+test("a railroad picked opens its script in the editor", async () => {
   const [drawn, asked] = await pane();
 
   await picks(drawn, RAILROADS[0]);
 
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
-  expect(box(drawn).value).toBe(SCRIPT);
+  expect(edited(drawn)).toBe(SCRIPT);
   expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[0]);
   expect(reads(drawn, ".says")).toBeNull();
 });
@@ -134,9 +164,9 @@ test("a railroad with no script opens on the sample, commented out", async () =>
 
   await picks(drawn, RAILROADS[1]);
 
-  expect(box(drawn).value).toBe(commented(SAMPLE));
+  expect(edited(drawn)).toBe(commented(SAMPLE));
   expect(reads(drawn, ".says")).toBe(NONE);
-  for (const line of box(drawn).value.split("\n")) {
+  for (const line of edited(drawn).split("\n")) {
     expect(line === "" || line.trimStart().startsWith("#")).toBe(true);
   }
 });
@@ -188,7 +218,7 @@ test("leaving a railroad with unapplied edits asks first", async () => {
   expect(reads(drawn, ".discards")).toBe(DISCARDS);
   expect(reads(drawn, ".keeps")).toBe(KEEPS);
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
-  expect(box(drawn).value).toBe("# typed and not applied\n");
+  expect(edited(drawn)).toBe("# typed and not applied\n");
   expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[0]);
 });
 
@@ -206,7 +236,7 @@ test("keeping the edits leaves the railroad where it was", async () => {
 
   expect(drawn.renderRoot.querySelector(".leaving")).toBeNull();
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
-  expect(box(drawn).value).toBe("# typed and not applied\n");
+  expect(edited(drawn)).toBe("# typed and not applied\n");
 });
 
 test("discarding them opens the railroad that was picked", async () => {
@@ -223,11 +253,11 @@ test("discarding them opens the railroad that was picked", async () => {
   await drawn.updateComplete;
 
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
-  expect(box(drawn).value).toBe(commented(SAMPLE));
+  expect(edited(drawn)).toBe(commented(SAMPLE));
   expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[1]);
 });
 
-test("a railroad with no edits in the box is left without a question", async () => {
+test("a railroad with no edits in the editor is left without a question", async () => {
   const [drawn, asked] = await pane({
     [RAILROADS[0]]: SCRIPT,
     [RAILROADS[1]]: null,
@@ -303,7 +333,7 @@ test("declining the warning leaves the edits and sends nothing", async () => {
 
   expect(asked.applied).toStrictEqual([]);
   expect(drawn.renderRoot.querySelector(".warning")).toBeNull();
-  expect(box(drawn).value).toBe("# applied\n");
+  expect(edited(drawn)).toBe("# applied\n");
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
@@ -327,7 +357,7 @@ test("an apply that lands after another railroad is picked stays with its own", 
   await drawn.updateComplete;
   await drawn.updateComplete;
 
-  expect(box(drawn).value).toBe(other);
+  expect(edited(drawn)).toBe(other);
   expect(drawn.renderRoot.querySelector(".unapplied")).toBeNull();
   expect(drawn.renderRoot.querySelector(".became")).toBeNull();
 });
@@ -349,23 +379,64 @@ test("a script the mirror refuses is shown in the mirror's own words", async () 
 
   expect(asked.applied).toHaveLength(1);
   expect(reads(drawn, ".became.failed")).toBe(refused);
-  expect(box(drawn).value).toBe("def power(t)\n    pass\n");
+  expect(edited(drawn)).toBe("def power(t)\n    pass\n");
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
-test("a tab in the box puts spaces in it", async () => {
+test("a key in the editor is an edit the page is holding", async () => {
   const [drawn] = await pane();
   await picks(drawn, RAILROADS[0]);
-  const into = box(drawn);
-  into.value = "def power(t):\n";
-  into.selectionStart = into.value.length;
-  into.selectionEnd = into.value.length;
+  editor(drawn).dispatch({ selection: { anchor: 0 } });
 
-  into.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+  key(drawn, "Tab");
   await drawn.updateComplete;
 
-  expect(into.value).toBe(`def power(t):\n${" ".repeat(SPACES)}`);
-  expect(into.selectionStart).toBe(into.value.length);
+  expect(edited(drawn)).toBe(`    ${SCRIPT}`);
+  expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
+});
+
+test("the editor is the same one across a draw, with its history", async () => {
+  const [drawn] = await pane();
+  await picks(drawn, RAILROADS[0]);
+  const made = editor(drawn);
+  await typed(drawn, "# typed\n");
+
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+  press(drawn, ".cancels");
+  await drawn.updateComplete;
+
+  expect(editor(drawn)).toBe(made);
+  key(drawn, "z", { ctrlKey: true });
+  expect(edited(drawn)).toBe(SCRIPT);
+});
+
+test("an apply that landed leaves the editor and its history where they are", async () => {
+  const [drawn] = await pane();
+  await picks(drawn, RAILROADS[0]);
+  const made = editor(drawn);
+  await typed(drawn, "# applied\n");
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+
+  press(drawn, ".confirms");
+  await drawn.updateComplete;
+  await drawn.updateComplete;
+
+  expect(editor(drawn)).toBe(made);
+  key(drawn, "z", { ctrlKey: true });
+  expect(edited(drawn)).toBe(SCRIPT);
+});
+
+test("another railroad opens a new document, and an undo stays in it", async () => {
+  const other = "# the bench\n";
+  const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT, [RAILROADS[1]]: other });
+  await picks(drawn, RAILROADS[0]);
+
+  await picks(drawn, RAILROADS[1]);
+  key(drawn, "z", { ctrlKey: true });
+
+  expect(edited(drawn)).toBe(other);
 });
 
 test("the control that applies says what it does", async () => {
@@ -398,13 +469,8 @@ test("the store's text is what is edited, and the sample is not stored", () => {
   expect(opened(undefined).text).toBeNull();
 });
 
-test("edits are unapplied where the box is not the text that was applied", () => {
+test("edits are unapplied where the editor is not the text that was applied", () => {
   expect(unapplied(SCRIPT, SCRIPT)).toBe(false);
   expect(unapplied(`${SCRIPT}\n`, SCRIPT)).toBe(true);
   expect(unapplied("anything", null)).toBe(false);
-});
-
-test("a tab replaces what is selected, as typing over it would", () => {
-  expect(tabbed("ab", 1, 1)).toStrictEqual({ text: "a    b", caret: 5 });
-  expect(tabbed("abcd", 1, 3)).toStrictEqual({ text: "a    d", caret: 5 });
 });

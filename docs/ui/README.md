@@ -19,9 +19,9 @@ particulars, all of them made of what the station said and kept live by the
 page's own polling (#7, #168). The releases are listed newest first with the one
 on the station marked (#8), and choosing one writes it onto the station — which
 is the last thing here that needed a terminal (#9). The script is the
-translator's commands for this railroad's station, edited in a box and applied
-to `control`'s store through the face (#185). What it says was decided in
-rails49/dccex#1 and the tickets under that spec are each a part of it, as
+translator's commands for this railroad's station, edited in an editor and
+applied to `control`'s store through the face (#185). What it says was decided
+in rails49/dccex#1 and the tickets under that spec are each a part of it, as
 [the cutover page](../cutover.md) was written ahead of its evening. What is
 already here besides is the other end: the **mirror**'s **face**, which is the
 one thing the page talks to ([the mirror's page](../dccex_usb/README.md)).
@@ -380,8 +380,8 @@ off the station (ADR-0006 d.3, ADR-0012 d.4).
 
 ### The script
 
-The railroad's **script**, in a box on a view of its own (#185, ADR-0015 d.5).
-A script is a railroad's Python document in `control`'s store, one per
+The railroad's **script**, in an editor on a view of its own (#185, ADR-0015
+d.5). A script is a railroad's Python document in `control`'s store, one per
 railroad, holding the **handler**s the **translator** runs for this station —
 which mode a track is set to, what current it may draw, what a turnout throwing
 does to a track or a signal
@@ -397,15 +397,22 @@ reading this page can make. A list that could not be read says so, and a store
 with no railroads in it says that instead — two sentences, because they are
 two different things (ADR-0009 d.2).
 
-Picking one opens its script in a `<textarea>`: monospace, because the
-indentation is the structure of a Python document, and Tab puts four spaces in
-rather than moving to the next control. **A railroad the store has no script
-for opens on the translator's sample, commented out** — the shape a script
-has, in front of somebody writing their first one, and applying it unchanged
-is a railroad whose script does nothing rather than one running values a page
-suggested (`ui/src/script.ts`, `src/dccex/sample.py`). A script that could not
-be read opens no box at all: offering the sample for a document the page never
-saw would be inviting somebody to overwrite it.
+Picking one opens its script in a CodeMirror 6 editor
+([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)): monospace and
+numbered, because the indentation is the structure of a Python document and a
+compile error comes back naming a line, with the Python coloured in the
+theme's own tokens. Tab and Shift-Tab indent and dedent the lines the
+selection covers, Enter indents and indents one more after a `:`, Backspace in
+leading spaces takes one indent, and Ctrl-/ comments. Undo and redo cover all
+of it. Nothing closes a bracket or a quote and there is no search, and nothing
+is loaded on demand — the editor is in the main bundle, so there is no view
+that opens on a loading state. **A railroad the store has no script for opens
+on the translator's sample, commented out** — the shape a script has, in front
+of somebody writing their first one, and applying it unchanged is a railroad
+whose script does nothing rather than one running values a page suggested
+(`ui/src/script.ts`, `src/dccex/sample.py`). A script that could not be read
+opens no editor at all: offering the sample for a document the page never saw
+would be inviting somebody to overwrite it.
 
 **Edits stay in the page until Apply.** Nothing is sent as it is typed —
 applying a script stands the railroad down, so there is no version of this that
@@ -967,8 +974,8 @@ Two things the prototype left open and the tickets settle while building:
   tiles to measure — the flash's warning taking its own line above the two
   presses that answer it, the bar a flash fills, which wants a flash in
   flight and there is no face behind the page in that job to run one, and the
-  **script** view's box and controls, which want a face with a store behind it
-  for the same reason — every button on the rail is measured there, including
+  **script** view's editor and controls, which want a face with a store behind
+  it for the same reason — every button on the rail is measured there, including
   that view's, and the pane behind it is not (#185). And what
   the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the

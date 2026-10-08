@@ -1,17 +1,24 @@
 import { css } from "lit";
 
 /**
- * The **script** view: the railroads down the top, the box under them, and the
- * controls at the foot.
+ * The **script** view: the railroads down the top, the editor under them, and
+ * the controls at the foot.
  *
- * It is the work pane's rather than the chrome's, so its colours are
- * Shoelace's theme tokens and it follows the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * It is the work pane's rather than the chrome's, so its colours are Shoelace's
+ * theme tokens and it follows the system's light or dark setting (LOOK.md,
+ * `theme.ts`). The chrome's six colours stay on the chrome.
  *
- * **The box is monospace and it takes the height it is given.** A script is
+ * **The editor is monospace and it takes the height it is given.** A script is
  * Python, where the indentation is the structure: a proportional font hides
- * which lines line up, and a box that grew with its text would push the
- * controls off a phone. So the box scrolls and the pane does not.
+ * which lines line up, and an editor that grew with its text would push the
+ * controls off a phone. So the editor scrolls and the pane does not.
+ *
+ * **The editor's own colours are here** and not in the module that builds it:
+ * every highlighting tag is given a class and the classes are coloured below,
+ * so the view's colours are in one sheet and the sheet is what a check reads
+ * (ADR-0019 d.3, `editor.ts`, `tests/ui/test_script.py`). CodeMirror mounts
+ * its base rules in this shadow root ahead of these, so a rule here of the
+ * same weight wins — which is what the `.cm-` selectors are written to.
  *
  * **The dangerous press is drawn as one**, and the warning above it in the
  * theme's warning ink — the same pair the flash is drawn with, because this is
@@ -24,10 +31,10 @@ import { css } from "lit";
  * control meant to be pressed on a phone held at the layout asks for.
  */
 export const scriptStyles = css`
-  /* A column, and the box in it takes what is left. A flex column rather than
-     a grid of named rows because what is drawn varies — the sentence above the
-     box is there for a railroad with no script and not otherwise, and so are
-     the warnings — and a row list would give the spare height to whichever
+  /* A column, and the editor in it takes what is left. A flex column rather
+     than a grid of named rows because what is drawn varies — the sentence above
+     the editor is there for a railroad with no script and not otherwise, and so
+     are the warnings — and a row list would give the spare height to whichever
      child happened to land on it. */
   :host {
     display: flex;
@@ -70,7 +77,7 @@ export const scriptStyles = css`
 
   /* What stands in for the list where there is none — a face that could not be
      asked, or a store with no railroads in it — and what is said about the
-     script in the box. Quiet, because it is the page saying what it knows
+     script in the editor. Quiet, because it is the page saying what it knows
      rather than a reading. */
   .unlisted,
   .says {
@@ -80,28 +87,94 @@ export const scriptStyles = css`
     font-size: var(--sl-font-size-small);
   }
 
-  /* The box. Monospace, and it scrolls its own text: the pane is the height of
-     the window and the controls under it are what a person has to reach. */
-  .script {
+  /* Where the editor is put. The pane draws this and puts a CodeMirror in it
+     (dccex-script.ts), so the rule is about the room it gets and not about
+     what is in it. */
+  .editing {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 12rem;
+    min-width: 0;
+  }
+
+  /* The editor. It scrolls its own text: the pane is the height of the window
+     and the controls under it are what a person has to reach. */
+  .script.cm-editor {
     flex: 1 1 auto;
     box-sizing: border-box;
-    width: 100%;
-    min-height: 12rem;
-    padding: 0.5rem;
+    min-width: 0;
     border: 1px solid var(--sl-color-neutral-300);
     border-radius: var(--sl-border-radius-medium);
     background: var(--sl-color-neutral-0);
     color: var(--sl-color-neutral-900);
+    overflow: hidden;
+  }
+
+  /* Which one has the keyboard, in the theme's own ink rather than the dotted
+     outline CodeMirror falls back to. */
+  .script.cm-editor.cm-focused {
+    outline: 1px solid var(--sl-color-primary-600);
+  }
+
+  /* The text, monospace, and it is what scrolls — a long line goes sideways
+     inside the editor rather than widening the pane. */
+  .script .cm-scroller {
     font-family: var(--sl-font-mono);
     font-size: var(--sl-font-size-small);
     line-height: 1.4;
-    resize: vertical;
-    white-space: pre;
     overflow: auto;
-    tab-size: 4;
   }
 
-  /* Apply, and the note beside it where the box is not what was applied. */
+  /* The caret follows the theme. CodeMirror's base rules set it from a light
+     or a dark flag of their own, and this page has neither: the Shoelace
+     tokens are what follow the system here (theme.ts). */
+  .script.cm-editor .cm-content {
+    caret-color: var(--sl-color-neutral-900);
+  }
+
+  /* The line numbers, quieter than the text and with a rule between. A
+     compile error names a line, so the numbers are what a reader matches it
+     against (ADR-0019). */
+  .script.cm-editor .cm-gutters {
+    border-right: 1px solid var(--sl-color-neutral-200);
+    background: var(--sl-color-neutral-50);
+    color: var(--sl-color-neutral-500);
+  }
+
+  /* The bracket under the caret and the one that closes it. */
+  .script.cm-editor.cm-focused .cm-matchingBracket {
+    background: var(--sl-color-primary-200);
+  }
+
+  /* What a reader of Python needs told apart (ADR-0019 d.3). The classes are
+     the editor's and the colours are the theme's, so both halves follow the
+     system's light or dark setting. A tag with no rule here is drawn as the
+     text around it. */
+  .tok-keyword {
+    color: var(--sl-color-violet-600);
+  }
+
+  .tok-string {
+    color: var(--sl-color-green-600);
+  }
+
+  .tok-comment {
+    color: var(--sl-color-neutral-500);
+  }
+
+  .tok-number {
+    color: var(--sl-color-cyan-600);
+  }
+
+  .tok-decorator {
+    color: var(--sl-color-amber-600);
+  }
+
+  .tok-function {
+    color: var(--sl-color-blue-600);
+  }
+
+  /* Apply, and the note beside it where the editor is not what was applied. */
   .controls,
   .warning,
   .leaving {
@@ -134,10 +207,9 @@ export const scriptStyles = css`
     cursor: default;
   }
 
-  /* The railroad this box is showing. Marked by a swap and a weight rather
-     than by a colour alone, which is the rule the rail and the release list
-     are marked by: a reader who does not see the colour is owed the answer
-     too. */
+  /* The railroad this editor is showing. Marked by a swap and a weight rather
+     than by a colour alone, which is the rule the rail and the release list are
+     marked by: a reader who does not see the colour is owed the answer too. */
   .railroad {
     background: var(--sl-color-neutral-100);
     color: var(--sl-color-neutral-900);
@@ -149,9 +221,9 @@ export const scriptStyles = css`
     font-weight: var(--sl-font-weight-semibold);
   }
 
-  /* That the box holds edits nothing else is holding a copy of. It is a state
-     of the page and not a fault, so it is drawn as the warning ink rather than
-     as a stop. */
+  /* That the editor holds edits nothing else is holding a copy of. It is a
+     state of the page and not a fault, so it is drawn as the warning ink rather
+     than as a stop. */
   .unapplied {
     color: var(--sl-color-warning-700);
     font-family: var(--sl-font-sans);

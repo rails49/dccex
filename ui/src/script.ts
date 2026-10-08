@@ -4,14 +4,16 @@
  * A script is a railroad's Python document in `control`'s store, one per
  * railroad, holding the **handler**s the translator runs for this railroad's
  * station (CONTEXT.md, ADR-0013, ADR-0015). The page is where it is written:
- * the person picks a railroad, the text opens in a box, and Apply sends it to
- * the **face**, which compiles it and puts it to the store (ADR-0015 d.5).
+ * the person picks a railroad, the text opens in the editor, and Apply sends
+ * it to the **face**, which compiles it and puts it to the store (ADR-0015
+ * d.5).
  *
  * What is here is everything about that a browser is not needed for — the text
- * a railroad with no script opens with, whether what is in the box is the text
- * that was applied, and what a Tab does to it — so that the rules can be run
- * rather than read (`ui/test/script.test.ts`, the seam `view.ts` is split on).
- * The asking is `face.ts`'s and the drawing is `dccex-script.ts`'s.
+ * a railroad with no script opens with, and whether what is in the editor is
+ * the text that was applied — so that the rules can be run rather than read
+ * (`ui/test/script.test.ts`, the seam `view.ts` is split on). The asking is
+ * `face.ts`'s, the drawing is `dccex-script.ts`'s, and the indenting is the
+ * editor's (ADR-0019, `ui/src/ui/editor.ts`).
  *
  * **The sample is the translator's own**, copied here rather than fetched: the
  * mirror imports nothing but the standard library and itself, so the app that
@@ -93,25 +95,20 @@ def wx310_crossing(t):
 #     t.send("<A 5 2>" if closed else "<A 5 0>")
 `;
 
-/** What a Tab puts in the box. Spaces and not a tab: a script is Python, where
- *  a mixed indentation is a document that does not compile, and four is what
- *  the sample and every module of the package are written with (PEP 8). */
-export const SPACES = 4;
-
 /** What is said where the railroads could not be read: the face did not
  *  answer, or the store behind it did not. Nothing said is not no railroads,
  *  so it is a different sentence from the one below (ADR-0009 d.2, the shape
  *  `releases.js` draws the same line in). */
 export const UNLISTED = "the railroads could not be read";
 
-/** What is said where the store holds no railroads at all, which is a box
+/** What is said where the store holds no railroads at all, which is a view
  *  whose store is empty rather than one that could not be asked. */
 export const NO_RAILROADS = "the store holds no railroads yet";
 
-/** What is said above a railroad with no script of its own: the box is not
+/** What is said above a railroad with no script of its own: the editor is not
  *  empty, and what is in it is not the railroad's yet. */
 export const NONE =
-  "this railroad has no script: what is in the box is the sample," +
+  "this railroad has no script: what is in the editor is the sample," +
   " commented out";
 
 /** What is said where the face could not be asked, or answered with something
@@ -138,13 +135,13 @@ export const STOPS =
 export const CONFIRMS = "apply it";
 
 /** What declines it. A script that was not applied leaves the edits in the
- *  box: nothing was sent, and there is nothing to report. */
+ *  editor: nothing was sent, and there is nothing to report. */
 export const CANCELS = "cancel";
 
-/** What is said where the edits in the box are not the text that was applied
- *  and the person is leaving them — another railroad picked, or the page
- *  closed. Unapplied edits stay in the page and nowhere else (ADR-0015 d.5),
- *  so what is on the other side of this question is losing them. */
+/** What is said where the edits in the editor are not the text that was
+ *  applied and the person is leaving them — another railroad picked, or the
+ *  page closed. Unapplied edits stay in the page and nowhere else (ADR-0015
+ *  d.5), so what is on the other side of this question is losing them. */
 export const UNAPPLIED =
   "this railroad's script has edits that were not applied," +
   " and leaving it discards them";
@@ -163,26 +160,28 @@ export const UNANSWERED =
   "the mirror could not be asked to apply it, so what the store holds is" +
   " what it held";
 
-/** What says which railroad the box is showing, where none is picked yet: a
- *  view opened on nothing is a view that says what to do rather than an empty
- *  box that reads as a railroad with an empty script. */
+/** What says which railroad the editor is showing, where none is picked yet:
+ *  a view opened on nothing is a view that says what to do rather than an empty
+ *  editor that reads as a railroad with an empty script. */
 export const PICK = "pick a railroad to edit its script";
 
 /**
- * What one railroad's script opened as: the text in the box, whether it is
+ * What one railroad's script opened as: the text in the editor, whether it is
  * the store's, and what is said about it.
  *
  * `text` is `null` where there is nothing to edit, which is the face not
- * having answered: a box offering the sample for a railroad whose script
+ * having answered: an editor offering the sample for a railroad whose script
  * could not be read would be a page inviting somebody to overwrite a document
  * it never saw (ADR-0009 d.2).
  */
 export type Opened = {
-  /** The text the box opens with, or `null` where there is nothing to edit. */
+  /** The text the editor opens with, or `null` where there is nothing to
+   *  edit. */
   text: string | null;
   /** Whether that text is the one the store holds. False is the sample. */
   stored: boolean;
-  /** What is said above the box, and `""` where there is nothing to say. */
+  /** What is said above the editor, and `""` where there is nothing to
+   *  say. */
   says: string;
 };
 
@@ -221,14 +220,14 @@ export function commented(text: string): string {
 }
 
 /**
- * What the box opens with for a railroad, given the text the store holds.
+ * What the editor opens with for a railroad, given the text the store holds.
  *
  * Three answers and the page draws all three. The store's text is what is
  * edited. A railroad the store has no script for opens on the sample,
  * commented out, and says so — which is the one place this page puts words in
- * a box a person is about to store, and it is why they are commented: applying
- * it unchanged is a railroad with a script that does nothing, and not a
- * railroad running this installation's districts because a page suggested
+ * the editor a person is about to store, and it is why they are commented:
+ * applying it unchanged is a railroad with a script that does nothing, and not
+ * a railroad running this installation's districts because a page suggested
  * them. A script that could not be read opens with nothing at all.
  *
  * @param text the text the store holds, `null` where it holds none, and
@@ -245,44 +244,19 @@ export function opened(text: string | null | undefined): Opened {
 }
 
 /**
- * Whether what is in the box is not what was applied.
+ * Whether what is in the editor is not what was applied.
  *
  * The comparison is the whole of it: edits stay in the page until Apply, so
  * what says there are unapplied ones is the text differing from the one this
- * railroad opened with or was last applied with (ADR-0015 d.5). A box nobody
- * has typed in — the sample a railroad with no script opens on — is not an
- * edit, and leaving it discards nothing anybody wrote.
+ * railroad opened with or was last applied with (ADR-0015 d.5). An editor
+ * nobody has typed in — the sample a railroad with no script opens on — is not
+ * an edit, and leaving it discards nothing anybody wrote.
  *
- * @param box what is in the box
+ * @param edited what is in the editor
  * @param applied the text the railroad opened with, or was applied with
  */
-export function unapplied(box: string, applied: string | null): boolean {
-  return applied !== null && box !== applied;
-}
-
-/**
- * What one Tab does: the box's text with spaces where the selection was, and
- * where the caret goes after it.
- *
- * Tab in a box is a browser moving to the next control, which in a page of
- * Python is the one key an editor needs most. So the key is taken here and
- * turned into `SPACES` spaces, and a selection is replaced by them the way
- * typing over one is.
- *
- * @param box what is in the box
- * @param from where the selection starts
- * @param to where it ends, which is `from` where nothing is selected
- */
-export function tabbed(
-  box: string,
-  from: number,
-  to: number,
-): { text: string; caret: number } {
-  const spaces = " ".repeat(SPACES);
-  return {
-    text: box.slice(0, from) + spaces + box.slice(to),
-    caret: from + SPACES,
-  };
+export function unapplied(edited: string, applied: string | null): boolean {
+  return applied !== null && edited !== applied;
 }
 
 /**

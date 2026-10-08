@@ -201,7 +201,7 @@ MEASURE = """
     return {
       hash: location.hash,
       scrollWidth: wide,
-      box: box(pane.renderRoot.querySelector("textarea.script")),
+      box: box(pane.renderRoot.querySelector(".script")),
     };
   }
   if (view === "releases") {
@@ -289,7 +289,7 @@ def measured(page, width, height):
     drawn[RELEASES_VIEW] = page.evaluate(MEASURE, RELEASES_VIEW)
     page.click(f"dccex-rail button.{SCRIPT_VIEW}")
     page.click("dccex-script .railroad")
-    page.wait_for_selector("dccex-script textarea.script")
+    page.wait_for_selector("dccex-script .script")
     drawn[SCRIPT_VIEW] = page.evaluate(MEASURE, SCRIPT_VIEW)
     return drawn
 
