@@ -294,11 +294,20 @@ second thing).
 What the work pane shows. The **rail** picks one; the **band** is the same
 over every view. There are three: the **monitor**; the releases, where the
 releases are listed and a flash is pressed and followed; and the **script**,
-where a railroad's is opened in a box and applied to `control`'s store through
-the **face** (#185).
+where a railroad's is opened in the **editor** and applied to `control`'s
+store through the **face** (#185).
 
 **Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
 (a mode is what a track is set to).
+
+## editor
+
+Where the **script** view shows a railroad's script and a person changes it.
+It colours the Python and helps with indenting. What is in it reaches the
+store only through Apply.
+
+**Not:** *box* (the box is the machine the apps run on), *textarea*, *code
+pane*, *IDE*.
 
 ## tile
 
