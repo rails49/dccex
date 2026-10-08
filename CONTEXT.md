@@ -304,7 +304,8 @@ store through the **face** (#185).
 
 Where the **script** view shows a railroad's script and a person changes it.
 It colours the Python and helps with indenting. What is in it reaches the
-store only through Apply.
+store only through Apply, and an Apply the **face** refused with a line marks
+that line until the next edit (ADR-0019).
 
 **Not:** *box* (the box is the machine the apps run on), *textarea*, *code
 pane*, *IDE*.

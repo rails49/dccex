@@ -43,7 +43,8 @@
  * **The editor is CodeMirror and it is not Lit's** (ADR-0019). What it is made
  * of is `editor.ts`'s; what is here is one of them, made over the place the
  * template leaves and kept across every draw, because the document, the
- * selection and the undo history are in it.
+ * selection and the undo history are in it — and so is the mark a refused
+ * Apply leaves on the line it named (ADR-0019 d.4).
  */
 
 import { EditorView } from "@codemirror/view";
@@ -63,10 +64,11 @@ import {
   UNLISTED,
   type Applied,
   type Opened,
+  refusal,
   unapplied,
 } from "../script.js";
 import { scriptStyles } from "./dccex-script.styles.js";
-import { editing } from "./editor.js";
+import { editing, mark } from "./editor.js";
 
 /** What the view is called. The word is the glossary's (CONTEXT.md,
  *  **script**): a railroad's document in the store, which the translator loads
@@ -443,6 +445,12 @@ export class DccexScript extends LitElement {
    * What comes back is the face's answer, and where it landed the text becomes
    * what was applied: the editor is then not unapplied, which is what the two
    * warnings are keyed on.
+   *
+   * **A refusal that names a line marks it** (ADR-0019 d.4). The sentence is
+   * shown whole as it came; the line out of it is `script.ts`'s to read and
+   * the mark is the editor's to draw, so that nobody is left reading a page of
+   * Python for the one line the face named. A refusal that names none marks
+   * nothing, and so does an Apply that landed.
    */
   async #applied(): Promise<void> {
     const railroad = this.railroad;
@@ -460,6 +468,9 @@ export class DccexScript extends LitElement {
         return;
       }
       this.became = became;
+      if (this.#editor !== null) {
+        mark(this.#editor, became.applied ? null : refusal(became.says));
+      }
       if (became.applied) {
         this.opened = { text: applied, stored: true, says: "" };
       }

@@ -385,6 +385,76 @@ test("a script the mirror refuses is shown in the mirror's own words", async () 
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
+/** A pane whose Apply is refused with `says`, open on the first railroad with
+ *  `text` typed into it. */
+async function refused(says: string, text: string): Promise<DccexScript> {
+  const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT }, () => ({
+    applied: false,
+    says,
+  }));
+  await picks(drawn, RAILROADS[0]);
+  await typed(drawn, text);
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+  press(drawn, ".confirms");
+  await drawn.updateComplete;
+  await drawn.updateComplete;
+  return drawn;
+}
+
+/** The marked text in the editor, or `null` where nothing is marked. */
+function marked(drawn: DccexScript): Element | null {
+  return editor(drawn).contentDOM.querySelector(".refused");
+}
+
+test("an apply the mirror refused marks the line it named", async () => {
+  const says = "the script does not compile: line 3: invalid syntax";
+
+  const drawn = await refused(says, "a = 1\nb = 2\nc = (\n");
+
+  expect(marked(drawn)?.textContent).toBe("c = (");
+  expect(marked(drawn)?.getAttribute("title")).toBe("invalid syntax");
+  expect(reads(drawn, ".became.failed")).toBe(says);
+  expect(reads(drawn, ".says")).toBeNull();
+});
+
+test("an edit after a refused apply clears the mark", async () => {
+  const drawn = await refused(
+    "the script does not compile: line 3: invalid syntax",
+    "a = 1\nb = 2\nc = (\n",
+  );
+
+  await typed(drawn, "a = 1\nb = 2\nc = 3\n");
+
+  expect(marked(drawn)).toBeNull();
+  expect(reads(drawn, ".became.failed")).toBe(
+    "the script does not compile: line 3: invalid syntax",
+  );
+});
+
+test("a refusal that names no line marks nothing in the editor", async () => {
+  const drawn = await refused(
+    "the script does not compile: source code string cannot contain null bytes",
+    "a = 1\nb = 2\n",
+  );
+
+  expect(marked(drawn)).toBeNull();
+});
+
+test("an apply that lands leaves no mark", async () => {
+  const [drawn] = await pane();
+  await picks(drawn, RAILROADS[0]);
+  await typed(drawn, "# applied\n");
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+
+  press(drawn, ".confirms");
+  await drawn.updateComplete;
+  await drawn.updateComplete;
+
+  expect(marked(drawn)).toBeNull();
+});
+
 test("a key in the editor is an edit the page is holding", async () => {
   const [drawn] = await pane();
   await picks(drawn, RAILROADS[0]);
