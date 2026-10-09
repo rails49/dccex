@@ -186,9 +186,8 @@ export const bandStyles = css`
   /* STOP: the press that stops every locomotive where it stands (ADR-0020 d.1,
      d.2). Red, the same two tokens the link's words and a stopped power button
      wear, because a railroad stopped where it stands is the other thing red is
-     for on this chrome. The word rather than a glyph — there is no symbol for
-     this a reader would be sure of — and it keeps its chip in every state,
-     because what it does does not change with the state (d.4). */
+     for on this chrome. The word rather than a glyph, and it keeps its chip in
+     every state, because what it does does not change with the state (d.4). */
   .stop {
     padding: 0 0.5rem;
     background: var(--stop);

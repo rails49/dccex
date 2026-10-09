@@ -28,8 +28,7 @@
  * These are the only controls on this chrome and the only presses on the page
  * that ask for power outside the flash sequence's own step (ADR-0011 d.3, which
  * stands). The page asks for no confirmation, of either of them: the guard is
- * `layout` and then the operator (ADR-0006), and a confirmation on the one
- * press that has to be fast would cost more than a wrong STOP does (ADR-0020).
+ * `layout` and then the operator (ADR-0006, ADR-0020 d.2).
  *
  * **They are not dead on the same facts.** The power button presses nothing
  * without the broker, the station and a word from `layout` (ADR-0017 d.3, issue
