@@ -58,7 +58,7 @@ export function forgotten(): void {
 }
 
 /** `mqtt.connect`, as the page calls it. */
-export function connect(
+function connect(
   url: string,
   options: Record<string, unknown> = {},
 ): unknown {
@@ -116,4 +116,6 @@ export function connect(
   };
 }
 
+// A default and nothing else, as `mqtt`'s browser build has: the build
+// resolves `mqtt` to `dist/mqtt.esm.js`, which names no `connect` of its own.
 export default { connect };
