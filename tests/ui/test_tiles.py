@@ -124,3 +124,27 @@ def test_the_tiles_are_the_work_pane_s_and_not_the_chrome_s() -> None:
     asked = set(re.findall(r"var\((--[a-z0-9-]+)\)", styles))
     borrowed = {token for token in asked if not token.startswith("--sl-")}
     assert borrowed == set(), f"the tiles take the chrome's {borrowed}"
+
+
+def test_a_track_that_is_off_is_grey_and_not_red() -> None:
+    """Red on the page is a stop or a fault (ADR-0017 d.6).
+
+    A track somebody turned off is neither, and a symbol drawn in the
+    refusal's ink would be saying fault about a track nobody tripped — which
+    is the same claim `tests/ui/test_band.py` holds about the band's power
+    button.
+
+    Off is the darker grey and unknown the lighter, so the two readings still
+    differ for a reader who has only the colour: a track that is off was
+    reported off, and a track nobody said anything about was not
+    (ADR-0009 d.2).
+    """
+    styles = STYLES.read_text()
+    off = rule(styles, ".power.off")
+    assert "var(--sl-color-neutral-600)" in off, "a track that is off is not grey"
+    assert "danger" not in off, "a track that is off is drawn in the refusal's ink"
+    assert "danger" not in styles, "a tile draws a reading in the refusal's ink"
+    weight = re.compile(r"var\(--sl-color-neutral-(\d+)\)")
+    unknown = weight.search(rule(styles, ".power"))
+    assert unknown is not None
+    assert int(unknown.group(1)) < 600, "off and unknown are the same grey"
