@@ -5,8 +5,14 @@
  * Every reading about the station is the conversation, decoded on the page —
  * there is no second channel and nothing is inferred on one (ADR-0008 d.2) —
  * so what goes in here is lines and the moments they arrived, and what comes
- * out is the words on the chrome and on the tiles, and what the one control on
- * the chrome sends (ADR-0011).
+ * out is the words on the chrome and on the tiles.
+ *
+ * **The railroad's power is the one reading that is not the station's.** It is
+ * a row `layout` reports on the bus, because `layout` is what the band asks
+ * for power and what the station is told by the translator (ADR-0017). So this
+ * module reads that payload too and folds it into the band's one control, and
+ * the two are not mixed: a track's power on a **tile** is still the station's
+ * `<p…>`, and nothing here reads one off the other.
  *
  * **A pure function of what was said and of the moment it is asked for.** No
  * socket, no clock and no DOM: the page hands in its own clock, which is what
@@ -43,6 +49,66 @@ export const SILENT_MS = 5000;
  *  station that is not talking is an absence rather than a value (ADR-0008
  *  d.3, ADR-0009 d.2). */
 const BLANK = "";
+
+/** What `layout` reports the railroad's power as, and what a press asks it for
+ *  (ADR-0017 d.1, d.2, `control`'s `docs/BUS.md`). `stopped` is reported and
+ *  never asked for here: the band's power button is the way out of it, and the
+ *  press that asks for it is #208's. */
+const ON = "on";
+const OFF = "off";
+const STOPPED = "stopped";
+
+/**
+ * What `layout` says about the railroad's power, as the page reads it off the
+ * bus (ADR-0017).
+ *
+ * `power` is the latest payload on `tc49/layout/state/power`, read by
+ * `reported`, and `null` until one has arrived — which is a different reading
+ * from `off`: a railroad nobody has reported the power of is not a railroad
+ * with the power off (ADR-0009 d.2), and it is what the button is disabled on.
+ *
+ * @typedef {object} Layout
+ * @property {boolean} connected whether the page has the broker
+ * @property {string | null} power what `layout` last reported — `on`, `off` or
+ *   `stopped` — and `null` until it has reported
+ */
+
+/** A page that has not reached the broker: no connection, and nothing
+ *  reported. It is what a band nobody handed a bus reading to carries, and it
+ *  is what the page holds until the broker answers (`bus.ts`). */
+export const UNREACHABLE = /** @type {Layout} */ ({
+  connected: false,
+  power: null,
+});
+
+/**
+ * What `layout` reports the power as, off one payload on its state row.
+ *
+ * **A payload this page cannot read reads as `off`** (ADR-0017 d.2, #205).
+ * That is the one reading here that is not what was said, and it is the safe
+ * one: the button then offers the press that turns power on, which is a press
+ * `layout` checks for itself, where a button drawn green over a payload nobody
+ * could read would tell an operator the rails are hot on no evidence. Anything
+ * but `on` or `stopped` is one of these — a row that is not JSON, a document
+ * with no `power` in it, a word this page does not know.
+ *
+ * @param {string} payload the row as it arrived
+ * @returns {string} `on`, `off` or `stopped`
+ */
+export function reported(payload) {
+  /** @type {unknown} */
+  let said;
+  try {
+    said = JSON.parse(payload);
+  } catch {
+    return OFF;
+  }
+  const power =
+    typeof said === "object" && said !== null
+      ? /** @type {{ power?: unknown }} */ (said).power
+      : undefined;
+  return power === ON || power === STOPPED ? power : OFF;
+}
 
 /** What a press of the power button sends: the two messages any other client
  *  of the mirror's port sends to switch track power, and the two an operator

@@ -12,7 +12,11 @@
  *
  * The address rule is named for a socket rather than for the stream because
  * it is the page's rule and not that stream's: what it answers is where a
- * socket on this origin is, whatever is on the other end of it.
+ * socket on this origin is, whatever is on the other end of it. Two are
+ * opened at it — the stream, on the mirror's face, and the bus, at the
+ * broker's prefix (`stream.ts`, `bus.ts`, ADR-0017 d.5) — and a second
+ * spelling of the rule would be a second answer to how this page reaches
+ * anything.
  *
  * The name is the mirror's. `framing.py` cuts the same conversation into whole
  * `<…>` messages at the other end of this stream, to the same shape and for
@@ -84,11 +88,12 @@ const RETURN = /\r+$/;
  * d.3), and nothing in this page names a host: a page that did would work on
  * the machine it was written on and nowhere else.
  *
- * The path is handed in rather than read here. The door's prefix is spelled
- * once, in the module that says where the face is (`face.ts`), and that module
- * is TypeScript — which is not something a bare node can load, and this rule
- * is one a bare node runs. So the one spelling stays where it is and the
- * caller passes what it built from it (`STREAM_PATH`, `stream.ts`).
+ * The path is handed in rather than read here. Each prefix is spelled once, in
+ * the module that says where that counterparty is, and both of those are
+ * TypeScript — which is not something a bare node can load, and this rule is
+ * one a bare node runs. So the one spelling stays where it is and the caller
+ * passes what it built from it (`STREAM_PATH`, `stream.ts`; `MQTT_PATH`,
+ * `bus.ts`).
  *
  * @param {Where} where the page's own address
  * @param {string} path where the face answers the stream, on that origin
