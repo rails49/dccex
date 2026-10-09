@@ -1,6 +1,6 @@
 /**
- * Where the stream is, and where a line ends: the two rules of the **stream**
- * that are not the socket.
+ * Where a socket on this page's own origin is, and where a line ends: the two
+ * rules of the **stream** that are not the socket.
  *
  * The socket is `stream.ts`'s. It holds one, opens another when the one it has
  * goes, and writes a whole message up it. What is here is what that module
@@ -9,6 +9,10 @@
  * have — so neither of these reaches a browser, a clock or a network and both
  * are run with the pairs that matter on a machine with nothing plugged in
  * (`tests/ui/test_stream.py`).
+ *
+ * The address rule is named for a socket rather than for the stream because
+ * it is the page's rule and not that stream's: what it answers is where a
+ * socket on this origin is, whatever is on the other end of it.
  *
  * The name is the mirror's. `framing.py` cuts the same conversation into whole
  * `<…>` messages at the other end of this stream, to the same shape and for
@@ -71,12 +75,12 @@ const RETURN = /\r+$/;
  */
 
 /**
- * Where the stream is for the page `where` was read off, under `path`.
+ * Where a socket is for the page `where` was read off, under `path`.
  *
  * The page's own address with the scheme swapped and nothing else touched, so
  * a browser opens `wss://` from a page served over `https` and `ws://` from
  * one served over plain HTTP, on whatever host and port the page itself came
- * from. Nothing about the stream is a name or a port of its own (ADR-0004
+ * from. Nothing about the socket is a name or a port of its own (ADR-0004
  * d.3), and nothing in this page names a host: a page that did would work on
  * the machine it was written on and nowhere else.
  *
@@ -90,7 +94,7 @@ const RETURN = /\r+$/;
  * @param {string} path where the face answers the stream, on that origin
  * @returns {string}
  */
-export function streamAt(where, path) {
+export function socketAt(where, path) {
   const at = new URL(path, where.href);
   at.protocol = where.protocol === HTTPS ? WSS : WS;
   return at.href;

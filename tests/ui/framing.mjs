@@ -26,7 +26,7 @@
 // and nothing else — no packages, no bundler, no DOM and no network. Stdin and
 // stdout are `tests/ui/each.mjs`'s.
 
-import { lines, streamAt } from "../../ui/src/framing.js";
+import { lines, socketAt } from "../../ui/src/framing.js";
 import { each } from "./each.mjs";
 
 const framed = (arrived) => {
@@ -49,7 +49,7 @@ const framed = (arrived) => {
 
 const answered = (ask) =>
   "where" in ask
-    ? { opened: streamAt(ask.where, ask.path) }
+    ? { opened: socketAt(ask.where, ask.path) }
     : framed(ask.arrived);
 
 await each(answered);
