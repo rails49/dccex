@@ -15,8 +15,9 @@ stamped with the time it arrived, newest at the bottom (#4), and a box at the
 foot that types a whole `<…>` message back (#6) — the **release**s, or the
 railroad's **script**. The band
 carries the **build**, the **link** and the power button and the tiles carry the
-particulars, all of them made of what the station said and kept live by the
-page's own polling (#7, #168). The releases are listed newest first with the one
+particulars — all of them made of what the station said and kept live by the
+page's own polling, except the power, which is a row `layout` reports on the
+bus (#7, #168, #205). The releases are listed newest first with the one
 on the station marked (#8), and choosing one writes it onto the station — which
 is the last thing here that needed a terminal (#9). The script is the
 translator's commands for this railroad's station, edited in an editor and
@@ -28,9 +29,11 @@ one thing the page talks to ([the mirror's page](../dccex_usb/README.md)).
 
 ## What it talks to
 
-One counterparty: `dccex-usb`'s face, on the page's own origin, behind the same
+Two counterparties: `dccex-usb`'s face, and the bus. Both on the page's own
+origin, behind the same
 door ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md),
-[ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)).
+[ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md),
+[ADR-0017](../adr/0017-the-band-asks-layout-for-power.md)).
 
 ```
 https://dccex.$BOX_DOMAIN/                     this page
@@ -43,18 +46,35 @@ https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
                                                one railroad's script, read and
                                                applied
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
+wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad's
+                                               power, read and asked for
 ```
 
-Not the bus, and not the store directly. The organisation's ADR-0002 permits
-all three and this page uses the third, because its subject is a command
-station rather than a railroad — which is what makes it the same page on a box
-with a station and no layout as on the layout box, with no branch between them.
-Every reading on the page is made of what the station said on the **stream**.
+Not the store directly. The organisation's ADR-0002 permits all three and this
+page uses two of them. The face is the one its subject wants, because that
+subject is a command station rather than a railroad — which is what makes it
+the same page on a box with a station and no layout as on the layout box, with
+no branch between them. Every reading about the station is made of what the
+station said on the **stream**.
 How many **client**s are on the mirror's port was the one that was not, and the
 page no longer draws it, so what it asks the face for is the releases, a flash
 and how far that flash has got rather than a reading of the station's (#111,
 #172). The count is still the app's own business about itself and the face still
 answers it at the address above.
+
+**The bus carries one row each way, and only because of the power button**
+(ADR-0017, #205). The band asks `layout` for power rather than typing `<1>` or
+`<0>` at the station, because `layout` refuses an OFF while a run is going,
+zeroes every locomotive's speed before a cut and runs the **script**'s power
+handler (control ADR-0062) — none of which a message through the face reaches.
+So the page publishes `tc49/layout/power_wanted` and subscribes to
+`tc49/layout/state/power`, and to nothing else: what a railroad is doing is
+`control`'s UI next door. The broker is `/mqtt` on this page's own origin,
+which the box's door routes to `control`'s service and refuses from any other
+origin (`compose.box.yaml`); the page names no host and no port, as it names
+none for the face. On a box with no `control` beside it the row never arrives
+and the button is disabled, which is the same page with one control turned off
+rather than a second page.
 
 **The one document it edits goes through the face too, and for a reason of the
 door's rather than of the rule's** (#185,
@@ -86,7 +106,7 @@ work pane is what changes.
 ### The band
 
 The UI's name and the **build** on the left; on the right the **link** and one
-control, the power button (#168, ADR-0011).
+control, the power button (#168, ADR-0017).
 
 The build is the `G-` field of the station's banner and is blank while the link
 is down: a build from before a flash reported as the one on the board would be
@@ -99,42 +119,49 @@ difference between a dead station and a quiet one and the reason any of this
 exists. The words are the dot's label in either state, so a reader who cannot
 see it is told which reading it is.
 
-**The band commands track power** (ADR-0011, superseding ADR-0008 d.5).
-`control`'s band presses it because `layout` checks the railroad is drained
-first, and that check never guarded the station: any client of the mirror's
-port sends `<0>` or `<1>` — JMRI, a throttle, the command box at the foot of
-the monitor — and the operator already switches power at this level when
-working below `control`. So the button is a reading and a control at once:
-`mdiPower`, green while any track is on, where a press sends `<0>`, and red
-while every one is off, where a press sends `<1>`. It carries the word for
-what a press will do as a tooltip and as a label (#167).
+**The band asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1, d.2
+and d.4). The button used to send `<0>` or `<1>` through the face, which
+skipped `layout` and the **translator**: `layout` is what refuses an OFF while
+a run is going and zeroes every locomotive's speed before a cut (control
+ADR-0062), and the translator is what runs the **script**'s power handler. So
+`mdiPower` is a reading and a control at once, and both of them are
+`layout`'s — the button reads `tc49/layout/state/power` and a press publishes
+`tc49/layout/power_wanted`: `off` while it reads `on`, and `on` otherwise, so
+the one press on the chrome is the way out of every state including `stopped`.
+It carries the word for what a press will do as a tooltip and as a label
+(#167).
 
-Grey and disabled while the link is down (ADR-0011 d.2): power is then unknown
-and a press would reach a station that is not answering. A station that is
-answering and has said nothing about power yet is the same case. The page asks
-for no confirmation — the guard is the operator, as for a flash (ADR-0011 d.4,
-ADR-0006) — and a press goes up the **stream** as anything typed does, so it is
-written to the monitor as the page's own line and the station's `<p…>` answer
-is what turns the button's colour.
+`on` is green. `off` is an outlined chip in the band's own ink — a state
+somebody chose rather than a fault. `stopped` is red, which is where a railroad
+`layout` has halted sits until an `on` (#208). An OFF that `layout` drops shows
+nothing: no state row follows it, so the button stays as it was (ADR-0017 d.4).
+
+Disabled while the bus is unreachable, the link is down, or no state row has
+arrived (ADR-0017 d.3). It is then a dim glyph with no chip, and its title says
+which of the three it is: `no bus`, `no station`, `no layout`. Each is a
+different absence — a press with no broker reaches nothing, a press with no
+station is a railroad `layout` cannot apply it to, and a railroad whose power
+nobody has reported has no state to offer the other of. The page asks for no
+confirmation: the guard is `layout` and then the operator (ADR-0006).
 
 It is the only control on the chrome and the only power control on the page:
 the per-track readings in the monitor view show state and press nothing
-(ADR-0011 d.3). The flash sequence cuts power as its own step and asks the
-operator first.
+(ADR-0011 d.3). The flash sequence cuts power as its own step, at the station,
+and asks the operator first.
 
-No emergency stop is drawn on the chrome. LOOK.md keeps red there for stop or a
-fault, and both reds on this band are one of those: the link that is down is
-the fault, in words on `--stop` with the dot in `--stop-ink` (#138), and rails
-with no power is the stop. The green is `--rail-group`, which is the one green
-this chrome has; grey is the band's own ink at half strength, because none of
-the six colours is a dimmer ink.
+No emergency stop is drawn on the chrome yet (#208). LOOK.md keeps red there
+for stop or a fault, and both reds on this band are one of those: the link that
+is down is the fault, in words on `--stop` with the dot in `--stop-ink` (#138),
+and a railroad `layout` reports as `stopped` is the stop. The green is
+`--rail-group`, which is the one green this chrome has; grey is the band's own
+ink at half strength, because none of the six colours is a dimmer ink.
 
 Neither of those colours is laid straight on the band's blue: `--rail-group` on
 `--band` is 1.8 to 1 and `--stop-ink` on it is 1.3, where a control a person has
 to read needs 3. So the dot is ringed in the band's ink, the words sit on
-`--stop`, and the power button is a chip of the band's ink with the colour on
-it. The chip goes when the button does, which is the difference a reader who
-cannot tell the green from the red is left with.
+`--stop`, the green sits on a chip of the band's ink and the red sits on
+`--stop`. Both chips go when the button does, which is the difference a reader
+who cannot tell the green from the red is left with.
 
 The band gives things up at two widths rather than wrapping. Below 560px the
 build goes: it is the longest thing on the band, and it is the one reading on it
@@ -204,7 +231,8 @@ link comes up: it is compiled into the **build** and does not move while the
 station is running. A reading the station has not given reads blank, not `0 mA`.
 
 The tiles press nothing (ADR-0011 d.3). The **band**'s power button is the one
-control on the page that commands track power.
+control on the page that asks for the railroad's power, and it asks `layout`
+(ADR-0017 d.1).
 
 The whole row goes when the link goes down, which is correct rather than a gap:
 a tile is one track and a station that is not talking is not saying it has any
@@ -869,7 +897,8 @@ reference and is none would be worse than none at all (#57).
 `compose.yaml` at the root is the compose project: one service, the door route
 as labels on its own container, and nothing more. `docker compose up --build`
 from a clean clone serves the page. The stack a **box** runs — the mirror
-beside it, the shared network the door dials containers on, the deploy and the
+beside it, the shared network the door dials containers on, the broker's prefix
+on the page's host, the deploy and the
 record it appends to — is that file and `compose.box.yaml` together, and the
 overlay exists so that this file keeps the promise in the sentence before.
 
@@ -941,11 +970,11 @@ rule as the two checks above it.
   railroad's **script** is the exception and is above: it is a document about
   what this railroad wants of *this* station, and the app whose face this page
   talks to is the one that can reach the store it lives in (ADR-0015 d.5).
-- **Commanding track power anywhere but the band and the flash sequence's own
-  step.** The band's power button is the one control on the page that sends
-  `<0>` or `<1>` (ADR-0011 d.1, d.3), and no emergency stop is drawn on the
-  chrome: the tiles press nothing, and `<!>` is the sequence's own step and what
-  the command box can type.
+- **Commanding track power anywhere at all.** The band's power button asks
+  `layout` for it on the bus (ADR-0017 d.1), the tiles press nothing (ADR-0011
+  d.3), and the one module left that types `<0>` at the station is the flash
+  sequence's own step. No emergency stop is drawn on the chrome yet (#208), and
+  `<!>` is that sequence's step and what the command box can type.
 - **Station configuration.** There is none at runtime: the fork sets
   `DISABLE_EEPROM` so the station persists nothing, the translator drives
   points with raw accessory packets so the station holds no definitions, and

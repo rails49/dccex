@@ -115,8 +115,9 @@ node. `compose.yaml` carries that one server and its door route and nothing
 else, because the one thing it has to do is come up from a clean clone. The
 stack a **box** runs is that file and `compose.box.yaml` together: the mirror
 beside the page, the command station's device mapped in, 2560 published raw,
-the shared network the door dials containers on declared external, and the
-box's own declaration required rather than defaulted, so a box the
+the shared network the door dials containers on declared external, `/mqtt` on
+the page's host routed to `control`'s broker for the band's power button, and
+the box's own declaration required rather than defaulted, so a box the
 installation has not been run on stops with a sentence naming
 `/etc/rails49/box.env`. `scripts/deploy.sh` is what brings the two up there —
 one ssh, a pull, a clean tree, the image built under the commit, and a line
