@@ -5,16 +5,16 @@
  * The words themselves are the readings module's and are run through it
  * (`tests/ui/test_readings.py`); what is asserted here is that they reach a
  * page — that a band drawn from a conversation and a bus says what the two of
- * them mean, and says it where a reader is looking — and that the one control
- * on it asks for what it says it will. Read off the source, the same claim
- * passed on a component that never rendered (#1 seam 2, #126).
+ * them mean, and says it where a reader is looking — and that each of the two
+ * presses on it asks for what it says it will. Read off the source, the same
+ * claim passed on a component that never rendered (#1 seam 2, #126).
  *
  * The facts are the ones a page would hand it: lines the station said, folded
  * in as the page folds them, asked for at a moment, and the bus reading the
  * page holds beside them (ADR-0017). What the connection behind that reading
  * does is driven on its own (`ui/test/bus.test.ts`). Nothing here asserts a
- * width — which of the three things a narrow band keeps is layout and
- * happy-dom does none (`tests/ui/test_band.py`).
+ * width — what a narrow band keeps is layout and happy-dom does none
+ * (`tests/ui/test_band.py`).
  */
 
 import { expect, test } from "vitest";
@@ -48,6 +48,9 @@ function told(...lines: string[]): Kept {
 
 /** A station that came up and said which build it is running. */
 const TALKED = told(BANNER);
+
+/** What the STOP press is titled while it can be pressed (ADR-0020 d.3). */
+const STOPS = "stop every locomotive where it stands";
 
 /** What the bus says: the broker and each of the three rows `layout`
  *  publishes, and the broker with nothing reported on it yet. */
@@ -184,4 +187,59 @@ test("a band nobody handed a way to ask presses nothing", async () => {
   drawn.readings = asOf(TALKED, SOON);
   drawn.layout = HOT;
   press(await mounted(drawn), ".power");
+});
+
+test("a STOP press asks layout to stop every locomotive where it stands", async () => {
+  const { drawn, asked } = await band(TALKED, SOON, HOT);
+  const stop = part(drawn, ".stop") as HTMLButtonElement;
+  expect(reads(drawn, ".stop")).toBe("STOP");
+  expect(stop.disabled).toBe(false);
+  expect(stop.getAttribute("title")).toBe(STOPS);
+  expect(stop.getAttribute("aria-label")).toBe(STOPS);
+  press(drawn, ".stop");
+  expect(asked).toEqual(["stopped"]);
+});
+
+test("STOP is the same press whatever layout reports", async () => {
+  for (const layout of [HOT, COLD, HALTED, UNSAID]) {
+    const { drawn, asked } = await band(TALKED, SOON, layout);
+    const stop = part(drawn, ".stop") as HTMLButtonElement;
+    expect(stop.disabled).toBe(false);
+    expect(stop.getAttribute("title")).toBe(STOPS);
+    press(drawn, ".stop");
+    expect(asked).toEqual(["stopped"]);
+  }
+});
+
+test("STOP is pressed with the link down and with nothing reported", async () => {
+  const { drawn, asked } = await band(TALKED, LATER, UNSAID);
+  expect((part(drawn, ".stop") as HTMLButtonElement).disabled).toBe(false);
+  press(drawn, ".stop");
+  expect(asked).toEqual(["stopped"]);
+});
+
+test("STOP presses nothing while the bus is unreachable", async () => {
+  const { drawn, asked } = await band(TALKED, SOON);
+  const stop = part(drawn, ".stop") as HTMLButtonElement;
+  expect(stop.disabled).toBe(true);
+  expect(stop.getAttribute("title")).toBe("no bus");
+  press(drawn, ".stop");
+  expect(asked).toEqual([]);
+});
+
+test("a press of STOP is one ask and not a second", async () => {
+  const { drawn, asked } = await band(TALKED, SOON, HALTED);
+  press(drawn, ".stop");
+  press(drawn, ".stop");
+  expect(asked).toEqual(["stopped", "stopped"]);
+});
+
+test("STOP is right of the power button", async () => {
+  const { drawn } = await band(TALKED, SOON, HOT);
+  const pressed = [...drawn.renderRoot.querySelectorAll("button")].map(
+    (button) => button.className,
+  );
+  expect(pressed).toHaveLength(2);
+  expect(pressed[0]).toContain("power");
+  expect(pressed[1]).toContain("stop");
 });

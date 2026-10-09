@@ -11,11 +11,11 @@ import { css } from "lit";
  *
  * **The reds on it are the fault and the stop.** The look rules reserve red on
  * the chrome for stop or a fault: a link that is down is the fault and wears
- * `--stop` with the words on it (issue 138), and a railroad `layout` reports as
- * `stopped` is the stop, which is what the power button wears in the same two
- * tokens (ADR-0017 d.2). Power that is merely off is neither, and is an
- * outlined chip in the band's own ink — a band that drew it red would be saying
- * stop about a railroad nobody stopped. The link still says so in words,
+ * `--stop` with the words on it (issue 138), and the stop is both the STOP
+ * press and a railroad `layout` reports as `stopped`, which wear the same two
+ * tokens (ADR-0017 d.2, ADR-0020 d.1). Power that is merely off is neither, and
+ * is an outlined chip in the band's own ink — a band that drew it red would be
+ * saying stop about a railroad nobody stopped. The link still says so in words,
  * because a reader may not see the colour.
  *
  * **The green is the look rules' one green.** `--rail-group` is what this
@@ -31,11 +31,15 @@ import { css } from "lit";
  * sit on `--stop`, the green sits on a chip of the band's ink, and the red
  * sits on `--stop`.
  *
- * **Grey is the band's own ink at half strength**, for a power button that
- * presses nothing (ADR-0017 d.3). None of the six is a dimmer ink. There is no
- * chip with it: a dim glyph on the blue is what a control that cannot be
- * pressed looks like, and it is the difference a reader who cannot tell the
- * green from the red is left with.
+ * **Grey is the band's own ink at half strength**, for a press that presses
+ * nothing (ADR-0017 d.3, ADR-0020 d.3). None of the six is a dimmer ink. There
+ * is no chip with it: a dim glyph or word on the blue is what a control that
+ * cannot be pressed looks like, and it is the difference a reader who cannot
+ * tell the green from the red is left with.
+ *
+ * **The two presses are one shape and are written once** (`.press`). They are
+ * the same size, they are dead the same way, and the difference between them is
+ * what each wears: a glyph the power row colours, and the word STOP in red.
  */
 export const bandStyles = css`
   :host {
@@ -80,7 +84,7 @@ export const bandStyles = css`
   }
 
   /* What is true of the whole system, at the end the eye finishes on: the link
-     and the one control. It does not wrap — a band that grew a second line
+     and the two presses. It does not wrap — a band that grew a second line
      would push the work pane down every time the station went quiet. */
   .readings {
     display: flex;
@@ -127,13 +131,12 @@ export const bandStyles = css`
     font-weight: 600;
   }
 
-  /* The power button: the one control on this chrome (ADR-0017 d.1). What it
-     wears is the power row layout reports, and the border is on it in every
-     state so the box does not move between them. The colour reaches the icon
-     through currentColor, and the font size is what the icon is a multiple of
-     (dccex-icon.styles.ts). It is a thumb wide and a thumb high, because it is
-     pressed on the phone at the layout. */
-  .power {
+  /* Either press on this chrome: the power button and STOP (ADR-0017 d.1,
+     ADR-0020 d.1). The shape is written once, because the two are the same
+     control to a thumb and only what they wear differs. The border is on them
+     in every state so the box does not move between them. Each is a thumb wide
+     and a thumb high, because they are pressed on the phone at the layout. */
+  .press {
     display: inline-flex;
     flex: none;
     align-items: center;
@@ -146,8 +149,14 @@ export const bandStyles = css`
     border-radius: 4px;
     background: none;
     color: var(--band-ink);
-    font-size: 1.2em;
     cursor: pointer;
+  }
+
+  /* The power button. What it wears is the power row layout reports; the
+     colour reaches the icon through currentColor, and the font size is what
+     the icon is a multiple of (dccex-icon.styles.ts). */
+  .power {
+    font-size: 1.2em;
   }
 
   /* Power on: green on a chip of the band's own ink, which is what the green
@@ -174,11 +183,27 @@ export const bandStyles = css`
     color: var(--stop-ink);
   }
 
-  /* Grey and dead with no broker, no station answering or no word from layout
-     yet (ADR-0017 d.3): there is then no state to draw and nothing a press
-     could reach. No chip and no outline, so what is left is a dim glyph on the
-     blue. */
-  .power:disabled {
+  /* STOP: the press that stops every locomotive where it stands (ADR-0020 d.1,
+     d.2). Red, the same two tokens the link's words and a stopped power button
+     wear, because a railroad stopped where it stands is the other thing red is
+     for on this chrome. The word rather than a glyph — there is no symbol for
+     this a reader would be sure of — and it keeps its chip in every state,
+     because what it does does not change with the state (d.4). */
+  .stop {
+    padding: 0 0.5rem;
+    background: var(--stop);
+    color: var(--stop-ink);
+    font-weight: 600;
+    font-size: 0.8em;
+    letter-spacing: 0.04em;
+  }
+
+  /* Grey and dead where a press reaches nothing: the power button with no
+     broker, no station answering or no word from layout yet, and STOP with no
+     broker (ADR-0017 d.3, ADR-0020 d.3). There is then nothing a press could
+     reach, and for the power button no state to draw either. No chip and no
+     outline, so what is left is a dim glyph or word on the blue. */
+  .press:disabled {
     background: none;
     color: var(--band-ink);
     cursor: default;
@@ -199,8 +224,8 @@ export const bandStyles = css`
 
   /* Narrower than that, the words go and the link is the dot alone: the dot is
      the reading and the words are the reading a second time, so they are what
-     there is to lose. The power button stays at every width — it is the one
-     control on the page that asks for power, and a thumb has to reach it on
+     there is to lose. Both presses stay at every width — they are the two
+     presses on the page that ask for power, and a thumb has to reach them on
      the phone at the layout. 400px is this page's own number too. */
   @media (max-width: 400px) {
     .says {
