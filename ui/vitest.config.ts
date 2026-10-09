@@ -12,10 +12,21 @@ import { defineConfig } from "vitest/config";
 // phone reads at are still held against the stylesheets
 // (`tests/ui/test_look.py`, #126).
 //
+// `mqtt` is aliased to a broker with nothing behind it, for the same reason:
+// the page is a client of `control`'s broker and there is none here, so what a
+// check drives is the connection the page made rather than a socket
+// (`ui/test/support/broker.ts`, ADR-0017 d.5). The alias is this file's and
+// not the build's — the page that runs on the box dials the real one.
+//
 // **This is not the gate.** `scripts/check.sh` is Python and runs with no
 // node on the machine; these run in the workflow's `node` job beside the
 // modules a bare node runs (`.github/workflows/ci.yml`, `pyproject.toml`).
 export default defineConfig({
+  resolve: {
+    alias: {
+      mqtt: new URL("./test/support/broker.ts", import.meta.url).pathname,
+    },
+  },
   test: {
     environment: "happy-dom",
     include: ["test/**/*.test.ts"],
