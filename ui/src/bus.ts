@@ -134,10 +134,12 @@ export class Bus {
     client?.end(true);
   }
 
-  /** Ask `layout` for power: `on`, `off` or `stopped` (ADR-0017 d.1).
+  /** Ask `layout` for power: `on`, `off` or `stopped` (ADR-0017 d.1, ADR-0020
+   * d.2).
    *
-   * The whole of what the page does about power. What becomes of the ask is
-   * `layout`'s — it refuses an OFF while a run is going and zeroes every
+   * The whole of what the page does about power, for both presses on the band:
+   * the power button asks for the first two and STOP for the third. What
+   * becomes of the ask is `layout`'s — it refuses an OFF while a run is going and zeroes every
    * locomotive before a cut (`control` ADR-0062) — and what the page shows is
    * the state row that follows, or nothing where none does (ADR-0017 d.4).
    *

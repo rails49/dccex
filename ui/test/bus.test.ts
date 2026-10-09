@@ -23,7 +23,9 @@ import { type Dialled, dialled, forgotten } from "./support/broker.js";
 
 beforeEach(forgotten);
 
-/** A row `layout` publishes, and one this page cannot read. */
+/** A row `layout` publishes, one a press asks for, and one this page cannot
+ *  read. The three words are the same bytes either way, which is why the rows
+ *  below stand for both (ADR-0017 d.1, d.2, ADR-0020 d.2). */
 const HOT = '{"power":"on"}';
 const COLD = '{"power":"off"}';
 const HALTED = '{"power":"stopped"}';
@@ -116,6 +118,15 @@ test("a press publishes what it asks for, at QoS 0 and not retained", () => {
   bus.wants("off");
   expect(broker.published).toEqual([
     { topic: POWER_WANTED, payload: COLD, qos: 0, retain: false },
+  ]);
+});
+
+test("a STOP press publishes stopped, at QoS 0 and not retained", () => {
+  const { bus, broker } = opened();
+  broker.connects();
+  bus.wants("stopped");
+  expect(broker.published).toEqual([
+    { topic: POWER_WANTED, payload: HALTED, qos: 0, retain: false },
   ]);
 });
 
