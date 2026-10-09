@@ -65,8 +65,8 @@ def drawn(**scenario: Any) -> dict[str, Any]:
 
 
 def band(**scenario: Any) -> dict[str, Any]:
-    """What the band carries: the **build**, the **link** and the power
-    button."""
+    """What the band carries: the **build**, the **link** and the two
+    presses."""
     carried: dict[str, Any] = drawn(**scenario)["band"]
     return carried
 
@@ -74,6 +74,12 @@ def band(**scenario: Any) -> dict[str, Any]:
 def power(**scenario: Any) -> dict[str, Any]:
     """What the band's power button reads, is titled, and asks `layout` for."""
     pressed: dict[str, Any] = band(**scenario)["power"]
+    return pressed
+
+
+def stop(**scenario: Any) -> dict[str, Any]:
+    """What the band's STOP press is titled and asks `layout` for."""
+    pressed: dict[str, Any] = band(**scenario)["stop"]
     return pressed
 
 
@@ -92,6 +98,10 @@ def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
     """
     return {tile["track"]: tile for tile in drawn(**scenario)["tiles"]}
 
+
+#: What the STOP press is titled while it can be pressed: what a press does
+#: rather than the state it leaves the railroad in (ADR-0020 d.3).
+STOPS = "stop every locomotive where it stands"
 
 BANNER = "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>"
 
@@ -135,12 +145,18 @@ def live() -> dict[str, Any]:
 
 
 @pytest.mark.node
-def test_the_band_carries_the_build_the_link_and_the_power_button() -> None:
-    """The band is the **build**, the **link** and one control, and nothing
-    else (CONTEXT.md **band**, ADR-0017). A reading added without a scenario
-    beside it is a reading an operator can be shown that nobody ever read
-    (ADR-0009 d.3)."""
-    assert sorted(live()["band"]) == ["answering", "build", "power", "says"]
+def test_the_band_carries_the_build_the_link_and_the_two_presses() -> None:
+    """The band is the **build**, the **link** and two presses, and nothing
+    else (CONTEXT.md **band**, ADR-0017, ADR-0020). A reading added without a
+    scenario beside it is a reading an operator can be shown that nobody ever
+    read (ADR-0009 d.3)."""
+    assert sorted(live()["band"]) == [
+        "answering",
+        "build",
+        "power",
+        "says",
+        "stop",
+    ]
 
 
 @pytest.mark.node
@@ -157,6 +173,7 @@ def test_the_band_reads_the_build_the_link_and_the_power_off_both_channels() -> 
         "answering": True,
         "says": "answering",
         "power": {"reads": "on", "title": "power off", "wants": "off"},
+        "stop": {"title": STOPS, "wants": "stopped"},
     }
 
 
@@ -181,6 +198,52 @@ def test_a_railroad_layout_reports_as_stopped_is_red_and_asks_for_on() -> None:
         "title": "power on",
         "wants": "on",
     }
+
+
+@pytest.mark.node
+def test_the_stop_press_asks_layout_to_stop_every_locomotive() -> None:
+    """The press ADR-0020 adds: it asks `layout` for `stopped`, and it is
+    titled for what it does rather than for the state it leaves behind (d.2,
+    d.3).
+
+    `layout` applies a `stopped` whatever the run is doing and holds it until
+    an `on`, which is why this is the one ask on the band with no state behind
+    it (`control` ADR-0062).
+    """
+    assert stop(said=list(TALKING), now=NOW, layout=HOT) == {
+        "title": STOPS,
+        "wants": "stopped",
+    }
+
+
+@pytest.mark.node
+def test_the_stop_press_reads_the_same_whatever_layout_reports() -> None:
+    """It does not change with the state (ADR-0020 d.4). A press while the
+    railroad is already `stopped` asks again — what a second ask costs is
+    nothing, and a press that went dead over a state would be a stop refused
+    by the page."""
+    for layout in (HOT, COLD, HALTED, UNSAID):
+        assert stop(said=list(TALKING), now=NOW, layout=layout) == {
+            "title": STOPS,
+            "wants": "stopped",
+        }
+
+
+@pytest.mark.node
+def test_the_stop_press_is_disabled_on_the_broker_and_nothing_else() -> None:
+    """The bus is the only thing a stop needs (ADR-0020 d.3).
+
+    The power button's other two reasons are not this press's: `layout` holds a
+    `stopped` and applies it when the station answers, so a station that is
+    silent and a `layout` that has reported nothing are both railroads a stop
+    reaches. The broker is the one absence that makes the ask reach nothing.
+    """
+    assert stop(said=list(TALKING), now=NOW) == {"title": "no bus", "wants": None}
+    assert stop(said=list(TALKING), now=NOW + silent_ms(), layout=UNSAID) == {
+        "title": STOPS,
+        "wants": "stopped",
+    }
+    assert stop(now=NOW, layout=HOT) == {"title": STOPS, "wants": "stopped"}
 
 
 @pytest.mark.node
@@ -360,6 +423,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": None, "title": "no bus", "wants": None},
+        "stop": {"title": "no bus", "wants": None},
     }
     assert tiles(now=NOW) == {}
 
@@ -423,6 +487,7 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": None, "title": "no station", "wants": None},
+        "stop": {"title": STOPS, "wants": "stopped"},
     }
     assert tiles(**gone) == {}
 
