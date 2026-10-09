@@ -147,6 +147,14 @@ export const scriptStyles = css`
     background: var(--sl-color-primary-200);
   }
 
+  /* The bracket under the caret with no pair, which is every bracket while a
+     line is being typed. A neutral wash and not the danger ink: danger in this
+     sheet is a line the face refused. @codemirror/language washes it in one
+     colour for both themes, which is what this rule replaces (issue 219). */
+  .script.cm-editor.cm-focused .cm-nonmatchingBracket {
+    background: var(--sl-color-neutral-200);
+  }
+
   /* The line a failed Apply named: the text under a rule carrying the face's
      message, and that line's number told apart in the gutter (ADR-0019 d.4,
      editor.ts). The ink is the one the refusal itself is drawn in at the foot
