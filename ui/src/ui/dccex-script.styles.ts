@@ -134,11 +134,12 @@ export const scriptStyles = css`
 
   /* The line numbers, quieter than the text and with a rule between. A
      compile error names a line, so the numbers are what a reader matches it
-     against (ADR-0019). */
+     against (ADR-0019). The ink is the -700 step, as the token colours below
+     are (issue 218). */
   .script.cm-editor .cm-gutters {
     border-right: 1px solid var(--sl-color-neutral-200);
     background: var(--sl-color-neutral-50);
-    color: var(--sl-color-neutral-500);
+    color: var(--sl-color-neutral-700);
   }
 
   /* The bracket under the caret and the one that closes it. */
@@ -164,29 +165,34 @@ export const scriptStyles = css`
   /* What a reader of Python needs told apart (ADR-0019 d.3). The classes are
      the editor's and the colours are the theme's, so both halves follow the
      system's light or dark setting. A tag with no rule here is drawn as the
-     text around it. */
+     text around it.
+
+     Each is the -700 step. Shoelace inverts the scale for the dark theme, so
+     a step is read on the editor's background twice, and -700 is the one that
+     clears 4.5:1 in both: -600 was 3.2:1 for a decorator in light and 3.9:1
+     for a keyword in dark (issue 218, ui/test/editor.test.ts). */
   .tok-keyword {
-    color: var(--sl-color-violet-600);
+    color: var(--sl-color-violet-700);
   }
 
   .tok-string {
-    color: var(--sl-color-green-600);
+    color: var(--sl-color-green-700);
   }
 
   .tok-comment {
-    color: var(--sl-color-neutral-500);
+    color: var(--sl-color-neutral-700);
   }
 
   .tok-number {
-    color: var(--sl-color-cyan-600);
+    color: var(--sl-color-cyan-700);
   }
 
   .tok-decorator {
-    color: var(--sl-color-amber-600);
+    color: var(--sl-color-amber-700);
   }
 
   .tok-function {
-    color: var(--sl-color-blue-600);
+    color: var(--sl-color-blue-700);
   }
 
   /* Apply, and the note beside it where the editor is not what was applied. */
