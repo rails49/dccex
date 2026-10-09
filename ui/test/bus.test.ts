@@ -119,6 +119,14 @@ test("a press publishes what it asks for, at QoS 0 and not retained", () => {
   ]);
 });
 
+test("an ask layout drops changes no reading", () => {
+  const { bus, broker, reported } = opened();
+  broker.connects();
+  broker.says(POWER_STATE, HOT);
+  bus.wants("off");
+  expect(latest(reported)).toEqual({ connected: true, power: "on" });
+});
+
 test("a press asks for one row and not a second", () => {
   const { bus, broker } = opened();
   broker.connects();
