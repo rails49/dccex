@@ -57,16 +57,17 @@
  * where the following of the write starts, which is the paragraph below on the
  * flash's own schedule.
  *
- * **And the bus is held here, for the band's power button** (ADR-0017). That
- * button asks `layout` for power rather than typing at the station, because
- * `layout` refuses an OFF while a run is going and zeroes every locomotive
- * before a cut (`control` ADR-0062) — so the page is a client of `control`'s
- * broker as well as of the mirror's face, which is the second of the three
- * things a UI may talk to (the organisation's ADR-0002). One connection, held
- * here for the same reason the stream is: a pane that opened one of its own
- * would be a second client of that broker for one page (`bus.ts`). What it
- * says is handed down to the band beside the station's readings, and the band
- * is disabled until both are there.
+ * **And the bus is held here, for the band's two presses** (ADR-0017,
+ * ADR-0020). They ask `layout` for power rather than typing at the station,
+ * because `layout` refuses an OFF while a run is going, zeroes every
+ * locomotive before a cut and holds a stop until an `on` (`control` ADR-0062)
+ * — so the page is a client of `control`'s broker as well as of the mirror's
+ * face, which is the second of the three things a UI may talk to (the
+ * organisation's ADR-0002). One connection, held here for the same reason the
+ * stream is: a pane that opened one of its own would be a second client of
+ * that broker for one page (`bus.ts`). What it says is handed down to the band
+ * beside the station's readings; the power button needs both and STOP needs
+ * the broker alone.
  *
  * **The script's counterparties are the page's too** (issue 185). The
  * railroads the store holds, one railroad's script and a script applied are
@@ -494,16 +495,19 @@ export class DccexApp extends LitElement {
     return sent;
   };
 
-  /** Ask `layout` for power, which is a row on the bus (ADR-0017 d.1).
+  /** Ask `layout` for power, which is a row on the bus (ADR-0017 d.1,
+   * ADR-0020 d.2).
    *
-   * The band's one control, and the whole of what the page does about power.
-   * It goes on the bus and not up the stream: `layout` is what checks the
+   * What both presses on the band ask through, and the whole of what the page
+   * does about power: `on` and `off` from the power button, `stopped` from
+   * STOP. It goes on the bus and not up the stream: `layout` is what checks the
    * railroad can spare the power it is being asked for, runs the **script**'s
    * handler and tells the station through the translator, and a press that
    * typed at the station would skip all three (`control` ADR-0062).
    *
-   * Nothing comes back. What the button then draws is the state row `layout`
-   * reports, or nothing where it dropped the ask (ADR-0017 d.4).
+   * Nothing comes back. What the power button then draws is the state row
+   * `layout` reports, or nothing where it dropped the ask (ADR-0017 d.4); STOP
+   * draws no state at all (ADR-0020 d.4).
    */
   readonly #wants = (power: string): void => {
     this.#bus.wants(power);
