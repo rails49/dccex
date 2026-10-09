@@ -33,7 +33,7 @@
  * a broker with nothing behind it (`ui/test/support/broker.ts`).
  */
 
-import { connect, type MqttClient } from "mqtt";
+import mqtt, { type MqttClient } from "mqtt";
 
 import { socketAt } from "./framing.js";
 import { UNREACHABLE, reported, type Layout } from "./readings.js";
@@ -93,7 +93,7 @@ export class Bus {
     if (this.#client !== null) {
       return;
     }
-    const client = connect(socketAt(window.location, MQTT_PATH), {
+    const client = mqtt.connect(socketAt(window.location, MQTT_PATH), {
       reconnectPeriod: RECONNECT_MS,
       // Nothing is kept back while the connection is down, which is the
       // stream's rule about a command an operator typed (#6).
