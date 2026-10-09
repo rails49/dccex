@@ -75,7 +75,7 @@ services:
       - traefik.http.routers.dccex-mqtt.middlewares=dccex-mqtt-strip
       - traefik.http.routers.dccex-mqtt.tls.certresolver=le
       - traefik.http.middlewares.dccex-mqtt-strip.stripprefix.prefixes=/mqtt
-      - traefik.http.routers.dccex-mqtt-foreign.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`) && !HeadersRegexp(`Origin`, `^https://dccex\.${BOX_DOMAIN}$$`)
+      - traefik.http.routers.dccex-mqtt-foreign.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`) && !HeaderRegexp(`Origin`, `^https://dccex\.${BOX_DOMAIN}$$`)
       - traefik.http.routers.dccex-mqtt-foreign.priority=3
       - traefik.http.routers.dccex-mqtt-foreign.entrypoints=websecure
       - traefik.http.routers.dccex-mqtt-foreign.service=tc49-mqtt@docker
