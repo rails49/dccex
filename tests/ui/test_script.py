@@ -57,6 +57,9 @@ VIEW = UI / "src" / "view.ts"
 #: The rail that offers one button per view.
 RAIL = UI / "src" / "ui" / "dccex-rail.ts"
 
+#: What a reader of Python is owed told apart, by the tag the editor gives it.
+COLOURED = ("keyword", "string", "comment", "number", "decorator", "function")
+
 
 def sample() -> str:
     """The sample as `script.ts` carries it.
@@ -301,19 +304,34 @@ def test_the_editors_colours_are_the_themes_and_are_in_the_sheet() -> None:
     assert "color:" not in built, "the editor writes a colour of its own"
     assert "--sl-" not in built, "the editor asks for a colour itself"
     styles = STYLES.read_text()
-    for drawn in (
-        "keyword",
-        "string",
-        "comment",
-        "number",
-        "decorator",
-        "function",
-    ):
+    for drawn in COLOURED:
         assert f'class: "tok-{drawn}"' in built, f"no {drawn} is told apart"
         painted = rule(styles, f".tok-{drawn}")
         assert re.search(
             r"color: var\(--sl-color-[a-z0-9-]+\)", painted
         ), f"the {drawn} is not drawn in a theme token"
+
+
+def test_the_editors_inks_are_the_step_that_holds_in_both_themes() -> None:
+    """The six token colours and the line numbers, each the -700 step (#218).
+
+    Shoelace inverts its scale for the dark theme, so a step is read against
+    the editor's background twice over, and -600 cleared 4.5:1 in one theme
+    and not the other: a string was 3.3:1 in light and a keyword 3.9:1 in
+    dark.
+
+    The ratios themselves are computed from the palette, in the UI's own
+    toolchain (`ui/test/editor.test.ts`): the palette arrives with the
+    dependency and this repository holds no copy of it, so what the gate can
+    read off the sheet is the step the sheet asks for.
+    """
+    styles = STYLES.read_text()
+    inked = [f".tok-{drawn}" for drawn in COLOURED]
+    inked.append(".script.cm-editor .cm-gutters")
+    for selector in inked:
+        assert re.search(
+            r"color: var\(--sl-color-[a-z]+-700\)", rule(styles, selector)
+        ), f"{selector} is not drawn in the -700 step"
 
 
 def test_a_failed_apply_is_marked_on_the_line_in_the_sheets_ink() -> None:
