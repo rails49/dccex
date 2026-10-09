@@ -255,10 +255,12 @@ reading goes is an observation the page did not make (ADR-0009,
 The chrome across the top of every rails49 UI, carrying what is true of the
 whole system. Here that is the UI's name and the **build** on the left, and on
 the right two readings — the **link**, and the railroad's power as `layout`
-reports it — and one control: the power button, which asks `layout` for power
-on the bus as `control`'s does
+reports it — and two presses, both of which ask `layout` for power on the bus
+as `control`'s do: the power button, and a STOP that stops every locomotive
+where it stands
 ([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md), superseding
-ADR-0011 d.1). The **rail** down the side is its counterpart, and both are
+ADR-0011 d.1,
+[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md)). The **rail** down the side is its counterpart, and both are
 LOOK.md's rather than this repository's.
 
 **Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,

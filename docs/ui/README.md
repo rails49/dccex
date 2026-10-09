@@ -62,9 +62,9 @@ and how far that flash has got rather than a reading of the station's (#111,
 #172). The count is still the app's own business about itself and the face still
 answers it at the address above.
 
-**The bus carries one row each way, and only because of the power button**
-(ADR-0017, #205). The band asks `layout` for power rather than typing `<1>` or
-`<0>` at the station, because `layout` refuses an OFF while a run is going,
+**The bus carries one row each way, and only because of the band's two
+presses** (ADR-0017, ADR-0020, #205, #208). The band asks `layout` for power
+rather than typing `<1>` or `<0>` at the station, because `layout` refuses an OFF while a run is going,
 zeroes every locomotive's speed before a cut and runs the **script**'s power
 handler (control ADR-0062) — none of which a message through the face reaches.
 So the page publishes `tc49/layout/power_wanted` and subscribes to
@@ -72,9 +72,10 @@ So the page publishes `tc49/layout/power_wanted` and subscribes to
 `control`'s UI next door. The broker is `/mqtt` on this page's own origin,
 which the box's door routes to `control`'s service and refuses from any other
 origin (`compose.box.yaml`); the page names no host and no port, as it names
-none for the face. On a box with no `control` beside it the row never arrives
-and the button is disabled, which is the same page with one control turned off
-rather than a second page.
+none for the face. The STOP is on the same row and asks for `stopped`, which
+`layout` holds until an `on` (ADR-0020 d.2). On a box with no `control` beside
+it the row never arrives and both presses are disabled, which is the same page
+with its controls turned off rather than a second page.
 
 **The one document it edits goes through the face too, and for a reason of the
 door's rather than of the rule's** (#185,
