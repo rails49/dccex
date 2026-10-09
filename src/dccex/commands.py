@@ -15,9 +15,10 @@ would move a turnout the layout did not ask for, and a faked action is worse
 than silence, which is the same rule that keeps a commanded position from
 being echoed back as a measured one (control ADR-0022, control ADR-0050).
 
-The one word that is not a table row is here too, `STATUS`, the whole of what
-a poll is made of, because it is bytes on the same wire and belongs beside
-the rest of the protocol. What a railroad wants of its station that no row
+The words that are not table rows are here too — `STATUS` and `STASH`, the
+two a poll is made of, and `MARK`, which sets the stash a restart is read off
+(ADR-0021) — because they are bytes on the same wire and belong beside the
+rest of the protocol. What a railroad wants of its station that no row
 here covers — a track's mode, a district's current limit — is its **script**'s
 and is written in the station's own language, so nothing here has a
 vocabulary for it (ADR-0013, `script.py`).
@@ -64,15 +65,32 @@ one: it takes an aspect rather than a pair of positions, so nothing is split
 off it."""
 
 STATUS = b"<s>"
-"""What a poll is made of, and the whole of it. `<s>` makes the station
-restate every track's power. A trip is read from the station's diagnostics,
-which the mirror passes on, and not from the poll: the digit reads `0` for a
-tripped district and for a powered one near its limit (ADR-0016).
+"""One half of a poll, `STASH` the other. `<s>` makes the station restate
+every track's power. A trip is read from the station's diagnostics, which the
+mirror passes on, and not from the poll: the digit reads `0` for a tripped
+district and for a powered one near its limit (ADR-0016).
 
 Nothing else is asked, because a station is polled only for what it can
 answer. A question this one does not know is not passed over: the `!` opcode
 takes no suffix here, so a lock query reads as the emergency stop itself and
 every locomotive on the railroad stands once a second (control#463)."""
+
+STASH_ID = 32000
+"""The stash entry this app owns, and the only one it writes or reads
+(ADR-0021 d.1). A stash is held in the station's RAM and is empty after every
+boot, so an entry this app set and finds empty is a station that has
+restarted. The parser takes `<JM>` in every build, EXRAIL or not."""
+
+MARK = f"<JM {STASH_ID} 1>".encode()
+"""What sets the entry, sent before anything else on a connect and after a
+restart (ADR-0021 d.2). The value is a locomotive id to the station and names
+nothing here: what is read back is whether there is one at all, so `1` is the
+smallest thing that is not empty."""
+
+STASH = f"<JM {STASH_ID}>".encode()
+"""The other half of a poll. `<JM id>` answers `<jM id loco>`, `0` where the
+entry is unset, and sets nothing — the property a polled command has to have
+(`STATUS`)."""
 
 
 def traction(addr: str, speed: float) -> bytes:
