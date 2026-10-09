@@ -31,18 +31,21 @@ FACE = UI / "src" / "face.ts"
 #: monitor is; what is counted here is a control on the page that sends one.
 COMMANDS = ("<0>", "<1>", "<!>")
 
-#: The one module that may carry the emergency stop: the flash sequence, which
-#: stops the locomotives and cuts track power as its own steps, after an
-#: operator has been told what flashing does and has said yes (#9, ADR-0006
-#: d.2). It is the exception docs/ui/README.md already names, and it is one
-#: module wide.
+#: The one module that may carry any of them: the flash sequence, which stops
+#: the locomotives and cuts track power as its own steps, after an operator has
+#: been told what flashing does and has said yes (#9, ADR-0006 d.2). It is the
+#: exception docs/ui/README.md already names, and it is one module wide.
+#:
+#: It was two until #205. The readings carried `<0>` and `<1>` for the band's
+#: power button, and the band asks `layout` for power now (ADR-0017 d.1), so
+#: nothing on the page types power at the station any more.
 SEQUENCE = "flash.js"
 
-#: The one module that may carry the two power messages: the readings, which
-#: answer what the band's power button sends for what the station last said
-#: about power (ADR-0011 d.1). The colour and the message are one answer there,
-#: so a component cannot draw one and send the other.
-POWER = "readings.js"
+#: The row the band asks `layout` for power on, and the module that holds it.
+#: The page is a client of `control`'s broker for this one row (ADR-0017 d.1,
+#: d.5).
+WANTED = "tc49/layout/power_wanted"
+BUS = "bus.ts"
 
 
 def asked_of_the_face(page: str) -> set[str]:
@@ -141,6 +144,25 @@ def test_the_page_asks_when_the_stream_is_open() -> None:
     assert joining.index("setInterval(") < joining.index("this.#ask();"), (
         "the page asks before the stream is open, which is where the first " "poll went"
     )
+
+
+def test_the_page_holds_the_bus_and_lets_it_go_when_it_goes() -> None:
+    """One connection to `control`'s broker, opened where the page joins the
+    document and let go where it leaves (ADR-0017 d.5).
+
+    The same rule the stream is on, and for the same reason: a connection that
+    outlived the page would be a client of somebody else's broker nobody is
+    reading the readings of, and a pane that opened one of its own would be a
+    second client of it for one page (`bus.ts`).
+    """
+    page = APP.read_text()
+    assert code(page).count("new Bus(") == 1, "the page holds a second bus"
+    joining = page[
+        page.index("override connectedCallback(") : page.index("/** Let the stream go")
+    ]
+    assert "this.#bus.open();" in joining, "the page never reaches the broker"
+    leaving = page[page.index("override disconnectedCallback(") :]
+    assert "this.#bus.close();" in leaving, "the connection outlives the page"
 
 
 def test_a_stream_that_comes_back_leaves_one_schedule_running() -> None:
@@ -338,16 +360,14 @@ def test_the_link_can_go_down_with_nothing_arriving() -> None:
     assert "asOf(this.#kept, Date.now())" in page, "the readings are never worked out"
 
 
-def test_two_modules_command_track_power_and_the_rest_of_the_page_does_not() -> None:
-    """The band's power button and the flash sequence, and nothing else.
+def test_one_module_commands_track_power_and_the_rest_of_the_page_does_not() -> None:
+    """The flash sequence, and nothing else (ADR-0017 d.1, ADR-0006 d.2).
 
-    `control`'s band presses power because `layout` checks the railroad is
-    drained first; this page is on no bus, and that check never guarded the
-    station — any client of the mirror's port sends `<0>` or `<1>` and the
-    guard is the operator (ADR-0011, superseding ADR-0008 d.5). So the two
-    messages are in the readings, where what the button says and what it sends
-    are one answer, and the emergency stop is in the sequence, which is held
-    below.
+    The band used to type `<0>` or `<1>` at the station through the **face**,
+    which skipped `layout` and the translator — and `layout` is what refuses an
+    OFF while a run is going and zeroes every locomotive before a cut
+    (`control` ADR-0062). It asks `layout` on the bus now, so the only module
+    left that types power is the sequence, which is held below.
 
     Held against the literals rather than the prose, because saying what the
     page does not command is not commanding it — and because the one thing that
@@ -355,23 +375,28 @@ def test_two_modules_command_track_power_and_the_rest_of_the_page_does_not() -> 
     which is not a literal at all.
     """
     for name, module in modules().items():
-        if name in (SEQUENCE, POWER):
+        if name == SEQUENCE:
             continue
         for literal in quoted(module):
             assert literal not in COMMANDS, f"{name} sends {literal}"
 
 
-def test_the_readings_carry_the_two_the_power_button_sends_and_no_stop() -> None:
-    """`<0>` and `<1>`, which are the two a press offers depending on what the
-    station last said about power (ADR-0011 d.1).
+def test_the_band_asks_layout_for_power_on_the_bus() -> None:
+    """The row, in the one module that is the connection (ADR-0017 d.1).
 
-    Not the emergency stop: stopping the locomotives is a step of writing a
-    release and is the sequence's, and a band that could send `<!>` would be
-    one press from halting a railroad nobody warned.
+    What the page does about power is one publish on `control`'s broker, and
+    the page holds that connection the way it holds the stream — so the row is
+    spelt in `bus.ts` and nowhere else, and the band is handed a way to ask
+    (`tests/ui/test_bus.py`).
     """
-    sent = [literal for literal in quoted(modules()[POWER]) if literal in COMMANDS]
-
-    assert set(sent) == {"<0>", "<1>"}, f"the readings send {sent}"
+    for name, module in modules().items():
+        written = quoted(module).count(WANTED)
+        assert written == (
+            1 if name == BUS else 0
+        ), f"{name} spells the wanted row {written} times"
+    page = code(APP.read_text())
+    assert "this.#bus.wants(power)" in page, "the page asks nobody for power"
+    assert ".wants=${this.#wants}" in page, "the band is handed no way to ask"
 
 
 def test_the_flash_sequence_is_the_one_caller_that_cuts_power() -> None:

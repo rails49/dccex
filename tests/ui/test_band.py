@@ -5,8 +5,9 @@ functions (`tests/ui/test_readings.py`), and that they reach a page — the one
 control on it included — is asserted by mounting the component and pressing it
 (`ui/test/band.test.ts`, #126). What is held here is what neither of those can
 see: that the band works no reading out of its own, that the one press on it is
-the power button's, which colours reach the chrome and what they mean, and what
-survives a band too narrow to carry all three of the things on it.
+the power button's and goes on the bus, which colours reach the chrome and what
+they mean, and what survives a band too narrow to carry all three of the things
+on it.
 
 Read off the sources, because these are claims about the shape of the page
 rather than about what it says. happy-dom does no layout, so a width is not a
@@ -50,71 +51,78 @@ def test_the_band_works_no_reading_out_of_its_own() -> None:
     """
     drawn = BAND.read_text()
     assert 'from "../readings.js"' in drawn, "the band works a reading out itself"
-    assert ".readings=${this.readings}" in APP.read_text(), "nothing hands it the facts"
+    page = APP.read_text()
+    for handed in (".readings=${this.readings}", ".layout=${this.layout}"):
+        assert handed in page, f"nothing hands it {handed}"
 
 
 def test_the_one_press_on_the_band_is_the_power_button() -> None:
-    """The band presses power and nothing else (ADR-0011 d.1, d.3).
+    """The band asks for power and does nothing else (ADR-0017 d.1, ADR-0011
+    d.3).
 
-    `control`'s band presses it because `layout` checks the railroad is drained
-    first, and that check never guarded the station: any client of the mirror's
-    port sends `<0>` or `<1>` and the guard is the operator (ADR-0011,
-    ADR-0006). So there is one button, one thing listening for a press, and
-    what it sends is the readings module's rather than a literal here — the
-    colour and the message are one answer and a band that chose the message
-    itself could disagree with the colour it drew.
+    One button, one thing listening for a press, and what it asks for is the
+    readings module's rather than a literal here — the colour and the ask are
+    one answer, and a band that chose the ask itself could disagree with the
+    colour it drew.
 
     No form and no field: the one place a command is *typed* at the station is
     the box at the foot of the monitor.
 
     With the prose off, as `tests/ui/test_page.py` holds the same claim about
-    every module: a sentence saying what the band sends is not the band sending
-    it (`code`, `tests/ui/test_stream.py`).
+    every module: a sentence saying what the band asks for is not the band
+    asking (`code`, `tests/ui/test_stream.py`).
     """
     drawn = code(BAND.read_text())
     assert drawn.count("<button") == 1, "the band carries a second control"
     assert drawn.count("@click") == 1, "the band listens for a second press"
-    assert "power.sends" in drawn, "the band does not send what the readings say"
+    assert "power.wants" in drawn, "the band does not ask for what the readings say"
     for literal in ("<0>", "<1>"):
         assert literal not in drawn, f"the band writes {literal} out itself"
     for pressed in ("<form", "@submit", "<input"):
         assert pressed not in drawn, f"the band carries a {pressed}"
 
 
-def test_the_press_goes_up_the_stream_the_way_anything_typed_does() -> None:
-    """A press is a line on the stream like any other client's (ADR-0011).
+def test_the_press_goes_on_the_bus_and_not_up_the_stream() -> None:
+    """A press publishes `tc49/layout/power_wanted` (ADR-0017 d.1).
 
-    The page hands the band the same `#sends` it hands the monitor and the
-    releases, so `<0>` goes up the way a typed command does and is written to
-    the monitor as this page's — and the station's `<p…>` answer is what turns
-    the button's colour. A band that opened a stream of its own would be a
-    second client of the mirror's port for one page.
+    `layout` refuses an OFF while a run is going and zeroes every locomotive
+    before a cut, and the translator runs the script's power handler (`control`
+    ADR-0062): a press that typed at the station skipped all of it. So the page
+    hands the band a way to ask `layout` and no way to type, and the band holds
+    neither counterparty — a band that opened a connection of its own would be
+    a second client of `control`'s broker for one page (`bus.ts`).
     """
+    page = APP.read_text()
+    assert ".wants=${this.#wants}" in page, "nothing hands the band a way to ask"
+    drawn = BAND.read_text()
     assert (
-        "<dccex-band .readings=${this.readings} .sends=${this.#sends}>"
-        in APP.read_text()
-    ), "nothing hands the band its sending"
-    assert "new Stream(" not in BAND.read_text(), "the band opens a stream of its own"
+        ".sends=" not in page[page.index("<dccex-band") : page.index("</dccex-band>")]
+    ), "the band is still handed the stream"
+    for held in ("new Stream(", "new Bus(", "connect("):
+        assert held not in drawn, f"the band holds a {held} of its own"
 
 
-def test_the_power_button_is_disabled_while_the_link_is_down() -> None:
-    """Power is then unknown and a press would reach a station that is not
-    answering (ADR-0011 d.2).
+def test_the_power_button_is_disabled_until_it_can_be_pressed() -> None:
+    """No broker, no station answering, or no word from `layout` yet (ADR-0017
+    d.3).
 
-    The attribute is what stops a pointer and a keyboard; that nothing is sent
-    even where a press gets through is the component's own guard, and both are
-    pressed in `ui/test/band.test.ts`.
+    The attribute is what stops a pointer and a keyboard; that nothing is asked
+    for even where a press gets through is the component's own guard, and both
+    are pressed in `ui/test/band.test.ts`.
     """
     drawn = BAND.read_text()
-    assert "?disabled=${power.sends === null}" in drawn, "the band presses a dead link"
+    assert (
+        "?disabled=${power.wants === null}" in drawn
+    ), "the band presses what it cannot"
 
 
 def test_the_band_asks_for_no_confirmation() -> None:
-    """The guard is the operator, as for a flash (ADR-0011 d.4, ADR-0006 d.2).
+    """The guard is `layout` and then the operator (ADR-0017, ADR-0006 d.2).
 
-    A page that asked *are you sure* about `<0>` would be asking about the one
-    gesture on it that is undone by pressing it again, and the flash — which is
-    not — is the one thing here that warns anybody.
+    A page that asked *are you sure* about an OFF would be asking about the one
+    gesture on it that is undone by pressing it again — and about an ask
+    `layout` checks for itself. The flash, which is not undone that way, is the
+    one thing here that warns anybody.
     """
     drawn = code(BAND.read_text())
     for asked in ("confirm", "window.confirm", "WARNS"):
@@ -150,16 +158,16 @@ def test_red_on_the_chrome_is_the_fault_and_the_stop_and_nothing_else() -> None:
     """The look rules keep red on the chrome for stop or a fault.
 
     This band draws both: a link that is down is the fault, in words on
-    `--stop` with a dot in `--stop-ink` (#138), and rails with no power is the
-    stop, which is what the power button says while every track is off
-    (ADR-0011 d.1). Nothing else on it is red — a band that drew the rails hot
-    in it would be saying stop about a railroad that is running.
+    `--stop` with a dot in `--stop-ink` (#138), and a railroad `layout` reports
+    as `stopped` is the stop (ADR-0017 d.2). Nothing else on it is red — power
+    that is merely off is a state somebody chose, and a band that drew it red
+    would be saying stop about a railroad nobody stopped.
     """
     styles = STYLES.read_text()
     assert "background: var(--stop)" in rule(styles, ".says")
     assert "color: var(--stop-ink)" in rule(styles, ".says")
     left = re.sub(r"/\*.*?\*/", "", styles, flags=re.DOTALL)
-    for selector in (".says", ".dot.off", ".power.off"):
+    for selector in (".says", ".dot.off", ".power.stopped"):
         drawn = rule(styles, selector)
         assert "var(--stop" in drawn, f"{selector} is not drawn in red"
         left = left.replace(drawn, "")
@@ -168,8 +176,8 @@ def test_red_on_the_chrome_is_the_fault_and_the_stop_and_nothing_else() -> None:
 
 def test_green_on_the_chrome_is_the_station_answering_and_the_rails_hot() -> None:
     """The one green the look rules give this chrome, and the two readings that
-    are worth it: a station that is answering, and a track with power on it
-    (ADR-0011 d.1)."""
+    are worth it: a station that is answering, and a railroad `layout` reports
+    the power of as `on` (ADR-0017 d.2)."""
     styles = STYLES.read_text()
     left = re.sub(r"/\*.*?\*/", "", styles, flags=re.DOTALL)
     for selector in (".dot.on", ".power.on"):
@@ -179,19 +187,19 @@ def test_green_on_the_chrome_is_the_station_answering_and_the_rails_hot() -> Non
     assert "--rail-group" not in left, "a rule that is neither reading is green"
 
 
-def test_the_power_button_is_grey_and_not_red_while_the_link_is_down() -> None:
-    """Power is then unknown, and a red button would be this page saying every
-    track is off — which nothing has confirmed since the link went (ADR-0011
-    d.2, ADR-0009 d.2).
+def test_the_power_button_is_grey_and_wears_no_chip_while_it_is_dead() -> None:
+    """There is then no state to draw: the broker is away, the station is not
+    answering, or `layout` has not reported (ADR-0017 d.3). A colour there would
+    be this page drawing a reading nobody gave it (ADR-0009 d.2).
 
     Grey is the band's own ink at half strength: none of the six colours is a
-    dimmer ink, and a seventh would be a colour of this page's own. The chip it
-    wears while it can be pressed goes with the colour, so a reader who cannot
-    tell the green from the red is still left a difference.
+    dimmer ink, and a seventh would be a colour of this page's own. The chip
+    and the outline go with it, so a reader who cannot tell the green from the
+    red is still left a difference.
     """
     dead = rule(STYLES.read_text(), ".power:disabled")
     assert "color: var(--band-ink)" in dead
-    assert "background: none" in dead, "the button keeps its chip while it is dead"
+    assert "background: none" in dead, "the button keeps a chip while it is dead"
     assert "opacity" in dead, "the button is drawn as brightly as a live one"
     assert "--stop" not in dead and "--rail-group" not in dead
 
@@ -200,14 +208,15 @@ def test_neither_colour_is_laid_straight_on_the_bands_blue() -> None:
     """`--rail-group` on `--band` is 1.8 to 1 and `--stop-ink` on it is 1.3,
     where a control a person has to read needs 3.
 
-    So the dot is ringed in the band's ink, the words sit on `--stop`, and the
-    power button is a chip of the band's ink with the colour on it. What is held
-    is the ring and the chip; what the numbers are is `look.css`'s and this is
-    the reason they are not drawn against.
+    So the dot is ringed in the band's ink, the words sit on `--stop`, the
+    green sits on a chip of the band's ink, and the red sits on `--stop`. What
+    is held is the ring and the two chips; what the numbers are is `look.css`'s
+    and this is the reason they are not drawn against.
     """
     styles = STYLES.read_text()
     assert "border: 2px solid var(--band-ink)" in rule(styles, ".dot")
-    assert "background: var(--band-ink)" in rule(styles, ".power")
+    assert "background: var(--band-ink)" in rule(styles, ".power.on")
+    assert "background: var(--stop)" in rule(styles, ".power.stopped")
     assert "background: var(--stop)" in rule(styles, ".says")
 
 
@@ -227,8 +236,8 @@ def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> 
     the tiles and what it is running is not (issue 170). Then the
     link's words go and the link is the dot alone — the dot is the reading and
     the words are that reading a second time. The dot and the power button
-    survive every width: the button is the one control on the page that
-    commands power and a thumb has to reach it (ADR-0011 d.1).
+    survive every width: the button is the one control on the page that asks
+    for power and a thumb has to reach it (ADR-0017 d.1).
 
     The rules as they are written: which part each query names, in the order
     the widths come. That a browser does it is

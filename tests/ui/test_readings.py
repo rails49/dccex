@@ -1,9 +1,11 @@
 """What the **band** and the **tile**s read, given the facts a page hands them.
 
-Scenarios: the station said these lines at these moments, and it is now — so
-the band reads this and the tiles read that. Every reading on the page is made of what the station
-said, decoded on the page (ADR-0008 d.2), so a scenario is a conversation and
-nothing else, and the readings are a pure function of it.
+Scenarios: the station said these lines at these moments, the bus says this
+about the railroad's power, and it is now — so the band reads this and the
+tiles read that. Every reading about the station is made of what the station
+said, decoded on the page (ADR-0008 d.2), and the railroad's power is a row
+`layout` reports on the bus (ADR-0017), so a scenario is those two and nothing
+else, and the readings are a pure function of them.
 
 **They are run rather than read**, as the decoder's pairs and the box's are
 (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`), and for the reason
@@ -70,7 +72,7 @@ def band(**scenario: Any) -> dict[str, Any]:
 
 
 def power(**scenario: Any) -> dict[str, Any]:
-    """What the band's power button is, says and sends."""
+    """What the band's power button reads, is titled, and asks `layout` for."""
     pressed: dict[str, Any] = band(**scenario)["power"]
     return pressed
 
@@ -115,76 +117,85 @@ TALKING: tuple[tuple[str, int], ...] = (
     *((line, NOW - 20) for line in POLLED),
 )
 
+#: What the bus says: the broker, with each of the three rows `layout`
+#: publishes on its power state row, and with none of them arrived yet. A
+#: scenario that says nothing about the bus is a page that has not reached the
+#: broker, which is what one has until it answers (`bus.ts`).
+HOT = {"connected": True, "power": "on"}
+COLD = {"connected": True, "power": "off"}
+HALTED = {"connected": True, "power": "stopped"}
+UNSAID = {"connected": True, "power": None}
+
 
 @lru_cache(maxsize=1)
 def live() -> dict[str, Any]:
-    """The page a moment after the station answered a poll."""
-    return drawn(said=list(TALKING), now=NOW)
+    """The page a moment after the station answered a poll, with `layout`
+    reporting the rails hot."""
+    return drawn(said=list(TALKING), now=NOW, layout=HOT)
 
 
 @pytest.mark.node
 def test_the_band_carries_the_build_the_link_and_the_power_button() -> None:
     """The band is the **build**, the **link** and one control, and nothing
-    else (CONTEXT.md **band**, ADR-0011). A reading added without a scenario
+    else (CONTEXT.md **band**, ADR-0017). A reading added without a scenario
     beside it is a reading an operator can be shown that nobody ever read
     (ADR-0009 d.3)."""
     assert sorted(live()["band"]) == ["answering", "build", "power", "says"]
 
 
 @pytest.mark.node
-def test_the_band_reads_the_build_the_link_and_the_power_off_a_station() -> None:
-    """The whole of it, off a station that is answering with its rails hot.
+def test_the_band_reads_the_build_the_link_and_the_power_off_both_channels() -> None:
+    """The whole of it, off a station that is answering and a `layout` that
+    reports the rails hot.
 
     The words are what a reader who cannot see the dot is given, and the band
     draws them beside it only while the link is down (`ui/test/band.test.ts`).
-    The button is named for what a press will do, which is cut the power.
+    The button is titled for what a press will do, which is ask for power off.
     """
-    assert band(said=list(TALKING), now=NOW) == {
+    assert band(said=list(TALKING), now=NOW, layout=HOT) == {
         "build": "9db6d10",
         "answering": True,
         "says": "answering",
-        "power": {"hot": True, "does": "power off", "sends": "<0>"},
+        "power": {"reads": "on", "title": "power off", "wants": "off"},
     }
 
 
 @pytest.mark.node
-def test_the_power_button_turns_power_on_where_the_station_says_it_is_off() -> None:
-    """Red, and a press sends `<1>` (ADR-0011 d.1)."""
-    assert power(said=[("<p0>", NOW - 10)], now=NOW) == {
-        "hot": False,
-        "does": "power on",
-        "sends": "<1>",
+def test_the_power_button_asks_for_on_where_layout_reports_it_off() -> None:
+    """An outlined chip, and a press asks `layout` for `on` (ADR-0017 d.1,
+    d.2)."""
+    assert power(said=list(TALKING), now=NOW, layout=COLD) == {
+        "reads": "off",
+        "title": "power on",
+        "wants": "on",
     }
 
 
 @pytest.mark.node
-def test_a_track_named_on_the_line_is_still_the_power_as_a_whole() -> None:
-    """`<p1 MAIN>` is the station saying power is on for every MAIN track,
-    which is a rail somebody can be shocked by and a button that cuts it."""
-    assert power(said=[("<p1 MAIN>", NOW - 10)], now=NOW)["sends"] == "<0>"
-
-
-@pytest.mark.node
-def test_any_track_on_is_a_button_that_cuts_the_power() -> None:
-    """`<p0 C>` is track C's power and the rest of them are still hot, so the
-    press to offer is the one that cuts (ADR-0011 d.1). The track's own tile
-    says C is off."""
-    said = [("<p1>", NOW - 20), ("<p0 C>", NOW - 10)]
-    assert power(said=said, now=NOW) == {
-        "hot": True,
-        "does": "power off",
-        "sends": "<0>",
+def test_a_railroad_layout_reports_as_stopped_is_red_and_asks_for_on() -> None:
+    """`stopped` is the state a STOP leaves a railroad in, and `layout` holds
+    it until an `on` (ADR-0017 d.2, ADR-0020). So the button is the way out of
+    it: red, and a press asks for power on."""
+    assert power(said=list(TALKING), now=NOW, layout=HALTED) == {
+        "reads": "stopped",
+        "title": "power on",
+        "wants": "on",
     }
-    assert tiles(said=said, now=NOW)["C"]["hot"] is False
 
 
 @pytest.mark.node
-def test_a_track_on_with_the_power_as_a_whole_off_still_cuts() -> None:
-    """The station's word on power as a whole and its word on one track are
-    both readings of it, and either one saying `on` is a rail somebody can be
-    shocked by."""
-    said = [("<p0>", NOW - 20), ("<p1 A>", NOW - 10)]
-    assert power(said=said, now=NOW)["sends"] == "<0>"
+def test_the_button_is_layouts_row_and_never_the_stations_power_line() -> None:
+    """Two channels, and the readings do not read one off the other (ADR-0017
+    d.1, superseding ADR-0011 d.1).
+
+    The station saying its rails are hot is a track's reading on a **tile**;
+    what the button draws and what a press asks for are `layout`'s, because
+    `layout` is what the ask goes to. A band that coloured itself off `<p1>`
+    would disagree with `control`'s band while a report was on its way.
+    """
+    said = [("<p1>", NOW - 20), ("<p1 A>", NOW - 10)]
+    assert power(said=said, now=NOW, layout=COLD)["reads"] == "off"
+    assert tiles(said=said, now=NOW)["A"]["hot"] is True
 
 
 @pytest.mark.node
@@ -348,7 +359,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
         "build": "",
         "answering": False,
         "says": "dcc-ex offline",
-        "power": {"hot": None, "does": "power", "sends": None},
+        "power": {"reads": None, "title": "no bus", "wants": None},
     }
     assert tiles(now=NOW) == {}
 
@@ -365,20 +376,31 @@ def test_a_link_that_is_down_says_so_in_words() -> None:
 
 
 @pytest.mark.node
-def test_the_power_button_presses_nothing_while_the_link_is_down() -> None:
-    """Power is then unknown and a press would reach a station that is not
-    answering (ADR-0011 d.2). It says what it is rather than what a press
-    would do, because there is no press.
+def test_the_power_button_presses_nothing_without_all_three_of_them() -> None:
+    """The broker, a station that is answering, and a word from `layout`
+    (ADR-0017 d.3).
 
-    A station that is answering and has said nothing about power yet is the
-    same case: what nothing has confirmed is not a colour to draw or a message
-    to send (ADR-0009 d.2).
+    Each is a different absence and the title says which, in that order: a
+    press with no broker reaches nothing, a press with no station is a railroad
+    `layout` cannot apply it to, and a railroad whose power nobody has reported
+    has no state to offer the other of. None of the three draws a chip — what
+    nothing has confirmed is not a colour to draw (ADR-0009 d.2).
     """
-    unknown = {"hot": None, "does": "power", "sends": None}
-
-    assert power(now=NOW) == unknown
-    assert power(said=list(TALKING), now=NOW + silent_ms()) == unknown
-    assert power(said=[("<jI 40>", NOW - 10)], now=NOW) == unknown
+    assert power(said=list(TALKING), now=NOW) == {
+        "reads": None,
+        "title": "no bus",
+        "wants": None,
+    }
+    assert power(said=list(TALKING), now=NOW + silent_ms(), layout=HOT) == {
+        "reads": None,
+        "title": "no station",
+        "wants": None,
+    }
+    assert power(said=list(TALKING), now=NOW, layout=UNSAID) == {
+        "reads": None,
+        "title": "no layout",
+        "wants": None,
+    }
 
 
 @pytest.mark.node
@@ -390,13 +412,17 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
     station has stopped saying there is one. That is the correct reading rather
     than a gap: the station is not talking (ADR-0008 d.3).
     """
-    gone: dict[str, Any] = {"said": list(TALKING), "now": NOW + silent_ms()}
+    gone: dict[str, Any] = {
+        "said": list(TALKING),
+        "now": NOW + silent_ms(),
+        "layout": HOT,
+    }
 
     assert band(**gone) == {
         "build": "",
         "answering": False,
         "says": "dcc-ex offline",
-        "power": {"hot": None, "does": "power", "sends": None},
+        "power": {"reads": None, "title": "no station", "wants": None},
     }
     assert tiles(**gone) == {}
 
@@ -427,20 +453,17 @@ def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
 
 @pytest.mark.node
 def test_what_the_station_last_said_is_what_the_readings_read() -> None:
-    """Power off after power on offers the press that turns it on, a track
-    switched back on after that offers the one that cuts, and the track reads
-    its current again: a reading is the station's latest word and not its
-    first."""
+    """A track switched off and then on again reads the latest of the two, and
+    reads the current it was last measured at: a reading is the station's
+    latest word and not its first."""
     said = [
-        ("<p1>", NOW - 40),
-        ("<p0>", NOW - 30),
         ("<jI 50>", NOW - 25),
         ("<p0 A>", NOW - 20),
         ("<p1 A>", NOW - 10),
     ]
 
-    assert power(said=said[:2], now=NOW)["sends"] == "<1>"
-    assert power(said=said, now=NOW)["sends"] == "<0>"
+    assert tiles(said=said[:2], now=NOW)["A"]["hot"] is False
+    assert tiles(said=said, now=NOW)["A"]["hot"] is True
     assert tiles(said=said, now=NOW)["A"]["draws"] == "50 mA"
 
 
@@ -478,8 +501,8 @@ def test_the_same_facts_read_the_same_whatever_was_asked_before() -> None:
     """Given the same conversation they draw the same page for ever, so what
     the band says cannot depend on what some other page asked a moment ago."""
     scenarios: tuple[dict[str, Any], ...] = (
-        {"said": list(TALKING), "now": NOW},
+        {"said": list(TALKING), "now": NOW, "layout": HOT},
         {"now": NOW},
-        {"said": [("<p0>", NOW)], "now": NOW},
+        {"said": [("<p0 A>", NOW)], "now": NOW, "layout": HALTED},
     )
     assert run(scenarios) == tuple(reversed(run(tuple(reversed(scenarios)))))

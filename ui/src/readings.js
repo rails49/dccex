@@ -110,20 +110,21 @@ export function reported(payload) {
   return power === ON || power === STOPPED ? power : OFF;
 }
 
-/** What a press of the power button sends: the two messages any other client
- *  of the mirror's port sends to switch track power, and the two an operator
- *  types into the box at the foot of the monitor (ADR-0011 d.1). */
-const CUTS = "<0>";
-const HEATS = "<1>";
+/** Why the power button cannot be pressed, in the order it is asked: no
+ *  broker, no station answering, and no word from `layout` yet (ADR-0017 d.3,
+ *  #205). The first that is true is what the button is titled, because a
+ *  reader who cannot press it is owed the nearest reason rather than the last
+ *  one. */
+const NO_BUS = "no bus";
+const NO_STATION = "no station";
+const NO_LAYOUT = "no layout";
 
-/** What the power button says, which is what a press will do rather than the
- *  state it is in — as the monitor's pause is named, so that a reader on a
- *  busy station is never working out which state they are in. While the link
- *  is down it says what it is and nothing about a press, because there is
- *  none. */
+/** What the power button says while it can be pressed, which is what a press
+ *  will do rather than the state it is in — as the monitor's pause is named,
+ *  so that a reader on a busy railroad is never working out which state they
+ *  are in. */
 const CUTTING = "power off";
 const HEATING = "power on";
-const POWER = "power";
 
 /** What the link reads in words. The dot is the reading for a reader looking at
  *  it and these are the same reading for one who is not, so the band hands them
@@ -191,7 +192,6 @@ const LETTERS = "ABCDEFGH";
  * @typedef {object} Kept
  * @property {number | null} spokeAt when the station last said anything, on
  *   the page's clock, in milliseconds
- * @property {boolean | null} hot whether the rails have power
  * @property {string | null} build what the station says it is running
  * @property {Readonly<Record<string, Track>>} tracks each track the station
  *   has said anything about, by its letter
@@ -202,7 +202,6 @@ const LETTERS = "ABCDEFGH";
  *  says. */
 export const QUIET = /** @type {Kept} */ ({
   spokeAt: null,
-  hot: null,
   build: null,
   tracks: {},
 });
@@ -213,7 +212,6 @@ export const QUIET = /** @type {Kept} */ ({
  *
  * @typedef {object} Readings
  * @property {boolean} answering whether the station is answering — the link
- * @property {boolean | null} hot whether the rails have power
  * @property {string | null} build what the station says it is running
  * @property {Readonly<Record<string, Track>>} tracks each track, by its letter
  */
@@ -243,15 +241,21 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * What the band's power button is, says and sends (ADR-0011 d.1).
+ * What the band's power button reads, is titled, and asks `layout` for
+ * (ADR-0017 d.1, d.2, d.3).
+ *
+ * `reads` is the chip it wears and is `null` for every moment it presses
+ * nothing: a chip drawn over a reading nobody can act on is a control round a
+ * reading, and the three reasons it cannot be pressed are reasons the reading
+ * is not one to draw either.
  *
  * @typedef {object} Power
- * @property {boolean | null} hot whether any track is on, which is what
- *   colours the button: `null` where nothing has said so, which is every
- *   moment the link is down
- * @property {string} does the word it carries, which is what a press will do
- * @property {string | null} sends the message a press sends, and `null` where
- *   it presses nothing
+ * @property {string | null} reads what `layout` reports the power as — `on`,
+ *   `off` or `stopped` — and `null` where the button presses nothing
+ * @property {string} title what the button is titled: why it cannot be
+ *   pressed, or what a press will do
+ * @property {string | null} wants what a press asks `layout` for, and `null`
+ *   where it presses nothing
  */
 
 /**
@@ -321,7 +325,6 @@ export function heard(kept, line, at) {
   return {
     ...kept,
     spokeAt: at,
-    hot: reading?.track === undefined ? (reading?.hot ?? kept.hot) : kept.hot,
     build: reading?.build ?? kept.build,
     tracks,
   };
@@ -344,45 +347,61 @@ export function heard(kept, line, at) {
 export function asOf(kept, now) {
   const answering = kept.spokeAt !== null && now - kept.spokeAt <= SILENT_MS;
   return answering
-    ? { answering, hot: kept.hot, build: kept.build, tracks: kept.tracks }
-    : { answering, hot: null, build: null, tracks: {} };
+    ? { answering, build: kept.build, tracks: kept.tracks }
+    : { answering, build: null, tracks: {} };
 }
 
 /**
- * Whether any track is on, which is what colours the power button.
+ * What the power button reads, is titled, and asks `layout` for.
  *
- * The station's word on power as a whole and its word on one track are both
- * readings of it (`decoder.js`), and either of them saying `on` is a rail
- * somebody can be shocked by, so either makes the button green. `null` where
- * neither has said anything — a station nobody has asked yet, and every moment
- * the link is down, where `asOf` has taken both away.
+ * **It is `layout`'s row and not the station's** (ADR-0017 d.1, d.2,
+ * superseding ADR-0011 d.1). `layout` refuses an OFF while a run is going and
+ * zeroes every locomotive's speed before a cut, and the translator runs the
+ * **script**'s power handler (`control` ADR-0062): a press that sent `<1>` or
+ * `<0>` through the **face** skipped all of it. So the colour is the row
+ * `layout` reports and the press is a row the page writes, and the station's
+ * own `<p…>` is a track's reading on a **tile** rather than this.
+ *
+ * **It presses nothing without all three of them** (ADR-0017 d.3, #205): the
+ * broker, a station that is answering, and a word from `layout`. Each is a
+ * different absence and the title says which — a press with no broker reaches
+ * nothing, a press with no station is a railroad `layout` cannot apply it to,
+ * and a railroad whose power nobody has reported has no state to offer the
+ * other of (ADR-0009 d.2).
  *
  * @param {Readings} readings
- * @returns {boolean | null}
+ * @param {Layout} layout
+ * @returns {Power}
  */
-function anyOn(readings) {
-  const tracks = Object.values(readings.tracks);
-  if (readings.hot === null && tracks.every((track) => track.hot === null)) {
-    return null;
-  }
-  return readings.hot === true || tracks.some((track) => track.hot === true);
+function power(readings, layout) {
+  const title = !layout.connected
+    ? NO_BUS
+    : !readings.answering
+      ? NO_STATION
+      : layout.power === null
+        ? NO_LAYOUT
+        : layout.power === ON
+          ? CUTTING
+          : HEATING;
+  const presses =
+    layout.connected && readings.answering && layout.power !== null;
+  return {
+    reads: presses ? layout.power : null,
+    title,
+    wants: presses ? (layout.power === ON ? OFF : ON) : null,
+  };
 }
 
 /**
  * What the band carries: the **build**, the **link**, and the power button
- * (ADR-0011, CONTEXT.md **band**).
+ * (ADR-0017, CONTEXT.md **band**).
  *
- * **The band presses power.** `control`'s band presses it because `layout`
- * checks the railroad is drained first; this page is on no bus, and that check
- * never guarded the station — any client of the mirror's port sends `<0>` or
- * `<1>`, the monitor's command box included, and the guard is the operator
- * (ADR-0011, ADR-0006 d.2). So the button is a reading and a control at once:
- * green where any track is on and a press cuts power, red where every one is
- * off and a press turns it on.
- *
- * **It presses nothing while the link is down** (ADR-0011 d.2). Power is then
- * unknown, a press would reach a station that is not answering, and what the
- * station last said about power is not a reading once it has stopped talking.
+ * **Two channels meet here and nowhere else.** The build and the link are the
+ * station talking, decoded off the **stream** (ADR-0008 d.2); the power is a
+ * row `layout` reports on the bus (`bus.ts`). The button needs both — it is
+ * disabled with no station as readily as with no broker — and this is where
+ * they are put together, because what a band carries is one value and the
+ * component that draws it works out no reading of its own.
  *
  * The link is a light rather than words, with the words beside it while it is
  * down: a station that is not answering is a fault and is owed a sentence, and
@@ -393,19 +412,15 @@ function anyOn(readings) {
  * the one on the board would be this page saying what it cannot see.
  *
  * @param {Readings} readings
+ * @param {Layout} layout
  * @returns {Band}
  */
-export function band(readings) {
-  const hot = anyOn(readings);
+export function band(readings, layout) {
   return {
     build: readings.build ?? BLANK,
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
-    power: {
-      hot,
-      does: hot === null ? POWER : hot ? CUTTING : HEATING,
-      sends: hot === null ? null : hot ? CUTS : HEATS,
-    },
+    power: power(readings, layout),
   };
 }
 

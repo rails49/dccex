@@ -11,29 +11,31 @@ import { css } from "lit";
  *
  * **The reds on it are the fault and the stop.** The look rules reserve red on
  * the chrome for stop or a fault: a link that is down is the fault and wears
- * `--stop` with the words on it (issue 138), and rails with no power is the
- * stop, which is what the power button says in `--stop-ink` while every track
- * is off (ADR-0011 d.1). The link still says so in words, because a reader may
- * not see the colour.
+ * `--stop` with the words on it (issue 138), and a railroad `layout` reports as
+ * `stopped` is the stop, which is what the power button wears in the same two
+ * tokens (ADR-0017 d.2). Power that is merely off is neither, and is an
+ * outlined chip in the band's own ink — a band that drew it red would be saying
+ * stop about a railroad nobody stopped. The link still says so in words,
+ * because a reader may not see the colour.
  *
  * **The green is the look rules' one green.** `--rail-group` is what this
  * chrome has — LOOK.md gives the dcc-ex UI six colours and no second green —
- * and the dot and a power button with the rails hot take it. A colour of this
- * page's own would be a seventh, and one of Shoelace's would follow the
+ * and the dot and a power button `layout` reports as `on` take it. A colour of
+ * this page's own would be a seventh, and one of Shoelace's would follow the
  * system's light or dark setting while the chrome around it did not.
  *
  * **Neither of those colours reads on the band's blue**, which is the one
  * measurement in this sheet: `--rail-group` on `--band` is 1.8 to 1 and
  * `--stop-ink` on it is 1.3, where a control needs 3. So the colour is never
  * laid straight on the band — the dot is ringed in the band's ink, the words
- * sit on `--stop`, and the power button is a chip of the band's ink with the
- * colour on it.
+ * sit on `--stop`, the green sits on a chip of the band's ink, and the red
+ * sits on `--stop`.
  *
  * **Grey is the band's own ink at half strength**, for a power button that
- * presses nothing while the link is down (ADR-0011 d.2). None of the six is a
- * dimmer ink. The chip goes with it: a dim glyph on the blue is what a control
- * that cannot be pressed looks like, and it is the difference a reader who
- * cannot tell the green from the red is left with.
+ * presses nothing (ADR-0017 d.3). None of the six is a dimmer ink. There is no
+ * chip with it: a dim glyph on the blue is what a control that cannot be
+ * pressed looks like, and it is the difference a reader who cannot tell the
+ * green from the red is left with.
  */
 export const bandStyles = css`
   :host {
@@ -125,12 +127,12 @@ export const bandStyles = css`
     font-weight: 600;
   }
 
-  /* The power button: the one control on this chrome (ADR-0011 d.1). A chip of
-     the band's own ink with the reading's colour on it, which is what either
-     colour reads against; the colour reaches the icon through currentColor, and
-     the font size is what the icon is a multiple of (dccex-icon.styles.ts). It
-     is a thumb wide and a thumb high, because it is pressed on the phone at the
-     layout. */
+  /* The power button: the one control on this chrome (ADR-0017 d.1). What it
+     wears is the power row layout reports, and the border is on it in every
+     state so the box does not move between them. The colour reaches the icon
+     through currentColor, and the font size is what the icon is a multiple of
+     (dccex-icon.styles.ts). It is a thumb wide and a thumb high, because it is
+     pressed on the phone at the layout. */
   .power {
     display: inline-flex;
     flex: none;
@@ -140,27 +142,42 @@ export const bandStyles = css`
     min-width: var(--rail-button);
     min-height: var(--rail-button);
     padding: 0;
-    border: none;
+    border: 2px solid transparent;
     border-radius: 4px;
-    background: var(--band-ink);
+    background: none;
     color: var(--band-ink);
     font-size: 1.2em;
     cursor: pointer;
   }
 
-  /* Green while any track is on, where a press cuts the power; red while every
-     one is off, where a press turns it on. */
+  /* Power on: green on a chip of the band's own ink, which is what the green
+     reads against. A press asks for off. */
   .power.on {
+    background: var(--band-ink);
     color: var(--rail-group);
   }
 
+  /* Power off: the band's own ink, outlined rather than filled. It is a state
+     somebody chose and not a fault, so it is neither of the reds, and the
+     outline is what keeps it from reading as the dead button below it. A press
+     asks for on. */
   .power.off {
+    border-color: var(--band-ink);
+    color: var(--band-ink);
+  }
+
+  /* Stopped: red, the same two tokens the link's words wear, because a
+     railroad stopped where it stands is the other thing red is for on this
+     chrome (ADR-0017 d.2). A press asks for on, which is the way out of it. */
+  .power.stopped {
+    background: var(--stop);
     color: var(--stop-ink);
   }
 
-  /* Grey and dead while the link is down: power is then unknown and a press
-     would reach a station that is not answering (ADR-0011 d.2). The chip goes
-     with the colour, so what is left is a dim glyph on the blue. */
+  /* Grey and dead with no broker, no station answering or no word from layout
+     yet (ADR-0017 d.3): there is then no state to draw and nothing a press
+     could reach. No chip and no outline, so what is left is a dim glyph on the
+     blue. */
   .power:disabled {
     background: none;
     color: var(--band-ink);
@@ -183,7 +200,7 @@ export const bandStyles = css`
   /* Narrower than that, the words go and the link is the dot alone: the dot is
      the reading and the words are the reading a second time, so they are what
      there is to lose. The power button stays at every width — it is the one
-     control on the page that commands power, and a thumb has to reach it on
+     control on the page that asks for power, and a thumb has to reach it on
      the phone at the layout. 400px is this page's own number too. */
   @media (max-width: 400px) {
     .says {

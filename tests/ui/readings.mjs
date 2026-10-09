@@ -5,9 +5,14 @@
 // of what a page would be drawing on stdout, in the order they came.
 //
 // A scenario is what a page would have: the lines the station said and when,
-// and the moment on the page's clock the readings are wanted for.
+// the moment on the page's clock the readings are wanted for, and what the bus
+// says about the railroad's power (ADR-0017).
 //
-//     {"said": [["<p1>", 0]], "now": 1000}
+//     {"said": [["<p1 A>", 0]], "now": 1000,
+//      "layout": {"connected": true, "power": "on"}}
+//
+// A scenario that says nothing about the bus is a page that has not reached
+// the broker, which is what one has until it answers.
 //
 // What comes back is the readings themselves and the two things drawn out of
 // them — the band's readings and the tiles', each as what it is called and
@@ -26,6 +31,7 @@
 
 import {
   QUIET,
+  UNREACHABLE,
   asOf,
   band,
   heard,
@@ -40,9 +46,10 @@ const drawn = (scenario) => {
     kept = heard(kept, line, at);
   }
   const readings = asOf(kept, scenario.now ?? 0);
+  const layout = scenario.layout ?? UNREACHABLE;
   return {
     readings,
-    band: band(readings),
+    band: band(readings, layout),
     tiles: tiles(readings),
     reported: (scenario.payload ?? []).map(reported),
   };

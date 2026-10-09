@@ -57,11 +57,16 @@
  * where the following of the write starts, which is the paragraph below on the
  * flash's own schedule.
  *
- * **And the band presses power** (ADR-0011 d.1). What its button sends goes up
- * the same `#sends`, so a press is a line on the stream like any other client's
- * and is marked as this page's in the monitor, and the station's `<p…>` answer
- * is what turns the button's colour. The page checks nothing before it goes:
- * the guard is the operator, as for a flash (ADR-0011 d.4, ADR-0006).
+ * **And the bus is held here, for the band's power button** (ADR-0017). That
+ * button asks `layout` for power rather than typing at the station, because
+ * `layout` refuses an OFF while a run is going and zeroes every locomotive
+ * before a cut (`control` ADR-0062) — so the page is a client of `control`'s
+ * broker as well as of the mirror's face, which is the second of the three
+ * things a UI may talk to (the organisation's ADR-0002). One connection, held
+ * here for the same reason the stream is: a pane that opened one of its own
+ * would be a second client of that broker for one page (`bus.ts`). What it
+ * says is handed down to the band beside the station's readings, and the band
+ * is disabled until both are there.
  *
  * **The script's counterparties are the page's too** (issue 185). The
  * railroads the store holds, one railroad's script and a script applied are
@@ -137,6 +142,7 @@
 
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
+import { Bus } from "../bus.js";
 import {
   applies,
   flash,
@@ -156,9 +162,11 @@ import {
 } from "../monitor.js";
 import {
   QUIET,
+  UNREACHABLE,
   asOf,
   heard,
   type Kept,
+  type Layout,
   type Readings,
 } from "../readings.js";
 import { type Carried } from "../releases.js";
@@ -253,6 +261,7 @@ export class DccexApp extends LitElement {
   static override readonly properties = {
     conversation: { state: true },
     readings: { state: true },
+    layout: { state: true },
     carried: { state: true },
     flashing: { state: true },
     railroads: { state: true },
@@ -270,6 +279,14 @@ export class DccexApp extends LitElement {
 
   /** What the band and the tiles are drawn from, as they stand. */
   readings: Readings = asOf(QUIET, 0);
+
+  /** What the bus says about the railroad's power: whether the page has the
+   *  broker, and what `layout` last reported (ADR-0017 d.2).
+   *
+   *  A page that has not reached the broker has not reached it — that is the
+   *  reading, and it is what disables the band's button rather than a hedge
+   *  (`bus.ts`). */
+  layout: Layout = UNREACHABLE;
 
   /** What the face said the configured source carries, or `null` where it has
    *  not answered — which is also where it has not been asked yet, and the
@@ -336,6 +353,12 @@ export class DccexApp extends LitElement {
     },
   );
 
+  /** The bus, and the one thing it hands up: what `layout` says about the
+   *  railroad's power, every time that changes (ADR-0017 d.2). */
+  readonly #bus = new Bus((layout: Layout) => {
+    this.layout = layout;
+  });
+
   /** How many times the page has asked since the stream last opened. A
    *  stream that has just opened is asked everything at once. */
   #polls = 0;
@@ -345,6 +368,7 @@ export class DccexApp extends LitElement {
     this.#shows();
     window.addEventListener("hashchange", this.#shows);
     this.#stream.open();
+    this.#bus.open();
     void this.#list();
     void this.#holds();
     this.#polling = setInterval(() => {
@@ -371,6 +395,7 @@ export class DccexApp extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener("hashchange", this.#shows);
     this.#stream.close();
+    this.#bus.close();
     if (this.#polling !== null) {
       clearInterval(this.#polling);
       this.#polling = null;
@@ -387,7 +412,11 @@ export class DccexApp extends LitElement {
 
   override render(): TemplateResult {
     return html`
-      <dccex-band .readings=${this.readings} .sends=${this.#sends}></dccex-band>
+      <dccex-band
+        .readings=${this.readings}
+        .layout=${this.layout}
+        .wants=${this.#wants}
+      ></dccex-band>
       <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
       <div class="work ${this.view}">
         ${this.view === "monitor" ? this.#monitor() : nothing}
@@ -463,6 +492,21 @@ export class DccexApp extends LitElement {
       this.#keep([{ at: new Date(), line: sent, sent: true }]);
     }
     return sent;
+  };
+
+  /** Ask `layout` for power, which is a row on the bus (ADR-0017 d.1).
+   *
+   * The band's one control, and the whole of what the page does about power.
+   * It goes on the bus and not up the stream: `layout` is what checks the
+   * railroad can spare the power it is being asked for, runs the **script**'s
+   * handler and tells the station through the translator, and a press that
+   * typed at the station would skip all three (`control` ADR-0062).
+   *
+   * Nothing comes back. What the button then draws is the state row `layout`
+   * reports, or nothing where it dropped the ask (ADR-0017 d.4).
+   */
+  readonly #wants = (power: string): void => {
+    this.#bus.wants(power);
   };
 
   /** Show the view the hash names.
