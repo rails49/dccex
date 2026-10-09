@@ -802,16 +802,19 @@ def test_a_stash_the_station_still_holds_changes_nothing() -> None:
 
 async def _stash_the_station_still_holds_changes_nothing() -> None:
     """The answer every poll gets while the station is the one this app
-    marked. It is the station answering, so the link is up on it, and it is
-    nothing else (ADR-0021 d.4)."""
+    marked. It runs no `start` and no replay, and it forgets nothing — the
+    report made before it is still the last one heard, so the handler keyed
+    on it does not run again (ADR-0021 d.4). It is the station answering, so
+    the link is up on it, and it is nothing else."""
     bus, tap = bus_and_tap()
-    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
     port = Port()
-    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+    async with running(bus, port, text=WATCHES):
         station = await port.opened()
-        await station.heard(3)
+        station.says(b"<p1>")
+        assert await station.heard(1) == [b"<A 9 2>"]
 
         station.says(HELD)
+        station.says(b"<p1>")
         await station.heard_nothing_more()
         bus.drain()
         assert tap.values(DEVICE_LINK)[-1]["link"] == "up"
@@ -824,16 +827,20 @@ def test_the_boot_line_changes_nothing() -> None:
 async def _boot_line_changes_nothing() -> None:
     """The boot line is no longer read (ADR-0021 d.6). The virtual LCD's
     text, row and port are part of no documented interface, and the station
-    on the box printed a form that was not the one d.2 named."""
-    bus, _ = bus_and_tap()
-    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    on the box printed a form that ADR-0018 d.2 did not name. It runs no
+    `start` and no replay, and it forgets nothing."""
+    bus, tap = bus_and_tap()
     port = Port()
-    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+    async with running(bus, port, text=WATCHES):
         station = await port.opened()
-        await station.heard(3)
+        station.says(b"<p1>")
+        assert await station.heard(1) == [b"<A 9 2>"]
 
         station.says(READY)
+        station.says(b"<p1>")
         await station.heard_nothing_more()
+        bus.drain()
+        assert tap.values(DEVICE_LINK)[-1]["link"] == "up"
 
 
 def test_a_restart_forgets_what_the_station_reported() -> None:
