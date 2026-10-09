@@ -8,11 +8,15 @@
  * readings module's; this component is handed them and draws them.
  *
  * **The power is a symbol and the rest are words.** Green where the track has
- * power and red where it has not, grey where the station has said nothing about
- * it — a colour nobody confirmed would be a reading nobody took (ADR-0009 d.2).
- * The same reading is the symbol's label in every state, so a reader who cannot
- * see the colour is given it too, which is how the **link** is drawn on the
- * band (issue 168).
+ * power, dark grey where it has not, light grey where the station has said
+ * nothing about it — a colour nobody confirmed would be a reading nobody took
+ * (ADR-0009 d.2). The same reading is the symbol's label in every state, so a
+ * reader who cannot see the colour is given it too, which is how the **link**
+ * is drawn on the band (issue 168).
+ *
+ * **Off is grey and not red.** Red on the page is a stop or a fault (ADR-0017
+ * d.6), and a track somebody turned off is neither. The two greys differ
+ * because the two readings do: off was reported and unknown was not.
  *
  * **The whole row goes when the link goes down**, and that is the correct
  * reading rather than a gap: a tile is one track, and a station that is not
