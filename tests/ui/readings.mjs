@@ -11,7 +11,10 @@
 //
 // What comes back is the readings themselves and the two things drawn out of
 // them — the band's readings and the tiles', each as what it is called and
-// what it reads. That is the assertion `control`'s band test makes: hand it
+// what it reads — and what a payload on `layout`'s power row reads as, for a
+// scenario that carries one (ADR-0017 d.2).
+//
+// That is the assertion `control`'s band test makes: hand it
 // the facts a page would hand it and read what it draws. What this cannot do
 // is put those through Lit: this is a bare node with no packages in it
 // (`tests/ui/test_decoder.py`); what draws these is held
@@ -26,6 +29,7 @@ import {
   asOf,
   band,
   heard,
+  reported,
   tiles,
 } from "../../ui/src/readings.js";
 import { each } from "./each.mjs";
@@ -36,7 +40,12 @@ const drawn = (scenario) => {
     kept = heard(kept, line, at);
   }
   const readings = asOf(kept, scenario.now ?? 0);
-  return { readings, band: band(readings), tiles: tiles(readings) };
+  return {
+    readings,
+    band: band(readings),
+    tiles: tiles(readings),
+    reported: (scenario.payload ?? []).map(reported),
+  };
 };
 
 await each(drawn);

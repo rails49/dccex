@@ -75,6 +75,12 @@ def power(**scenario: Any) -> dict[str, Any]:
     return pressed
 
 
+def reported(*payload: str) -> list[str]:
+    """What `layout`'s power row reads as, for each of `payload` in turn."""
+    read: list[str] = drawn(payload=list(payload))["reported"]
+    return read
+
+
 def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
     """One **tile** per track, by the letter of each.
 
@@ -179,6 +185,44 @@ def test_a_track_on_with_the_power_as_a_whole_off_still_cuts() -> None:
     shocked by."""
     said = [("<p0>", NOW - 20), ("<p1 A>", NOW - 10)]
     assert power(said=said, now=NOW)["sends"] == "<0>"
+
+
+@pytest.mark.node
+def test_the_power_row_reads_what_layout_reported() -> None:
+    """The three `layout` publishes on its state row (ADR-0017 d.2,
+    `control`'s `docs/BUS.md`). `stopped` is one of them and is the reading the
+    band draws in red."""
+    assert reported('{"power": "on"}', '{"power": "off"}', '{"power": "stopped"}') == [
+        "on",
+        "off",
+        "stopped",
+    ]
+
+
+@pytest.mark.node
+def test_a_power_row_the_page_cannot_read_reads_as_off() -> None:
+    """A row that is not JSON, a document with no power in it, and a word this
+    page does not know (ADR-0017 d.2).
+
+    `off` and not blank: it is the one reading in this module that is not what
+    was said, and it is the safe one, because the press it offers is the one
+    that turns power on and `layout` checks that for itself. A button drawn
+    green over a payload nobody could read would tell an operator the rails are
+    hot on no evidence (ADR-0009 d.2).
+    """
+    unreadable = (
+        "",
+        "{",
+        "null",
+        "[]",
+        '"on"',
+        "{}",
+        '{"power": null}',
+        '{"power": "ON"}',
+        '{"power": "unknown"}',
+        "on",
+    )
+    assert reported(*unreadable) == ["off"] * len(unreadable)
 
 
 @pytest.mark.node
