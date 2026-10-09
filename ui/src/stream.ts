@@ -34,7 +34,7 @@
  */
 
 import { FACE } from "./face.js";
-import { lines, streamAt, type Said } from "./framing.js";
+import { lines, socketAt, type Said } from "./framing.js";
 import { message } from "./message.js";
 
 /** Where the stream is. Opened by upgrading and fetched no other way: what it
@@ -166,7 +166,7 @@ export class Stream {
   #dial(): void {
     this.#reopening = null;
     this.#partial = "";
-    const socket = new WebSocket(streamAt(window.location, STREAM_PATH));
+    const socket = new WebSocket(socketAt(window.location, STREAM_PATH));
     socket.binaryType = "arraybuffer";
     // Open, so what goes up it now goes. Whoever asked for the stream is told,
     // because until this moment `send` had nothing it could write to and said

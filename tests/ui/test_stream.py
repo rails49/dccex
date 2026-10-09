@@ -340,7 +340,7 @@ def test_the_stream_is_opened_on_the_page_s_own_origin() -> None:
     the page's own location, rather than at something assembled beside it.
     """
     source = STREAM.read_text()
-    assert "new WebSocket(streamAt(window.location, STREAM_PATH))" in source
+    assert "new WebSocket(socketAt(window.location, STREAM_PATH))" in source
     for name, module in modules().items():
         opened = module.count("new WebSocket(")
         assert opened == (
