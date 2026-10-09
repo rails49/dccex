@@ -14,11 +14,21 @@
  * `Mod-/` is the comment key, which is Cmd-/ on a Mac and Ctrl-/ everywhere
  * else. CodeMirror reads the platform, and the platform here is not a Mac, so
  * what is pressed below is the Ctrl one.
+ *
+ * **What is coloured has two halves and both are here.** That a run of Python
+ * is given a class is read off the markup; that the class is readable is
+ * computed from Shoelace's own palette, which arrives with the dependency and
+ * is reachable only where `node_modules` is. The gate holds the step the sheet
+ * asks for instead (`tests/ui/test_script.py`, ADR-0019 d.3).
  */
 
 import { EditorView } from "@codemirror/view";
+import dark from "@shoelace-style/shoelace/dist/themes/dark.styles.js";
+import light from "@shoelace-style/shoelace/dist/themes/light.styles.js";
+import type { CSSResult } from "lit";
 import { afterEach, expect, test } from "vitest";
 
+import { scriptStyles } from "../src/ui/dccex-script.styles.js";
 import { INDENT, editing, mark } from "../src/ui/editor.js";
 
 /** One indent. */
@@ -68,6 +78,118 @@ function coloured(view: EditorView): string[] {
   return [...view.contentDOM.querySelectorAll("span")].map(
     (drawn) => drawn.className,
   );
+}
+
+/** A colour, as sRGB, each channel from 0 to 1. */
+type Rgb = [number, number, number];
+
+/** A step of a palette, as a theme declares it. */
+const STEP = /(--sl-color-[a-z]+-\d+):\s*([^;]+);/g;
+
+/** The least contrast WCAG 2 asks of text against what is behind it. */
+const READABLE = 4.5;
+
+/** Every ink the editor draws text in, with the rule whose background it is
+ *  drawn on. The token classes and a marked line number sit on the editor's
+ *  own background; the line numbers sit on the gutter's. */
+const INKS: [string, string][] = [
+  [".script.cm-editor", ".script.cm-editor"],
+  [".script.cm-editor .cm-gutters", ".script.cm-editor .cm-gutters"],
+  [".script.cm-editor .refused-line", ".script.cm-editor"],
+  [".tok-keyword", ".script.cm-editor"],
+  [".tok-string", ".script.cm-editor"],
+  [".tok-comment", ".script.cm-editor"],
+  [".tok-number", ".script.cm-editor"],
+  [".tok-decorator", ".script.cm-editor"],
+  [".tok-function", ".script.cm-editor"],
+];
+
+/** The colour `written` is, from `hsl(h s% l%)` or the same with commas. */
+function rgb(written: string): Rgb {
+  const inside = /^hsl\(([^)]+)\)$/.exec(written);
+  if (inside === null) {
+    throw new Error(`${written} is not an hsl colour`);
+  }
+  const said = inside[1].split(/[\s,]+/).map((part) => Number.parseFloat(part));
+  const turn = (((said[0] % 360) + 360) % 360) / 60;
+  const saturation = said[1] / 100;
+  const lightness = said[2] / 100;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const beside = chroma * (1 - Math.abs((turn % 2) - 1));
+  const sixths: Rgb[] = [
+    [chroma, beside, 0],
+    [beside, chroma, 0],
+    [0, chroma, beside],
+    [0, beside, chroma],
+    [beside, 0, chroma],
+    [chroma, 0, beside],
+  ];
+  const [red, green, blue] = sixths[Math.floor(turn)];
+  const lift = lightness - chroma / 2;
+  return [red + lift, green + lift, blue + lift];
+}
+
+/** The colours one of Shoelace's themes declares, by custom property.
+ *
+ * A step may stand for another — `--sl-color-neutral-700` is one of the gray
+ * scale — so a value naming a property is read through to the colour behind
+ * it. */
+function palette(theme: CSSResult): Map<string, Rgb> {
+  const written = new Map<string, string>();
+  for (const [, step, value] of theme.cssText.matchAll(STEP)) {
+    written.set(step, value.trim());
+  }
+  const read = (value: string): Rgb => {
+    const named = /^var\((--[a-z0-9-]+)\)$/.exec(value);
+    if (named === null) {
+      return rgb(value);
+    }
+    const stood = written.get(named[1]);
+    if (stood === undefined) {
+      throw new Error(`${named[1]} is not in the theme`);
+    }
+    return read(stood);
+  };
+  return new Map([...written].map(([step, value]) => [step, read(value)]));
+}
+
+/** What a theme gives `step`. */
+function colour(colours: Map<string, Rgb>, step: string): Rgb {
+  const given = colours.get(step);
+  if (given === undefined) {
+    throw new Error(`${step} is not in the theme`);
+  }
+  return given;
+}
+
+/** The step one rule of the script view's sheet declares `property` as. */
+function asked(selector: string, property: string): string {
+  const rule = new RegExp(
+    `\\n  ${selector.replaceAll(".", "\\.")} \\{([^}]*)\\}`,
+  ).exec(scriptStyles.cssText);
+  if (rule === null) {
+    throw new Error(`no rule for ${selector}`);
+  }
+  const named = new RegExp(
+    `${property}: var\\((--sl-color-[a-z]+-\\d+)\\)`,
+  ).exec(rule[1]);
+  if (named === null) {
+    throw new Error(`${selector} draws its ${property} in no theme step`);
+  }
+  return named[1];
+}
+
+/** How light a colour is, as WCAG 2 measures it. */
+function luminance([red, green, blue]: Rgb): number {
+  const linear = (channel: number): number =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
+}
+
+/** The contrast between two colours, from 1 to 21. */
+function contrast(ink: Rgb, under: Rgb): number {
+  const [high, low] = [luminance(ink), luminance(under)].sort((a, b) => b - a);
+  return (high + 0.05) / (low + 0.05);
 }
 
 afterEach(() => {
@@ -164,6 +286,24 @@ test("python is coloured: a keyword, a string, a comment, a number, a decorator 
       "tok-function",
     ]),
   );
+});
+
+test("every ink the editor draws text in is readable in both themes", () => {
+  for (const [named, theme] of [
+    ["light", light],
+    ["dark", dark],
+  ] as const) {
+    const colours = palette(theme);
+    for (const [drawn, behind] of INKS) {
+      const ink = colour(colours, asked(drawn, "color"));
+      const under = colour(colours, asked(behind, "background"));
+
+      expect(
+        contrast(ink, under),
+        `${drawn} on ${behind}'s background in the ${named} theme`,
+      ).toBeGreaterThanOrEqual(READABLE);
+    }
+  }
 });
 
 test("the lines are numbered", () => {
