@@ -380,6 +380,37 @@ def labels(compose: Path, service: str) -> dict[str, str]:
     )
 
 
+#: The rule matchers the door's Traefik (v3) parses. A v2 name such as
+#: `HeadersRegexp` is refused at load, and the router carrying it is dropped.
+MATCHERS = {
+    "ClientIP",
+    "Header",
+    "HeaderRegexp",
+    "Host",
+    "HostRegexp",
+    "Method",
+    "Path",
+    "PathPrefix",
+    "PathRegexp",
+    "Query",
+    "QueryRegexp",
+}
+
+
+def test_every_rule_uses_only_matchers_the_door_parses() -> None:
+    rules = {
+        key: value
+        for compose in (BASE, BOX)
+        for service in services(compose)
+        for key, value in labels(compose, service).items()
+        if key.endswith(".rule")
+    }
+    assert rules, "no rules found"
+    for key, rule in rules.items():
+        used = set(re.findall(r"(\w+)\(", rule))
+        assert used <= MATCHERS, f"{key} uses {used - MATCHERS}"
+
+
 def test_only_the_page_and_the_mirror_carry_door_labels() -> None:
     """Only a container a browser reaches carries a route (ADR-0004 d.5). The
     face is in the mirror's container, so the mirror is one of them."""
@@ -486,7 +517,7 @@ def test_a_foreign_origin_at_the_broker_is_refused_by_the_door() -> None:
     rule = page["traefik.http.routers.dccex-mqtt-foreign.rule"]
     assert rule == (
         f"{HOST} && PathPrefix(`{MQTT_PREFIX}`) "
-        f"&& !HeadersRegexp(`Origin`, `^https://dccex\\.${{BOX_DOMAIN}}$$`)"
+        f"&& !HeaderRegexp(`Origin`, `^https://dccex\\.${{BOX_DOMAIN}}$$`)"
     )
     assert int(page["traefik.http.routers.dccex-mqtt-foreign.priority"]) > int(
         page["traefik.http.routers.dccex-mqtt.priority"]
