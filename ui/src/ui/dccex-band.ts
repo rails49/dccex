@@ -4,26 +4,29 @@
  *
  * What it draws is `readings.js`'s `band()` — the build the station says it is
  * running, whether the station is answering, the words that go with a link that
- * is down, and what the power button is, says and sends. Every one of them is
- * made of what the station said on the **stream**, decoded on the page and
- * handed down by it (ADR-0008 d.2); this component is given them and draws
- * them.
+ * is down, and what the power button reads, is titled and asks for. This
+ * component is given all of it and draws it; it works out no reading of its
+ * own.
  *
- * **It presses power** (ADR-0011, superseding ADR-0008 d.5). `control`'s band
- * presses it because `layout` checks the railroad is drained first, and that
- * check never guarded the station: any client of the mirror's port sends `<0>`
- * or `<1>`, the box at the foot of the monitor included, and the guard is the
- * operator (ADR-0006). So the button is a reading and a control at once —
- * green where any track is on and a press cuts the power, red where every one
- * is off and a press turns it on — and it goes up the stream the way anything
- * typed does, through the `sends` the page hands down. It is the only control
- * on this chrome and the only press on the page that commands power outside
- * the flash sequence's own step (ADR-0011 d.3). The page asks for no
- * confirmation (ADR-0011 d.4).
+ * **It asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1). A press
+ * used to send `<1>` or `<0>` through the **face**, which skipped `layout` and
+ * the **translator** — and `layout` is what refuses an OFF while a run is going
+ * and zeroes every locomotive's speed before a cut (`control` ADR-0062). So a
+ * press publishes `tc49/layout/power_wanted` through the `wants` the page hands
+ * down, and the chip the button wears is the row `layout` reports back: green
+ * for `on`, an outlined chip for `off`, red for `stopped`. Nothing about power
+ * goes up the stream, and this component holds no bus of its own — the
+ * connection is the page's (`bus.ts`, `dccex-app.ts`).
  *
- * **It presses nothing while the link is down** (ADR-0011 d.2): the button is
- * grey and disabled, because power is then unknown and a press would reach a
- * station that is not answering.
+ * It is the only control on this chrome and the only press on the page that
+ * asks for power outside the flash sequence's own step (ADR-0011 d.3, which
+ * stands). The page asks for no confirmation: the guard is `layout` and then
+ * the operator (ADR-0006).
+ *
+ * **It presses nothing without the broker, the station and a word from
+ * `layout`** (ADR-0017 d.3, issue 205): the button is a dim glyph with no
+ * chip, and its title says which of the three is missing — `no bus`, `no
+ * station`, `no layout`.
  *
  * **The link says so when the station stops answering**, rather than leaving
  * the page looking merely idle — which is the difference between a dead
@@ -32,15 +35,21 @@
  * alone while it is: a fault is owed a sentence, and a station that is
  * answering is owed a glance (issue 168, and issue 138 for the red). The words
  * are the dot's label in either state, so a reader who cannot see it is told
- * which reading it is. The build goes blank with the link, and the power button
- * greys: what the station last said is not a reading once the station has
- * stopped talking.
+ * which reading it is. The build goes blank with the link: what the station
+ * last said is not a reading once the station has stopped talking.
  */
 
 import { mdiPower } from "@mdi/js";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
-import { QUIET, asOf, band, type Readings } from "../readings.js";
+import {
+  QUIET,
+  UNREACHABLE,
+  asOf,
+  band,
+  type Layout,
+  type Readings,
+} from "../readings.js";
 import { bandStyles } from "./dccex-band.styles.js";
 import "./dccex-icon.js";
 
@@ -49,27 +58,36 @@ export class DccexBand extends LitElement {
 
   static override readonly properties = {
     readings: { attribute: false },
-    sends: { attribute: false },
+    layout: { attribute: false },
+    wants: { attribute: false },
   };
 
   /** What the page has read off the station.
    *
    * A band nobody has handed readings to reads a station that has said
-   * nothing, which is what it is: the link is down, the build is blank and the
-   * power button presses nothing. It is not a blank band and not a hedge.
+   * nothing, which is what it is: the link is down and the build is blank. It
+   * is not a blank band and not a hedge.
    */
   readings: Readings = asOf(QUIET, 0);
 
-  /** What puts a message up the **stream**, as the page hands it down.
+  /** What the page has read off the bus: whether it has the broker, and what
+   *  `layout` reports the railroad's power as (ADR-0017 d.2).
    *
-   *  A band nobody handed one to presses nothing: the stream is the page's, and
-   *  a pane that opened one of its own would be a second client of the mirror's
-   *  port for one page (`dccex-app.ts`).
+   *  A band nobody has handed one to has not reached the broker, which is what
+   *  a page has until it answers (`bus.ts`).
    */
-  sends: (typed: string) => string | null = () => null;
+  layout: Layout = UNREACHABLE;
+
+  /** What asks `layout` for power, as the page hands it down.
+   *
+   *  A band nobody handed one to presses nothing: the connection to the broker
+   *  is the page's, and a pane that opened one of its own would be a second
+   *  client of `control`'s broker for one page (`dccex-app.ts`).
+   */
+  wants: (power: string) => void = () => {};
 
   override render(): TemplateResult {
-    const { build, answering, says, power } = band(this.readings);
+    const { build, answering, says, power } = band(this.readings, this.layout);
     return html`
       <div class="about">
         <span class="name">dcc-ex</span>
@@ -82,12 +100,12 @@ export class DccexBand extends LitElement {
         </span>
         <button
           type="button"
-          class="power ${power.hot === null ? "" : power.hot ? "on" : "off"}"
-          title=${power.does}
-          aria-label=${power.does}
-          ?disabled=${power.sends === null}
+          class="power ${power.reads ?? ""}"
+          title=${power.title}
+          aria-label=${power.title}
+          ?disabled=${power.wants === null}
           @click=${() => {
-            this.#presses(power.sends);
+            this.#presses(power.wants);
           }}
         >
           <dccex-icon .path=${mdiPower}></dccex-icon>
@@ -96,15 +114,15 @@ export class DccexBand extends LitElement {
     `;
   }
 
-  /** Send what a press of the power button sends.
+  /** Ask for what a press of the power button asks for.
    *
-   *  Nothing where there is nothing to send. A disabled button fires no click,
-   *  so this is the same answer said twice — and the one that does not rest on
-   *  the browser honouring an attribute.
+   *  Nothing where there is nothing to ask for. A disabled button fires no
+   *  click, so this is the same answer said twice — and the one that does not
+   *  rest on the browser honouring an attribute.
    */
-  #presses(sends: string | null): void {
-    if (sends !== null) {
-      this.sends(sends);
+  #presses(wants: string | null): void {
+    if (wants !== null) {
+      this.wants(wants);
     }
   }
 }
