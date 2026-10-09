@@ -42,6 +42,14 @@ NEVER_S = 3600.0
 # intervals take to elapse is not this machine's scheduler's to decide.
 FAST_POLL_S = 0.005
 
+MARK = b"<JM 32000 1>"
+POLL = [b"<s>", b"<JM 32000>"]
+HELD = b"<jM 32000 1>"
+EMPTY = b"<jM 32000 0>"
+# The stash the translator sets on every connect and asks for in every poll,
+# and the two answers it can get back (ADR-0021). `Port.opened` takes the mark
+# off the wire, so a test that is not about it asserts what follows.
+
 TRACK = "tc49/layout/state/wanted/track"
 TRACTION = "tc49/layout/state/wanted/traction"
 POINT = "tc49/layout/state/wanted/point"
@@ -100,14 +108,23 @@ class Port:
         self._opened.set()
         return end
 
-    async def opened(self, count: int = 1) -> Station:
-        """The station's end of the `count`-th attempt, waiting for it."""
+    async def opened(self, count: int = 1, *, mark: bool = True) -> Station:
+        """The station's end of the `count`-th attempt, waiting for it.
+
+        The mark goes out before anything else on every connect, so it is
+        taken off the wire here and every test asserts it: what a test about
+        the replay asserts is the replay. `mark=False` leaves it there for
+        the tests that are about the order (ADR-0021 d.2).
+        """
         while len(self.attempts) < count:
             self._opened.clear()
             if len(self.attempts) >= count:
                 break
             await asyncio.wait_for(self._opened.wait(), TIMEOUT_S)
-        return self.attempts[count - 1]
+        station = self.attempts[count - 1]
+        if mark:
+            assert await station.heard(1) == [MARK]
+        return station
 
 
 class Tap:
@@ -714,7 +731,7 @@ async def _reports_a_script_reads_go_with_the_link() -> None:
         assert await second.heard(1) == [b"<A 9 2>"]
 
 
-# -- the station as this app has not set it (ADR-0018) -------------------
+# -- the station as this app has not set it (ADR-0018, ADR-0021) ---------
 
 SETS_UP = """\
 @on("start")
@@ -726,21 +743,24 @@ def configure(t):
 READY = b'<@ 0 3 "Ready">'
 
 
-def test_start_runs_on_connect_before_the_replay() -> None:
-    asyncio.run(_start_runs_on_connect_before_the_replay())
+def test_the_mark_goes_out_before_start_and_the_replay() -> None:
+    asyncio.run(_mark_goes_out_before_start_and_the_replay())
 
 
-async def _start_runs_on_connect_before_the_replay() -> None:
-    """A point handler may set a district's mode, so it runs after `start`
-    sets them all (ADR-0018 d.3). `start` has no default: `t.default()` in
-    it sends nothing (d.4). The power is not replayed."""
+async def _mark_goes_out_before_start_and_the_replay() -> None:
+    """The stash is set first, so a restart in the middle of the lines that
+    follow is one the next poll still sees (ADR-0021 d.2). A point handler
+    may set a district's mode, so it runs after `start` sets them all
+    (ADR-0018 d.3). `start` has no default: `t.default()` in it sends
+    nothing (d.4). The power is not replayed."""
     bus, _ = bus_and_tap()
     wanted(bus, TRACK, "", {"power": "on"})
     wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
     port = Port()
     async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
-        station = await port.opened()
-        assert await station.heard(3) == [
+        station = await port.opened(mark=False)
+        assert await station.heard(4) == [
+            MARK,
             b"<= D MAIN>",
             b"<a 3 3 1>",
             b"<= D MAIN_INV>",
@@ -748,14 +768,16 @@ async def _start_runs_on_connect_before_the_replay() -> None:
         await station.heard_nothing_more()
 
 
-def test_a_restart_runs_start_and_the_replay_again() -> None:
-    asyncio.run(_restart_runs_start_and_the_replay_again())
+def test_an_empty_stash_runs_start_and_the_replay_again() -> None:
+    asyncio.run(_empty_stash_runs_start_and_the_replay_again())
 
 
-async def _restart_runs_start_and_the_replay_again() -> None:
-    """A reset can be shorter than the ten polls that lower the link, so the
-    station's own last boot line is what says it restarted (ADR-0018 d.2).
-    What follows is what a connect does (d.3)."""
+async def _empty_stash_runs_start_and_the_replay_again() -> None:
+    """A boot clears the stash, so an entry this app set and the station
+    answers `0` for is a station that has restarted (ADR-0021 d.4). A reset
+    can be shorter than the ten polls that lower the link, so the link going
+    down is not what says it. What follows is what a connect does, the mark
+    first (d.2)."""
     bus, _ = bus_and_tap()
     wanted(bus, TRACK, "", {"power": "on"})
     wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
@@ -764,12 +786,53 @@ async def _restart_runs_start_and_the_replay_again() -> None:
         station = await port.opened()
         await station.heard(3)
 
-        station.says(READY)
-        assert await station.heard(3) == [
+        station.says(EMPTY)
+        assert await station.heard(4) == [
+            MARK,
             b"<= D MAIN>",
             b"<a 3 3 1>",
             b"<= D MAIN_INV>",
         ]
+        await station.heard_nothing_more()
+
+
+def test_a_stash_the_station_still_holds_changes_nothing() -> None:
+    asyncio.run(_stash_the_station_still_holds_changes_nothing())
+
+
+async def _stash_the_station_still_holds_changes_nothing() -> None:
+    """The answer every poll gets while the station is the one this app
+    marked. It is the station answering, so the link is up on it, and it is
+    nothing else (ADR-0021 d.4)."""
+    bus, tap = bus_and_tap()
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+        station = await port.opened()
+        await station.heard(3)
+
+        station.says(HELD)
+        await station.heard_nothing_more()
+        bus.drain()
+        assert tap.values(DEVICE_LINK)[-1]["link"] == "up"
+
+
+def test_the_boot_line_changes_nothing() -> None:
+    asyncio.run(_boot_line_changes_nothing())
+
+
+async def _boot_line_changes_nothing() -> None:
+    """The boot line is no longer read (ADR-0021 d.6). The virtual LCD's
+    text, row and port are part of no documented interface, and the station
+    on the box printed a form that was not the one d.2 named."""
+    bus, _ = bus_and_tap()
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
+        station = await port.opened()
+        await station.heard(3)
+
+        station.says(READY)
         await station.heard_nothing_more()
 
 
@@ -779,8 +842,9 @@ def test_a_restart_forgets_what_the_station_reported() -> None:
 
 async def _restart_forgets_what_the_station_reported() -> None:
     """The station comes back with every track off, and says so only after
-    its last boot line. A handler the replay runs reads no report from
-    before the restart, so the sample's point 12 handler leaves D off."""
+    the poll has read the stash empty. A handler the replay runs reads no
+    report from before the restart, so the sample's point 12 handler leaves
+    D off."""
     bus, _ = bus_and_tap()
     wanted(bus, TRACK, "", {"power": "on"})
     wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
@@ -792,8 +856,8 @@ async def _restart_forgets_what_the_station_reported() -> None:
         station.says(b"<p1 D>")
         await station.heard_nothing_more()
 
-        station.says(READY)
-        assert await station.heard(8 + 2) == SAMPLE_START + [
+        station.says(EMPTY)
+        assert await station.heard(1 + 8 + 2) == [MARK] + SAMPLE_START + [
             b"<a 3 3 0>",
             b"<= D MAIN_AUTO>",
         ]
@@ -1546,19 +1610,21 @@ async def _no_position_is_ever_observed() -> None:
 # -- the poll -------------------------------------------------------------
 
 
-def test_the_poll_asks_for_the_status_and_asks_for_nothing_else() -> None:
-    asyncio.run(_poll_asks_for_the_status_and_asks_for_nothing_else())
+def test_the_poll_asks_for_the_status_and_for_the_stash() -> None:
+    asyncio.run(_poll_asks_for_the_status_and_for_the_stash())
 
 
-async def _poll_asks_for_the_status_and_asks_for_nothing_else() -> None:
-    """The status because an overload is not broadcast, and **nothing more**.
+async def _poll_asks_for_the_status_and_for_the_stash() -> None:
+    """The status because an overload is not broadcast, the stash because a
+    restart is read off it (ADR-0021 d.3), and **nothing more**.
 
     A poll runs for as long as the link does, so a command in it that a
     station acts on rather than answers is acted on for as long as the
     railroad is up. That is what a lock query was here: on a station whose
     `!` opcode takes no suffix it read as the emergency stop itself, and a
     train driven from any throttle moved for one poll interval and stood
-    (#463).
+    (#463). Both of these only ask: `<JM id>` with no value after it reads
+    the entry and sets nothing.
 
     So the assertion is the whole of what a poll sends and not its first
     line. What this cannot check is what a station makes of those bytes —
@@ -1570,9 +1636,57 @@ async def _poll_asks_for_the_status_and_asks_for_nothing_else() -> None:
     port = Port()
     async with running(bus, port, poll_s=0.01):
         station = await port.opened()
-        assert await station.heard(1) == [b"<s>"]
-        assert await station.heard(1) == [b"<s>"]
-        assert await station.heard(1) == [b"<s>"]
+        assert await station.heard(2) == POLL
+        assert await station.heard(2) == POLL
+        assert await station.heard(2) == POLL
+
+
+def test_a_station_that_never_answers_the_stash_is_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_station_that_never_answers_the_stash_is_logged_once(caplog))
+
+
+async def _station_that_never_answers_the_stash_is_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A station whose firmware has no `<JM>` answers nothing at all, and a
+    restart on it is never seen. Nothing else shows it, so ten polls of a
+    link with no answer are logged — once, because a line a second is a log
+    nobody reads (ADR-0021 d.5)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.WARNING):
+        async with running(bus, port, poll_s=FAST_POLL_S):
+            station = await port.opened()
+            # Two messages to a poll, so twenty is ten polls.
+            await station.heard(2 * 10)
+            assert caplog.text.count("will not be seen") == 1
+
+            await station.heard(2)
+            assert caplog.text.count("will not be seen") == 1
+
+
+def test_a_station_that_answers_the_stash_is_not_logged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_station_that_answers_the_stash_is_not_logged(caplog))
+
+
+async def _station_that_answers_the_stash_is_not_logged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One answer says the firmware has the entry, which is the whole of
+    what the warning is about."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.WARNING):
+        async with running(bus, port, poll_s=FAST_POLL_S):
+            station = await port.opened()
+            await station.heard(2)
+            station.says(HELD)
+            await station.heard(2 * 11)
+            assert "will not be seen" not in caplog.text
 
 
 def test_a_station_that_stops_answering_lowers_the_link() -> None:

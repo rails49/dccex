@@ -21,9 +21,13 @@ beside it; what is here is where in this module it is kept.
 **It acts on an address only if it recognises it**, and there is no ownership
 table anywhere (`_recognises`, control ADR-0059).
 
-**On connect it runs the script's `start`, then applies the retained desired
-state, power excepted**, and does the same when the station restarts
-(`_started`, ADR-0013 d.6, ADR-0018).
+**On connect it marks stash `32000`, runs the script's `start`, then applies
+the retained desired state, power excepted**, and does the same when the
+station restarts (`_started`, ADR-0013 d.6, ADR-0018, ADR-0021 d.2).
+
+**A restart is that stash read back empty**, which every boot clears: the poll
+asks for it beside the status, and a station that never answers is logged once
+a link (`_poll`, `_heard`, ADR-0021).
 
 **It runs one railroad's script**: a handler keyed on a desired value runs in
 place of the command this app would have sent, one keyed on something the
@@ -147,6 +151,14 @@ clients for a device it knows is away and that ends the session through the
 path that already exists — what is left for this to catch is a station that
 is powered, enumerated and mute, and ten seconds is well outside anything a
 healthy station does with a status query under load (control ADR-0066)."""
+
+STASH_POLLS = 10
+"""How many polls of a link may go by with no answer about the stash before
+the translator says so, once. A station whose firmware has no `<JM>` answers
+nothing, and a restart on it is never seen — there is nothing else to read it
+off and nothing else that would show it, so the log is where it shows
+(ADR-0021 d.5). Ten is the first few seconds of a link rather than a number
+with teeth: nothing is lowered and nothing is refused for it."""
 
 SCRIPT_S = 5.0
 """How often the store is asked for the current railroad's script. It bounds
@@ -360,6 +372,11 @@ class DccEx:
         # an outage is not an observation, and what cannot be read may not be
         # called good (control#181).
         self._answered = False
+        # Whether the station has answered about the stash on this link, which
+        # says its firmware has one at all. Per link and not forgotten with
+        # the readings: it is a fact about the firmware, which neither an
+        # outage nor a restart changes (ADR-0021 d.5).
+        self._stashed = False
         # When the station last said anything, and `None` where it has said
         # nothing this app has heard. What the poll measures its silence
         # against: the link is the station answering, so a station that has
@@ -534,10 +551,16 @@ class DccEx:
 
     def _started(self) -> None:
         """The station as this app has not set it: on a connect, and after
-        the station restarts. The script's `start` first, then every desired
-        value but the power, so a point handler that sets a district's mode
-        runs after `start` set them all (ADR-0018 d.3). `start` has no
-        default (d.4)."""
+        the station restarts.
+
+        The mark goes out first, so a station that restarts in the middle of
+        the lines that follow is one the next poll still reads as restarted
+        (ADR-0021 d.2). Then the script's `start`, then every desired value
+        but the power, so a point handler that sets a district's mode runs
+        after `start` set them all (ADR-0018 d.3). `start` has no default
+        (d.4).
+        """
+        self._send(commands.MARK)
         handlers = self._handlers(script.START, None)
         if handlers:
             self._ran(handlers, self._firing(script.START, None, None))
@@ -760,6 +783,7 @@ class DccEx:
         lengthening interval as a port that accepts and drops.
         """
         self._writer = writer
+        self._stashed = False
         self._started()
         polling = asyncio.create_task(self._poll())
         try:
@@ -800,18 +824,30 @@ class DccEx:
         the station volunteers on being commanded arrives sooner than a poll
         would anyway.
 
-        One question and not two. A poll runs for as long as the link does, so
-        anything sent here that a station acts on rather than answers is acted
-        on for as long as the railroad is up — which is what a lock query was,
-        on a station whose `!` opcode takes no suffix: an emergency stop every
-        second, and a train that moved a few centimetres and stood
-        (control#463). `<s>` asks and changes nothing, which is the property a
-        polled command has to have.
+        Two questions, and both only ask (ADR-0021 d.3). A poll runs for as
+        long as the link does, so anything sent here that a station acts on
+        rather than answers is acted on for as long as the railroad is up —
+        which is what a lock query was, on a station whose `!` opcode takes no
+        suffix: an emergency stop every second, and a train that moved a few
+        centimetres and stood (control#463). `<s>` restates the power and
+        `<JM 32000>` reads the stash back; neither changes anything, which is
+        the property a polled command has to have.
         """
+        polls = 0
         while True:
             await asyncio.sleep(self._poll_s)
             self._lower_if_silent()
             self._send(commands.STATUS)
+            self._send(commands.STASH)
+            polls += 1
+            if polls == STASH_POLLS and not self._stashed:
+                _log.warning(
+                    "the station at %s has not answered %s in %d polls:"
+                    " a restart will not be seen",
+                    self._where,
+                    commands.STASH.decode(),
+                    STASH_POLLS,
+                )
 
     def _lower_if_silent(self) -> None:
         """Lower the link where the station has gone quiet on us, which the
@@ -856,7 +892,13 @@ class DccEx:
         this app reads no field off — raises it just the same.
         """
         told = replies.reply(message)
-        if isinstance(told, replies.Restarted):
+        if isinstance(told, replies.Stash):
+            self._stashed = True
+        # The mark this app set, read back empty: every boot clears the stash,
+        # so the station on the far end is not the one that was marked
+        # (ADR-0021 d.4).
+        restarted = isinstance(told, replies.Stash) and not told.held
+        if restarted:
             # What it said before the restart is no longer true of it, and a
             # handler `start` replays reads its reports (ADR-0018 d.3).
             self._forget()
@@ -891,7 +933,7 @@ class DccEx:
         self._publish_link(True, f"connected to {self._where}")
         self._publish_track()
         self._reports(told)
-        if isinstance(told, replies.Restarted):
+        if restarted:
             self._started()
 
     def _diagnosed(self, told: replies.Diagnostic) -> None:
@@ -915,7 +957,7 @@ class DccEx:
             | replies.Lock
             | replies.Turnout
             | replies.Diagnostic
-            | replies.Restarted
+            | replies.Stash
             | None
         ),
     ) -> None:

@@ -6,7 +6,7 @@ broadcasts alike, and one byte stream cannot say which a line is —
 (control ADR-0043). So what arrives here is everything the station has to say to
 anyone, and the reading is deliberately narrow: the power each track is in,
 whether the emergency-stop lock is on, the diagnostic lines that say a district
-tripped (ADR-0016), the last line of the station's boot (ADR-0018), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
+tripped (ADR-0016), the stash entry a boot clears (ADR-0021), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
 (ADR-0013 d.3). Everything else — the banner, a slot's speed, a sensor it
 polls, a fast clock — is another client's business and is passed over unread.
 
@@ -24,6 +24,8 @@ nothing else of ours.
 
 import re
 from dataclasses import dataclass
+
+from dccex.commands import STASH_ID
 
 MAX_MESSAGE = 1024
 """How long a message may grow before it is taken for a broken sender. The
@@ -102,17 +104,25 @@ _DIAGNOSTIC = re.compile(
 `v5.6.4-rails49.1`. The rails49 fork owns them (ADR-0016, consequences)."""
 
 
-READY = b'@ 0 3 "Ready"'
-"""The last line `setup()` prints, `LCD(3, F("Ready"))`. The virtual LCD
-starts out on the USB port (`CommandDistributor::virtualLCDSerial`), so at boot
-it reaches the port in this form. The station reads its port from here on
-(ADR-0018 d.2)."""
+_STASH = str(STASH_ID).encode()
+"""The one stash entry this app reads, as the station writes it. The number is
+`commands`' because it is this app's to choose; the rest of the station's
+stash is EXRAIL's and other clients' (ADR-0021 d.1)."""
 
 
 @dataclass(frozen=True)
-class Restarted:
-    """The station has restarted, and has the firmware's track modes and
-    limits rather than the script's (ADR-0018)."""
+class Stash:
+    """What one `<jM 32000 …>` line says: whether the entry this app set is
+    still there.
+
+    A stash is held in the station's RAM and is empty after every boot
+    (`Stash.cpp`), so `held` is false for a station that has restarted since
+    the entry was set (ADR-0021 d.4). The value the station answers with is a
+    locomotive id and names nothing here: anything that is not `0` is the
+    mark.
+    """
+
+    held: bool
 
 
 @dataclass(frozen=True)
@@ -153,12 +163,12 @@ def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
 
 def reply(
     message: bytes,
-) -> Power | Lock | Turnout | Diagnostic | Restarted | None:
+) -> Power | Lock | Turnout | Diagnostic | Stash | None:
     """The fact one whole message states, or None where it states none of
     those this app reads."""
     body = message[1:-1]
-    if body == READY:
-        return Restarted()
+    if body.startswith(b"jM "):
+        return _stash(body[3:])
     if body.startswith(b"*"):
         return _diagnostic(body)
     if body == b"!PAUSED":
@@ -175,6 +185,20 @@ def reply(
     if len(named) == 1 and named in TRACKS:
         return Power(track=named, on=body[1:2] == b"1")
     return None
+
+
+def _stash(named: bytes) -> Stash | None:
+    """A `<jM id loco>` line read, or None where it is no such line or names
+    another entry.
+
+    An id and a value: the station answers one entry per line, and the longer
+    forms it prints for `<JM>` with no id name more or fewer fields. An id
+    that is not this app's is another client's entry and no fact of ours.
+    """
+    fields = named.split()
+    if len(fields) != 2 or fields[0] != _STASH or not fields[1].isdigit():
+        return None
+    return Stash(held=fields[1] != b"0")
 
 
 def _turnout(named: bytes) -> Turnout | None:

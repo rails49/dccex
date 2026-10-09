@@ -141,18 +141,37 @@ def test_a_diagnostic_this_app_does_not_read_is_nothing() -> None:
     assert replies.reply(b"<* Calling EXRAIL *>") is None
 
 
-# -- the station restarted (ADR-0018) -------------------------------------
+# -- the stash a boot clears (ADR-0021) -----------------------------------
 
 
-def test_the_last_line_of_the_boot_is_a_restart() -> None:
-    """`LCD(3, F("Ready"))` near the end of `setup()`, as the station on the
-    box printed it after `<D RESET>` (fork tag `v5.6.4-rails49.6-ocp-test`)."""
-    assert replies.reply(b'<@ 0 3 "Ready">') == replies.Restarted()
+def test_the_stash_reads_as_held_or_as_empty() -> None:
+    """`<JM id>` answers `<jM id loco>`, and `0` where the entry is unset,
+    which every boot leaves it (`Stash.cpp`). The value itself names nothing
+    here: anything that is not `0` is the mark this app set."""
+    assert replies.reply(b"<jM 32000 1>") == replies.Stash(held=True)
+    assert replies.reply(b"<jM 32000 0>") == replies.Stash(held=False)
+    assert replies.reply(b"<jM 32000 3>") == replies.Stash(held=True)
 
 
-def test_the_rest_of_the_boot_is_nothing() -> None:
-    """The licence line comes before the tracks are set up and before the
-    station reads its port, so a restart is not read off it."""
+def test_a_stash_that_is_not_this_app_s_reads_as_nothing() -> None:
+    """One entry is this app's and the rest are EXRAIL's and other clients'
+    (ADR-0021 d.1)."""
+    for other in (
+        b"<jM 1 0>",
+        b"<jM 31999 0>",
+        b"<jM 320000 0>",
+        b"<jM 32000>",
+        b"<jM 32000 x>",
+        b"<jM>",
+    ):
+        assert replies.reply(other) is None
+
+
+def test_the_boot_is_nothing() -> None:
+    """The virtual LCD's text, row and port are part of no documented
+    interface: a firmware that prints another form leaves a restart unseen,
+    which is what happened on the first `<D RESET>` (ADR-0021)."""
+    assert replies.reply(b'<@ 0 3 "Ready">') is None
     assert replies.reply(b"<* License GPLv3 fsf.org (c) dcc-ex.com *>") is None
     assert replies.reply(b'<@ 0 0 "DCC-EX v5.6.4">') is None
     assert replies.reply(b'<@ 0 3 "Free RAM=  312Kb">') is None
