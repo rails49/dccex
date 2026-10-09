@@ -58,9 +58,17 @@ stay as the station reports them and come back when a person presses ON
 (ADR-0013 d.6). Every other value replays through its handler, in the order
 the topics were first heard.
 
-**A station restart is handled as a connect.** The station's last boot line,
-`<@ 0 3 "Ready">`, runs `start` and the replay again, because a reset can be
-shorter than the ten polls that lower the link (ADR-0018).
+**A station restart is handled as a connect.** On every connect this app sets
+stash `32000` with `<JM 32000 1>`, before `start` and the replay, and the poll
+reads it back. A boot clears the stash, so `<jM 32000 0>` is a station that
+has restarted and runs `start` and the replay again — a reset can be shorter
+than the ten polls that lower the link, so the link going down is not what
+says it
+([ADR-0021](../adr/0021-a-restart-is-a-stash-the-boot-has-cleared.md)). The
+boot line is not read: its text, row and port are part of no documented
+interface, and a firmware that printed another form left a restart unseen. A
+station whose firmware has no `<JM>` answers nothing, and ten polls of a link
+with no answer are logged once (ADR-0021 d.5).
 
 ## The script
 
@@ -195,9 +203,11 @@ turns D back on where the station last reported it on, rather than relying on
 what `start` or an earlier handler left. A restart forgets the station's
 reports, so a replay after one leaves D off (ADR-0018 d.3).
 
-**`start` runs before the replay**, on a connect and on `<@ 0 3 "Ready">`, so a
+**`start` runs before the replay**, on a connect and on `<jM 32000 0>`, so a
 point handler that sets a district's mode runs after `start` set them all
-(ADR-0018 d.3).
+(ADR-0018 d.3). `<JM 32000 1>` goes out before `start` itself, so a station
+that restarts in the middle of those lines is one the next poll still reads as
+restarted ([ADR-0021](../adr/0021-a-restart-is-a-stash-the-boot-has-cleared.md) d.2).
 
 **The power handler runs on every value of the row** — `on`, `off` and the
 stop — and on every ON rather than only on a change from off (d.7). There is
@@ -317,13 +327,14 @@ station prints only for a district that is on; a commanded OFF and a lost link
 end every trip. Against the station's own TCP port no such line
 arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
 
-**The station is polled with `<s>` and nothing else**, and the answers are
-what the link is measured by. Once a second `<s>` makes the station restate
-every track's power, and ten of those questions going unanswered is what says
-the station has stopped answering at all, below. Nothing else goes in the poll. A
-poll runs for as long as the link does, so a command in it that a station acts
-on rather than answers is acted on for as long as the railroad is up, and a
-station says nothing about a command it does not know.
+**The station is polled with `<s>` and `<JM 32000>` and nothing else**, and
+the answers are what the link is measured by. Once a second `<s>` makes the
+station restate every track's power and `<JM 32000>` reads the stash a restart
+is read off (above); ten of those questions going unanswered is what says the
+station has stopped answering at all, below. Nothing else goes in the poll, and
+both of these only ask. A poll runs for as long as the link does, so a command
+in it that a station acts on rather than answers is acted on for as long as the
+railroad is up, and a station says nothing about a command it does not know.
 
 ## What it publishes back
 
@@ -539,9 +550,10 @@ throttle may drive away from it afterwards, which is what `stopped` means here;
 sending it is safe and leaves nothing to clear.
 
 **Reset the station** with the translator connected and watch the same
-port. After `<@ 0 3 "Ready">` the translator sends the script's `start` lines
-— the sample's four `<= …>` and four `<JG …>` — and then the replay. `<=`
-with no arguments lists the modes the station now has (ADR-0018).
+port. Within a second — one poll — the translator reads `<jM 32000 0>` and
+sends `<JM 32000 1>`, then the script's `start` lines — the sample's four
+`<= …>` and four `<JG …>` — and then the replay. `<=` with no arguments lists
+the modes the station now has (ADR-0018, ADR-0021).
 
 The version in the banner is worth reading. This station is older than the
 firmware the mapping was researched against, and the difference is silent: an
