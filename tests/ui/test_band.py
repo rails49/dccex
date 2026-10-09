@@ -1,13 +1,13 @@
 """What the **band** draws, and what it refuses to.
 
 The words it shows for a set of facts are asserted by running the real
-functions (`tests/ui/test_readings.py`), and that they reach a page — the one
-control on it included — is asserted by mounting the component and pressing it
+functions (`tests/ui/test_readings.py`), and that they reach a page — the two
+presses on it included — is asserted by mounting the component and pressing it
 (`ui/test/band.test.ts`, #126). What is held here is what neither of those can
-see: that the band works no reading out of its own, that the one press on it is
-the power button's and goes on the bus, which colours reach the chrome and what
-they mean, and what survives a band too narrow to carry all three of the things
-on it.
+see: that the band works no reading out of its own, that the presses on it are
+the power button's and STOP's and both go on the bus, which colours reach the
+chrome and what they mean, and what survives a band too narrow to carry
+everything on it.
 
 Read off the sources, because these are claims about the shape of the page
 rather than about what it says. happy-dom does no layout, so a width is not a
@@ -56,14 +56,14 @@ def test_the_band_works_no_reading_out_of_its_own() -> None:
         assert handed in page, f"nothing hands it {handed}"
 
 
-def test_the_one_press_on_the_band_is_the_power_button() -> None:
-    """The band asks for power and does nothing else (ADR-0017 d.1, ADR-0011
-    d.3).
+def test_the_two_presses_on_the_band_ask_layout_for_power() -> None:
+    """The band asks for power and does nothing else (ADR-0017 d.1, ADR-0020
+    d.2, ADR-0011 d.3).
 
-    One button, one thing listening for a press, and what it asks for is the
-    readings module's rather than a literal here — the colour and the ask are
-    one answer, and a band that chose the ask itself could disagree with the
-    colour it drew.
+    Two buttons, two things listening for a press, and what each asks for is
+    the readings module's rather than a literal here — the colour and the ask
+    are one answer, and a band that chose the ask itself could disagree with
+    the colour it drew.
 
     No form and no field: the one place a command is *typed* at the station is
     the box at the foot of the monitor.
@@ -73,9 +73,13 @@ def test_the_one_press_on_the_band_is_the_power_button() -> None:
     asking (`code`, `tests/ui/test_stream.py`).
     """
     drawn = code(BAND.read_text())
-    assert drawn.count("<button") == 1, "the band carries a second control"
-    assert drawn.count("@click") == 1, "the band listens for a second press"
-    assert "power.wants" in drawn, "the band does not ask for what the readings say"
+    assert drawn.count("<button") == 2, "the band carries a third control"
+    assert drawn.count("@click") == 2, "the band listens for a third press"
+    for asks in ("power.wants", "stop.wants"):
+        assert asks in drawn, f"the band does not ask for {asks}"
+    assert (
+        '"stopped"' not in drawn
+    ), "the band writes the word a stop asks for out itself"
     for literal in ("<0>", "<1>"):
         assert literal not in drawn, f"the band writes {literal} out itself"
     for pressed in ("<form", "@submit", "<input"):
@@ -102,18 +106,24 @@ def test_the_press_goes_on_the_bus_and_not_up_the_stream() -> None:
         assert held not in drawn, f"the band holds a {held} of its own"
 
 
-def test_the_power_button_is_disabled_until_it_can_be_pressed() -> None:
-    """No broker, no station answering, or no word from `layout` yet (ADR-0017
-    d.3).
+def test_a_press_is_disabled_until_it_can_be_pressed() -> None:
+    """The power button with no broker, no station answering or no word from
+    `layout` yet (ADR-0017 d.3); STOP with no broker, and nothing else
+    (ADR-0020 d.3).
+
+    Each is disabled on its own ask being `null`, which is where the readings
+    put the difference between them — a band with one rule for both would make
+    a stop wait on a station `layout` holds it for.
 
     The attribute is what stops a pointer and a keyboard; that nothing is asked
     for even where a press gets through is the component's own guard, and both
     are pressed in `ui/test/band.test.ts`.
     """
     drawn = BAND.read_text()
-    assert (
-        "?disabled=${power.wants === null}" in drawn
-    ), "the band presses what it cannot"
+    for pressed in ("power", "stop"):
+        assert (
+            f"?disabled=${{{pressed}.wants === null}}" in drawn
+        ), f"the band presses a {pressed} it cannot"
 
 
 def test_the_band_asks_for_no_confirmation() -> None:
@@ -158,16 +168,17 @@ def test_red_on_the_chrome_is_the_fault_and_the_stop_and_nothing_else() -> None:
     """The look rules keep red on the chrome for stop or a fault.
 
     This band draws both: a link that is down is the fault, in words on
-    `--stop` with a dot in `--stop-ink` (#138), and a railroad `layout` reports
-    as `stopped` is the stop (ADR-0017 d.2). Nothing else on it is red — power
-    that is merely off is a state somebody chose, and a band that drew it red
-    would be saying stop about a railroad nobody stopped.
+    `--stop` with a dot in `--stop-ink` (#138), and the stop is the STOP press
+    and a railroad `layout` reports as `stopped` (ADR-0017 d.2, ADR-0020 d.1).
+    Nothing else on it is red — power that is merely off is a state somebody
+    chose, and a band that drew it red would be saying stop about a railroad
+    nobody stopped.
     """
     styles = STYLES.read_text()
     assert "background: var(--stop)" in rule(styles, ".says")
     assert "color: var(--stop-ink)" in rule(styles, ".says")
     left = re.sub(r"/\*.*?\*/", "", styles, flags=re.DOTALL)
-    for selector in (".says", ".dot.off", ".power.stopped"):
+    for selector in (".says", ".dot.off", ".power.stopped", ".stop"):
         drawn = rule(styles, selector)
         assert "var(--stop" in drawn, f"{selector} is not drawn in red"
         left = left.replace(drawn, "")
@@ -187,17 +198,21 @@ def test_green_on_the_chrome_is_the_station_answering_and_the_rails_hot() -> Non
     assert "--rail-group" not in left, "a rule that is neither reading is green"
 
 
-def test_the_power_button_is_grey_and_wears_no_chip_while_it_is_dead() -> None:
-    """There is then no state to draw: the broker is away, the station is not
-    answering, or `layout` has not reported (ADR-0017 d.3). A colour there would
-    be this page drawing a reading nobody gave it (ADR-0009 d.2).
+def test_a_press_is_grey_and_wears_no_chip_while_it_is_dead() -> None:
+    """There is then nothing a press could reach, and for the power button no
+    state to draw either: the broker is away, the station is not answering, or
+    `layout` has not reported (ADR-0017 d.3, ADR-0020 d.3). A colour there
+    would be this page drawing a reading nobody gave it (ADR-0009 d.2).
 
     Grey is the band's own ink at half strength: none of the six colours is a
     dimmer ink, and a seventh would be a colour of this page's own. The chip
     and the outline go with it, so a reader who cannot tell the green from the
     red is still left a difference.
+
+    One rule over both presses, which is what makes STOP's dead look the power
+    button's rather than a second answer to it.
     """
-    dead = rule(STYLES.read_text(), ".power:disabled")
+    dead = rule(STYLES.read_text(), ".press:disabled")
     assert "color: var(--band-ink)" in dead
     assert "background: none" in dead, "the button keeps a chip while it is dead"
     assert "opacity" in dead, "the button is drawn as brightly as a live one"
@@ -217,15 +232,23 @@ def test_neither_colour_is_laid_straight_on_the_bands_blue() -> None:
     assert "border: 2px solid var(--band-ink)" in rule(styles, ".dot")
     assert "background: var(--band-ink)" in rule(styles, ".power.on")
     assert "background: var(--stop)" in rule(styles, ".power.stopped")
+    assert "background: var(--stop)" in rule(styles, ".stop")
     assert "background: var(--stop)" in rule(styles, ".says")
 
 
-def test_the_power_button_is_a_thumb_wide_and_a_thumb_high() -> None:
-    """It is pressed on the phone held at the layout, and `--rail-button` is
-    the look rules' minimum for a thumb (`ui/look/README.md`)."""
-    power = rule(STYLES.read_text(), ".power")
-    assert "min-width: var(--rail-button)" in power
-    assert "min-height: var(--rail-button)" in power
+def test_either_press_is_a_thumb_wide_and_a_thumb_high() -> None:
+    """They are pressed on the phone held at the layout, and `--rail-button` is
+    the look rules' minimum for a thumb (`ui/look/README.md`).
+
+    One rule for both, and both buttons wear it: the two are the same control
+    to a thumb and only what they wear differs, so a size written twice would
+    be two answers to how big a press on this chrome is.
+    """
+    pressed = rule(STYLES.read_text(), ".press")
+    assert "min-width: var(--rail-button)" in pressed
+    assert "min-height: var(--rail-button)" in pressed
+    drawn = code(BAND.read_text())
+    assert drawn.count('class="press ') == 2, "a press on the band is sized on its own"
 
 
 def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> None:
@@ -235,9 +258,9 @@ def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> 
     reader at the layout is least often after — what the station is doing is on
     the tiles and what it is running is not (issue 170). Then the
     link's words go and the link is the dot alone — the dot is the reading and
-    the words are that reading a second time. The dot and the power button
-    survive every width: the button is the one control on the page that asks
-    for power and a thumb has to reach it (ADR-0017 d.1).
+    the words are that reading a second time. The dot and the two presses
+    survive every width: they are the presses on the page that ask for power
+    and a thumb has to reach them (ADR-0017 d.1, ADR-0020 d.1).
 
     The rules as they are written: which part each query names, in the order
     the widths come. That a browser does it is
@@ -252,7 +275,7 @@ def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> 
     assert int(narrower) < int(wider), "the words go before the build does"
     assert ".build {" in drops_build and "display: none" in drops_build
     assert ".says {" in drops_words and "display: none" in drops_words
-    for kept in (".dot", ".power", ".link {"):
+    for kept in (".dot", ".power", ".stop", ".link {"):
         assert kept not in drops_build + drops_words, f"a narrow band drops {kept}"
 
 
