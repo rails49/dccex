@@ -3,9 +3,9 @@
  * has said, and what a page draws out of it.
  *
  * Every reading about the station is the conversation, decoded on the page —
- * there is no second channel and nothing is inferred on one (ADR-0008 d.2) —
- * so what goes in here is lines and the moments they arrived, and what comes
- * out is the words on the chrome and on the tiles.
+ * the station has no second channel and nothing is inferred on one (ADR-0008
+ * d.2) — so what goes in here is lines and the moments they arrived, and what
+ * comes out is the words on the chrome and on the tiles.
  *
  * **The railroad's power is the one reading that is not the station's.** It is
  * a row `layout` reports on the bus, because `layout` is what the band asks
