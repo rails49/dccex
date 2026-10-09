@@ -88,14 +88,24 @@ def test_a_stop_is_the_one_shot() -> None:
     assert commands.track("stopped") == b"<!>"
 
 
-def test_a_poll_asks_for_the_status_and_nothing_else() -> None:
-    """A poll runs for as long as the link, so anything in it a station acts
-    on rather than answers is acted on for as long as the railroad is up. The
-    lock query this once held was an emergency stop on a station whose `!`
-    takes no suffix, once a second, for ever (#463)."""
+def test_a_poll_asks_for_the_status_and_for_the_stash() -> None:
+    """The two questions a poll is made of, and both only ask. A poll runs
+    for as long as the link, so anything in it a station acts on rather than
+    answers is acted on for as long as the railroad is up: the lock query
+    this once held was an emergency stop on a station whose `!` takes no
+    suffix, once a second, for ever (#463)."""
     assert commands.STATUS == b"<s>"
+    assert commands.STASH == b"<JM 32000>"
     assert not [
         name
         for name, value in vars(commands).items()
         if isinstance(value, bytes) and value.startswith(b"<!") and value != b"<!>"
     ]
+
+
+def test_the_mark_is_what_a_boot_clears() -> None:
+    """A stash entry is held in the station's RAM, so one this app set and
+    finds empty is a station that has restarted (ADR-0021 d.1). The value is
+    a locomotive id to the station and names nothing here."""
+    assert commands.MARK == b"<JM 32000 1>"
+    assert commands.STASH_ID == 32000
