@@ -9,10 +9,10 @@ see (`ui/test/mounted.ts`, `tests/ui/test_band.py`). The narrow-width rules
 were therefore written and never rendered, which is what #1's Further Notes
 recorded as "narrow widths were not verified" and what this is (#127).
 
-So: a real Chromium, against the built page image, at 375px and at a desktop
-width. It is the same artefact `tests/ui/test_page_serves.py` builds — the
-image the box will serve — which is the other half of why this is the `docker`
-job's and not a job of its own: #1 asks that one check run the thing in the
+So: a real Chromium, against the built page image, at two phone widths and at
+a desktop one. It is the same artefact `tests/ui/test_page_serves.py` builds —
+the image the box will serve — which is the other half of why this is the
+`docker` job's and not a job of its own: #1 asks that one check run the thing in the
 image it will run in, and a layout check that drove `vite dev` would be
 asserting a page nobody ships.
 
@@ -94,16 +94,23 @@ PAGE = "http://127.0.0.1/"
 
 #: A phone held upright, which is the thing at the layout: an iPhone's CSS
 #: width and height. 375 is under both widths the band gives something up at —
-#: the build below 560 and the link's words below 400 — and is the narrowest
-#: width anybody reads this page on.
+#: the build below 560 and the link's words below 400.
 PHONE = (375, 812)
+
+#: The narrowest phone this page is read on, at the same height. 320 is the
+#: width #208 asks the band to fit in: the chrome carries the name, the link
+#: and two thumb-wide presses there, and nothing is dropped between here and
+#: 375. The height is the phone's above rather than a short screen's, because
+#: what this width is about is the band and a window under `--rail-turns` is
+#: the **rail** lying down as well (`dccex-rail.styles.ts`).
+NARROW = (320, 812)
 
 #: A desktop, which is where what the band gives up on a phone has to be back.
 DESKTOP = (1280, 800)
 
-#: The two of them, in the order the browser walks them, by the name the
+#: The three of them, in the order the browser walks them, by the name the
 #: assertions below ask for them under.
-WIDTHS = {"phone": PHONE, "desktop": DESKTOP}
+WIDTHS = {"narrow": NARROW, "phone": PHONE, "desktop": DESKTOP}
 
 #: The two **view**s this check walks, by the name the rail's button for each
 #: of them carries and the page keeps in its hash (`ui/src/view.ts`, #169).
@@ -143,9 +150,9 @@ RELEASES = "**/dccex-usb/releases"
 TYPED = "<s>"
 
 #: The look rules' minimum for a thumb, read off the copy the page draws with
-#: rather than written out: the power button on the band and the two buttons on
+#: rather than written out: the two presses on the band and the two buttons on
 #: the rail are pressed on the phone this check is about (`ui/look/README.md`,
-#: ADR-0011 d.1, #169).
+#: ADR-0011 d.1, ADR-0020 d.1, #169).
 THUMB = int(declarations(COPY.read_text())["--rail-button"].removesuffix("px"))
 
 #: A pixel of slack on a comparison between two rendered edges. Layout is
@@ -248,6 +255,7 @@ MEASURE = """
       dot: part(".dot"),
       says: part(".says"),
       power: part(".power"),
+      stop: part(".stop"),
     },
     rail: {
       monitor: button("button.monitor"),
@@ -412,11 +420,11 @@ def drawn() -> Iterator[dict[str, Any]]:
         )
 
 
-def test_the_page_does_not_scroll_sideways_at_either_width(
+def test_the_page_does_not_scroll_sideways_at_any_width(
     drawn: dict[str, Any],
 ) -> None:
-    """Nothing on the page is off the side of it, at a phone's width or at a
-    desktop's.
+    """Nothing on the page is off the side of it, at either phone's width or at
+    a desktop's.
 
     A horizontal scrollbar on a page held in one hand is the failure this
     whole check exists to catch: it is what a rule that was written and never
@@ -478,37 +486,48 @@ def test_the_rail_offers_both_views_and_is_pressed_to_reach_one(
         ), "pressing the rail did not put the view in the hash"
 
 
-def test_the_narrow_band_keeps_the_dot_and_the_power_button(
+def test_the_narrow_band_keeps_the_dot_and_both_presses(
     drawn: dict[str, Any],
 ) -> None:
     """Below the widths the band gives things up at, what survives is the link
-    at a glance and the one control.
+    at a glance and the two controls.
 
     `tests/ui/test_band.py` holds the rules as they are written — which part
-    each query names, and that neither names the dot or the button. What is
-    held here is that a browser does it: at 375px the **build** and the link's
-    words are not laid out, the dot and the power button are, and at a desktop
-    width the words are back. The last of them is what keeps the rest from
-    passing on a page that drew no band at all.
+    each query names, and that none of them names the dot or either press. What
+    is held here is that a browser does it: at both phone widths the **build**
+    and the link's words are not laid out, the dot, the power button and STOP
+    are, and at a desktop width the words are back. The last of them is what
+    keeps the rest from passing on a page that drew no band at all.
 
-    The button is measured against `--rail-button` as well, which is the look
-    rules' minimum for a thumb: it is pressed on the phone held at the layout,
-    and a rule that asked for that height inside a row that squashed it would
-    read as this passing (ADR-0011 d.1).
+    Each press is measured against `--rail-button` as well, which is the look
+    rules' minimum for a thumb: they are pressed on the phone held at the
+    layout, and a rule that asked for that height inside a row that squashed it
+    would read as this passing (ADR-0011 d.1, ADR-0020 d.1).
+
+    **320px is where the second press had to fit** (#208). The band carries the
+    name, the link and two thumbs there, and that is the width the whole of it
+    is asserted at rather than the width it happens to be read at.
     """
-    phone, desktop = drawn["phone"]["band"], drawn["desktop"]["band"]
-    for name in ("build", "dot", "says", "power"):
-        assert phone[name] is not None, f"the band drew no {name} at all"
-    assert phone["build"]["display"] == "none", "the narrow band keeps the build"
-    assert phone["says"]["display"] == "none", "the narrow band keeps the words"
-    assert phone["dot"]["box"]["width"] > 0, "the narrow band drops the link"
-    assert (
-        phone["power"]["box"]["width"] >= THUMB - SLACK
-        and phone["power"]["box"]["height"] >= THUMB - SLACK
-    ), f"the power button is under a thumb at a phone's width: {phone['power']['box']}"
-    assert (
-        phone["power"]["box"]["right"] <= drawn["phone"]["innerWidth"] + SLACK
-    ), "the power button is off the side of the screen"
+    desktop = drawn["desktop"]["band"]
+    for width in ("narrow", "phone"):
+        page = drawn[width]
+        band = page["band"]
+        for name in ("build", "dot", "says", "power", "stop"):
+            assert band[name] is not None, f"the band drew no {name} at all"
+        assert band["build"]["display"] == "none", f"a {width} band keeps the build"
+        assert band["says"]["display"] == "none", f"a {width} band keeps the words"
+        assert band["dot"]["box"]["width"] > 0, f"a {width} band drops the link"
+        for press in ("power", "stop"):
+            box = band[press]["box"]
+            assert (
+                box["width"] >= THUMB - SLACK and box["height"] >= THUMB - SLACK
+            ), f"the {press} press is under a thumb in a {width}: {box}"
+            assert (
+                box["left"] >= -SLACK and box["right"] <= page["innerWidth"] + SLACK
+            ), f"the {press} press is off the side of a {width}: {box}"
+        assert (
+            band["stop"]["box"]["left"] >= band["power"]["box"]["right"] - SLACK
+        ), f"STOP is not right of the power button in a {width}"
     assert (
         desktop["says"]["display"] != "none"
     ), "the band drops the words at every width"

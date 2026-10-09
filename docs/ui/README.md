@@ -169,13 +169,13 @@ build goes: it is the longest thing on the band, and it is the one reading on it
 that does not change while the station is up — what the station is doing is on
 the tiles and what it is running is not. Below 400px the link's words go and the
 link is the dot alone, the dot being the reading and the words that reading a
-second time. The dot and the power button stay at every width — a thumb has to
-reach the button on the phone at the layout. Both numbers are this page's own
+second time. The dot and both presses stay at every width — a thumb has to
+reach each of them on the phone at the layout. Both numbers are this page's own
 rather than a look rule, written in `dccex-band.styles.ts` beside the rules they
 are about, and a browser is what does it:
-`tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
-reads back a dot and a thumb-sized button with a size, a build and the words
-with none (#127, #168).
+`tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px and at
+375px and reads back a dot and two thumb-sized presses with a size, a build and
+the words with none (#127, #168, #208).
 
 ### The rail
 
@@ -731,7 +731,8 @@ stylesheets as before (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`,
 
 **A browser answers it, for the width it matters at** (#127). The rules that
 are about a phone were written and never rendered, so the built page is loaded
-in a real Chromium at 375px and at a desktop width and measured there:
+in a real Chromium at 320px, at 375px and at a desktop width and measured
+there:
 `tests/ui/test_page_at_a_phones_width.py`, under the `docker` marker, in the
 job that already builds and serves that image. It is not a second toolchain
 here either — the browser is a container beside the page's, handed a driver,
@@ -945,9 +946,9 @@ starts runs in (#113).
 **And it is laid out at a phone's width.** The page is read on a phone held at
 the layout, and until #127 nothing here had drawn it at one:
 `tests/ui/test_page_at_a_phones_width.py` runs the image this section is
-about, loads it in a Chromium at 375px and at 1280px, and holds six things
-there — no horizontal scroll at either width on either view, the band keeping
-its dot and a thumb-sized power button where the **build** and the link's
+about, loads it in a Chromium at 320px, at 375px and at 1280px, and holds six
+things there — no horizontal scroll at any width on any view, the band keeping
+its dot and its two thumb-sized presses where the **build** and the link's
 words are dropped, two thumb-sized rail buttons on the screen with the hash
 saying which view a press reached, the command box inside the viewport and a
 line typed into it coming back out of it, a release row with a long **tag**

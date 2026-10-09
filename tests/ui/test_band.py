@@ -16,11 +16,12 @@ itself would draw exactly the same words, so the one place that shows is the
 source.
 
 What the last of them is about *is* a width, and a browser draws it:
-`tests/ui/test_page_at_a_phones_width.py` loads the built page at 375px and
-reads back a dot and a power button with a size, a build and the link's words
-with none (#127, issue 168). It stays here as well, and the two are not the
-same claim — this one says which of them the rules name and which they leave
-alone, which a measurement of a band that drew one of them cannot say.
+`tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px and at
+375px and reads back a dot and two thumb-sized presses with a size, a build and
+the link's words with none (#127, issue 168, #208). It stays here as well, and
+the two are not the same claim — this one says which of them the rules name and
+which they leave alone, which a measurement of a band that drew one of them
+cannot say.
 """
 
 import re
