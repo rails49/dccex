@@ -1,6 +1,7 @@
 # ADR-0019 — the script is edited in CodeMirror
 
-- **Status:** accepted, 2026-10-08
+- **Status:** accepted, 2026-10-08; d.3 amended 2026-10-09 (#218): it asked
+  for Shoelace tokens and said nothing about how readable one is.
 - **Related:** ADR-0015 (the script is a railroad's document in the store)
 
 ## Context
@@ -22,6 +23,8 @@ a block, Backspace through one indent, Ctrl-/ for comments, line numbers and
 bracket matching. It does not close brackets or quotes, and has no search.
 
 **d.3** Highlight colours are Shoelace tokens and follow light and dark.
+Every ink the editor draws text in holds 4.5:1 against the background under
+it in both themes.
 
 **d.4** A failed Apply marks the line it names. Any edit clears the mark.
 
