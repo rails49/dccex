@@ -73,8 +73,12 @@ export const tilesStyles = css`
     color: var(--sl-color-success-600);
   }
 
+  /* A track somebody turned off: the darker grey. Red on the page is a stop or
+     a fault (ADR-0017 d.6), and off is neither. It is darker than the grey
+     above, which is the station having said nothing — reported off and not
+     reported at all are two readings and the colour keeps them apart. */
   .power.off {
-    color: var(--sl-color-danger-600);
+    color: var(--sl-color-neutral-600);
   }
 
   /* What the track is set to: MAIN, PROG, DC… The loudest of the three words,
