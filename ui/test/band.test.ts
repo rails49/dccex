@@ -206,6 +206,7 @@ test("STOP is the same press whatever layout reports", async () => {
     const stop = part(drawn, ".stop") as HTMLButtonElement;
     expect(stop.disabled).toBe(false);
     expect(stop.getAttribute("title")).toBe(STOPS);
+    expect(stop.className).toBe("press stop");
     press(drawn, ".stop");
     expect(asked).toEqual(["stopped"]);
   }
