@@ -19,7 +19,9 @@ pinned by name, that the shared network is joined rather than created, that a
 missing box declaration stops the stack by name, that the device mapping
 `control` deleted is recreated on both sides, that 2560 is on the LAN and the
 face's port is on nothing, that the door is handed the page and the face on
-one host with the face's prefix stripped and 2560 routed by nobody, that neither image's bases can move underneath a
+one host with the face's prefix stripped and 2560 routed by nobody, that the
+band's broker is on that host too and a page from another origin is refused
+there, that neither image's bases can move underneath a
 name that never moves, that the mirror is given a flash to be waited out and
 the cutover's stop is bounded by something else, that the repository a box
 pulls from is written down rather than taken from whoever ran the deploy, and
@@ -88,6 +90,18 @@ DECLARATION = "/etc/rails49/box.env"
 PREFIX = "/dccex-usb"
 
 FACE_TS = ROOT / "ui" / "src" / "face.ts"
+
+#: The prefix `control`'s broker answers under on the page's own origin, which
+#: the door strips (ADR-0017 d.5). The page spells it once, in `BUS_TS`, and a
+#: test below holds the two together.
+MQTT_PREFIX = "/mqtt"
+
+BUS_TS = ROOT / "ui" / "src" / "bus.ts"
+
+#: The broker, as `control`'s own labels declare it on the same door. This
+#: repository declares no service for it and `control`'s deploy does not change
+#: (ADR-0017 d.5), so this name is what the band's power button depends on.
+BROKER = "tc49-mqtt@docker"
 
 #: The one host both routers answer for, as the overlay writes it.
 HOST = "Host(`dccex.${BOX_DOMAIN}`)"
@@ -418,6 +432,70 @@ def test_the_face_joins_the_network_the_door_dials_it_on() -> None:
     """The mirror joins `rails49` for its face, and the label names it."""
     assert entries(services(BOX)["mirror"], "networks") == ["default", "rails49"]
     assert labels(BOX, "mirror")["traefik.docker.network"] == "rails49"
+
+
+def test_the_broker_is_routed_on_the_pages_host_under_its_own_prefix() -> None:
+    """The band asks `layout` for power on the bus, and a browser served over
+    this door cannot dial the broker's own port (ADR-0017 d.5).
+
+    So `/mqtt` on the page's host goes to `control`'s broker with the prefix
+    stripped, which is the shape the face's route has — and above the page's
+    catch-all, or the page would answer it. The prefix is the one the page
+    builds the address from, spelt once there.
+    """
+    page = labels(BOX, "web")
+    assert page["traefik.http.routers.dccex-mqtt.rule"] == (
+        f"{HOST} && PathPrefix(`{MQTT_PREFIX}`)"
+    )
+    assert int(page["traefik.http.routers.dccex-mqtt.priority"]) > int(
+        labels(BASE, "web")["traefik.http.routers.dccex-ui.priority"]
+    ), "the page answers the broker's prefix"
+    assert page["traefik.http.routers.dccex-mqtt.service"] == BROKER
+    middleware = page["traefik.http.routers.dccex-mqtt.middlewares"]
+    assert page[f"traefik.http.middlewares.{middleware}.stripprefix.prefixes"] == (
+        MQTT_PREFIX
+    )
+    assert f'MQTT_PATH = "{MQTT_PREFIX}";' in BUS_TS.read_text()
+
+
+def test_this_repository_declares_no_service_for_the_broker() -> None:
+    """The routers name `control`'s, which is declared by `control`'s own
+    labels on the same door (ADR-0017 d.5).
+
+    There is nothing to load-balance here and no port of this project's to
+    name: a service declared here would be a second answer to where the broker
+    is, and `control`'s deploy is what moves it.
+    """
+    page = labels(BOX, "web")
+    declared = {k for k in page if k.startswith("traefik.http.services.")}
+    assert declared == set(), f"the page declares {declared}"
+
+
+def test_a_foreign_origin_at_the_broker_is_refused_by_the_door() -> None:
+    """mosquitto reads no `Origin` and there is no app of ours in front of it,
+    so the refusal is the door's (ADR-0017 d.5).
+
+    That is where the broker's route differs from the face's, whose refusal is
+    its own. The `-foreign` router claims the same prefix above the broker's
+    own, with the one origin that is ours ruled out and anchored at both ends —
+    a host that merely begins with ours is somebody else's — and what it
+    catches goes to a middleware that allows one source address nothing can
+    arrive from.
+    """
+    page = labels(BOX, "web")
+    rule = page["traefik.http.routers.dccex-mqtt-foreign.rule"]
+    assert rule == (
+        f"{HOST} && PathPrefix(`{MQTT_PREFIX}`) "
+        f"&& !HeadersRegexp(`Origin`, `^https://dccex\\.${{BOX_DOMAIN}}$$`)"
+    )
+    assert int(page["traefik.http.routers.dccex-mqtt-foreign.priority"]) > int(
+        page["traefik.http.routers.dccex-mqtt.priority"]
+    ), "the broker answers a foreign origin before the refusal is reached"
+    assert page["traefik.http.routers.dccex-mqtt-foreign.service"] == BROKER
+    middleware = page["traefik.http.routers.dccex-mqtt-foreign.middlewares"]
+    assert page[f"traefik.http.middlewares.{middleware}.ipallowlist.sourcerange"] == (
+        "255.255.255.255/32"
+    ), "the refusal lets somebody through"
 
 
 def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:

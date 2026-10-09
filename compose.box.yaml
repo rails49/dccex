@@ -28,7 +28,8 @@ x-require-box-domain: ${BOX_DOMAIN:?the box's declaration is missing or declares
 
 services:
   # The page, on a box. Everything about it is `compose.yaml`'s but the network
-  # it is reached on and the domain it is reached at.
+  # it is reached on, the domain it is reached at, and the broker's prefix on
+  # that domain.
   web:
     networks:
       # The project's own, which is where `compose.yaml` puts it and where it
@@ -40,12 +41,47 @@ services:
       # `traefik.docker.network` on the label has named it since the label was
       # written, and joining it is what this file adds.
       - rails49
+    # The broker's prefix, beside the page's host rule. The band asks `layout`
+    # for power on the bus, and a browser served over this door cannot dial the
+    # broker's own port — so `/mqtt` on this page's host is routed to
+    # `control`'s broker and the prefix is stripped before it sees a request,
+    # which is the shape the face's own route has (ADR-0017 d.5, ADR-0004 d.2).
+    #
+    # **The service is `control`'s and this repository declares none.** The
+    # routers name `tc49-mqtt@docker`, which is the service `control`'s own
+    # labels declare on the same door; there is nothing to load-balance here
+    # and no port of this project's to name. `control`'s deploy does not change
+    # (ADR-0017 d.5), and that service name is what this page depends on.
+    #
+    # **A page from another origin is refused by the door**, because mosquitto
+    # reads no `Origin` and there is no app of ours in front of it — which is
+    # where this differs from the face, whose refusal is its own (ADR-0004
+    # d.4). The `-foreign` router claims the same prefix at a higher priority
+    # with the origin that is ours ruled out, and sends what it catches to a
+    # middleware that allows one source address nothing can arrive from. The
+    # `$$` is one `$` after compose has read the file: it is the end of the
+    # regexp, so a host that only begins with ours is foreign.
     labels:
       # The one label a box moves: the host rule carries the box's own domain
-      # rather than the clean clone's `localhost`. Every other label is
-      # `compose.yaml`'s and is merged in as written. No `:?` here — the guard
-      # at the top of this file has already refused a box with no domain.
+      # rather than the clean clone's `localhost`. Every other label of the
+      # page's own is `compose.yaml`'s and is merged in as written. No `:?`
+      # anywhere here — the guard at the top of this file has already refused a
+      # box with no domain.
       - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN}`)
+      - traefik.http.routers.dccex-mqtt.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`)
+      - traefik.http.routers.dccex-mqtt.priority=2
+      - traefik.http.routers.dccex-mqtt.entrypoints=websecure
+      - traefik.http.routers.dccex-mqtt.service=tc49-mqtt@docker
+      - traefik.http.routers.dccex-mqtt.middlewares=dccex-mqtt-strip
+      - traefik.http.routers.dccex-mqtt.tls.certresolver=le
+      - traefik.http.middlewares.dccex-mqtt-strip.stripprefix.prefixes=/mqtt
+      - traefik.http.routers.dccex-mqtt-foreign.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`) && !HeadersRegexp(`Origin`, `^https://dccex\.${BOX_DOMAIN}$$`)
+      - traefik.http.routers.dccex-mqtt-foreign.priority=3
+      - traefik.http.routers.dccex-mqtt-foreign.entrypoints=websecure
+      - traefik.http.routers.dccex-mqtt-foreign.service=tc49-mqtt@docker
+      - traefik.http.routers.dccex-mqtt-foreign.middlewares=dccex-mqtt-refused
+      - traefik.http.routers.dccex-mqtt-foreign.tls.certresolver=le
+      - traefik.http.middlewares.dccex-mqtt-refused.ipallowlist.sourcerange=255.255.255.255/32
 
   # The mirror: the app that holds the command station's device and repeats it
   # on 2560. This is the service `control` deleted with its own copy of the
