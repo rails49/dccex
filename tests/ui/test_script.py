@@ -334,6 +334,24 @@ def test_the_editors_inks_are_the_step_that_holds_in_both_themes() -> None:
         ), f"{selector} is not drawn in the -700 step"
 
 
+def test_both_brackets_under_the_caret_are_washed_in_the_sheets_tokens() -> None:
+    """The bracket under the caret and the one that closes it, and the bracket
+    with no pair — which is every bracket while a line is being typed (#219).
+
+    `@codemirror/language` washes both from its own base rules, in one colour
+    for both themes. The sheet is where the view's colours are written, so both
+    rules are here and both name a theme token (ADR-0019 d.3). That the text
+    over a wash is still readable is computed from the palette
+    (`ui/test/editor.test.ts`).
+    """
+    styles = STYLES.read_text()
+    for bracket in ("matchingBracket", "nonmatchingBracket"):
+        washed = rule(styles, f".script.cm-editor.cm-focused .cm-{bracket}")
+        assert re.search(
+            r"background: var\(--sl-color-[a-z]+-[0-9]+\)", washed
+        ), f"the {bracket} is not washed in a theme token"
+
+
 def test_a_failed_apply_is_marked_on_the_line_in_the_sheets_ink() -> None:
     """Two classes, the text under a rule and the number in the gutter, and the
     colours are the sheet's (ADR-0019 d.3, d.4).

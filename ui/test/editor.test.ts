@@ -91,11 +91,15 @@ const READABLE = 4.5;
 
 /** Every ink the editor draws text in, with the rule whose background it is
  *  drawn on. The token classes and a marked line number sit on the editor's
- *  own background; the line numbers sit on the gutter's. */
+ *  own background; the line numbers sit on the gutter's; a bracket under the
+ *  caret sits on its own wash and is drawn in the editor's ink, there being no
+ *  token class for a bracket (#219, `editor.ts`). */
 const INKS: [string, string][] = [
   [".script.cm-editor", ".script.cm-editor"],
   [".script.cm-editor .cm-gutters", ".script.cm-editor .cm-gutters"],
   [".script.cm-editor .refused-line", ".script.cm-editor"],
+  [".script.cm-editor", ".script.cm-editor.cm-focused .cm-matchingBracket"],
+  [".script.cm-editor", ".script.cm-editor.cm-focused .cm-nonmatchingBracket"],
   [".tok-keyword", ".script.cm-editor"],
   [".tok-string", ".script.cm-editor"],
   [".tok-comment", ".script.cm-editor"],
