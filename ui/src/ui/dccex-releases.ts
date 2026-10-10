@@ -3,8 +3,8 @@
  * row on a **view** of its own, and the one place on the page one is written
  * onto the **station**.
  *
- * Newest first, each with the day it was published, the one that is on the
- * station now marked as such, and a release there is nothing to write from —
+ * Newest first, each with its title and the day it was published, the one
+ * that is on the station now marked as such, and a release there is nothing to write from —
  * no firmware, or none with a digest to check it against — saying so (#8,
  * #81, docs/ui/README.md; the issue that last changed these words is named
  * there and in `releases.js` rather than here, because an issue number in the
@@ -204,6 +204,9 @@ export class DccexReleases extends LitElement {
                       ${CHOOSES}
                     </button>`
                   : html`<span class="bare">${NO_FIRMWARE}</span>`}
+                ${release.title === ""
+                  ? nothing
+                  : html`<p class="title">${release.title}</p>`}
                 ${this.asked === release.tag
                   ? this.#warning(release.tag)
                   : nothing}

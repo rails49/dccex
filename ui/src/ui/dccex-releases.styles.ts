@@ -116,6 +116,16 @@ export const releasesStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
+  /* What the release is, in a line. It takes a line of its own under the tag
+     and the date, because it is longer than the room beside them. */
+  .title {
+    flex: 1 0 100%;
+    margin: 0;
+    color: var(--sl-color-neutral-700);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+  }
+
   /* The release the station is running now, and the word saying so. */
   .on .tag {
     font-weight: var(--sl-font-weight-bold);

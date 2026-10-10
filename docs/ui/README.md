@@ -252,7 +252,8 @@ face still answers that at `/dccex-usb/clients`.
 ### The releases
 
 Every **release** the **mirror** is configured to read, newest first, each
-with its publication date and whether it carries a flashable asset — one with
+with its title on a line under the tag (left off where the title is the tag),
+its publication date and whether it carries a flashable asset — one with
 a digest to check it against, which is what the face answers `flashable` for
 (#8, #81). The one whose **tag** matches the build on the station now is
 marked as such, so being up to date is something to see rather than to work

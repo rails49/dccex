@@ -27,9 +27,24 @@ import { all, mounted, part, reads } from "./mounted.js";
  *  with nothing here to write and check — no firmware, or none with a digest
  *  (#81, #109) — newest last so that the ordering is drawn and not copied. */
 const CARRIED: Carried[] = [
-  { tag: "v5.2.74", published: "2026-06-01T09:00:00Z", flashable: true },
-  { tag: "v5.2.75", published: "2026-07-02T09:00:00Z", flashable: false },
-  { tag: "v5.2.76", published: "2026-08-03T09:00:00Z", flashable: true },
+  {
+    tag: "v5.2.74",
+    title: "v5.2.74",
+    published: "2026-06-01T09:00:00Z",
+    flashable: true,
+  },
+  {
+    tag: "v5.2.75",
+    title: "",
+    published: "2026-07-02T09:00:00Z",
+    flashable: false,
+  },
+  {
+    tag: "v5.2.76",
+    title: "Fast overcurrent guard",
+    published: "2026-08-03T09:00:00Z",
+    flashable: true,
+  },
 ];
 
 /** The tag the station is running in most of what follows. */
@@ -88,6 +103,12 @@ test("a face that did not answer says so rather than listing nothing", async () 
   const drawn = await row(null, RUNNING);
   expect(reads(drawn, ".says")).toBe(UNREADABLE);
   expect(all(drawn, ".release")).toStrictEqual([]);
+});
+
+test("a title is drawn under its tag, and none where it is the tag or empty", async () => {
+  expect(all(await row(CARRIED, RUNNING), ".title")).toStrictEqual([
+    "Fast overcurrent guard",
+  ]);
 });
 
 test("the day is drawn and not the stamp the source published it with", async () => {

@@ -113,10 +113,18 @@ def listing(tags: Sequence[str] = TAGS) -> bytes:
     ).encode()
 
 
-CARRIED = [{"tag": tag, "published": PUBLISHED[tag], "flashable": True} for tag in TAGS]
-"""What the face answers for `listing()`: each release as its **tag**, the
-moment it was published and whether it carries a firmware to write with a
-digest to check the write against (#8, #81)."""
+CARRIED = [
+    {
+        "tag": tag,
+        "title": f"CommandStation-EX {tag}",
+        "published": PUBLISHED[tag],
+        "flashable": True,
+    }
+    for tag in TAGS
+]
+"""What the face answers for `listing()`: each release as its **tag**, its
+title, the moment it was published and whether it carries a firmware to write
+with a digest to check the write against (#8, #81)."""
 
 
 class Source:
@@ -245,7 +253,9 @@ def test_a_release_with_no_firmware_on_it_is_listed_and_says_so() -> None:
 
     assert answered.status == HTTPStatus.OK
     assert answered.body == {
-        "releases": [{"tag": TAG, "published": PUBLISHED[TAG], "flashable": False}]
+        "releases": [
+            {"tag": TAG, "title": "", "published": PUBLISHED[TAG], "flashable": False}
+        ]
     }
 
 
@@ -279,7 +289,9 @@ def test_a_release_whose_firmware_reports_no_digest_is_not_flashable() -> None:
 
     assert answered.status == HTTPStatus.OK
     assert answered.body == {
-        "releases": [{"tag": TAG, "published": PUBLISHED[TAG], "flashable": False}]
+        "releases": [
+            {"tag": TAG, "title": "", "published": PUBLISHED[TAG], "flashable": False}
+        ]
     }
 
 
@@ -294,7 +306,7 @@ def test_a_release_the_source_stamped_no_date_on_is_listed_without_one() -> None
 
     assert answered.status == HTTPStatus.OK
     assert answered.body == {
-        "releases": [{"tag": TAG, "published": "", "flashable": False}]
+        "releases": [{"tag": TAG, "title": "", "published": "", "flashable": False}]
     }
 
 

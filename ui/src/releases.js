@@ -53,13 +53,15 @@
 /**
  * One release, as the mirror's face answers it.
  *
- * Three facts and no more, which is the whole of what the face passes on: the
+ * Four facts and no more, which is the whole of what the face passes on: the
  * rest of a release document is somebody else's shape and never reaches this
  * page (`face.py`).
  *
  * @typedef {object} Carried
  * @property {string} tag what the release is named by, and the only thing a
  *   caller ever names one with
+ * @property {string} title what the source titled it, or `""` where it titled
+ *   it nothing
  * @property {string} published when the source published it, as the source
  *   stamped it, or `""` where it stamped none
  * @property {boolean} flashable whether it carries a firmware to write with
@@ -73,6 +75,8 @@
  *
  * @typedef {object} Listed
  * @property {string} tag what the release is named by
+ * @property {string} title what the release is, in a line, or `""` where the
+ *   source titled it nothing or titled it with its tag
  * @property {string} published the day it was published, in the words a person
  *   reads, or `""` where the source named none
  * @property {boolean} onStation whether this is the release the station is
@@ -123,8 +127,9 @@ export const UNREADABLE = "the releases could not be read";
  *  to look at the network (`face.py`). */
 export const NONE = "the source has published no releases yet";
 
-/** The three fields a listed release carries, as the face names them. */
+/** The four fields a listed release carries, as the face names them. */
 const TAG = "tag";
+const TITLE = "title";
 const PUBLISHED = "published";
 const FLASHABLE = "flashable";
 
@@ -194,10 +199,12 @@ export function carried(answer) {
     if (typeof tag !== "string" || tag === "") {
       return [];
     }
+    const title = fields[TITLE];
     const published = fields[PUBLISHED];
     return [
       {
         tag,
+        title: typeof title === "string" ? title : "",
         published: typeof published === "string" ? published : "",
         flashable: fields[FLASHABLE] === true,
       },
@@ -280,6 +287,7 @@ export function listing(carried, build) {
   }
   const rows = [...carried].sort(newestFirst).map((release) => ({
     tag: release.tag,
+    title: release.title === release.tag ? "" : release.title,
     published: day(release.published),
     onStation: build !== null && release.tag === build,
     flashable: release.flashable,
