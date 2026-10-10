@@ -142,7 +142,10 @@ def configure(t):
     for district, mode in {"A": "MAIN", "B": "PROG", "C": "MAIN_AUTO", "D": "MAIN_AUTO"}.items():
         t.send(f"<= {district} {mode}>")
     # set current limits
-    for district, ma in {"A": 2000, "B": 250, "C": 500, "D": 1500}.items():
+    # B at 500 mA is above NMRA's 250 mA for service mode (S-9.2.3), but
+    # some decoders, such as the ESU LokPilot 5 micro, draw more while
+    # being read or written
+    for district, ma in {"A": 2000, "B": 500, "C": 500, "D": 1500}.items():
         t.send(f"<JG {district} {ma}>")
 
 
