@@ -46,8 +46,18 @@ import { all, drawnNow, mounted, part, press, reads } from "./mounted.js";
  *  beside it. */
 const CHOSEN = "v5.2.76";
 const CARRIED: Carried[] = [
-  { tag: CHOSEN, published: "2026-08-03T09:00:00Z", flashable: true },
-  { tag: "v5.2.75", published: "2026-07-02T09:00:00Z", flashable: false },
+  {
+    tag: CHOSEN,
+    title: "",
+    published: "2026-08-03T09:00:00Z",
+    flashable: true,
+  },
+  {
+    tag: "v5.2.75",
+    title: "",
+    published: "2026-07-02T09:00:00Z",
+    flashable: false,
+  },
 ];
 
 /** What a flash the mirror wrote comes back as: the write is over and the

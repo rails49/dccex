@@ -162,14 +162,17 @@ REASON = "reason"
 
 RELEASES_PATH = "/releases"
 """What the releases the source carries are asked for at, with the door's
-prefix already off it (ADR-0004). Each of them goes back as three things: the
-**tag** it is chosen by, the day it was published, and whether it carries a
-firmware to write. A tag is still the only thing a caller ever names
-(CONTEXT.md); the other two are what a page needs to say which release is
-newest and which one there would be nothing to write (#8)."""
+prefix already off it (ADR-0004). Each of them goes back as four things: the
+**tag** it is chosen by, its title, the day it was published, and whether it
+carries a firmware to write. A tag is still the only thing a caller ever names
+(CONTEXT.md); the others are what a page needs to say what a release is, which
+is newest and which one there would be nothing to write (#8)."""
 
 TAG = "tag_name"
 """What the release API calls a release's tag."""
+
+NAME = "name"
+"""What the release API calls a release's title."""
 
 PUBLISHED_AT = "published_at"
 """What the release API calls the moment a release was published. A draft
@@ -185,6 +188,10 @@ would be the one name a reader trusts for what is in it."""
 LISTED_TAG = "tag"
 """What a listed release names its tag under — the same word the body of a
 flash names one with, because it is the same thing being named."""
+
+TITLE = "title"
+"""What a listed release carries its title under. Empty where the source named
+none."""
 
 PUBLISHED = "published"
 """What a listed release carries its publication date under, as the source
@@ -413,16 +420,17 @@ class Answered(NamedTuple):
 
 class Carried(NamedTuple):
     """One release the source carries, as the face answers it: the **tag** it
-    is named by, the moment it was published, and whether it carries a
-    firmware to write.
+    is named by, its title, the moment it was published, and whether it
+    carries a firmware to write.
 
-    Three facts and no more. What a release document from the API also holds
+    Four facts and no more. What a release document from the API also holds
     — its notes, its author, its assets one by one — is somebody else's shape
     and is not this app's to pass on: a page that was handed the whole entry
     would be a page reading the release API through a hole in the face.
     """
 
     tag: str
+    title: str
     published: str
     flashable: bool
 
@@ -439,7 +447,8 @@ def carried(document: object) -> list[Carried] | None:
     answer; a source that lists entries and names none of them is not
     answering about releases, which is not.
 
-    A release with no date reads as one with an empty date, and one with no
+    A release with no title or no date reads as one with an empty title or
+    date, and one with no
     firmware on it — or none the source reports a digest for, which the write
     path refuses just as flatly — reads as one that cannot be flashed. None of
     that is a reason to drop it: what the source carries is what the page is
@@ -457,11 +466,13 @@ def carried(document: object) -> list[Carried] | None:
         tag = fields.get(TAG)
         if not isinstance(tag, str) or not tag:
             continue
+        title = fields.get(NAME)
         published = fields.get(PUBLISHED_AT)
         firmware = asset(fields)
         found.append(
             Carried(
                 tag,
+                title if isinstance(title, str) else "",
                 published if isinstance(published, str) else "",
                 firmware is not None and bool(firmware.digest),
             )
@@ -475,6 +486,7 @@ def says(release: Carried) -> dict[str, object]:
     """One release as it goes on the wire."""
     return {
         LISTED_TAG: release.tag,
+        TITLE: release.title,
         PUBLISHED: release.published,
         FLASHABLE: release.flashable,
     }
@@ -873,7 +885,7 @@ class Face:
         if text is None:
             return refused(
                 HTTPStatus.BAD_REQUEST,
-                f'a script names its text as {{"{TEXT}": "…"}},' " and this named none",
+                f'a script names its text as {{"{TEXT}": "…"}}, and this named none',
             )
         bad = uncompiled(text)
         if bad is not None:

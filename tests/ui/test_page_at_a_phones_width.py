@@ -121,16 +121,27 @@ MONITOR, RELEASES_VIEW, SCRIPT_VIEW = "monitor", "releases", "script"
 
 #: What the browser answers the face's release request with. Three releases,
 #: because rows are what the wrap rule is about and the nothing-said state has
-#: none — and the fields are the three the face passes on and no more
+#: none — and the fields are the four the face passes on and no more
 #: (`ui/src/releases.js`, `carried()`).
 CARRIED = [
     {
         "tag": "v5.2.76-rails49-2026-08-03",
+        "title": "Fast overcurrent guard; PROG reads at 250 mA",
         "published": "2026-08-03T09:00:00Z",
         "flashable": True,
     },
-    {"tag": "v5.2.75", "published": "2026-07-02T09:00:00Z", "flashable": False},
-    {"tag": "v5.2.74", "published": "2026-06-01T09:00:00Z", "flashable": True},
+    {
+        "tag": "v5.2.75",
+        "title": "",
+        "published": "2026-07-02T09:00:00Z",
+        "flashable": False,
+    },
+    {
+        "tag": "v5.2.74",
+        "title": "",
+        "published": "2026-06-01T09:00:00Z",
+        "flashable": True,
+    },
 ]
 
 #: The tag long enough that its row cannot fit on one line at 375px. A real

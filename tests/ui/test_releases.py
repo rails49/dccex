@@ -67,16 +67,19 @@ APP_FACE = ROOT / "src" / "dccex_usb" / "face.py"
 
 NEWEST = {
     "tag": "v5.6.4-rails49.1",
+    "title": "Fast overcurrent guard",
     "published": "2025-09-14T10:32:07Z",
     "flashable": True,
 }
 MIDDLE = {
     "tag": "v5.6.3-rails49.2",
+    "title": "Drop wifi from the rails49 build",
     "published": "2025-08-02T18:05:44Z",
     "flashable": True,
 }
 OLDEST = {
     "tag": "v5.6.2-rails49.1",
+    "title": "v5.6.2-rails49.1",
     "published": "2025-06-21T07:11:00Z",
     "flashable": True,
 }
@@ -142,6 +145,20 @@ def test_the_releases_are_listed_newest_first_each_with_its_date() -> None:
 
 
 @pytest.mark.node
+def test_each_release_says_what_it_is_unless_its_title_is_its_tag() -> None:
+    """The title is the line under the tag. A title that is the tag again, or
+    none, draws nothing."""
+    listing = rows(carried=[*CARRIED, {**MIDDLE, "tag": "untitled", "title": ""}])
+
+    assert [row["title"] for row in listing] == [
+        NEWEST["title"],
+        MIDDLE["title"],
+        "",
+        "",
+    ]
+
+
+@pytest.mark.node
 def test_two_releases_published_on_one_day_keep_the_order_they_were() -> None:
     """The stamps are compared whole and not by the day the row shows, so a
     second release on one afternoon does not draw above the one that followed
@@ -161,7 +178,12 @@ def test_a_release_the_source_dated_none_is_listed_last_and_dated_none() -> None
     not make (ADR-0009 d.2), so a release the source stamped no moment on gets
     no day — and goes under the ones that can be ordered, because there is
     nothing to order it by."""
-    undated = {"tag": "v5.6.5-rails49.1", "published": "", "flashable": True}
+    undated = {
+        "tag": "v5.6.5-rails49.1",
+        "title": "",
+        "published": "",
+        "flashable": True,
+    }
 
     listing = rows(carried=[undated, MIDDLE])
 
@@ -493,9 +515,10 @@ def test_a_release_the_source_left_a_field_off_is_read_with_that_field_empty() -
     date, and no `flashable` reads as nothing to write, which is the direction
     that does not send an operator at a tag the mirror would refuse."""
     assert read([{"tag": "v5.6.5-rails49.1"}]) == [
-        {"tag": "v5.6.5-rails49.1", "published": "", "flashable": False}
+        {"tag": "v5.6.5-rails49.1", "title": "", "published": "", "flashable": False}
     ]
     assert read([{**NEWEST, "published": 1757845927}]) == [{**NEWEST, "published": ""}]
+    assert read([{**NEWEST, "title": None}]) == [{**NEWEST, "title": ""}]
 
 
 def test_the_page_s_reader_names_the_face_s_as_the_rule_it_mirrors() -> None:
