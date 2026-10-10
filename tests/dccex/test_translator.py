@@ -879,7 +879,7 @@ SAMPLE_START = [
     b"<= C MAIN_AUTO>",
     b"<= D MAIN_AUTO>",
     b"<JG A 2000>",
-    b"<JG B 500>",
+    b"<JG B 250>",
     b"<JG C 500>",
     b"<JG D 1500>",
 ]
