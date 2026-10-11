@@ -165,6 +165,12 @@ test("the view does not name the railroad the band names", async () => {
   expect(drawn.renderRoot.textContent).not.toContain(RAILROADS[0]);
 });
 
+test("the view draws no heading", async () => {
+  const [drawn] = await pane();
+
+  expect(drawn.renderRoot.querySelector("h2")).toBeNull();
+});
+
 test("there is nothing to pick a railroad with", async () => {
   const [drawn] = await pane();
 
