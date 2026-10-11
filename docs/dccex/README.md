@@ -268,9 +268,14 @@ the comparison is the text and never the name.
 | `wanted/track` `off` | `<0>` |
 | `wanted/track` `stopped` | `<!>`, the one-shot emergency stop |
 | `wanted/function/<addr>/<n>` `value` | `<F addr n 0\|1>`, the boolean as the bit — every value the row carries is one the station can be told |
+| `alive_confirmed` | `<G 3>`, once each time it is published while the link is up |
 
-Every row is a pure function in `dccex/commands.py`, asserted as "this value in,
-these bytes out" with no socket and no hardware.
+Every row but the last is a pure function in `dccex/commands.py`, asserted as
+"this value in, these bytes out" with no socket and no hardware. The last is
+the constant `commands.HOST_TIMEOUT`.
+
+The station cuts track power 3 s after the last `<G 3>`
+([rails49/CommandStation-EX#5](https://github.com/rails49/CommandStation-EX/issues/5)).
 
 **A speed is a fraction and a step never leaves this app.** The magnitude is
 the fraction of that locomotive's maximum and the sign is which way it runs
