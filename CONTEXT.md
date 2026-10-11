@@ -124,10 +124,11 @@ not this app's (ADR-0006).
 It carries one thing that is a fact about a railroad, and carries rather than
 keeps it: the **script**, which the page edits through the mirror's face
 because a browser on the page's origin cannot reach `control`'s store. The face
-lists the railroads, reads one railroad's script, and compiles a text and puts
-it there; the store's address is a flag on the app and no request can name it
+reads one railroad's script, and compiles a text and puts it there; which
+railroad is the page's to name, off the bus, and the face lists none
 ([ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)
-d.5, #185).
+d.5 as amended, #185, #238); the store's address is a flag on the app and no
+request can name it.
 
 **Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
 
@@ -300,8 +301,8 @@ second thing).
 What the work pane shows. The **rail** picks one; the **band** is the same
 over every view. There are three: the **monitor**; the releases, where the
 releases are listed and a flash is pressed and followed; and the **script**,
-where a railroad's is opened in the **editor** and applied to `control`'s
-store through the **face** (#185).
+where the loaded railroad's is opened in the **editor** and applied to
+`control`'s store through the **face** (#185, #238).
 
 **Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
 (a mode is what a track is set to).

@@ -29,7 +29,7 @@ own commands for this station and is a document in `control`'s store
 d.5, #185). The page edits it here because a browser on the page's origin
 cannot reach the store, and the face compiles a text and puts it there
 server-side. The store's address is a flag; a mirror given none says so on
-those three routes and mirrors the cable as ever.
+those two routes and mirrors the cable as ever.
 
 The code arrived as a copy of `control`'s at `deee7b6`, its file names kept
 because that is where the code was written; [SOURCE.md](../../src/SOURCE.md)
@@ -239,8 +239,8 @@ The face's router is code, and it is in `compose.box.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
 the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
-What it answers, which is eight things — seven questions and a conversation.
-Five are about the station and this app, and three are the railroad's script
+What it answers, which is seven things — six questions and a conversation.
+Five are about the station and this app, and two are the railroad's script
 ([below](#the-railroads-script)):
 
 ```
@@ -328,9 +328,6 @@ railroad, holding the **handler**s the translator runs for this station
 It is edited on the page, and the page edits it through here:
 
 ```
-$ curl http://dccex-usb:8080/railroads
-{"railroads": ["crossover-yard", "bench"]}
-
 $ curl http://dccex-usb:8080/scripts/crossover-yard
 {"script": "crossover-yard", "text": "@on(\"power\")\ndef power(t):\n    t.default()\n"}
 
@@ -349,14 +346,14 @@ $ curl -X PUT http://dccex-usb:8080/scripts/crossover-yard \
 and the store is on the box's own network where a browser is not: the page is
 served over the door's certificate and cannot fetch a service the door does
 not route. So the face reads and writes the document, and the page's half is
-three addresses on its own origin (`ui/src/face.ts`).
+one address on its own origin, read with a `GET` and applied with a `PUT`
+(`ui/src/face.ts`).
 
-**The railroads are the store's drawings.** A railroad's drawing is what the
-store keeps under its name, so the list of drawings is the list of railroads,
-and the names go back in the order the store gave them (rails49/control#586).
-None of them is marked as the one that is running: which railroad that is is
-the bus's to say and is a row in `control`'s UI, and this app is not on the bus
-(ADR-0001).
+**Which railroad is the page's to name.** It edits the loaded railroad's
+script and no other, off the row `control` publishes, so there is nothing here
+that lists the railroads a store holds (#238, ADR-0015 d.5 as amended). This
+app is not on the bus and never was: the name arrives as a level of the
+address, and what is at the other end of it is the store (ADR-0001).
 
 **A railroad with no script is a `404` and not an outage.** It is the ordinary
 state of a railroad nobody has written one for, and it is what the page opens
@@ -402,9 +399,8 @@ log on the box (control ADR-0050):
   and a script is applied, with `PUT`. `/flash` and `/scripts/<railroad>` are
   the paths with two of them on each, and the split is the point: a page that
   reloaded a read would not write the station again, nor store a text again.
-  There is nothing at `/clients` or `/railroads` to change, because who is on
-  2560 is decided by who dialled it and which railroads there are is decided in
-  `control`'s editor.
+  There is nothing at `/clients` to change, because who is on 2560 is decided
+  by who dialled it.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
@@ -415,9 +411,8 @@ log on the box (control ADR-0050):
   over with it. A source that has published nothing yet is not this: that is
   an answer, and the tags are empty. **The store gets the same answer for the
   same reason**: it is somebody else's service on the box's network, and a
-  store that is away, or that answers with no list of railroads and no script
-  text, is a sentence with its own words in it rather than this app falling
-  over (ADR-0015 d.5).
+  store that is away, or that answers with no script text, is a sentence with
+  its own words in it rather than this app falling over (ADR-0015 d.5).
 - `400`, `413`, `431` — a request this face cannot read: not HTTP, a head or a
   body larger than a page asking a question has any use for, a body that names
   no tag, or `latest`, which is not a name for a build. **And a script that

@@ -139,11 +139,12 @@ services:
     # translator below is given: the two read and write one document, the
     # railroad's **script**, and a box that serves its store elsewhere
     # overrides one line for both (rails49/control#586, ADR-0015 d.1, d.5).
-    # What the mirror does with it is the page's editor: the face lists the
-    # railroads, reads a script and applies one server-side, because a browser
-    # on the page's origin cannot reach the store (#185). Left out, the face
-    # answers those three routes with a sentence and mirrors the cable as
-    # ever, which is what a clean clone gets.
+    # What the mirror does with it is the page's editor: the face reads a
+    # script and applies one server-side, because a browser on the page's
+    # origin cannot reach the store (#185). Which railroad is the page's to
+    # name, off the bus (#238). Left out, the face answers those two routes
+    # with a sentence and mirrors the cable as ever, which is what a clean
+    # clone gets.
     command:
       ["--device", "/dev/dccex", "--port", "2560",
        "--store", "${DCCEX_STORE_URL:-http://store:8765}"]

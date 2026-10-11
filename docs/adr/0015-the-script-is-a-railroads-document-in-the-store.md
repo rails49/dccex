@@ -2,12 +2,14 @@
 
 - **Status:** accepted, 2026-09-30; amended 2026-09-30 (#175): d.3 said a
   railroad change exits, and d.4 did not say what a store outage does to a
-  loaded script.
-- **Ticket:** #185, #175, rails49/control#586
+  loaded script; d.5 amended 2026-10-11 (#238): the page listed the store's
+  railroads and a person picked one.
+- **Ticket:** #185, #175, #238, rails49/control#586
 - **Amends:** ADR-0013 d.1 and d.8
-- **Related:** ADR-0014 (the translator on the bus through `control`'s
-  package), `control` ADR-0053 (backup), `control` ADR-0060 (the railroad is
-  chosen while the apps run)
+- **Related:** the organisation's ADR-0014 (a UI edits the loaded railroad's
+  script, rails49/.github#30), this repository's ADR-0014 (the translator on
+  the bus through `control`'s package), `control` ADR-0053 (backup),
+  `control` ADR-0060 (the railroad is chosen while the apps run)
 
 ## Context
 
@@ -41,14 +43,18 @@ changes nothing. This extends ADR-0013 d.8 from a handler to the whole script.
 
 **d.5** The page edits a script through this repository's face. Apply sends
 the text to the face, which compiles it, refuses one that does not compile,
-and puts it to the store server-side. The page lists the store's railroads
-and the person picks one. Unapplied edits stay in the page, which warns
-before they are discarded, and says that Apply stops the railroad.
+and puts it to the store server-side. The script is the loaded railroad's and
+there is no other: the page reads `tc49/layout/state/railroad` for the name,
+offers no list, and has nothing to edit where no railroad is loaded. Unapplied
+edits stay in the page, which warns before they are discarded, and says that
+Apply stops the railroad.
 
 ## Consequences
 
 - The translator reads a document, so it now starts after the store, where in
   `control` it read none.
+- The page edits the railroad the bus names, so the script view is blank on a
+  box with no `control` beside it, and the face lists nothing.
 - A load error shows on the link row in `control`'s UI and in the translator's
   log, not on the page.
 - A script sends only to this box's station. Other stations are JMRI's.
@@ -58,6 +64,9 @@ before they are discarded, and says that Apply stops the railroad.
 - **One script per installation.** Railroads need different configurations.
 - **One railroad per installation.** A change to `control` ADR-0060 larger
   than following the railroad.
+- **Keeping the list beside the loaded railroad.** A page that could edit a
+  railroad nothing is running is a text applied where nobody is watching the
+  track it takes effect on.
 - **The script as `text/x-python` with an `ETag`.** Every other store route
   answers JSON, and headers would have to pass through the store's router.
 - **A mounted file with modification-time checks.** File owner and inode
