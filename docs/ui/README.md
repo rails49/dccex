@@ -62,20 +62,23 @@ and how far that flash has got rather than a reading of the station's (#111,
 #172). The count is still the app's own business about itself and the face still
 answers it at the address above.
 
-**The bus carries one row each way, and only because of the band's two
-presses** (ADR-0017, ADR-0020, #205, #208). The band asks `layout` for power
+**The bus carries two rows up and one down** (ADR-0017, ADR-0020, org
+ADR-0014, #205, #208, #239). The band asks `layout` for power
 rather than typing `<1>` or `<0>` at the station, because `layout` refuses an OFF while a run is going,
 zeroes every locomotive's speed before a cut and runs the **script**'s power
 handler (control ADR-0062) — none of which a message through the face reaches.
 So the page publishes `tc49/layout/power_wanted` and subscribes to
-`tc49/layout/state/power`, and to nothing else: what a railroad is doing is
+`tc49/layout/state/power`. It subscribes to `tc49/layout/state/railroad` as
+well, which is the railroad the band names and the row the **translator**
+loads a **script** off, and to nothing else: what a railroad is *doing* is
 `control`'s UI next door. The broker is `/mqtt` on this page's own origin,
 which the box's door routes to `control`'s service and refuses from any other
 origin (`compose.box.yaml`); the page names no host and no port, as it names
-none for the face. The STOP is on the same row and asks for `stopped`, which
-`layout` holds until an `on` (ADR-0020 d.2). On a box with no `control` beside
-it the row never arrives and both presses are disabled, which is the same page
-with its controls turned off rather than a second page.
+none for the face. The STOP is on the same row the power button writes and
+asks for `stopped`, which `layout` holds until an `on` (ADR-0020 d.2). On a box
+with no `control` beside it neither row arrives: both presses are disabled and
+the band reads `no railroad loaded`, which is the same page with its controls
+turned off rather than a second page.
 
 **The one document it edits goes through the face too, and for a reason of the
 door's rather than of the rule's** (#185,
@@ -106,12 +109,26 @@ work pane is what changes.
 
 ### The band
 
-The UI's name and the **build** on the left; on the right the **link** and one
-control, the power button (#168, ADR-0017).
+The UI's name and the **build** on the left; on the right the railroad
+`control` has loaded, the **link** and the two presses (#168, ADR-0017,
+ADR-0020, #239).
 
 The build is the `G-` field of the station's banner and is blank while the link
 is down: a build from before a flash reported as the one on the board would be
 the page saying what it cannot see (ADR-0008 d.3).
+
+**The band names the railroad `control` has loaded** (org ADR-0014, #239). It
+is the `name` off `tc49/layout/state/railroad` — the row the **translator**
+loads a **script** off — and `no railroad loaded` where that name is empty,
+which is an ordinary state of a box that has chosen none (control #727), or
+where this page has no broker. A reading and not a control: nothing on this
+page loads a railroad, so it presses nothing and the two presses stay the only
+controls on the chrome.
+
+It does not go with the link. The name is `layout` talking, so a station that
+has stopped answering is still a railroad `control` has loaded; what takes it
+away is the bus going. The build beside it does go, because that one is the
+station talking.
 
 The link is a dot, green while the station is answering and red with `dcc-ex
 offline` beside it while it is not. **The link says so when the station stops
@@ -165,17 +182,19 @@ to read needs 3. So the dot is ringed in the band's ink, the words sit on
 who cannot tell the green from the red is left with.
 
 The band gives things up at two widths rather than wrapping. Below 560px the
-build goes: it is the longest thing on the band, and it is the one reading on it
-that does not change while the station is up — what the station is doing is on
-the tiles and what it is running is not. Below 400px the link's words go and the
+build and the railroad's name go: between them they are the longest thing on
+the band, and they are the two readings on it that do not change while the
+station is up — what the station is doing is on the tiles and what it is
+running is not, and which railroad `control` has loaded was true before the
+page opened. Below 400px the link's words go and the
 link is the dot alone, the dot being the reading and the words that reading a
 second time. The dot and both presses stay at every width — a thumb has to
 reach each of them on the phone at the layout. Both numbers are this page's own
 rather than a look rule, written in `dccex-band.styles.ts` beside the rules they
 are about, and a browser is what does it:
 `tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px and at
-375px and reads back a dot and two thumb-sized presses with a size, a build and
-the words with none (#127, #168, #208).
+375px and reads back a dot and two thumb-sized presses with a size, and a
+build, a railroad and the words with none (#127, #168, #208, #239).
 
 ### The rail
 

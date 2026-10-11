@@ -254,13 +254,17 @@ reading goes is an observation the page did not make (ADR-0009,
 
 The chrome across the top of every rails49 UI, carrying what is true of the
 whole system. Here that is the UI's name and the **build** on the left, and on
-the right two readings — the **link**, and the railroad's power as `layout`
+the right three readings — which railroad `control` has loaded, the **link**,
+and the railroad's power as `layout`
 reports it — and two presses, both of which ask `layout` for power on the bus
 as `control`'s do: the power button, and a STOP that stops every locomotive
 where it stands
 ([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md), superseding
 ADR-0011 d.1,
-[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md)). The **rail** down the side is its counterpart, and both are
+[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md), the organisation's
+ADR-0014). The railroad's name is a reading and nothing else: nothing on this
+page loads one, which is `control`'s UI next door. The **rail** down the side
+is its counterpart, and both are
 LOOK.md's rather than this repository's.
 
 **Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
