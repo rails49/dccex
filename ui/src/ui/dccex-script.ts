@@ -72,10 +72,10 @@ import {
 import { scriptStyles } from "./dccex-script.styles.js";
 import { editing, mark } from "./editor.js";
 
-/** What the view is called. The word is the glossary's (CONTEXT.md,
- *  **script**): a railroad's document in the store, which the translator loads
- *  and this page edits. */
-const HEADING = "script";
+/** What the editor is labelled for assistive technology. The view draws no
+ *  heading. The word is the glossary's (CONTEXT.md, **script**): a railroad's
+ *  document in the store, which the translator loads and this page edits. */
+const LABEL = "script";
 
 export class DccexScript extends LitElement {
   static override readonly styles = scriptStyles;
@@ -187,7 +187,6 @@ export class DccexScript extends LitElement {
 
   override render(): TemplateResult {
     return html`
-      <h2>${HEADING}</h2>
       ${this.#unloaded()} ${this.#says()} ${this.#editing()}
       ${this.#controls()}
       ${this.became === null
@@ -285,10 +284,10 @@ export class DccexScript extends LitElement {
     if (this.#editor === null) {
       this.#editor = new EditorView({
         parent: into,
-        state: editing(this.edited, HEADING, this.#typed),
+        state: editing(this.edited, LABEL, this.#typed),
       });
     } else if (this.#open !== this.railroad) {
-      this.#editor.setState(editing(this.edited, HEADING, this.#typed));
+      this.#editor.setState(editing(this.edited, LABEL, this.#typed));
     }
     this.#open = this.railroad;
   }

@@ -54,15 +54,6 @@ export const scriptStyles = css`
     display: none;
   }
 
-  /* What the view is called. The word is the glossary's. */
-  h2 {
-    margin: 0;
-    color: var(--sl-color-neutral-700);
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-font-size-small);
-    font-weight: var(--sl-font-weight-semibold);
-  }
-
   /* What is said about the script in the editor: that the railroad has none,
      or that it could not be read. Quiet, because it is the page saying what it
      knows rather than a reading. */
