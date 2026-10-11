@@ -4,6 +4,12 @@ import { css } from "lit";
  * The band across the top: the chrome that carries what is true of the whole
  * system the UI is about.
  *
+ * **Two of the things on it are words that were already true**: the **build**
+ * the station reported and the railroad `control` has loaded (issue 239). They
+ * are drawn quietly, by transparency rather than by a second colour, and they
+ * are what the band gives up first — the link and the two presses are the
+ * moment, and a thumb has to reach the presses at every width.
+ *
  * Its colours are the look rules' and are the same in every rails49 UI, so it
  * asks `look.css` for them rather than naming one. It is the height of a rail
  * button at least, which is what keeps the two pieces of chrome reading as one
@@ -83,15 +89,28 @@ export const bandStyles = css`
     opacity: 0.85;
   }
 
-  /* What is true of the whole system, at the end the eye finishes on: the link
-     and the two presses. It does not wrap — a band that grew a second line
-     would push the work pane down every time the station went quiet. */
+  /* What is true of the whole system, at the end the eye finishes on: the
+     railroad, the link and the two presses. It does not wrap — a band that
+     grew a second line would push the work pane down every time the station
+     went quiet. */
   .readings {
     display: flex;
     flex: none;
     align-items: center;
     gap: 0.75rem;
     white-space: nowrap;
+  }
+
+  /* Which railroad control has loaded, quieter than the readings beside it and
+     by the same transparency the build is quieter by: it is a fact that was
+     true before the page opened, where the link and the power are the moment.
+     It does not wrap and is cut rather than taking room off them. */
+  .railroad {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.8em;
+    text-overflow: ellipsis;
+    opacity: 0.85;
   }
 
   .link {
@@ -209,14 +228,17 @@ export const bandStyles = css`
     opacity: 0.5;
   }
 
-  /* Below the width at which the band cannot carry all of it, the build goes
-     first: it is the longest thing on the band, and it is the one reading here
-     that does not change while the station is up — what the station is doing is
-     on the tiles and what it is running is not (issue 170). 560px is this
-     page's own number and not a look rule: it is where the name, the build and
-     the readings stop fitting on a phone held upright. */
+  /* Below the width at which the band cannot carry all of it, the build and the
+     railroad's name go first: between them they are the longest thing on the
+     band, and they are the two readings here that do not change while the
+     station is up — what the station is doing is on the tiles and what it is
+     running is not, and which railroad control has loaded was true before the
+     page opened (issue 170, issue 239). 560px is this page's own number and
+     not a look rule: it is where the name, the build and the readings stop
+     fitting on a phone held upright. */
   @media (max-width: 560px) {
-    .build {
+    .build,
+    .railroad {
       display: none;
     }
   }
