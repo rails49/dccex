@@ -1,9 +1,11 @@
-"""Where the page reaches the bus, and the one row it reads off it.
+"""Where the page reaches the bus, and the two rows it reads off it.
 
 The **band** asks `layout` for power (ADR-0017): a press publishes
 `tc49/layout/power_wanted` and the button reads `tc49/layout/state/power`, so
 the page is a client of `control`'s broker as well as of the mirror's **face**
-(the organisation's ADR-0002).
+(the organisation's ADR-0002). The band also names the railroad `control` has
+loaded, which is a second state row on the same connection (the organisation's
+ADR-0014, #239).
 
 **What a payload means is run** — `reported` is a pure function of the bytes
 and the gate puts them through it (`tests/ui/test_readings.py`) — and **what
@@ -36,10 +38,11 @@ VITE = UI / "vite.config.ts"
 #: asserts from the file it is checking would pass on whatever that file said.
 PREFIX = "/mqtt"
 
-#: The row the band reads, and the row a press writes. `control`'s, named in
-#: full: the page subscribes to one row of a railroad rather than to a
+#: The two rows the band reads, and the row a press writes. `control`'s, named
+#: in full: the page subscribes to two rows of a railroad rather than to a
 #: railroad.
 STATE = "tc49/layout/state/power"
+RAILROAD = "tc49/layout/state/railroad"
 WANTED = "tc49/layout/power_wanted"
 
 #: Where a development server sends the prefix, which is the broker's own port
@@ -90,17 +93,21 @@ def test_the_page_holds_one_connection_to_the_broker() -> None:
         ), f"{name} opens {opened} connections of its own"
 
 
-def test_the_page_subscribes_to_the_power_row_and_to_nothing_else() -> None:
-    """One row, and it is the one the button reads (ADR-0017 d.2).
+def test_the_page_subscribes_to_the_two_rows_the_band_reads() -> None:
+    """Two rows: the one the button reads (ADR-0017 d.2) and the one that names
+    the railroad `control` has loaded (the organisation's ADR-0014, #239).
 
-    What a railroad is doing is `control`'s UI next door; the one thing this
-    page needs of the bus is whether the rails are hot and a way to ask for
-    them, so a second subscription would be this page reading a railroad.
+    What a railroad is *doing* is still `control`'s UI next door; what this
+    page needs of the bus is whether the rails are hot, a way to ask for them,
+    and which railroad the station is being driven for — so a third
+    subscription would be this page reading a railroad.
     """
     source = code(BUS.read_text())
     assert f'POWER_STATE = "{STATE}"' in source, "the page reads no power row"
-    assert source.count("subscribe(") == 1, "the page subscribes to a second row"
-    assert "subscribe(POWER_STATE" in source, "the page subscribes to something else"
+    assert f'RAILROAD_STATE = "{RAILROAD}"' in source, "the page reads no railroad row"
+    assert source.count("subscribe(") == 2, "the page subscribes to a third row"
+    for row in ("POWER_STATE", "RAILROAD_STATE"):
+        assert f"subscribe({row}" in source, f"the page does not subscribe to {row}"
 
 
 def test_a_press_publishes_the_wanted_row_at_qos_0_and_not_retained() -> None:
@@ -126,14 +133,17 @@ def test_a_press_publishes_the_wanted_row_at_qos_0_and_not_retained() -> None:
 def test_the_bus_reads_no_payload_of_its_own() -> None:
     """What `layout` reported is the readings module's — a pure function of the
     bytes, run with the payloads that matter (`tests/ui/test_readings.py`,
-    ADR-0009 d.3) — and the connection is this module's.
+    ADR-0009 d.3) — and the connection is this module's. Both rows: the power
+    row through `reported` and the railroad row through `named` (#239).
 
     A connection that read the payload itself would draw the same reading until
     the two answers parted, so the driven check cannot see this one and the
     source can.
     """
     assert 'from "./readings.js"' in BUS.read_text(), "the bus reads a payload itself"
-    assert "export function reported(" in READINGS.read_text(), "nothing reads one"
+    read = READINGS.read_text()
+    for reads in ("reported", "named"):
+        assert f"export function {reads}(" in read, f"nothing reads a row with {reads}"
 
 
 def test_the_bus_dials_the_broker_again_by_itself() -> None:

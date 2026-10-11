@@ -4,9 +4,9 @@
  *
  * What a payload *means* is the readings module's and is run through it
  * (`tests/ui/test_readings.py`); what is asserted here is the connection —
- * where it is opened, which row it subscribes to, what a press publishes and
+ * where it is opened, which rows it subscribes to, what a press publishes and
  * what an outage does to the reading — none of which a Python gate with no
- * broker can reach (`ui/test/support/broker.ts`, ADR-0017).
+ * broker can reach (`ui/test/support/broker.ts`, ADR-0017, #239).
  */
 
 import { beforeEach, expect, test } from "vitest";
@@ -16,6 +16,7 @@ import {
   MQTT_PATH,
   POWER_STATE,
   POWER_WANTED,
+  RAILROAD_STATE,
   RECONNECT_MS,
 } from "../src/bus.js";
 import { UNREACHABLE, type Layout } from "../src/readings.js";
@@ -30,6 +31,14 @@ const HOT = '{"power":"on"}';
 const COLD = '{"power":"off"}';
 const HALTED = '{"power":"stopped"}';
 const NONSENSE = "{";
+
+/** A row `layout` publishes on its railroad row, and the one it publishes on a
+ *  box that has loaded no railroad (control #727). */
+const LOADED = '{"name":"crossover-yard"}';
+const NONE = '{"name":""}';
+
+/** The railroad the first of those names. */
+const YARD = "crossover-yard";
 
 /** A bus open on the broker, the connection it made, and every reading it has
  *  handed up. */
@@ -73,10 +82,29 @@ test("the page reaches one broker and dials again on its own", () => {
   expect(dialled[0]?.options.reconnectPeriod).toBe(RECONNECT_MS);
 });
 
-test("it subscribes to the power row and to nothing else", () => {
+test("it subscribes to the power row and the railroad row and nothing else", () => {
   const { broker } = opened();
   broker.connects();
-  expect(broker.subscribed).toEqual([POWER_STATE]);
+  expect(broker.subscribed).toEqual([POWER_STATE, RAILROAD_STATE]);
+});
+
+test("what layout names on the railroad row is what the page reads", () => {
+  const { broker, reported } = opened();
+  broker.connects();
+  broker.says(RAILROAD_STATE, LOADED);
+  expect(latest(reported)).toEqual(carries(null, YARD));
+  broker.says(RAILROAD_STATE, NONE);
+  expect(latest(reported)).toEqual(carries(null, null));
+});
+
+test("the two rows are read beside each other and neither clears the other", () => {
+  const { broker, reported } = opened();
+  broker.connects();
+  broker.says(RAILROAD_STATE, LOADED);
+  broker.says(POWER_STATE, HOT);
+  expect(latest(reported)).toEqual(carries("on", YARD));
+  broker.says(RAILROAD_STATE, LOADED);
+  expect(latest(reported)).toEqual(carries("on", YARD));
 });
 
 test("what layout reports on the power row is what the page reads", () => {
@@ -110,10 +138,11 @@ test("a connection that has not been made yet is a bus that is away", () => {
   expect(reported).toEqual([]);
 });
 
-test("a connection that goes takes the row with it", () => {
+test("a connection that goes takes both rows with it", () => {
   const { broker, reported } = opened();
   broker.connects();
   broker.says(POWER_STATE, HOT);
+  broker.says(RAILROAD_STATE, LOADED);
   broker.closes();
   expect(latest(reported)).toEqual(UNREACHABLE);
 });
@@ -164,6 +193,7 @@ test("letting the bus go ends the connection and says the bus is away", () => {
   const { bus, broker, reported } = opened();
   broker.connects();
   broker.says(POWER_STATE, HOT);
+  broker.says(RAILROAD_STATE, LOADED);
   bus.close();
   expect(broker.ended).toBe(true);
   expect(latest(reported)).toEqual(UNREACHABLE);

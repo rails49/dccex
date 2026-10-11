@@ -1,8 +1,8 @@
 /**
  * A broker with nothing behind it: what `mqtt` is in the page's checks.
  *
- * `ui/src/bus.ts` dials the broker on the page's own origin, reads one row off
- * it and publishes another. happy-dom has no socket and the suite has no
+ * `ui/src/bus.ts` dials the broker on the page's own origin, reads two rows
+ * off it and publishes a third. happy-dom has no socket and the suite has no
  * broker, so the vitest config aliases `mqtt` to this module and a check
  * drives the connection the page made: say it is up, put a payload on a row,
  * say it has gone, and read back what the page published and what it asked for
