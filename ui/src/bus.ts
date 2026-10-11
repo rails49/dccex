@@ -1,6 +1,6 @@
 /**
- * The bus as the page reaches it: one connection to `control`'s broker, the
- * one row the **band** reads off it, and the row a press writes.
+ * The bus as the page reaches it: one connection to `control`'s broker, the two
+ * rows the **band** reads off it, and the row a press writes.
  *
  * **The band asks `layout` for power** (ADR-0017). A press used to send `<1>`
  * or `<0>` through the **face**, which skipped `layout` and the **translator**
@@ -10,12 +10,18 @@
  * (the organisation's ADR-0002), and reads `tc49/layout/state/power` back.
  * Nothing about power goes up the stream any more.
  *
+ * **The band also names the railroad `control` has loaded** (the
+ * organisation's ADR-0014, #239). That is `tc49/layout/state/railroad`, the
+ * row the **translator** loads a **script** off, and the page reads it for the
+ * same reason the band reads anything: an operator at the layout is owed which
+ * railroad the station in front of them is being driven for.
+ *
  * **It is the page's second counterparty and the bus is the whole of it.** A
  * UI talks to the bus, the store and its own app's face (the organisation's
  * ADR-0002); this page talks to the first and the third, and it subscribes to
- * one row rather than to a railroad — what a railroad is doing is `control`'s
- * UI next door, and the one thing this page needs of it is whether the rails
- * are hot and a way to ask for them.
+ * two rows rather than to a railroad — what a railroad is *doing* is
+ * `control`'s UI next door, and what this page needs of it is whether the
+ * rails are hot, a way to ask for them, and the railroad's name.
  *
  * **The broker is on the page's own origin** (ADR-0017 d.5). A browser served
  * over the box's door cannot dial 9001 on the layout box, and the page is not
@@ -26,26 +32,30 @@
  * `ws://` and nothing here names a host or a port (`framing.js`).
  *
  * **Nothing here reads a payload.** What one means is `readings.js`'s
- * `reported`, which is a pure function of the bytes and is run rather than
- * read (`tests/ui/test_readings.py`). This module is the connection: where it
- * is, what is subscribed to, and what is published — none of which a gate
- * without a broker can exercise, so the checks that drive it mount it against
- * a broker with nothing behind it (`ui/test/support/broker.ts`).
+ * `reported` and `named`, each a pure function of the bytes and run rather
+ * than read (`tests/ui/test_readings.py`). This module is the connection:
+ * where it is, what is subscribed to, and what is published — none of which a
+ * gate without a broker can exercise, so the checks that drive it mount it
+ * against a broker with nothing behind it (`ui/test/support/broker.ts`).
  */
 
 import mqtt, { type MqttClient } from "mqtt";
 
 import { socketAt } from "./framing.js";
-import { UNREACHABLE, reported, type Layout } from "./readings.js";
+import { UNREACHABLE, named, reported, type Layout } from "./readings.js";
 
 /** Where the broker answers on this page's own origin, and the whole of what
  *  it claims there — the door strips it before the broker sees a request, as
  *  it strips the face's (ADR-0017 d.5). */
 export const MQTT_PATH = "/mqtt";
 
-/** The one row the page subscribes to: what `layout` says the railroad's power
- *  is (ADR-0017 d.2). */
+/** One of the two rows the page subscribes to: what `layout` says the
+ *  railroad's power is (ADR-0017 d.2). */
 export const POWER_STATE = "tc49/layout/state/power";
+
+/** The other: which railroad `control` has loaded, which the band names (the
+ *  organisation's ADR-0014, #239). */
+export const RAILROAD_STATE = "tc49/layout/state/railroad";
 
 /** The row a press writes: what the band asks `layout` for (ADR-0017 d.1). */
 export const POWER_WANTED = "tc49/layout/power_wanted";
@@ -64,14 +74,16 @@ export const RECONNECT_MS = 2000;
  * The connection, held for as long as the page is in the document.
  *
  * It hands up what `layout` says as one value, every time that changes: the
- * broker being there, and the power row. The band is drawn from it beside the
- * **link** (`band()`, `readings.js`).
+ * broker being there, the power row and the railroad row. The band is drawn
+ * from it beside the **link** (`band()`, `readings.js`).
  *
- * **A connection that goes takes the row with it.** What `layout` reported
+ * **A connection that goes takes both rows with it.** What `layout` reported
  * before an outage is not a reading after one, the same way the **build** is
  * not a reading once the station has stopped talking (ADR-0008 d.3): the
- * button is disabled on `no bus` either way, and a reconnect is handed the
- * state row again rather than trusting what this page remembered of it.
+ * button is disabled on `no bus` either way, the band reads `no railroad
+ * loaded`, and a reconnect is handed the state rows again rather than trusting
+ * what this page remembered of them. Both are retained, so a reconnect is
+ * handed them without asking.
  *
  * **Nothing is held to be published when the connection comes back.** A press
  * is a command about a railroad, and asking for power seconds later, when the
@@ -101,6 +113,7 @@ export class Bus {
     });
     client.on("connect", () => {
       client.subscribe(POWER_STATE, { qos: 0 });
+      client.subscribe(RAILROAD_STATE, { qos: 0 });
       this.#says({
         connected: true,
         power: this.#layout.power,
@@ -119,11 +132,22 @@ export class Bus {
       this.#says(UNREACHABLE);
     });
     client.on("message", (topic: string, payload: Uint8Array) => {
+      const said = new TextDecoder().decode(payload);
       if (topic === POWER_STATE) {
         this.#says({
           connected: true,
-          power: reported(new TextDecoder().decode(payload)),
+          power: reported(said),
           railroad: this.#layout.railroad,
+        });
+      }
+      // The rows arrive in whatever order `layout` sent them and neither is
+      // the other's: a railroad is named while the power is still unreported,
+      // and a power row says nothing about which railroad it is of.
+      if (topic === RAILROAD_STATE) {
+        this.#says({
+          connected: true,
+          power: this.#layout.power,
+          railroad: named(said),
         });
       }
     });
