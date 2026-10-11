@@ -29,7 +29,10 @@
  * bus, the store and its own app's face (the organisation's ADR-0002), and the
  * store this page's script lives in is on the box's own network where a browser
  * cannot reach it: the face is what reads and writes the document, and this
- * page's half is the three addresses below.
+ * page's half is the one address below, read with a GET and applied with a PUT.
+ * Which railroad it names is the one the bus says `control` has loaded: the
+ * page asks nobody which railroads there are, because the view edits the
+ * loaded one and no other (#238, `bus.ts`, ADR-0015 d.5 as amended).
  */
 
 import {
@@ -213,50 +216,6 @@ export async function flashing(): Promise<Flashing | null> {
       return null;
     }
     return progress((said as Record<string, unknown>)[FLASHING]);
-  } catch {
-    return null;
-  }
-}
-
-/** Where the railroads `control`'s store holds are asked for. The store is not
- *  asked directly: a browser on this origin cannot reach it, so the face lists
- *  them and the page picks one (ADR-0015 d.5, the organisation's ADR-0002). */
-export const RAILROADS_PATH = `${FACE}/railroads`;
-
-/** What the list comes back under. */
-const RAILROADS = "railroads";
-
-/**
- * The railroads the store holds, in the order the store lists them, or `null`
- * where the face did not say.
- *
- * **Nothing said is not no railroads**, so anything but an answer comes back
- * as `null`: a face that is away, a store that is away behind it, an answer
- * that is not a list of names — an empty list drawn for any of them would be
- * this page reporting a store it never read (ADR-0009 d.2). A store that holds
- * none is a different sentence and it is the face's `[]`.
- *
- * None of them is marked as the one that is running. Which railroad that is is
- * the bus's to say and is a row in `control`'s UI, not a reading this page can
- * make (ADR-0015 d.5).
- */
-export async function railroads(): Promise<string[] | null> {
-  try {
-    const answered = await fetch(RAILROADS_PATH);
-    if (!answered.ok) {
-      return null;
-    }
-    const said: unknown = await answered.json();
-    if (typeof said !== "object" || said === null) {
-      return null;
-    }
-    const listed = (said as Record<string, unknown>)[RAILROADS];
-    if (!Array.isArray(listed)) {
-      return null;
-    }
-    return (listed as unknown[]).filter(
-      (name: unknown): name is string => typeof name === "string" && name !== "",
-    );
   } catch {
     return null;
   }

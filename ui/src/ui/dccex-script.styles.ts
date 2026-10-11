@@ -1,8 +1,8 @@
 import { css } from "lit";
 
 /**
- * The **script** view: the railroads down the top, the editor under them, and
- * the controls at the foot.
+ * The **script** view: the loaded railroad named at the top, the editor under
+ * it, and the controls at the foot.
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
  * theme tokens and it follows the system's light or dark setting (LOOK.md,
@@ -32,10 +32,10 @@ import { css } from "lit";
  */
 export const scriptStyles = css`
   /* A column, and the editor in it takes what is left. A flex column rather
-     than a grid of named rows because what is drawn varies — the sentence above
-     the editor is there for a railroad with no script and not otherwise, and so
-     are the warnings — and a row list would give the spare height to whichever
-     child happened to land on it. */
+     than a grid of named rows because what is drawn varies — the sentence
+     above the editor is there for a railroad with no script and not otherwise,
+     and so are the warnings — and a row list would give the spare height to
+     whichever child happened to land on it. */
   :host {
     display: flex;
     flex-direction: column;
@@ -63,23 +63,25 @@ export const scriptStyles = css`
     font-weight: var(--sl-font-weight-semibold);
   }
 
-  /* The railroads the store holds, one to a control. They wrap: a store with
-     a dozen railroads is a row that would otherwise run off a phone. */
-  .railroads {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+  /* Which railroad control has loaded, named over the editor, or that none
+     is. It is what the view is about rather than a note about it, so it is in
+     the text's own ink and the sentence under it is the quiet one. A name
+     wider than a phone is cut rather than carried, the way the band cuts the
+     same name. */
+  .loaded {
     margin: 0;
-    padding: 0;
-    list-style: none;
+    color: var(--sl-color-neutral-900);
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-font-size-small);
+    font-weight: var(--sl-font-weight-semibold);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  /* What stands in for the list where there is none — a face that could not be
-     asked, or a store with no railroads in it — and what is said about the
-     script in the editor. Quiet, because it is the page saying what it knows
-     rather than a reading. */
-  .unlisted,
+  /* What is said about the script in the editor: that the railroad has none,
+     or that it could not be read. Quiet, because it is the page saying what it
+     knows rather than a reading. */
   .says {
     margin: 0;
     color: var(--sl-color-neutral-500);
@@ -159,7 +161,7 @@ export const scriptStyles = css`
      message, and that line's number told apart in the gutter (ADR-0019 d.4,
      editor.ts). The ink is the one the refusal itself is drawn in at the foot
      of this sheet, and the number is marked by a weight as well as a colour,
-     for the reason the picked railroad is. */
+     so that a reader who does not see the ink is owed the answer too. */
   .script.cm-editor .refused {
     text-decoration: underline wavy var(--sl-color-danger-600);
     text-underline-offset: 0.2em;
@@ -206,7 +208,7 @@ export const scriptStyles = css`
   /* Apply, and the note beside it where the editor is not what was applied. */
   .controls,
   .warning,
-  .leaving {
+  .unloaded {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -236,20 +238,6 @@ export const scriptStyles = css`
     cursor: default;
   }
 
-  /* The railroad this editor is showing. Marked by a swap and a weight rather
-     than by a colour alone, which is the rule the rail and the release list are
-     marked by: a reader who does not see the colour is owed the answer too. */
-  .railroad {
-    background: var(--sl-color-neutral-100);
-    color: var(--sl-color-neutral-900);
-  }
-
-  .railroad[aria-current] {
-    background: var(--sl-color-primary-600);
-    color: var(--sl-color-neutral-0);
-    font-weight: var(--sl-font-weight-semibold);
-  }
-
   /* That the editor holds edits nothing else is holding a copy of. It is a
      state of the page and not a fault, so it is drawn as the warning ink rather
      than as a stop. */
@@ -259,8 +247,8 @@ export const scriptStyles = css`
     font-size: var(--sl-font-size-x-small);
   }
 
-  /* The two warnings: what applying does, and what leaving a railroad with
-     unapplied edits does. Each takes its own line above its presses — a
+  /* The two warnings: what applying does, and what an unload has left the
+     edits in the editor as. Each takes its own line above its presses — a
      sentence beside a button is a sentence read after it. */
   .warns {
     flex: 1 0 100%;
@@ -277,9 +265,8 @@ export const scriptStyles = css`
     background: var(--sl-color-danger-600);
   }
 
-  /* And the two ordinary ways out. */
-  .cancels,
-  .keeps {
+  /* And the ordinary way out. */
+  .cancels {
     background: var(--sl-color-neutral-100);
     color: var(--sl-color-neutral-900);
   }

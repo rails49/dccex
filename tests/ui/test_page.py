@@ -52,8 +52,9 @@ def asked_of_the_face(page: str) -> set[str]:
     """The names the page imports from the **face**.
 
     Read rather than matched against a line, because the line wraps: the page
-    asks the face for six things now and what a reader of either suite wants
-    to know is that the name is there, not which column it sits in (#185).
+    asks the face for five things now and what a reader of either suite wants
+    to know is that the name is there, not which column it sits in (#185,
+    #238).
     """
     block = re.search(r"""import \{([^}]*)\} from "\.\./face\.js";""", page)
     assert block is not None, "the page asks the face for nothing"
