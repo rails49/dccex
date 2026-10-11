@@ -101,7 +101,11 @@ export class Bus {
     });
     client.on("connect", () => {
       client.subscribe(POWER_STATE, { qos: 0 });
-      this.#says({ connected: true, power: this.#layout.power });
+      this.#says({
+        connected: true,
+        power: this.#layout.power,
+        railroad: this.#layout.railroad,
+      });
     });
     // The connection going is the whole signal, as it is for the stream: an
     // outage, a broker restarting and the door going down all reach a client
@@ -119,6 +123,7 @@ export class Bus {
         this.#says({
           connected: true,
           power: reported(new TextDecoder().decode(payload)),
+          railroad: this.#layout.railroad,
         });
       }
     });

@@ -16,8 +16,10 @@
 //
 // What comes back is the readings themselves and the two things drawn out of
 // them — the band's readings and the tiles', each as what it is called and
-// what it reads — and what a payload on `layout`'s power row reads as, for a
-// scenario that carries one (ADR-0017 d.2).
+// what it reads — and what a payload on each of `layout`'s two rows reads as,
+// for a scenario that carries one: the power row's through `reported`
+// (ADR-0017 d.2) and the railroad row's through `named` (the organisation's
+// ADR-0014, #239).
 //
 // That is the assertion `control`'s band test makes: hand it
 // the facts a page would hand it and read what it draws. What this cannot do
@@ -35,6 +37,7 @@ import {
   asOf,
   band,
   heard,
+  named,
   reported,
   tiles,
 } from "../../ui/src/readings.js";
@@ -52,6 +55,7 @@ const drawn = (scenario) => {
     band: band(readings, layout),
     tiles: tiles(readings),
     reported: (scenario.payload ?? []).map(reported),
+    named: (scenario.loaded ?? []).map(named),
   };
 };
 

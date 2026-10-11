@@ -52,12 +52,15 @@ const TALKED = told(BANNER);
 /** What the STOP press is titled while it can be pressed (ADR-0020 d.3). */
 const STOPS = "stop every locomotive where it stands";
 
+/** The railroad `control` has loaded, as its railroad row names it (#239). */
+const YARD = "crossover-yard";
+
 /** What the bus says: the broker and each of the three rows `layout`
  *  publishes, and the broker with nothing reported on it yet. */
-const HOT: Layout = { connected: true, power: "on" };
-const COLD: Layout = { connected: true, power: "off" };
-const HALTED: Layout = { connected: true, power: "stopped" };
-const UNSAID: Layout = { connected: true, power: null };
+const HOT: Layout = { connected: true, power: "on", railroad: YARD };
+const COLD: Layout = { connected: true, power: "off", railroad: YARD };
+const HALTED: Layout = { connected: true, power: "stopped", railroad: YARD };
+const UNSAID: Layout = { connected: true, power: null, railroad: null };
 
 /** A band handed what the page knew at `now` and what the bus said, and what
  *  it asked `layout` for. */
