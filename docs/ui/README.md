@@ -41,7 +41,6 @@ https://dccex.$BOX_DOMAIN/dccex-usb/releases   what the configured source carrie
 https://dccex.$BOX_DOMAIN/dccex-usb/flash      write one of them onto the station,
                                                and read how far that has got
 https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
-https://dccex.$BOX_DOMAIN/dccex-usb/railroads  the railroads the store holds
 https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
                                                one railroad's script, read and
                                                applied
@@ -86,10 +85,12 @@ door's rather than of the rule's** (#185,
 d.5). A railroad's **script** is a document in `control`'s store, and the store
 is on the box's own network with no router of its own: this page is served over
 the door's certificate and cannot fetch a service the door does not route. So
-the face lists the railroads, reads the script and applies one server-side, and
-the page asks the three addresses above like everything else it asks. Nothing
-about the store is on this page — no host, no port and no route of the store's
-(`ui/src/face.ts`).
+the face reads the script and applies one server-side, and the page asks the
+one address above like everything else it asks. Which railroad it names is the
+one the bus says `control` has loaded, which the band names too: the page asks
+for no list, because the view edits the loaded railroad and no other (#238).
+Nothing about the store is on this page — no host, no port and no route of the
+store's (`ui/src/face.ts`).
 
 It calls no third-party service. The releases are read by the app from its
 configured source and handed on; the browser never reaches the release API, and
@@ -439,14 +440,14 @@ It is the one thing on this page that is about a railroad, and it is here
 because the app that serves the page's face is the app that can reach the store
 from the box's own network.
 
-The railroads the store holds are listed as controls, one each, and the person
-picks one. **None of them is marked as the one that is running**: which railroad
-that is is the bus's to say, and it is a row in `control`'s UI rather than a
-reading this page can make. A list that could not be read says so, and a store
-with no railroads in it says that instead — two sentences, because they are
-two different things (ADR-0009 d.2).
+**The railroad is the one `control` has loaded**, named over the editor
+(#238, org ADR-0014, ADR-0015 d.5 as amended). The page reads it off
+`tc49/layout/state/railroad` for the band and hands the same name to this view,
+so which script is open is a reading and not a choice: there is no list, and a
+script nothing is running cannot be edited here. Where no railroad is loaded
+there is no editor and no Apply, and the view says so.
 
-Picking one opens its script in a CodeMirror 6 editor
+The loaded railroad's script opens in a CodeMirror 6 editor
 ([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)): monospace and
 numbered, because the indentation is the structure of a Python document and a
 compile error comes back naming a line, with the Python coloured in the
@@ -466,9 +467,11 @@ would be inviting somebody to overwrite it.
 **Edits stay in the page until Apply.** Nothing is sent as it is typed —
 applying a script stands the railroad down, so there is no version of this that
 saves while somebody thinks. What that costs is edits that can be lost, so
-leaving the railroad for another one asks first, and so does closing the page.
-Both questions name what is at stake; the browser's own words on a close are
-the browser's.
+closing the page with unapplied edits in the editor asks first, and so does
+`control` loading another railroad under them: the text stays where it is with
+Apply dead, the view says the railroad is no longer loaded, and the one control
+is `discard them`. Nothing is written to either railroad. Both questions name
+what is at stake; the browser's own words on a close are the browser's.
 
 **Apply says what it does before it does it.** The translator exits on a text
 that differs from the one it is running, which cuts track power and stands the
