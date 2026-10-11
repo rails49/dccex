@@ -7,7 +7,8 @@
 - **Related:** [org ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
   (a UI talks to the bus, the store and its own app's face), ADR-0004 (the
   face reaches a browser through the door), ADR-0018 (the station's setup
-  runs at `start`), `control` ADR-0051, ADR-0054 and ADR-0062
+  runs at `start`), the organisation's ADR-0014 (rails49/.github#30),
+  `control` ADR-0051, ADR-0054 and ADR-0062
 
 ## Context
 
@@ -46,10 +47,17 @@ not change.
 
 ADR-0011 d.3 stands: the tiles press nothing.
 
+**Amended, #239.** The page reads a second row, `tc49/layout/state/railroad`,
+for the railroad name the band draws, per the organisation's ADR-0014
+(rails49/.github#30). d.5 covers it: the same connection, the same `/mqtt` and
+the same origin rule.
+
 ## Consequences
 
 - The page is a client of the bus and of the mirror's face. CONTEXT.md's
   **face** and **band** entries say so.
+- The page subscribes to two rows of a railroad rather than one (#239). A
+  third would be this page reading a railroad, which is `control`'s UI.
 - The button needs `control`. With no broker or no `layout`, it is disabled
   or nothing answers it. The monitor's command box still sends `<1>`.
 - The page depends on the service name `tc49-mqtt` in `control`'s labels.
