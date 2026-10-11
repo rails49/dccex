@@ -1,6 +1,7 @@
 /**
  * The **band**, mounted, with a station answering and with one that is not,
- * and with what `layout` says about the railroad's power.
+ * and with what `layout` says about the railroad's power and which railroad it
+ * has loaded.
  *
  * The words themselves are the readings module's and are run through it
  * (`tests/ui/test_readings.py`); what is asserted here is that they reach a
@@ -51,6 +52,9 @@ const TALKED = told(BANNER);
 
 /** What the STOP press is titled while it can be pressed (ADR-0020 d.3). */
 const STOPS = "stop every locomotive where it stands";
+
+/** What the band reads where `layout` has named no railroad (#239). */
+const NO_RAILROAD = "no railroad loaded";
 
 /** The railroad `control` has loaded, as its railroad row names it (#239). */
 const YARD = "crossover-yard";
@@ -236,6 +240,43 @@ test("a press of STOP is one ask and not a second", async () => {
   press(drawn, ".stop");
   press(drawn, ".stop");
   expect(asked).toEqual(["stopped", "stopped"]);
+});
+
+test("the band names the railroad layout has loaded", async () => {
+  const { drawn } = await band(TALKED, SOON, HOT);
+  expect(reads(drawn, ".railroad")).toBe(YARD);
+});
+
+test("a band whose layout has named no railroad says so", async () => {
+  const { drawn } = await band(TALKED, SOON, UNSAID);
+  expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
+});
+
+test("a closed connection says no railroad is loaded", async () => {
+  const { drawn } = await band(TALKED, SOON, UNREACHABLE);
+  expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
+});
+
+test("a station that stopped answering still names the railroad", async () => {
+  const { drawn } = await band(TALKED, LATER, HOT);
+  expect(reads(drawn, ".railroad")).toBe(YARD);
+});
+
+test("the railroad is a reading and presses nothing", async () => {
+  const { drawn, asked } = await band(TALKED, SOON, HOT);
+  const railroad = part(drawn, ".railroad");
+  expect(railroad.tagName).toBe("SPAN");
+  (railroad as HTMLElement).click();
+  expect(asked).toEqual([]);
+});
+
+test("the railroad is drawn before the link", async () => {
+  const { drawn } = await band(TALKED, SOON, HOT);
+  const order = [...part(drawn, ".readings").children].map(
+    (part) => part.className,
+  );
+  expect(order[0]).toBe("railroad");
+  expect(order[1]).toContain("link");
 });
 
 test("STOP is right of the power button", async () => {

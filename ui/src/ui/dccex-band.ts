@@ -1,12 +1,20 @@
 /**
  * The band: the UI's name and the **build** on the left, and on the right the
- * **link**, the power button and STOP.
+ * railroad `control` has loaded, the **link**, the power button and STOP.
  *
  * What it draws is `readings.js`'s `band()` — the build the station says it is
- * running, whether the station is answering, the words that go with a link that
- * is down, and what each of the two presses reads, is titled and asks for. This
- * component is given all of it and draws it; it works out no reading of its
- * own.
+ * running, the railroad's name, whether the station is answering, the words
+ * that go with a link that is down, and what each of the two presses reads, is
+ * titled and asks for. This component is given all of it and draws it; it
+ * works out no reading of its own.
+ *
+ * **The railroad is a reading and not a control** (the organisation's
+ * ADR-0014, issue 239). It is the name off `tc49/layout/state/railroad`, or
+ * `no railroad loaded` where `control` has loaded none and where this page has
+ * no broker — the band's own sentence for it is the readings module's, as the
+ * link's words are. Nothing on this page loads a railroad: that is `control`'s
+ * UI next door, so this is a `span` and the two presses stay the only controls
+ * on the chrome.
  *
  * **It asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1). A press
  * used to send `<1>` or `<0>` through the **face**, which skipped `layout` and
@@ -45,7 +53,8 @@
  * answering is owed a glance (issue 168, and issue 138 for the red). The words
  * are the dot's label in either state, so a reader who cannot see it is told
  * which reading it is. The build goes blank with the link: what the station
- * last said is not a reading once the station has stopped talking.
+ * last said is not a reading once the station has stopped talking. The
+ * railroad's name does not, because that one is `layout` talking.
  */
 
 import { mdiPower } from "@mdi/js";
@@ -79,8 +88,9 @@ export class DccexBand extends LitElement {
    */
   readings: Readings = asOf(QUIET, 0);
 
-  /** What the page has read off the bus: whether it has the broker, and what
-   *  `layout` reports the railroad's power as (ADR-0017 d.2).
+  /** What the page has read off the bus: whether it has the broker, what
+   *  `layout` reports the railroad's power as, and which railroad it has
+   *  loaded (ADR-0017 d.2, the organisation's ADR-0014).
    *
    *  A band nobody has handed one to has not reached the broker, which is what
    *  a page has until it answers (`bus.ts`).
@@ -96,7 +106,7 @@ export class DccexBand extends LitElement {
   wants: (power: string) => void = () => {};
 
   override render(): TemplateResult {
-    const { build, answering, says, power, stop } = band(
+    const { build, railroad, answering, says, power, stop } = band(
       this.readings,
       this.layout,
     );
@@ -106,6 +116,7 @@ export class DccexBand extends LitElement {
         <span class="build">${build}</span>
       </div>
       <div class="readings">
+        <span class="railroad">${railroad}</span>
         <span class="link" role="img" aria-label=${says}>
           <span class="dot ${answering ? "on" : "off"}"></span>
           ${answering ? nothing : html`<span class="says">${says}</span>`}

@@ -23,14 +23,14 @@ and that container joins the page container's own network namespace, so the
 address it loads is `http://127.0.0.1/` and no port has to be agreed between
 them. The gate is untouched by all of it, which is the criterion #127 ends on.
 
-**There is no face behind the page here**, so the stream never opens, the link
-reads as not answering and the build is blank — the "nothing said" state, and
-enough for layout. The one exception is the release list: rows are what the
-wrap rule is about, and a page with none of them cannot be asked whether they
-wrap, so the browser answers that one request with three releases and nothing
-else is stood up. They go in through the page's own `fetch`, so what is
-measured is the rows the page draws rather than a shape poked into a
-component.
+**There is no face behind the page here**, and no broker either, so the stream
+never opens, the link reads as not answering, the build is blank and the band
+reads `no railroad loaded` — the "nothing said" state, and enough for layout.
+The one exception is the release list: rows are what the wrap rule is about,
+and a page with none of them cannot be asked whether they wrap, so the browser
+answers that one request with three releases and nothing else is stood up.
+They go in through the page's own `fetch`, so what is measured is the rows the
+page draws rather than a shape poked into a component.
 
 **Both views are measured, and the rail is what gets to the second.** The page
 opens on the **monitor** and the releases are a view of its own (#169), so the
@@ -94,7 +94,7 @@ PAGE = "http://127.0.0.1/"
 
 #: A phone held upright, which is the thing at the layout: an iPhone's CSS
 #: width and height. 375 is under both widths the band gives something up at —
-#: the build below 560 and the link's words below 400.
+#: the build and the railroad's name below 560 and the link's words below 400.
 PHONE = (375, 812)
 
 #: The narrowest phone this page is read on, at the same height. 320 is the
@@ -263,6 +263,7 @@ MEASURE = """
     scrollWidth: wide,
     band: {
       build: part(".build"),
+      railroad: part(".railroad"),
       dot: part(".dot"),
       says: part(".says"),
       power: part(".power"),
@@ -505,10 +506,11 @@ def test_the_narrow_band_keeps_the_dot_and_both_presses(
 
     `tests/ui/test_band.py` holds the rules as they are written — which part
     each query names, and that none of them names the dot or either press. What
-    is held here is that a browser does it: at both phone widths the **build**
-    and the link's words are not laid out, the dot, the power button and STOP
-    are, and at a desktop width the words are back. The last of them is what
-    keeps the rest from passing on a page that drew no band at all.
+    is held here is that a browser does it: at both phone widths the **build**,
+    the railroad's name and the link's words are not laid out, the dot, the
+    power button and STOP are, and at a desktop width the words and the
+    railroad are back. The last of them is what keeps the rest from passing on
+    a page that drew no band at all.
 
     Each press is measured against `--rail-button` as well, which is the look
     rules' minimum for a thumb: they are pressed on the phone held at the
@@ -523,9 +525,12 @@ def test_the_narrow_band_keeps_the_dot_and_both_presses(
     for width in ("narrow", "phone"):
         page = drawn[width]
         band = page["band"]
-        for name in ("build", "dot", "says", "power", "stop"):
+        for name in ("build", "railroad", "dot", "says", "power", "stop"):
             assert band[name] is not None, f"the band drew no {name} at all"
         assert band["build"]["display"] == "none", f"a {width} band keeps the build"
+        assert (
+            band["railroad"]["display"] == "none"
+        ), f"a {width} band keeps the railroad"
         assert band["says"]["display"] == "none", f"a {width} band keeps the words"
         assert band["dot"]["box"]["width"] > 0, f"a {width} band drops the link"
         for press in ("power", "stop"):
@@ -543,6 +548,14 @@ def test_the_narrow_band_keeps_the_dot_and_both_presses(
         desktop["says"]["display"] != "none"
     ), "the band drops the words at every width"
     assert desktop["says"]["box"]["width"] > 0, "the band says nothing at any width"
+    # With no face and no broker behind the page the band reads `no railroad
+    # loaded`, which is a drawn reading and not a blank (issue 239).
+    assert (
+        desktop["railroad"]["display"] != "none"
+    ), "the band drops the railroad at every width"
+    assert (
+        desktop["railroad"]["box"]["width"] > 0
+    ), "the band names no railroad at any width"
 
 
 def test_the_command_box_is_on_a_phone_s_screen_and_can_be_typed_into(

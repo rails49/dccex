@@ -5,9 +5,9 @@ functions (`tests/ui/test_readings.py`), and that they reach a page — the two
 presses on it included — is asserted by mounting the component and pressing it
 (`ui/test/band.test.ts`, #126). What is held here is what neither of those can
 see: that the band works no reading out of its own, that the presses on it are
-the power button's and STOP's and both go on the bus, which colours reach the
-chrome and what they mean, and what survives a band too narrow to carry
-everything on it.
+the power button's and STOP's and both go on the bus, that the railroad it
+names is a reading and not a third press, which colours reach the chrome and
+what they mean, and what survives a band too narrow to carry everything on it.
 
 Read off the sources, because these are claims about the shape of the page
 rather than about what it says. happy-dom does no layout, so a width is not a
@@ -252,16 +252,21 @@ def test_either_press_is_a_thumb_wide_and_a_thumb_high() -> None:
     assert drawn.count('class="press ') == 2, "a press on the band is sized on its own"
 
 
-def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> None:
-    """Three things on the band and two widths that take one away each.
+def test_the_narrow_band_drops_the_words_last_and_keeps_the_dot_and_the_presses() -> (
+    None
+):
+    """Two widths, and the first takes the two words that are not a reading of
+    the moment.
 
-    The **build** goes first: it is the longest thing on the band and the one a
-    reader at the layout is least often after — what the station is doing is on
-    the tiles and what it is running is not (issue 170). Then the
-    link's words go and the link is the dot alone — the dot is the reading and
-    the words are that reading a second time. The dot and the two presses
-    survive every width: they are the presses on the page that ask for power
-    and a thumb has to reach them (ADR-0017 d.1, ADR-0020 d.1).
+    The **build** and the railroad's name go first: between them they are the
+    longest thing on the band, and neither changes while the station is up —
+    what the station is doing is on the tiles and what it is running is not,
+    and which railroad `control` has loaded was true before the page opened
+    (issue 170, #239). Then the link's words go and the link is the dot alone —
+    the dot is the reading and the words are that reading a second time. The dot
+    and the two presses survive every width: they are the presses on the page
+    that ask for power and a thumb has to reach them (ADR-0017 d.1, ADR-0020
+    d.1).
 
     The rules as they are written: which part each query names, in the order
     the widths come. That a browser does it is
@@ -271,13 +276,39 @@ def test_the_narrow_band_drops_the_build_then_the_words_and_keeps_the_rest() -> 
     narrow = re.findall(
         r"@media \(max-width: (\d+)px\) \{(.*?)\n  \}", styles, re.DOTALL
     )
-    assert len(narrow) == 2, "the band does not give up the build and then the words"
-    (wider, drops_build), (narrower, drops_words) = narrow
-    assert int(narrower) < int(wider), "the words go before the build does"
-    assert ".build {" in drops_build and "display: none" in drops_build
-    assert ".says {" in drops_words and "display: none" in drops_words
+    assert len(narrow) == 2, "the band does not give up the two words and then the rest"
+    (wider, drops_words), (narrower, drops_says) = narrow
+    assert int(narrower) < int(wider), "the link's words go before the build does"
+    assert "display: none" in drops_words
+    for dropped in (".build", ".railroad"):
+        assert dropped in drops_words, f"a narrow band keeps {dropped}"
+    assert ".says {" in drops_says and "display: none" in drops_says
     for kept in (".dot", ".power", ".stop", ".link {"):
-        assert kept not in drops_build + drops_words, f"a narrow band drops {kept}"
+        assert kept not in drops_words + drops_says, f"a narrow band drops {kept}"
+
+
+def test_the_band_names_the_railroad_and_presses_nothing_with_it() -> None:
+    """Which railroad `control` has loaded, drawn in `.readings` before the
+    **link** (the organisation's ADR-0014, #239).
+
+    A reading and not a control: the name is a fact about the railroad the
+    station is being driven for, and nothing on this page loads one — that is
+    `control`'s UI next door. So it is a `span` and the band still carries two
+    presses, which the check above counts.
+
+    The words for a box that has loaded none are the readings module's, as the
+    link's are: a sentence written here as well would be a second answer to
+    what the band says (`tests/ui/test_readings.py`).
+    """
+    drawn = code(BAND.read_text())
+    assert '<span class="railroad">' in drawn, "the band names no railroad"
+    readings = drawn[drawn.index('<div class="readings">') :]
+    assert readings.index('class="railroad"') < readings.index(
+        'class="link"'
+    ), "the railroad is not drawn before the link"
+    assert (
+        "no railroad loaded" not in drawn
+    ), "the band writes out what it says about a railroad nobody loaded"
 
 
 def test_the_build_is_on_the_left_and_the_rest_at_the_end_the_eye_finishes_on() -> None:
