@@ -1,5 +1,5 @@
-"""The store's routes as the face reaches them: the railroads there are, and
-one railroad's **script** read and written.
+"""The store's route as the face reaches it: one railroad's **script** read and
+written.
 
 Against a fake store on loopback (`tests/stores.py`): the routes are
 `control`'s and a test here runs against a fake of them rather than a copy of
@@ -8,8 +8,8 @@ network, and the fake is the same one the translator's own reader is asserted
 against — one fake of `control`'s routes for both ends of this repository.
 
 What is under test is the readings the face makes of an answer, because the
-face does something different about each: the names, a railroad's text, a
-railroad with no script, and a store that did not answer (`face.py`).
+face does something different about each: a railroad's text, a railroad with no
+script, and a store that did not answer (`face.py`).
 """
 
 import asyncio
@@ -20,47 +20,6 @@ from dccex_usb.store import Away, Store
 from tests.stores import Store as Fake
 
 SCRIPT = '@on("power")\ndef power(t):\n    t.default()\n'
-
-
-def test_the_railroads_the_store_holds_are_its_drawings(store: Fake) -> None:
-    """A railroad's drawing is what the store keeps under its name, so the
-    list of drawings is the list of railroads (rails49/control#586)."""
-    store.drawings = ["crossover-yard", "bench"]
-    store.opens()
-
-    assert asyncio.run(Store(store.url).railroads()) == ["crossover-yard", "bench"]
-
-
-def test_the_railroads_go_back_in_the_order_the_store_lists_them(store: Fake) -> None:
-    """The order is the store's and is passed on as it came, as the releases
-    are: which railroad a person wants is a question about the names, and the
-    page that draws them is what asks it."""
-    store.drawings = ["b", "a", "c"]
-    store.opens()
-
-    assert asyncio.run(Store(store.url).railroads()) == ["b", "a", "c"]
-
-
-def test_an_entry_that_is_not_a_name_is_dropped_and_the_rest_stand(
-    store: Fake,
-) -> None:
-    """A payload is read one field at a time and never trusted. What the store
-    carries is what the page is shown, so one odd entry is not a reason to
-    show a person no railroads at all."""
-    store.drawings = ["bench", 12, "", None, "yard"]
-    store.opens()
-
-    assert asyncio.run(Store(store.url).railroads()) == ["bench", "yard"]
-
-
-def test_a_store_that_answers_with_no_railroads_is_away(store: Fake) -> None:
-    """A document of a shape this app cannot read is a store that has not
-    answered this ask."""
-    store.opens()
-    store.drawings = "bench"  # type: ignore[assignment]
-
-    with pytest.raises(Away):
-        asyncio.run(Store(store.url).railroads())
 
 
 def test_the_script_the_store_holds_is_its_text(store: Fake) -> None:

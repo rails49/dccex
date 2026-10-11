@@ -655,21 +655,15 @@ def holding(store: Fake) -> Face:
     return face(store=Store(store.url))
 
 
-def test_the_face_lists_the_railroads_the_store_holds(store: Fake) -> None:
-    """The first thing the page asks: which railroads there are, so that a
-    person picks one rather than typing a name (ADR-0015 d.5).
-
-    None of them is marked. Which railroad is running is not something this
-    app knows, and saying so would be the mirror reporting a railroad off a
-    bus it is not on (ADR-0001, #185's out of scope).
-    """
-    store.drawings = [RAILROAD, "bench"]
+def test_the_railroads_are_not_listed_here(store: Fake) -> None:
+    """The page edits the loaded railroad's script and no other, and which
+    railroad that is is the bus's to say: a list is a thing nobody asks for
+    now, so there is no route to ask it at (#238, ADR-0015 d.5 as amended)."""
     store.opens()
 
     answered = asyncio.run(holding(store).answer("GET", "/railroads", b""))
 
-    assert answered.status == HTTPStatus.OK
-    assert answered.body == {"railroads": [RAILROAD, "bench"]}
+    assert answered.status == HTTPStatus.NOT_FOUND
 
 
 def test_the_face_reads_one_railroad_s_script(store: Fake) -> None:
@@ -812,7 +806,6 @@ def test_a_store_that_is_away_is_a_status_and_a_reason(store: Fake) -> None:
     asked = holding(store)
 
     for method, path, body in (
-        ("GET", "/railroads", b""),
         ("GET", f"/scripts/{RAILROAD}", b""),
         ("PUT", f"/scripts/{RAILROAD}", json.dumps({"text": SCRIPT}).encode()),
     ):
@@ -825,12 +818,11 @@ def test_a_store_that_is_away_is_a_status_and_a_reason(store: Fake) -> None:
 def test_a_mirror_with_no_store_says_so_and_answers_everything_else() -> None:
     """A mirror is an app that holds a cable and repeats it, and a box running
     one beside a command station and nothing else has no store to be given
-    (ADR-0001). The three script routes say that in a sentence; the station's
+    (ADR-0001). The two script routes say that in a sentence; the station's
     own five answer as they always did."""
     asked = face()
 
     for method, path in (
-        ("GET", "/railroads"),
         ("GET", f"/scripts/{RAILROAD}"),
         ("PUT", f"/scripts/{RAILROAD}"),
     ):
@@ -861,16 +853,6 @@ def test_a_script_is_read_with_get_and_applied_with_put(
 
     assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
     assert store.saved == []
-
-
-def test_the_railroads_are_read_and_not_written(store: Fake) -> None:
-    """The list is the store's. A railroad is made in `control`'s editor, and
-    this face has no verb for one (#185's out of scope)."""
-    store.opens()
-
-    answered = asyncio.run(holding(store).answer("PUT", "/railroads", b"{}"))
-
-    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
 
 
 @pytest.mark.parametrize(
@@ -1053,7 +1035,6 @@ def test_a_caller_that_names_no_origin_is_not_a_page_from_another_one() -> None:
 @pytest.mark.parametrize(
     "method,path",
     [
-        pytest.param("GET", "/railroads", id="the railroads"),
         pytest.param("GET", "/scripts/crossover-yard", id="a script read"),
         pytest.param("PUT", "/scripts/crossover-yard", id="a script applied"),
     ],

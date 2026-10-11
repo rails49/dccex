@@ -2,16 +2,15 @@
 writes one to it.
 
 The routes are `control`'s and documented there (rails49/control#586); what is
-here answers the three this repository asks for. `GET /scripts/<railroad>`,
+here answers the two this repository asks for. `GET /scripts/<railroad>`,
 which the translator reads, as that document says:
 `{"script": "<railroad>", "text": "..."}`, and `404` for a railroad with no
 script. `PUT /scripts/<railroad>`, taking the same document and answering
 `{"saved": "<railroad>"}`, which is what the face does with an applied script
-(#185). And `GET /drawings`, `{"drawings": [...]}`, which is the railroads
-there are — a railroad's drawing is what the store keeps under its name, so
-that list is the list of railroads. No copy of the store is taken and none is
-imported — a test here runs against a fake and `control` owns the routes
-(ADR-0014, consequences).
+(#185). `GET /drawings` went with #238: the page edits the loaded railroad's
+script, so nothing here asks which railroads there are. No copy of the store
+is taken and none is imported — a test here runs against a fake and `control`
+owns the routes (ADR-0014, consequences).
 
 Bound when `opens()` is called and not before, so a test can have the
 translator come up against a store that is not there yet and one that goes
@@ -31,7 +30,6 @@ import pytest
 from tests.ports import free_port
 
 SCRIPTS = "/scripts/"
-DRAWINGS = "/drawings"
 
 
 class Store:
@@ -52,12 +50,6 @@ class Store:
         # Every script the store was asked to save, in the order it was asked:
         # what a test reads to say whether a text reached the store at all.
         self.saved: list[tuple[str, Any]] = []
-        # What the list route answers, which is the railroads there are. A
-        # test names them and it is answered as it stands, typed loosely for
-        # the reason `scripts` above is: a list this app cannot read is one of
-        # the things the reader tells apart. `holds()` below adds a name the
-        # way saving a script does.
-        self.drawings: list[Any] = []
         # Set by a test to have every answer carry this status instead, and
         # to have every answer dropped halfway through its body: a store
         # restarting while it answers.
@@ -87,8 +79,6 @@ class Store:
     def holds(self, railroad: str, text: str) -> None:
         with self._lock:
             self.scripts[railroad] = text
-            if railroad not in self.drawings:
-                self.drawings.append(railroad)
 
     def _answer(self, railroad: str) -> tuple[int, dict[str, Any]]:
         with self._lock:
@@ -111,8 +101,6 @@ class Store:
             said = cast(dict[str, Any], document)
             self.saved.append((railroad, said))
             self.scripts[railroad] = said.get("text")
-            if railroad not in self.drawings:
-                self.drawings.append(railroad)
         return 200, {"saved": railroad}
 
     def _handler(self) -> type[BaseHTTPRequestHandler]:
@@ -120,9 +108,6 @@ class Store:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:  # http.server's own name
-                if self.path == DRAWINGS:
-                    self._said(200, {"drawings": store.drawings})
-                    return
                 if not self.path.startswith(SCRIPTS):
                     self._said(404, {"error": f"no route {self.path}"})
                     return
