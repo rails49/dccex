@@ -1,5 +1,5 @@
-"""The store's routes the face reaches: the railroads there are, and one
-railroad's **script** read and written.
+"""The store's route the face reaches: one railroad's **script**, read and
+written.
 
 A script is a railroad's document in `control`'s store, one per railroad, and
 the page edits it through this app's face (ADR-0015 d.1, d.5,
@@ -9,18 +9,18 @@ it reads and writes it over HTTP the way the translator reads it
 a copy of them — the routes are `control`'s and documented there (ADR-0014,
 consequences).
 
-**Three asks, because the page does three things.** The railroads there are
-(`GET /drawings`), one railroad's text (`GET /scripts/<railroad>`, `404` for a
-railroad with none), and a text put there (`PUT /scripts/<railroad>`). No
-retry and no backoff: one ask is one ask, and a store that did not answer is a
-sentence the page is given rather than a request the mirror sits on — the
-person editing is watching, and the mirror is holding a cable while it waits
-(`face.py`).
+**Two asks, because the page does two things.** One railroad's text
+(`GET /scripts/<railroad>`, `404` for a railroad with none), and a text put
+there (`PUT /scripts/<railroad>`). Which railroad is the page's to name, off
+the bus: it edits the loaded railroad's script and no other, so nothing here
+asks the store which railroads it holds (#238, `face.py`). No retry and no
+backoff: one ask is one ask, and a store that did not answer is a sentence the
+page is given rather than a request the mirror sits on — the person editing is
+watching, and the mirror is holding a cable while it waits (`face.py`).
 
-**Nothing is read that is not needed.** The list is names and the document is
-its text; what else the store keeps about a railroad is `control`'s and is not
-passed on. A payload is read one field at a time and never trusted, as one off
-the bus is.
+**Nothing is read that is not needed.** The document is its text; what else
+the store keeps about a railroad is `control`'s and is not passed on. A payload
+is read one field at a time and never trusted, as one off the bus is.
 
 Standard library only, as everything here is, and blocking work is done off
 the loop's thread: the mirror's fan-out happens while a store is being asked,
@@ -35,15 +35,6 @@ import urllib.error
 import urllib.request
 from typing import Any, cast
 from urllib.parse import quote
-
-DRAWINGS_PATH = "drawings"
-"""What the railroads there are are listed at. A railroad's drawing is what
-`control` keeps under its name, so the list of drawings is the list of
-railroads — the store's own word, and the one route that answers it
-(rails49/control#586)."""
-
-DRAWINGS = "drawings"
-"""What the store's list comes back under."""
 
 SCRIPTS_PATH = "scripts"
 """The scripts route, one level above the railroad's name. A box has one
@@ -101,25 +92,6 @@ class Store:
         """The store's address, as the face names it in a refusal: what a
         person reading the page has to go and look at."""
         return self._base
-
-    async def railroads(self) -> list[str]:
-        """The railroads the store holds, in the order it lists them.
-
-        The order is the store's and is passed on as it came, as the releases
-        are: which railroad a person wants is a question about the names, and
-        the page that draws them is what asks it.
-
-        An entry that is not a name is dropped and the rest stand: what the
-        store carries is what the page is shown, and one odd entry is not a
-        reason to show a person no railroads at all.
-        """
-        where = f"{self._base}/{DRAWINGS_PATH}"
-        listed = (await self._got(where)).get(DRAWINGS)
-        if not isinstance(listed, list):
-            raise Away(f"{where}: answered with no railroads")
-        return [
-            name for name in cast(list[Any], listed) if isinstance(name, str) and name
-        ]
 
     async def text(self, railroad: str) -> str | None:
         """The railroad's script as its text, or None where the store has none
