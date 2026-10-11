@@ -153,15 +153,6 @@ export const UNANSWERED =
   "the mirror could not be asked to apply it, so what the store holds is" +
   " what it held";
 
-/** What is said where `control` has loaded no railroad: there is no script to
- *  edit, because the one this view edits is the loaded railroad's and no other
- *  (ADR-0015 d.5 as amended, the organisation's ADR-0014). A view that drew an
- *  empty editor instead would read as a railroad with an empty script.
- *
- *  The band says the same thing in its own words, because it is saying it of
- *  the whole page rather than of this view (`readings.js`). */
-export const UNLOADED = "no railroad is loaded";
-
 /** What is said where the railroad the editor is open on has been unloaded
  *  with edits in it that were not applied.
  *

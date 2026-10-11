@@ -36,7 +36,6 @@ import {
   STOPS,
   UNANSWERED,
   UNAPPLIED,
-  UNLOADED,
   UNREAD,
   type Applied,
   type Opened,
@@ -151,13 +150,19 @@ function dead(drawn: DccexScript, selector: string): boolean {
   return part(drawn, selector).hasAttribute("disabled");
 }
 
-test("the loaded railroad is named and its script is in the editor", async () => {
+test("the loaded railroad's script is in the editor", async () => {
   const [drawn, asked] = await pane();
 
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
-  expect(reads(drawn, ".loaded")).toBe(RAILROADS[0]);
   expect(edited(drawn)).toBe(SCRIPT);
   expect(reads(drawn, ".says")).toBeNull();
+});
+
+test("the view does not name the railroad the band names", async () => {
+  const [drawn] = await pane();
+
+  expect(drawn.renderRoot.querySelector(".loaded")).toBeNull();
+  expect(drawn.renderRoot.textContent).not.toContain(RAILROADS[0]);
 });
 
 test("there is nothing to pick a railroad with", async () => {
@@ -187,14 +192,12 @@ test("another railroad loaded opens its script", async () => {
   await loads(drawn, RAILROADS[1]);
 
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
-  expect(reads(drawn, ".loaded")).toBe(RAILROADS[1]);
   expect(edited(drawn)).toBe(other);
 });
 
 test("no railroad loaded leaves no editor and nothing to apply", async () => {
   const [drawn, asked] = await pane({}, undefined, null);
 
-  expect(reads(drawn, ".loaded")).toBe(UNLOADED);
   expect(asked.opened).toStrictEqual([]);
   expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
   expect(drawn.renderRoot.querySelector(".script")).toBeNull();
@@ -242,7 +245,6 @@ test("a railroad unloaded with unapplied edits keeps them and says so", async ()
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
   expect(asked.applied).toStrictEqual([]);
   expect(edited(drawn)).toBe("# typed and not applied\n");
-  expect(reads(drawn, ".loaded")).toBe(RAILROADS[0]);
   expect(dead(drawn, ".applies")).toBe(true);
 });
 
@@ -261,7 +263,6 @@ test("discarding them opens the railroad that is loaded now", async () => {
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
   expect(asked.applied).toStrictEqual([]);
   expect(edited(drawn)).toBe(commented(SAMPLE));
-  expect(reads(drawn, ".loaded")).toBe(RAILROADS[1]);
   expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
 });
 
@@ -274,7 +275,6 @@ test("discarding them with nothing loaded now leaves nothing to edit", async () 
   await drawn.updateComplete;
   await drawn.updateComplete;
 
-  expect(reads(drawn, ".loaded")).toBe(UNLOADED);
   expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
   expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
 });

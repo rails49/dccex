@@ -1,8 +1,8 @@
 import { css } from "lit";
 
 /**
- * The **script** view: the loaded railroad named at the top, the editor under
- * it, and the controls at the foot.
+ * The **script** view: the editor, and the controls at the foot. The band
+ * names the railroad, so the view does not.
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
  * theme tokens and it follows the system's light or dark setting (LOOK.md,
@@ -61,22 +61,6 @@ export const scriptStyles = css`
     font-family: var(--sl-font-sans);
     font-size: var(--sl-font-size-small);
     font-weight: var(--sl-font-weight-semibold);
-  }
-
-  /* Which railroad control has loaded, named over the editor, or that none
-     is. It is what the view is about rather than a note about it, so it is in
-     the text's own ink and the sentence under it is the quiet one. A name
-     wider than a phone is cut rather than carried, the way the band cuts the
-     same name. */
-  .loaded {
-    margin: 0;
-    color: var(--sl-color-neutral-900);
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-font-size-small);
-    font-weight: var(--sl-font-weight-semibold);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   /* What is said about the script in the editor: that the railroad has none,

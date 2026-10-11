@@ -440,12 +440,12 @@ It is the one thing on this page that is about a railroad, and it is here
 because the app that serves the page's face is the app that can reach the store
 from the box's own network.
 
-**The railroad is the one `control` has loaded**, named over the editor
-(#238, org ADR-0014, ADR-0015 d.5 as amended). The page reads it off
-`tc49/layout/state/railroad` for the band and hands the same name to this view,
-so which script is open is a reading and not a choice: there is no list, and a
-script nothing is running cannot be edited here. Where no railroad is loaded
-there is no editor and no Apply, and the view says so.
+**The railroad is the one `control` has loaded**, named in the band and not
+again in this view (#238, org ADR-0014, ADR-0015 d.5 as amended). The page
+reads it off `tc49/layout/state/railroad` for the band and hands the same name
+to this view, so which script is open is a reading and not a choice: there is
+no list, and a script nothing is running cannot be edited here. Where no
+railroad is loaded there is no editor and no Apply.
 
 The loaded railroad's script opens in a CodeMirror 6 editor
 ([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)): monospace and

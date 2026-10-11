@@ -64,7 +64,6 @@ import {
   STOPS,
   UNANSWERED,
   UNAPPLIED,
-  UNLOADED,
   type Applied,
   type Opened,
   refusal,
@@ -189,7 +188,7 @@ export class DccexScript extends LitElement {
   override render(): TemplateResult {
     return html`
       <h2>${HEADING}</h2>
-      ${this.#names()} ${this.#unloaded()} ${this.#says()} ${this.#editing()}
+      ${this.#unloaded()} ${this.#says()} ${this.#editing()}
       ${this.#controls()}
       ${this.became === null
         ? nothing
@@ -200,20 +199,6 @@ export class DccexScript extends LitElement {
             ${this.became.says}
           </p>`}
     `;
-  }
-
-  /** The railroad whose script is in the editor, named above it, or that none
-   *  is loaded.
-   *
-   * It is the railroad `control` has loaded, which is the one this view edits
-   * and the only one it opens (ADR-0015 d.5 as amended, the organisation's
-   * ADR-0014). The two differ in one state and one only — the railroad
-   * unloaded with unapplied edits in the editor — and there the name is the
-   * editor's railroad, because what a person is looking at is that railroad's
-   * text and the sentence under it says it is no longer loaded (issue 238).
-   */
-  #names(): TemplateResult {
-    return html`<p class="loaded">${this.railroad ?? UNLOADED}</p>`;
   }
 
   /** What is said where the railroad in the editor has been unloaded with
