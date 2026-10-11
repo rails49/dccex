@@ -1,24 +1,25 @@
 /**
- * The **script** edited on a mounted pane: a railroad picked, a text typed, and
- * the two warnings a person reads before anything is lost or stopped.
+ * The **script** edited on a mounted pane: the loaded railroad's text in the
+ * editor, a text typed, and the two warnings a person reads before anything is
+ * lost or stopped.
  *
  * What the rules come to — the text a railroad with no script opens with, and
  * whether the editor holds unapplied edits — is run through them below, the
- * way `view.test.ts` runs the hash's; what is asserted on the page is the
- * gesture: the pick, the editor, the question that opens when edits would be
- * discarded, the warning that says applying stops the railroad, and the
- * mirror's own sentence where the script does not compile (issue 185,
- * ADR-0015 d.5).
+ * way `view.test.ts` runs the hash's; what is asserted on the page is what the
+ * loaded railroad does to it: the script that opens, the editor, the warning
+ * that says applying stops the railroad, the edits left stranded by an unload,
+ * and the mirror's own sentence where the script does not compile (issue 185,
+ * issue 238, ADR-0015 d.5).
  *
  * **The editor is read off its own state** and not off a box's value
  * (ADR-0019). What the keys in it do is the editor's own suite's
  * (`editor.test.ts`); what is here is that the pane opens one, keeps it across
- * a draw, and opens a new document in it for a new railroad.
+ * a draw, and opens a new document in it for another railroad.
  *
- * The facts are the ones a page would hand it: the railroads the **face**
- * answered, and the two hands that ask the face for a script and apply one
- * (`dccex-app.ts`). Neither reaches anything here — what they are handed is
- * what a test records and answers.
+ * The facts are the ones a page would hand it: which railroad `control` has
+ * loaded, off the bus, and the two hands that ask the **face** for a script
+ * and apply one (`dccex-app.ts`). Neither hand reaches anything here — what
+ * they are handed is what a test records and answers.
  */
 
 import { EditorSelection } from "@codemirror/state";
@@ -29,15 +30,13 @@ import {
   APPLIES,
   CONFIRMS,
   DISCARDS,
-  KEEPS,
+  GONE,
   NONE,
-  NO_RAILROADS,
-  PICK,
   SAMPLE,
   STOPS,
   UNANSWERED,
   UNAPPLIED,
-  UNLISTED,
+  UNLOADED,
   UNREAD,
   type Applied,
   type Opened,
@@ -48,9 +47,9 @@ import {
   unapplied,
 } from "../src/script.js";
 import { DccexScript } from "../src/ui/dccex-script.js";
-import { all, mounted, press, reads } from "./mounted.js";
+import { mounted, part, press, reads } from "./mounted.js";
 
-/** The railroads the store holds, as the face lists them. */
+/** The railroad `control` has loaded, and the one it is given instead. */
 const RAILROADS = ["crossover-yard", "bench"];
 
 /** What the store holds for the first of them. */
@@ -62,12 +61,15 @@ interface Asked {
   readonly applied: [string, string][];
 }
 
-/** A pane mounted with the railroads listed, somewhere for its asks to go,
- *  and what each ask is answered with.
+/** A pane mounted on the railroad `control` has loaded, somewhere for its asks
+ *  to go, and what each ask is answered with.
  *
  *  `held` is what the store holds per railroad, `null` for a railroad with no
  *  script and `undefined` for one the face could not be asked about — the
- *  three answers `face.ts` draws the line between. */
+ *  three answers `face.ts` draws the line between.
+ *
+ *  It is drawn twice over: the pane asks the face while the first draw is
+ *  being made, so the answer is in the editor on the next one. */
 async function pane(
   held: Record<string, string | null | undefined> = { [RAILROADS[0]]: SCRIPT },
   applies: (railroad: string, text: string) => Applied = (
@@ -76,11 +78,11 @@ async function pane(
     applied: true,
     says: stored(railroad),
   }),
-  railroads: string[] | null = RAILROADS,
+  loaded: string | null = RAILROADS[0],
 ): Promise<[DccexScript, Asked]> {
   const asked: Asked = { opened: [], applied: [] };
   const drawn = new DccexScript();
-  drawn.railroads = railroads;
+  drawn.loaded = loaded;
   drawn.opens = (railroad: string): Promise<Opened> => {
     asked.opened.push(railroad);
     return Promise.resolve(opened(held[railroad]));
@@ -89,7 +91,9 @@ async function pane(
     asked.applied.push([railroad, text]);
     return Promise.resolve(applies(railroad, text));
   };
-  return [await mounted(drawn), asked];
+  await mounted(drawn);
+  await drawn.updateComplete;
+  return [drawn, asked];
 }
 
 /** The editor, once the pane has made one. */
@@ -130,41 +134,75 @@ function key(
   );
 }
 
-/** Press the railroad whose name is `railroad`, and let the ask it makes come
- *  back: the pane sets what it is showing, asks the face, and draws the answer
- *  when it arrives, which is two turns. */
-async function picks(drawn: DccexScript, railroad: string): Promise<void> {
-  const at = (drawn.railroads ?? []).indexOf(railroad);
-  expect(at, `no control for ${railroad}`).toBeGreaterThan(-1);
-  press(drawn, `.railroads li:nth-child(${at + 1}) .railroad`);
+/** `control` loads `railroad`, as the page hands the name down, and the ask
+ *  the pane makes of it comes back: the pane names it, asks the face, and
+ *  draws the answer when it arrives, which is two turns. */
+async function loads(
+  drawn: DccexScript,
+  railroad: string | null,
+): Promise<void> {
+  drawn.loaded = railroad;
   await drawn.updateComplete;
   await drawn.updateComplete;
 }
 
-test("the railroads the store holds are listed and none is marked", async () => {
-  const [drawn] = await pane();
+/** Whether the control at `selector` is dead. */
+function dead(drawn: DccexScript, selector: string): boolean {
+  return part(drawn, selector).hasAttribute("disabled");
+}
 
-  expect(all(drawn, ".railroad")).toStrictEqual(RAILROADS);
-  expect(drawn.renderRoot.querySelector(".railroad[aria-current]")).toBeNull();
-  expect(reads(drawn, ".says")).toBe(PICK);
-  expect(drawn.renderRoot.querySelector(".script")).toBeNull();
-});
-
-test("a railroad picked opens its script in the editor", async () => {
+test("the loaded railroad is named and its script is in the editor", async () => {
   const [drawn, asked] = await pane();
 
-  await picks(drawn, RAILROADS[0]);
-
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+  expect(reads(drawn, ".loaded")).toBe(RAILROADS[0]);
   expect(edited(drawn)).toBe(SCRIPT);
-  expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[0]);
   expect(reads(drawn, ".says")).toBeNull();
 });
 
-test("a railroad with no script opens on the sample, commented out", async () => {
-  const [drawn] = await pane({ [RAILROADS[1]]: null });
+test("there is nothing to pick a railroad with", async () => {
+  const [drawn] = await pane();
 
-  await picks(drawn, RAILROADS[1]);
+  expect(drawn.renderRoot.querySelector(".railroad")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".railroads")).toBeNull();
+});
+
+test("the same railroad loaded again opens nothing and keeps the typing", async () => {
+  const [drawn, asked] = await pane();
+  await typed(drawn, "# typed and not applied\n");
+
+  await loads(drawn, RAILROADS[0]);
+
+  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+  expect(edited(drawn)).toBe("# typed and not applied\n");
+});
+
+test("another railroad loaded opens its script", async () => {
+  const other = "# the bench\n";
+  const [drawn, asked] = await pane({
+    [RAILROADS[0]]: SCRIPT,
+    [RAILROADS[1]]: other,
+  });
+
+  await loads(drawn, RAILROADS[1]);
+
+  expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
+  expect(reads(drawn, ".loaded")).toBe(RAILROADS[1]);
+  expect(edited(drawn)).toBe(other);
+});
+
+test("no railroad loaded leaves no editor and nothing to apply", async () => {
+  const [drawn, asked] = await pane({}, undefined, null);
+
+  expect(reads(drawn, ".loaded")).toBe(UNLOADED);
+  expect(asked.opened).toStrictEqual([]);
+  expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".script")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
+});
+
+test("a railroad with no script opens on the sample, commented out", async () => {
+  const [drawn] = await pane({ [RAILROADS[0]]: null });
 
   expect(edited(drawn)).toBe(commented(SAMPLE));
   expect(reads(drawn, ".says")).toBe(NONE);
@@ -176,29 +214,13 @@ test("a railroad with no script opens on the sample, commented out", async () =>
 test("a script that could not be read leaves nothing to edit", async () => {
   const [drawn] = await pane({ [RAILROADS[0]]: undefined });
 
-  await picks(drawn, RAILROADS[0]);
-
   expect(reads(drawn, ".says")).toBe(UNREAD);
   expect(drawn.renderRoot.querySelector(".script")).toBeNull();
   expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
 });
 
-test("railroads that could not be read are said to be, and not drawn as none", async () => {
-  const [drawn] = await pane({}, undefined, null);
-
-  expect(reads(drawn, ".unlisted")).toBe(UNLISTED);
-  expect(all(drawn, ".railroad")).toStrictEqual([]);
-});
-
-test("a store with no railroads in it says that instead", async () => {
-  const [drawn] = await pane({}, undefined, []);
-
-  expect(reads(drawn, ".unlisted")).toBe(NO_RAILROADS);
-});
-
 test("an edit stays in the page and is said to be unapplied", async () => {
   const [drawn, asked] = await pane();
-  await picks(drawn, RAILROADS[0]);
 
   await typed(drawn, `${SCRIPT}# and another line\n`);
 
@@ -206,75 +228,84 @@ test("an edit stays in the page and is said to be unapplied", async () => {
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
-test("leaving a railroad with unapplied edits asks first", async () => {
+test("a railroad unloaded with unapplied edits keeps them and says so", async () => {
   const [drawn, asked] = await pane({
     [RAILROADS[0]]: SCRIPT,
     [RAILROADS[1]]: null,
   });
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# typed and not applied\n");
 
-  await picks(drawn, RAILROADS[1]);
+  await loads(drawn, RAILROADS[1]);
 
-  expect(reads(drawn, ".leaving .warns")).toBe(UNAPPLIED);
+  expect(reads(drawn, ".unloaded .warns")).toBe(GONE);
   expect(reads(drawn, ".discards")).toBe(DISCARDS);
-  expect(reads(drawn, ".keeps")).toBe(KEEPS);
   expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+  expect(asked.applied).toStrictEqual([]);
   expect(edited(drawn)).toBe("# typed and not applied\n");
-  expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[0]);
+  expect(reads(drawn, ".loaded")).toBe(RAILROADS[0]);
+  expect(dead(drawn, ".applies")).toBe(true);
 });
 
-test("keeping the edits leaves the railroad where it was", async () => {
+test("discarding them opens the railroad that is loaded now", async () => {
   const [drawn, asked] = await pane({
     [RAILROADS[0]]: SCRIPT,
     [RAILROADS[1]]: null,
   });
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# typed and not applied\n");
-  await picks(drawn, RAILROADS[1]);
-
-  press(drawn, ".keeps");
-  await drawn.updateComplete;
-
-  expect(drawn.renderRoot.querySelector(".leaving")).toBeNull();
-  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
-  expect(edited(drawn)).toBe("# typed and not applied\n");
-});
-
-test("discarding them opens the railroad that was picked", async () => {
-  const [drawn, asked] = await pane({
-    [RAILROADS[0]]: SCRIPT,
-    [RAILROADS[1]]: null,
-  });
-  await picks(drawn, RAILROADS[0]);
-  await typed(drawn, "# typed and not applied\n");
-  await picks(drawn, RAILROADS[1]);
+  await loads(drawn, RAILROADS[1]);
 
   press(drawn, ".discards");
   await drawn.updateComplete;
   await drawn.updateComplete;
 
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
+  expect(asked.applied).toStrictEqual([]);
   expect(edited(drawn)).toBe(commented(SAMPLE));
-  expect(reads(drawn, ".railroad[aria-current]")).toBe(RAILROADS[1]);
+  expect(reads(drawn, ".loaded")).toBe(RAILROADS[1]);
+  expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
 });
 
-test("a railroad with no edits in the editor is left without a question", async () => {
+test("discarding them with nothing loaded now leaves nothing to edit", async () => {
+  const [drawn] = await pane();
+  await typed(drawn, "# typed and not applied\n");
+  await loads(drawn, null);
+
+  press(drawn, ".discards");
+  await drawn.updateComplete;
+  await drawn.updateComplete;
+
+  expect(reads(drawn, ".loaded")).toBe(UNLOADED);
+  expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
+});
+
+test("the railroad loaded again while its edits stand lets them be applied", async () => {
+  const [drawn, asked] = await pane();
+  await typed(drawn, "# typed and not applied\n");
+  await loads(drawn, RAILROADS[1]);
+
+  await loads(drawn, RAILROADS[0]);
+
+  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+  expect(edited(drawn)).toBe("# typed and not applied\n");
+  expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
+  expect(dead(drawn, ".applies")).toBe(false);
+});
+
+test("a railroad unloaded with no edits in it is replaced without a question", async () => {
   const [drawn, asked] = await pane({
     [RAILROADS[0]]: SCRIPT,
     [RAILROADS[1]]: null,
   });
-  await picks(drawn, RAILROADS[0]);
 
-  await picks(drawn, RAILROADS[1]);
+  await loads(drawn, RAILROADS[1]);
 
-  expect(drawn.renderRoot.querySelector(".leaving")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
 });
 
 test("the page closing with unapplied edits is refused", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# typed and not applied\n");
 
   const leaving = new Event("beforeunload", { cancelable: true });
@@ -284,8 +315,7 @@ test("the page closing with unapplied edits is refused", async () => {
 });
 
 test("the page closing with nothing unapplied is not", async () => {
-  const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
+  await pane();
 
   const leaving = new Event("beforeunload", { cancelable: true });
   window.dispatchEvent(leaving);
@@ -295,7 +325,6 @@ test("the page closing with nothing unapplied is not", async () => {
 
 test("apply says it stops the railroad before it sends anything", async () => {
   const [drawn, asked] = await pane();
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# applied\n");
 
   press(drawn, ".applies");
@@ -308,7 +337,6 @@ test("apply says it stops the railroad before it sends anything", async () => {
 
 test("the second press is what sends the text", async () => {
   const [drawn, asked] = await pane();
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# applied\n");
   press(drawn, ".applies");
   await drawn.updateComplete;
@@ -325,7 +353,6 @@ test("the second press is what sends the text", async () => {
 
 test("declining the warning leaves the edits and sends nothing", async () => {
   const [drawn, asked] = await pane();
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# applied\n");
   press(drawn, ".applies");
   await drawn.updateComplete;
@@ -339,7 +366,7 @@ test("declining the warning leaves the edits and sends nothing", async () => {
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
-test("an apply that lands after another railroad is picked stays with its own", async () => {
+test("an apply that lands after another railroad is loaded stays with its own", async () => {
   const other = "# the bench\n";
   const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT, [RAILROADS[1]]: other });
   let lands: (became: Applied) => void = () => undefined;
@@ -347,14 +374,13 @@ test("an apply that lands after another railroad is picked stays with its own", 
     new Promise<Applied>((resolve) => {
       lands = resolve;
     });
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# applied\n");
   press(drawn, ".applies");
   await drawn.updateComplete;
   press(drawn, ".confirms");
   await drawn.updateComplete;
 
-  await picks(drawn, RAILROADS[1]);
+  await loads(drawn, RAILROADS[1]);
   lands({ applied: true, says: stored(RAILROADS[0]) });
   await drawn.updateComplete;
   await drawn.updateComplete;
@@ -370,7 +396,6 @@ test("a script the mirror refuses is shown in the mirror's own words", async () 
     applied: false,
     says,
   }));
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "def power(t)\n    pass\n");
   press(drawn, ".applies");
   await drawn.updateComplete;
@@ -385,14 +410,13 @@ test("a script the mirror refuses is shown in the mirror's own words", async () 
   expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
 });
 
-/** A pane whose Apply is refused with `says`, open on the first railroad with
- *  `text` typed into it. */
+/** A pane whose Apply is refused with `says`, open on the loaded railroad
+ *  with `text` typed into it. */
 async function refused(says: string, text: string): Promise<DccexScript> {
   const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT }, () => ({
     applied: false,
     says,
   }));
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, text);
   press(drawn, ".applies");
   await drawn.updateComplete;
@@ -443,7 +467,6 @@ test("a refusal that names no line marks nothing in the editor", async () => {
 
 test("an apply that lands leaves no mark", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
   await typed(drawn, "# applied\n");
   press(drawn, ".applies");
   await drawn.updateComplete;
@@ -457,7 +480,6 @@ test("an apply that lands leaves no mark", async () => {
 
 test("a key in the editor is an edit the page is holding", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
   editor(drawn).dispatch({ selection: { anchor: 0 } });
 
   key(drawn, "Tab");
@@ -469,7 +491,6 @@ test("a key in the editor is an edit the page is holding", async () => {
 
 test("the editor is the same one across a draw, with its history", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
   const made = editor(drawn);
   await typed(drawn, "# typed\n");
 
@@ -485,7 +506,6 @@ test("the editor is the same one across a draw, with its history", async () => {
 
 test("an apply that landed leaves the editor and its history where they are", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
   const made = editor(drawn);
   await typed(drawn, "# applied\n");
   press(drawn, ".applies");
@@ -500,12 +520,11 @@ test("an apply that landed leaves the editor and its history where they are", as
   expect(edited(drawn)).toBe(SCRIPT);
 });
 
-test("another railroad opens a new document, and an undo stays in it", async () => {
+test("another railroad loaded opens a new document, and an undo stays in it", async () => {
   const other = "# the bench\n";
   const [drawn] = await pane({ [RAILROADS[0]]: SCRIPT, [RAILROADS[1]]: other });
-  await picks(drawn, RAILROADS[0]);
 
-  await picks(drawn, RAILROADS[1]);
+  await loads(drawn, RAILROADS[1]);
   key(drawn, "z", { ctrlKey: true });
 
   expect(edited(drawn)).toBe(other);
@@ -513,7 +532,6 @@ test("another railroad opens a new document, and an undo stays in it", async () 
 
 test("the control that applies says what it does", async () => {
   const [drawn] = await pane();
-  await picks(drawn, RAILROADS[0]);
 
   expect(reads(drawn, ".applies")).toBe(APPLIES);
   expect(drawn.renderRoot.querySelector(".warning")).toBeNull();

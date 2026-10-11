@@ -14,9 +14,9 @@ imports nothing but the standard library and itself and so cannot serve it
 a second recommendation about what a railroad's districts may draw, and this
 is what holds it. The rest is the shape of the view: that the pane holds no
 counterparty, that the page asks the **face** and hands the answers down, that
-the addresses are built from the one prefix, and that the pane is hidden rather
-than taken away — because unapplied edits are held in it and nowhere else
-(ADR-0015 d.5).
+the railroad it edits is the one the bus says is loaded, that the addresses are
+built from the one prefix, and that the pane is hidden rather than taken away —
+because unapplied edits are held in it and nowhere else (ADR-0015 d.5).
 
 Read off the sources, for the reason `tests/ui/test_page.py` gives: there is no
 browser in a Python gate to hold an editor, a listener or an address bar.
@@ -45,7 +45,7 @@ EDITOR = UI / "src" / "ui" / "editor.ts"
 #: Where the page says what it depends on, and in which half.
 MANIFEST = UI / "package.json"
 
-#: The page that hands it the railroads and the two hands.
+#: The page that hands it the loaded railroad and the two hands.
 APP = UI / "src" / "ui" / "dccex-app.ts"
 
 #: Where the page asks the mirror about the mirror.
@@ -143,36 +143,37 @@ def test_the_pane_works_no_reading_out_of_its_own() -> None:
 
 
 def test_the_page_asks_the_face_and_the_pane_edits() -> None:
-    """The three asks are the page's, as the flash's is: what the pane does is
-    pick, edit and press (#185, `tests/ui/test_page.py`)."""
+    """The two asks are the page's, as the flash's is: what the pane does is
+    edit and press (#185, #238, `tests/ui/test_page.py`)."""
     page = code(APP.read_text())
-    assert 'from "../face.js";' in page, "the page asks nobody"
-    for asked in ("applies,", "railroads,", "script,"):
-        assert asked in page, f"the page does not ask for {asked.rstrip(',')}"
+    named = re.search(r"""import \{([^}]*)\} from "\.\./face\.js";""", page)
+    assert named is not None, "the page asks nobody"
+    asked = {name.strip() for name in named.group(1).split(",")}
+    assert {"applies", "script"} <= asked, f"the page asks the face for {asked}"
     pane = page[page.index("#script(): TemplateResult {") :]
     pane = pane[: pane.index("\n  }")]
-    assert ".railroads=${this.railroads}" in pane, "the pane is handed no railroads"
     assert ".opens=${this.#opens}" in pane, "the pane is handed no way to open one"
     assert ".applies=${this.#applies}" in pane, "the pane is handed no way to apply"
 
 
-def test_the_railroads_are_asked_for_once_and_not_on_a_schedule() -> None:
-    """What a store holds changes when somebody draws a railroad in
-    `control`'s editor, not under the eye: a page that asked every five
-    seconds would be polling another app's store for an answer that is the
-    same all evening (ADR-0010). The way to ask again is to reload.
+def test_the_pane_edits_the_railroad_the_bus_says_is_loaded() -> None:
+    """The view edits the loaded railroad's script and no other (#238, org
+    ADR-0014, ADR-0015 d.5 as amended).
 
-    That the page starts no timer for it is held where the timers are counted
-    (`tests/ui/test_page.py`).
+    One reading for the whole page: the name is the one the band says, off
+    `tc49/layout/state/railroad` as `bus.ts` subscribes to it and `named`
+    reads it (#239, `tests/ui/test_band.py`). So the pane is handed
+    `layout.railroad` and nothing asks the face which railroads there are —
+    there is no list, nothing to pick, and no route to ask it at.
     """
-    page = APP.read_text()
-    joining = page[
-        page.index("override connectedCallback(") : page.index("/** Let the stream go")
-    ]
-    assert joining.count("this.#holds();") == 1, "the railroads are asked twice"
-    holding = page[page.index("async #holds(): Promise<void> {") :]
-    holding = holding[: holding.index("\n  }")]
-    assert "await railroads()" in holding, "the page asks nobody for the railroads"
+    page = code(APP.read_text())
+    pane = page[page.index("#script(): TemplateResult {") :]
+    pane = pane[: pane.index("\n  }")]
+    assert ".loaded=${this.layout.railroad}" in pane, "the pane is handed no railroad"
+    assert "railroads" not in page, "the page still asks which railroads there are"
+    assert "railroads" not in code(
+        FACE.read_text()
+    ), "the page still has an address for the railroads"
 
 
 def test_the_pane_is_hidden_and_not_taken_away() -> None:
@@ -194,7 +195,6 @@ def test_the_addresses_are_built_from_the_one_prefix() -> None:
     door's route moves only one of them would follow (ADR-0004 d.2,
     `face.ts`)."""
     asking = code(FACE.read_text())
-    assert "RAILROADS_PATH = `${FACE}/railroads`" in asking
     assert (
         "`${FACE}/scripts/${encodeURIComponent(railroad)}`" in asking
     ), "the railroad is not escaped into one level of the address"

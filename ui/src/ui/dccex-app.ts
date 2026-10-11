@@ -69,14 +69,14 @@
  * beside the station's readings; the power button needs both and STOP needs
  * the broker alone.
  *
- * **The script's counterparties are the page's too** (issue 185). The
- * railroads the store holds, one railroad's script and a script applied are
- * all asked of the **face**, which reaches the store server-side because a
- * browser on this origin cannot (the organisation's ADR-0002, ADR-0015 d.5) —
- * and they are asked from here and handed down, so the pane holds edits and
- * not a counterparty. The railroads are asked for once on load, as the
- * releases are: which railroads a store holds changes when somebody draws one,
- * and the way to ask again is to reload.
+ * **The script's counterparties are the page's too** (issue 185). One
+ * railroad's script and a script applied are both asked of the **face**, which
+ * reaches the store server-side because a browser on this origin cannot (the
+ * organisation's ADR-0002, ADR-0015 d.5) — and they are asked from here and
+ * handed down, so the pane holds edits and not a counterparty. Which railroad
+ * they are about is the one the bus says `control` has loaded, which the band
+ * names and the pane edits: this page asks nobody which railroads there are,
+ * because there is no railroad to pick (issue 238).
  *
  * **And the page is what polls** (ADR-0010 d.1). The station volunteers a
  * banner when it comes up and a `<p…>` when power changes, and an idle one on
@@ -144,14 +144,7 @@
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { Bus } from "../bus.js";
-import {
-  applies,
-  flash,
-  flashing,
-  railroads,
-  releases,
-  script,
-} from "../face.js";
+import { applies, flash, flashing, releases, script } from "../face.js";
 import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
 import {
@@ -265,7 +258,6 @@ export class DccexApp extends LitElement {
     layout: { state: true },
     carried: { state: true },
     flashing: { state: true },
-    railroads: { state: true },
     view: { state: true },
   };
 
@@ -286,7 +278,8 @@ export class DccexApp extends LitElement {
    *
    *  A page that has not reached the broker has not reached it — that is the
    *  reading, and it is what disables the band's button rather than a hedge
-   *  (`bus.ts`). */
+   *  (`bus.ts`). The name on it is the railroad the **script** view edits as
+   *  well as the one the band says (issue 238). */
   layout: Layout = UNREACHABLE;
 
   /** What the face said the configured source carries, or `null` where it has
@@ -301,15 +294,6 @@ export class DccexApp extends LitElement {
    *  is what it is doing, and a page reloaded in the middle of a write is
    *  reading about that write (ADR-0012 d.3). */
   flashing: Flashing | null = null;
-
-  /** The railroads `control`'s store holds, as the face answered them, or
-   *  `null` where it could not be asked — which is also where it has not been
-   *  asked yet, and the list says they could not be read until it has
-   *  (`face.ts`).
-   *
-   *  None of them is marked as the one that is running: which railroad that is
-   *  is the bus's to say, and this page is on no bus (ADR-0015 d.5). */
-  railroads: string[] | null = null;
 
   /** Which view the work pane is showing, as the hash names it. The view a
    *  page opens on until the hash has been read, which is what a page with
@@ -371,7 +355,6 @@ export class DccexApp extends LitElement {
     this.#stream.open();
     this.#bus.open();
     void this.#list();
-    void this.#holds();
     this.#polling = setInterval(() => {
       this.#ask();
     }, POLL_MS);
@@ -461,8 +444,14 @@ export class DccexApp extends LitElement {
     `;
   }
 
-  /** The script view: the railroads the store holds, and the one open in a
-   *  box.
+  /** The script view: the railroad `control` has loaded, and its script open
+   *  in a box.
+   *
+   *  The railroad is the one the band names, off the same reading: the page
+   *  reads `tc49/layout/state/railroad` once, for the whole page, and hands it
+   *  to both (ADR-0015 d.5 as amended, the organisation's ADR-0014, issue
+   *  238). Which script is open is therefore a reading and not a choice, and
+   *  nothing on this page loads a railroad.
    *
    *  Hidden rather than taken away while another view is showing, for the
    *  reason the releases are: unapplied edits are held in that pane and
@@ -472,7 +461,7 @@ export class DccexApp extends LitElement {
     return html`
       <dccex-script
         ?hidden=${this.view !== "script"}
-        .railroads=${this.railroads}
+        .loaded=${this.layout.railroad}
         .opens=${this.#opens}
         .applies=${this.#applies}
       ></dccex-script>
@@ -602,20 +591,7 @@ export class DccexApp extends LitElement {
     this.carried = await releases();
   }
 
-  /** Ask the face which railroads the store holds, once.
-   *
-   * Once, for the reason the releases are asked for once: what a store holds
-   * changes when somebody draws a railroad in `control`'s editor, and a page
-   * that asked every five seconds would be polling another app's store for an
-   * answer that is the same all evening (ADR-0010). A face that could not be
-   * asked leaves the list saying so rather than saying the store is empty
-   * (`face.ts`, ADR-0009 d.2), and the way to ask again is to reload.
-   */
-  async #holds(): Promise<void> {
-    this.railroads = await railroads();
-  }
-
-  /** Ask the face for one railroad's script, as the pane picks one.
+  /** Ask the face for one railroad's script, as the loaded railroad changes.
    *
    * The counterparty is the page's (the organisation's ADR-0002): what the
    * pane does is pick, edit and press, and what asks the mirror is here. What

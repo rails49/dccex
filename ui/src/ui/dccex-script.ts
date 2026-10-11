@@ -2,18 +2,23 @@
  * The **script**: a railroad's Python document, opened in an editor on a
  * **view** of its own and applied to `control`'s store through the **face**.
  *
- * The person picks a railroad off the list the face answers, the text opens in
- * the editor, and Apply sends it (ADR-0015 d.5, issue 185). A railroad the
- * store has no script for opens on the translator's sample, commented out, so
- * that what is in front of somebody writing their first one is the shape a
- * script has — and applying it unchanged is a railroad whose script does
- * nothing rather than one running values a page suggested (`script.ts`).
+ * The railroad is the one `control` has loaded, which the page reads off the
+ * bus and hands down: its script opens in the editor, and Apply sends it
+ * (ADR-0015 d.5 as amended, the organisation's ADR-0014, issue 185, issue
+ * 238). There is no list and nothing to pick — a script nothing is running
+ * cannot be edited here. A railroad the store has no script for opens on the
+ * translator's sample, commented out, so that what is in front of somebody
+ * writing their first one is the shape a script has — and applying it
+ * unchanged is a railroad whose script does nothing rather than one running
+ * values a page suggested (`script.ts`).
  *
  * **Edits stay in the page until Apply.** Nothing is sent as it is typed:
  * applying a script stands the railroad down, so there is no version of this
  * that saves while somebody thinks. What that costs is edits that can be lost,
- * which is what the two warnings are for — leaving the railroad or the page
- * with unapplied edits asks first, and both questions are drawn here.
+ * which is what the two warnings are for — the page being closed on them, and
+ * the railroad they were written for being unloaded under them, which is a
+ * thing that happens to a person rather than one they do. Neither writes
+ * anything: the text stays in the editor until somebody says to discard it.
  *
  * **Apply says what it does before it does it** (ADR-0006 d.2, ADR-0015 d.3).
  * The translator exits on a text that differs from the one it is running, which
@@ -37,7 +42,7 @@
  * **What it works out without drawing is `script.ts`'s** — the text a railroad
  * with no script opens with, and whether what is in the editor is what was
  * applied — so those are run rather than read (`ui/test/script.test.ts`).
- * What is decided here is the drawing: where the list sits, where the warnings
+ * What is decided here is the drawing: where the name sits, where the warnings
  * open, and where the editor goes.
  *
  * **The editor is CodeMirror and it is not Lit's** (ADR-0019). What it is made
@@ -55,13 +60,11 @@ import {
   CANCELS,
   CONFIRMS,
   DISCARDS,
-  KEEPS,
-  NO_RAILROADS,
-  PICK,
+  GONE,
   STOPS,
   UNANSWERED,
   UNAPPLIED,
-  UNLISTED,
+  UNLOADED,
   type Applied,
   type Opened,
   refusal,
@@ -79,22 +82,25 @@ export class DccexScript extends LitElement {
   static override readonly styles = scriptStyles;
 
   static override readonly properties = {
-    railroads: { attribute: false },
+    loaded: { attribute: false },
     opens: { attribute: false },
     applies: { attribute: false },
     railroad: { state: true },
     opened: { state: true },
     edited: { state: true },
-    leaving: { state: true },
     warning: { state: true },
     applying: { state: true },
     became: { state: true },
   };
 
-  /** The railroads the face answered, or `null` where it could not be asked —
-   *  which is also where it has not been asked yet, and the list says the
-   *  railroads could not be read until it has (`face.ts`). */
-  railroads: string[] | null = null;
+  /** Which railroad `control` has loaded, as the page hands it down, or `null`
+   *  where none is and where the page has not reached the broker (`bus.ts`,
+   *  `readings.js`'s `named`).
+   *
+   *  It is what this view edits, and the whole of what says which script is
+   *  open: a name that changes opens another script, and `null` leaves nothing
+   *  to edit (ADR-0015 d.5 as amended, issue 238). */
+  loaded: string | null = null;
 
   /** What asks the face for one railroad's script, as the page hands it down.
    *
@@ -125,11 +131,6 @@ export class DccexScript extends LitElement {
    *  (ADR-0015 d.5). */
   edited = "";
 
-  /** The railroad a person is picking with unapplied edits in the editor, or
-   *  `null` where none is. Nothing has been opened while this stands: it is the
-   *  choice made and the answer not yet given. */
-  leaving: string | null = null;
-
   /** Whether the warning Apply opens is open. Nothing has reached the face
    *  while it is: the railroad is still running whatever it was running. */
   warning = false;
@@ -152,8 +153,8 @@ export class DccexScript extends LitElement {
   #editor: EditorView | null = null;
 
   /** The railroad the editor is open on, or `null` where no editor is. It is
-   *  what says when to open a new document: a railroad picked is a new script
-   *  and a new history, and an Apply is neither. */
+   *  what says when to open a new document: another railroad loaded is a new
+   *  script and a new history, and an Apply is neither. */
   #open: string | null = null;
 
   /** The editor, for a check to read the document off.
@@ -188,7 +189,7 @@ export class DccexScript extends LitElement {
   override render(): TemplateResult {
     return html`
       <h2>${HEADING}</h2>
-      ${this.#railroads()} ${this.#says()} ${this.#editing()}
+      ${this.#names()} ${this.#unloaded()} ${this.#says()} ${this.#editing()}
       ${this.#controls()}
       ${this.became === null
         ? nothing
@@ -201,52 +202,56 @@ export class DccexScript extends LitElement {
     `;
   }
 
-  /** The railroads the store holds, one button each, the open one marked.
+  /** The railroad whose script is in the editor, named above it, or that none
+   *  is loaded.
    *
-   * None of them is marked as the one that is running: which railroad that is
-   * is the bus's to say and is a row in `control`'s UI (ADR-0015 d.5). What is
-   * marked here is which one this editor is showing.
-   *
-   * A list that could not be read and a store with no railroads in it are
-   * different sentences, and neither is an empty list drawn as if it were an
-   * answer (ADR-0009 d.2, `script.ts`).
+   * It is the railroad `control` has loaded, which is the one this view edits
+   * and the only one it opens (ADR-0015 d.5 as amended, the organisation's
+   * ADR-0014). The two differ in one state and one only — the railroad
+   * unloaded with unapplied edits in the editor — and there the name is the
+   * editor's railroad, because what a person is looking at is that railroad's
+   * text and the sentence under it says it is no longer loaded (issue 238).
    */
-  #railroads(): TemplateResult {
-    if (this.railroads === null) {
-      return html`<p class="unlisted">${UNLISTED}</p>`;
-    }
-    if (this.railroads.length === 0) {
-      return html`<p class="unlisted">${NO_RAILROADS}</p>`;
+  #names(): TemplateResult {
+    return html`<p class="loaded">${this.railroad ?? UNLOADED}</p>`;
+  }
+
+  /** What is said where the railroad in the editor has been unloaded with
+   *  edits in it that were not applied, and the one control on it.
+   *
+   * One control, because there is nothing else to offer: the railroad these
+   * edits were written for is not the one `control` is running, so there is no
+   * Apply to make and no other railroad to keep editing instead. The text
+   * stays where it is until somebody says to discard it, and then this view is
+   * the loaded railroad's again — or says none is (`script.ts`).
+   */
+  #unloaded(): TemplateResult | typeof nothing {
+    if (!this.#gone()) {
+      return nothing;
     }
     return html`
-      <ul class="railroads">
-        ${this.railroads.map(
-          (railroad: string) => html`
-            <li>
-              <button
-                class="railroad"
-                type="button"
-                aria-current=${railroad === this.railroad ? "true" : nothing}
-                @click=${() => {
-                  this.#picks(railroad);
-                }}
-              >
-                ${railroad}
-              </button>
-              ${this.leaving === railroad ? this.#warns(railroad) : nothing}
-            </li>
-          `,
-        )}
-      </ul>
+      <div class="unloaded">
+        <p class="warns" role="alert">${GONE}</p>
+        <button class="discards" type="button" @click=${this.#discards}>
+          ${DISCARDS}
+        </button>
+      </div>
     `;
+  }
+
+  /** Whether the editor is open on a railroad `control` no longer has loaded.
+   *
+   * Worked out rather than kept, because it is the two names disagreeing and
+   * nothing else: everything that opens a script sets both, so a flag of its
+   * own would be a second answer to a question the names already answer.
+   */
+  #gone(): boolean {
+    return this.railroad !== null && this.railroad !== this.loaded;
   }
 
   /** What is said about the script in the editor: that a railroad has none and
    *  the sample is what is there, that it could not be read, or nothing. */
   #says(): TemplateResult | typeof nothing {
-    if (this.railroad === null) {
-      return html`<p class="says">${PICK}</p>`;
-    }
     const says = this.opened === null ? "" : this.opened.says;
     return says === "" ? nothing : html`<p class="says">${says}</p>`;
   }
@@ -258,7 +263,7 @@ export class DccexScript extends LitElement {
    * CodeMirror holds is a document, a selection and an undo history that must
    * outlive a draw (ADR-0019 d.1, `editor.ts`).
    *
-   * There is no place for one before a railroad is picked and none for a
+   * There is no place for one where no railroad is loaded and none for a
    * script that could not be read: an editor offering the sample for a
    * railroad whose script this page never saw would be inviting somebody to
    * overwrite a document it does not know the contents of (ADR-0009 d.2).
@@ -277,8 +282,8 @@ export class DccexScript extends LitElement {
    * editor go. A railroad that is not the one it was open on opens a new
    * document in it, which is a new history: an undo that reached back into
    * another railroad's script would be an edit nobody made. Anything else — an
-   * Apply, a warning opening, the railroads arriving — leaves it alone,
-   * because what is in it is what somebody typed.
+   * Apply, a warning opening, the railroad being unloaded under the edits —
+   * leaves it alone, because what is in it is what somebody typed.
    *
    * It is opened on `edited` and not on `opened.text`. The two are the same
    * text when a railroad opens, and where they differ it is because there are
@@ -305,10 +310,12 @@ export class DccexScript extends LitElement {
 
   /** Apply, and the warning it opens under.
    *
-   * The control is dead while an Apply is in flight and while there is nothing
-   * to apply, and it says what the gesture does before it is pressed a second
-   * time: the operator is the guard on a railroad standing down, and a person
-   * can only be one if they are told (ADR-0006 d.2, ADR-0015 d.3).
+   * The control is dead while an Apply is in flight, while there is nothing to
+   * apply, and on a railroad that has been unloaded under the edits — there is
+   * no railroad to stand down for that text — and it says what the gesture
+   * does before it is pressed a second time: the operator is the guard on a
+   * railroad standing down, and a person can only be one if they are told
+   * (ADR-0006 d.2, ADR-0015 d.3, issue 238).
    */
   #controls(): TemplateResult | typeof nothing {
     if (this.opened === null || this.opened.text === null) {
@@ -319,7 +326,7 @@ export class DccexScript extends LitElement {
         <button
           class="applies"
           type="button"
-          ?disabled=${this.applying || this.warning}
+          ?disabled=${this.applying || this.warning || this.#gone()}
           @click=${() => {
             this.warning = true;
           }}
@@ -353,38 +360,27 @@ export class DccexScript extends LitElement {
     `;
   }
 
-  /** What an operator is asked before edits that were not applied are
-   *  discarded: leaving this railroad for another one.
+  /** What the railroad `control` has loaded does to the editor, read before
+   *  every draw.
    *
-   *  The same shape the page is left with, and the same words: what is being
-   *  left is an editor that nothing else in the system is holding a copy of
-   *  (`script.ts`).
+   * Three answers. The railroad the editor is already open on is no answer at
+   * all: a rebuild that restamps the row names the railroad that is open, and
+   * opening it again would discard what somebody has typed, so the one thing
+   * that opens a script is a name this editor is not on (issue 238). A name
+   * this editor is not on with unapplied edits in it opens nothing either —
+   * the edits stay, with the warning above them, until somebody discards them.
+   * Anything else is opened.
+   *
+   * An Apply in flight is not one of the three: it opens, and the answer that
+   * lands is dropped by the guard in `#applied` below. What is on its way to
+   * the store is already on its way.
+   *
+   * It is read here rather than in a setter so that one draw carries both the
+   * name and what it opened: the railroad is set before the template is read,
+   * and the face is asked after it.
    */
-  #warns(railroad: string): TemplateResult {
-    return html`
-      <div class="leaving">
-        <p class="warns" role="alert">${UNAPPLIED}</p>
-        <button
-          class="discards"
-          type="button"
-          @click=${() => {
-            void this.#shows(railroad);
-          }}
-        >
-          ${DISCARDS}
-        </button>
-        <button class="keeps" type="button" @click=${this.#keeps}>
-          ${KEEPS}
-        </button>
-      </div>
-    `;
-  }
-
-  /** A railroad picked: the one that is open is nothing, a different one with
-   *  unapplied edits in the editor opens the question above it, and any other
-   *  one is opened. */
-  #picks(railroad: string): void {
-    if (railroad === this.railroad) {
+  protected override willUpdate(): void {
+    if (this.loaded === this.railroad) {
       return;
     }
     if (
@@ -392,15 +388,17 @@ export class DccexScript extends LitElement {
       unapplied(this.edited, this.opened.text) &&
       !this.applying
     ) {
-      this.leaving = railroad;
+      this.warning = false;
       return;
     }
-    void this.#shows(railroad);
+    void this.#shows(this.loaded);
   }
 
-  /** The question declined, which is staying where the edits are. */
-  readonly #keeps = (): void => {
-    this.leaving = null;
+  /** The edits on an unloaded railroad discarded, which opens the railroad
+   *  `control` has loaded now — or leaves nothing to edit, where it has loaded
+   *  none. Nothing was written to either railroad. */
+  readonly #discards = (): void => {
+    void this.#shows(this.loaded);
   };
 
   /** The Apply warning declined. The edits stay in the editor and the railroad
@@ -411,21 +409,24 @@ export class DccexScript extends LitElement {
   };
 
   /** One railroad's script opened: what the face says it is, and the editor set
-   *  to it.
+   *  to it. A `null` railroad is the view with nothing to edit, and nobody is
+   *  asked for it.
    *
    *  What became of the last Apply goes with it, because it was about another
-   *  gesture, and so does either question.
+   *  gesture, and so does the warning.
    */
-  async #shows(railroad: string): Promise<void> {
+  async #shows(railroad: string | null): Promise<void> {
     this.railroad = railroad;
-    this.leaving = null;
     this.warning = false;
     this.became = null;
     this.opened = null;
     this.edited = "";
+    if (railroad === null) {
+      return;
+    }
     const shown = await this.opens(railroad);
     if (this.railroad !== railroad) {
-      // Another railroad was picked while this one was being asked for. The
+      // Another railroad was loaded while this one was being asked for. The
       // answer is about a railroad nobody is looking at, and writing it into
       // the editor would put one railroad's script under another's name.
       return;
@@ -454,7 +455,7 @@ export class DccexScript extends LitElement {
    */
   async #applied(): Promise<void> {
     const railroad = this.railroad;
-    if (this.applying || railroad === null) {
+    if (this.applying || railroad === null || this.#gone()) {
       return;
     }
     this.applying = true;
@@ -463,7 +464,7 @@ export class DccexScript extends LitElement {
     try {
       const became = await this.applies(railroad, applied);
       if (this.railroad !== railroad) {
-        // Another railroad was picked while this one was applied: the answer
+        // Another railroad was loaded while this one was applied: the answer
         // is about a railroad nobody is looking at, as in `#shows`.
         return;
       }

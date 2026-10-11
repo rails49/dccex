@@ -4,9 +4,14 @@
  * A script is a railroad's Python document in `control`'s store, one per
  * railroad, holding the **handler**s the translator runs for this railroad's
  * station (CONTEXT.md, ADR-0013, ADR-0015). The page is where it is written:
- * the person picks a railroad, the text opens in the editor, and Apply sends
- * it to the **face**, which compiles it and puts it to the store (ADR-0015
- * d.5).
+ * the loaded railroad's script opens in the editor, and Apply sends it to the
+ * **face**, which compiles it and puts it to the store (ADR-0015 d.5 as
+ * amended, the organisation's ADR-0014).
+ *
+ * **The railroad is the one `control` has loaded and there is no other.** The
+ * page reads the name off the bus and hands it down, so which script is open
+ * is a reading rather than a choice, and a script nothing is running cannot be
+ * edited here (#238, `bus.ts`, `readings.js`'s `named`).
  *
  * What is here is everything about that a browser is not needed for — the text
  * a railroad with no script opens with, and whether what is in the editor is
@@ -96,16 +101,6 @@ def wx310_crossing(t):
 #     t.send("<A 5 2>" if closed else "<A 5 0>")
 `;
 
-/** What is said where the railroads could not be read: the face did not
- *  answer, or the store behind it did not. Nothing said is not no railroads,
- *  so it is a different sentence from the one below (ADR-0009 d.2, the shape
- *  `releases.js` draws the same line in). */
-export const UNLISTED = "the railroads could not be read";
-
-/** What is said where the store holds no railroads at all, which is a view
- *  whose store is empty rather than one that could not be asked. */
-export const NO_RAILROADS = "the store holds no railroads yet";
-
 /** What is said above a railroad with no script of its own: the editor is not
  *  empty, and what is in it is not the railroad's yet. */
 export const NONE =
@@ -140,18 +135,15 @@ export const CONFIRMS = "apply it";
 export const CANCELS = "cancel";
 
 /** What is said where the edits in the editor are not the text that was
- *  applied and the person is leaving them — another railroad picked, or the
- *  page closed. Unapplied edits stay in the page and nowhere else (ADR-0015
- *  d.5), so what is on the other side of this question is losing them. */
+ *  applied. Unapplied edits stay in the page and nowhere else (ADR-0015 d.5),
+ *  so what is on the other side of leaving them is losing them. */
 export const UNAPPLIED =
   "this railroad's script has edits that were not applied," +
   " and leaving it discards them";
 
-/** What says yes to that. */
+/** What says yes to discarding them, which is the one control on an unloaded
+ *  railroad's editor. */
 export const DISCARDS = "discard them";
-
-/** What declines it, which is staying where the edits are. */
-export const KEEPS = "keep editing";
 
 /** What is said where the face could not be asked to apply one, or answered
  *  with something this page cannot read. The mirror's own refusals are the
@@ -161,10 +153,26 @@ export const UNANSWERED =
   "the mirror could not be asked to apply it, so what the store holds is" +
   " what it held";
 
-/** What says which railroad the editor is showing, where none is picked yet:
- *  a view opened on nothing is a view that says what to do rather than an empty
- *  editor that reads as a railroad with an empty script. */
-export const PICK = "pick a railroad to edit its script";
+/** What is said where `control` has loaded no railroad: there is no script to
+ *  edit, because the one this view edits is the loaded railroad's and no other
+ *  (ADR-0015 d.5 as amended, the organisation's ADR-0014). A view that drew an
+ *  empty editor instead would read as a railroad with an empty script.
+ *
+ *  The band says the same thing in its own words, because it is saying it of
+ *  the whole page rather than of this view (`readings.js`). */
+export const UNLOADED = "no railroad is loaded";
+
+/** What is said where the railroad the editor is open on has been unloaded
+ *  with edits in it that were not applied.
+ *
+ *  Nothing is written to either railroad on an unload: the edits are the
+ *  person's and nothing else in the system is holding a copy of them
+ *  (ADR-0015 d.5), and the railroad they were written for is not the one
+ *  `control` is running now. So the text stays where it is, Apply is dead, and
+ *  the one way on is to say so. */
+export const GONE =
+  "this railroad is no longer loaded, and the edits in the editor were not" +
+  " applied";
 
 /**
  * What one railroad's script opened as: the text in the editor, whether it is
@@ -304,8 +312,9 @@ export function refusal(says: string): Refusal | null {
 /**
  * What is said where the text is the railroad's script now.
  *
- * It names the railroad: a page with several railroads listed is a page where
- * which one was applied is the thing a reader has to know (ADR-0015 d.5).
+ * It names the railroad, which is what the sentence is still true of after
+ * `control` has loaded another one: the editor moves on and what was stored
+ * was stored for the railroad it was stored for (ADR-0015 d.5).
  *
  * @param railroad the railroad it was applied for
  */

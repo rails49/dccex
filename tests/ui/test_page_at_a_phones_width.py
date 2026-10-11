@@ -32,6 +32,13 @@ answers that one request with three releases and nothing else is stood up.
 They go in through the page's own `fetch`, so what is measured is the rows the
 page draws rather than a shape poked into a component.
 
+**The script view is the one thing handed to a component here** (#238). The
+railroad it edits is the one `control` has loaded, which the page reads off the
+bus, and there is no broker behind this page to read it from: the editor the
+long line is measured in opens for a railroad and for none, so the browser
+hands the pane a name. Nothing else about the view is poked — the script comes
+back through the page's own `fetch`, as the releases do.
+
 **Both views are measured, and the rail is what gets to the second.** The page
 opens on the **monitor** and the releases are a view of its own (#169), so the
 browser presses the rail's button for them and measures the rows there. A
@@ -116,7 +123,7 @@ WIDTHS = {"narrow": NARROW, "phone": PHONE, "desktop": DESKTOP}
 #: of them carries and the page keeps in its hash (`ui/src/view.ts`, #169).
 #: The browser opens on the first and presses the rail to reach the second,
 #: which is the one gesture a reader has for getting there. The **script** view
-#: is reached the same way, with one railroad answered for it (#185).
+#: is reached the same way, with one railroad loaded for it (#185, #238).
 MONITOR, RELEASES_VIEW, SCRIPT_VIEW = "monitor", "releases", "script"
 
 #: What the browser answers the face's release request with. Three releases,
@@ -199,6 +206,16 @@ MONITOR, RELEASES_VIEW, SCRIPT_VIEW = sys.argv[6], sys.argv[7], sys.argv[8]
 #: One railroad, and its script with a line longer than a phone is wide.
 RAILROAD = "crossover-yard"
 SCRIPT = "# " + "a line longer than a phone is wide " * 4 + "\\n"
+
+#: The railroad `control` has loaded, as the page hands it to the pane. There
+#: is no broker behind this page, so the row the page reads the name off never
+#: arrives and the pane is handed it here (#238).
+LOADS = """
+(railroad) => {
+  const app = document.querySelector("dccex-app");
+  app.renderRoot.querySelector("dccex-script").loaded = railroad;
+}
+"""
 
 #: What the page drew, on one view, at one width. Each view is measured while
 #: it is the one showing: the other is not in the document, which is what a
@@ -308,7 +325,7 @@ def measured(page, width, height):
     page.wait_for_selector(".release")
     drawn[RELEASES_VIEW] = page.evaluate(MEASURE, RELEASES_VIEW)
     page.click(f"dccex-rail button.{SCRIPT_VIEW}")
-    page.click("dccex-script .railroad")
+    page.evaluate(LOADS, RAILROAD)
     page.wait_for_selector("dccex-script .script")
     drawn[SCRIPT_VIEW] = page.evaluate(MEASURE, SCRIPT_VIEW)
     return drawn
@@ -318,10 +335,6 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch()
     context = browser.new_context()
     context.route(RELEASES, answered)
-    context.route(
-        "**/dccex-usb/railroads",
-        lambda route: route.fulfill(json={"railroads": [RAILROAD]}),
-    )
     context.route(
         "**/dccex-usb/scripts/*",
         lambda route: route.fulfill(json={"text": SCRIPT}),
