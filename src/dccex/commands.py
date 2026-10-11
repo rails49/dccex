@@ -92,6 +92,10 @@ STASH = f"<JM {STASH_ID}>".encode()
 entry is unset, and sets nothing — the property a polled command has to have
 (`STATUS`)."""
 
+HOST_TIMEOUT = b"<G 3>"
+"""Sent on each `tc49/layout/alive_confirmed`. The station cuts track power
+3 s after the last one (rails49/CommandStation-EX#5)."""
+
 
 def traction(addr: str, speed: float) -> bytes:
     """A locomotive's speed: `<t addr step dir>`.

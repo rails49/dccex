@@ -8,9 +8,10 @@ port 2560 so that JMRI and hand-held throttles share the same command station.
 That mirror is the other app in this repository (`src/dccex_usb`) and this one
 is a client of its port beside the others; the USB device is never opened here.
 
-*Subscribes* `tc49/layout/state/wanted/#`. *Publishes*
-`tc49/layout/state/device/track` and `tc49/layout/state/device/link/<id>`,
-where the id is the one this app is started with (control ADR-0059).
+*Subscribes* `tc49/layout/state/wanted/#` and `tc49/layout/alive_confirmed`.
+*Publishes* `tc49/layout/state/device/track` and
+`tc49/layout/state/device/link/<id>`, where the id is the one this app is
+started with (control ADR-0059).
 
 The `<…>` syntax is this app's private business — it appears on no bus topic,
 in no other package and in no normative document — and
@@ -104,6 +105,9 @@ WANTED_FUNCTION = "tc49/layout/state/wanted/function"
 WANTED_POINT = "tc49/layout/state/wanted/point"
 WANTED_SIGNAL = "tc49/layout/state/wanted/signal"
 WANTED_TRACK = "tc49/layout/state/wanted/track"
+
+ALIVE_CONFIRMED = "tc49/layout/alive_confirmed"
+"""Published by `layout` once a second while it is up (rails49/control#716)."""
 
 SCRIPT_ROW = {
     WANTED_TRACK: script.ROW_POWER,
@@ -423,8 +427,14 @@ class DccEx:
         self._publish_track()
         bus.subscribe(WANTED, self._on_wanted)
         bus.subscribe(RAILROAD, self._on_railroad)
+        bus.subscribe(ALIVE_CONFIRMED, self._on_alive)
 
     # -- the bus: what the hardware should do --------------------------------
+
+    def _on_alive(self, topic: str, payload: Payload) -> None:
+        """`layout` is up: restart the station's host timeout. Dropped with no
+        link, like any command."""
+        self._send(commands.HOST_TIMEOUT)
 
     def _on_wanted(self, topic: str, payload: Payload) -> None:
         """One desired value, remembered and — if the link is up — applied.

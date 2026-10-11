@@ -1808,6 +1808,70 @@ async def _station_that_has_never_answered_is_not_lowered_again() -> None:
         assert "has not answered" not in tap.values(DEVICE_LINK)[-1]["detail"]
 
 
+# -- the host timeout (rails49/CommandStation-EX#5) ------------------------
+
+ALIVE_CONFIRMED = "tc49/layout/alive_confirmed"
+HOST_TIMEOUT = b"<G 3>"
+
+
+def test_each_alive_confirmed_sends_the_host_timeout_once() -> None:
+    asyncio.run(_each_alive_confirmed_sends_the_host_timeout_once())
+
+
+async def _each_alive_confirmed_sends_the_host_timeout_once() -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        bus.publish(ALIVE_CONFIRMED, {})
+        bus.drain()
+        assert await station.heard(1) == [HOST_TIMEOUT]
+        bus.publish(ALIVE_CONFIRMED, {})
+        bus.drain()
+        assert await station.heard(1) == [HOST_TIMEOUT]
+        await station.heard_nothing_more()
+
+
+def test_alive_confirmed_with_no_link_is_not_held_for_the_connect() -> None:
+    asyncio.run(_alive_confirmed_with_no_link_is_not_held_for_the_connect())
+
+
+async def _alive_confirmed_with_no_link_is_not_held_for_the_connect() -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    app = DccEx(bus, connect=port.connect, poll_s=NEVER_S)
+    bus.drain()
+    bus.publish(ALIVE_CONFIRMED, {})
+    bus.drain()
+    keeping = asyncio.create_task(app.run())
+    try:
+        station = await port.opened()
+        await station.heard_nothing_more()
+        bus.publish(ALIVE_CONFIRMED, {})
+        bus.drain()
+        assert await station.heard(1) == [HOST_TIMEOUT]
+    finally:
+        keeping.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await keeping
+
+
+def test_the_poll_does_not_send_the_host_timeout() -> None:
+    asyncio.run(_poll_does_not_send_the_host_timeout())
+
+
+async def _poll_does_not_send_the_host_timeout() -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port, poll_s=0.01):
+        station = await port.opened()
+        bus.publish(ALIVE_CONFIRMED, {})
+        bus.drain()
+        first = await station.heard(1 + 2 * 2)
+        assert first.count(HOST_TIMEOUT) == 1
+        assert await station.heard(2 * 3) == POLL * 3
+
+
 # -- standing the railroad down -------------------------------------------
 
 
