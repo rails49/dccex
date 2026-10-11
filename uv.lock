@@ -638,7 +638,7 @@ wheels = [
 [[package]]
 name = "tc49"
 version = "0.1.0"
-source = { git = "https://github.com/rails49/control?branch=main#d3176157229cf848ae2dd74195ddb2c0068d2911" }
+source = { git = "https://github.com/rails49/control?branch=main#c6bb924c4374436e69a1358f44ff6a4270612214" }
 dependencies = [
     { name = "paho-mqtt" },
     { name = "pyyaml" },

@@ -245,7 +245,6 @@ def main() -> None:
         prog="python -m dccex",
         description="Run the dccex translator against a broker: the device"
         " vocabulary turned into a command station's own language.",
-        railroad=False,
     )
     parser.add_argument(
         "--station",
