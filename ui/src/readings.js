@@ -7,12 +7,14 @@
  * d.2) — so what goes in here is lines and the moments they arrived, and what
  * comes out is the words on the chrome and on the tiles.
  *
- * **The railroad's power is the one reading that is not the station's.** It is
- * a row `layout` reports on the bus, because `layout` is what the band asks
- * for power and what the station is told by the translator (ADR-0017). So this
- * module reads that payload too and folds it into the band's two presses, and
- * the two channels are not mixed: a track's power on a **tile** is still the station's
- * `<p…>`, and nothing here reads one off the other.
+ * **Two of the readings are not the station's.** The railroad's power is a row
+ * `layout` reports on the bus, because `layout` is what the band asks for power
+ * and what the station is told by the translator (ADR-0017); which railroad
+ * `control` has loaded is a second row on the same connection (the
+ * organisation's ADR-0014, #239). So this module reads both payloads and folds
+ * them into the band, and the two channels are not mixed: a track's power on a
+ * **tile** is still the station's `<p…>`, and nothing here reads one off the
+ * other.
  *
  * **A pure function of what was said and of the moment it is asked for.** No
  * socket, no clock and no DOM: the page hands in its own clock, which is what
@@ -67,10 +69,18 @@ const STOPPED = "stopped";
  * from `off`: a railroad nobody has reported the power of is not a railroad
  * with the power off (ADR-0009 d.2), and it is what the button is disabled on.
  *
+ * `railroad` is the name off `tc49/layout/state/railroad`, read by `named`,
+ * and `null` where `control` has loaded none or has not said. It is the one
+ * reading here that is about the railroad rather than about the rails, and it
+ * is on this value because it comes up the same connection (the organisation's
+ * ADR-0014, #239).
+ *
  * @typedef {object} Layout
  * @property {boolean} connected whether the page has the broker
  * @property {string | null} power what `layout` last reported — `on`, `off` or
  *   `stopped` — and `null` until it has reported
+ * @property {string | null} railroad which railroad `control` has loaded, and
+ *   `null` where none is loaded or none has been reported
  */
 
 /** A page that has not reached the broker: no connection, and nothing
@@ -79,6 +89,7 @@ const STOPPED = "stopped";
 export const UNREACHABLE = /** @type {Layout} */ ({
   connected: false,
   power: null,
+  railroad: null,
 });
 
 /**
@@ -110,6 +121,35 @@ export function reported(payload) {
   return power === ON || power === STOPPED ? power : OFF;
 }
 
+/**
+ * Which railroad `control` has loaded, off one payload on its railroad row.
+ *
+ * The `name` field, which is the field the **translator** reads the same row
+ * for (the organisation's ADR-0014, `src/dccex/translator.py`). `""` is a box
+ * that has loaded no railroad, which is an ordinary state of one (control
+ * #727), and it reads as `null` — as does a payload that is not JSON, one with
+ * no `name` in it, and a `name` that is not a string. What the band says in
+ * that state is `band()`'s sentence rather than a word invented here: a
+ * reading nobody took is an absence (ADR-0009 d.2).
+ *
+ * @param {string} payload the row as it arrived
+ * @returns {string | null} the name, or `null` where none was named
+ */
+export function named(payload) {
+  /** @type {unknown} */
+  let said;
+  try {
+    said = JSON.parse(payload);
+  } catch {
+    return null;
+  }
+  const name =
+    typeof said === "object" && said !== null
+      ? /** @type {{ name?: unknown }} */ (said).name
+      : undefined;
+  return typeof name === "string" && name !== "" ? name : null;
+}
+
 /** Why the power button cannot be pressed, in the order it is asked: no
  *  broker, no station answering, and no word from `layout` yet (ADR-0017 d.3,
  *  #205). The first that is true is what the button is titled, because a
@@ -136,6 +176,12 @@ const STOPS = "stop every locomotive where it stands";
  *  answering, because a fault is owed a sentence (issue 168, #138). */
 const ANSWERING = "answering";
 const OFFLINE = "dcc-ex offline";
+
+/** What the band says where `control` has loaded no railroad, or has not said
+ *  which (#239). A sentence rather than a blank: nothing where a name goes
+ *  reads as a name that went missing, and a box with no railroad loaded is an
+ *  ordinary state of one (control #727, ADR-0009 d.2). */
+const NO_RAILROAD = "no railroad loaded";
 
 /**
  * How many current readings the shown one is the mean of: two seconds' worth
@@ -278,15 +324,18 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * What the band carries: the **build**, the **link** and the power button.
+ * What the band carries: the **build**, the railroad, the **link** and the
+ * power button.
  *
- * One value rather than a list of readings, because the three are three
- * different things — a word the station said, a light, and a control — and
- * what they have in common is only the chrome they sit on.
+ * One value rather than a list of readings, because they are different things
+ * — a word the station said, a word `layout` said, a light, and a control —
+ * and what they have in common is only the chrome they sit on.
  *
  * @typedef {object} Band
  * @property {string} build what the station says it is running, blank while
  *   the link is down
+ * @property {string} railroad which railroad `control` has loaded, or
+ *   `no railroad loaded` where none is
  * @property {boolean} answering whether the station is answering — the link,
  *   which is the dot's colour
  * @property {string} says what the link reads in words, which is what a reader
@@ -442,11 +491,18 @@ function stop(layout) {
  * (ADR-0017, ADR-0020, CONTEXT.md **band**).
  *
  * **Two channels meet here and nowhere else.** The build and the link are the
- * station talking, decoded off the **stream** (ADR-0008 d.2); the power is a
- * row `layout` reports on the bus (`bus.ts`). The power button needs both — it
- * is disabled with no station as readily as with no broker — and this is where
- * they are put together, because what a band carries is one value and the
- * component that draws it works out no reading of its own.
+ * station talking, decoded off the **stream** (ADR-0008 d.2); the power and the
+ * railroad's name are rows `layout` reports on the bus (`bus.ts`). The power
+ * button needs both channels — it is disabled with no station as readily as
+ * with no broker — and this is where they are put together, because what a
+ * band carries is one value and the component that draws it works out no
+ * reading of its own.
+ *
+ * **The railroad does not go with the link.** It is `layout`'s row rather than
+ * the station's, so a station that has stopped answering is still a railroad
+ * `control` has loaded; what takes it away is the bus going, which hands this
+ * module `UNREACHABLE` (`bus.ts`). The **build** beside it goes with the link,
+ * because that one is the station talking.
  *
  * **The two presses are not disabled on the same facts.** The power button
  * offers a state the other of, so it needs the station and a word from
@@ -470,6 +526,7 @@ function stop(layout) {
 export function band(readings, layout) {
   return {
     build: readings.build ?? BLANK,
+    railroad: layout.railroad ?? NO_RAILROAD,
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
     power: power(readings, layout),

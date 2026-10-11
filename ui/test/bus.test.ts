@@ -46,6 +46,12 @@ function opened(): { bus: Bus; broker: Dialled; reported: Layout[] } {
   return { bus, broker, reported };
 }
 
+/** What the bus hands up with the broker there: one of `layout`'s power words
+ *  and the railroad it has loaded, each `null` until its row has arrived. */
+function carries(power: string | null, railroad: string | null = null): Layout {
+  return { connected: true, power, railroad };
+}
+
 /** The latest reading the bus handed up. */
 function latest(reported: Layout[]): Layout {
   const last = reported.at(-1);
@@ -77,18 +83,18 @@ test("what layout reports on the power row is what the page reads", () => {
   const { broker, reported } = opened();
   broker.connects();
   broker.says(POWER_STATE, HOT);
-  expect(latest(reported)).toEqual({ connected: true, power: "on" });
+  expect(latest(reported)).toEqual(carries("on"));
   broker.says(POWER_STATE, COLD);
-  expect(latest(reported)).toEqual({ connected: true, power: "off" });
+  expect(latest(reported)).toEqual(carries("off"));
   broker.says(POWER_STATE, HALTED);
-  expect(latest(reported)).toEqual({ connected: true, power: "stopped" });
+  expect(latest(reported)).toEqual(carries("stopped"));
 });
 
 test("a payload the page cannot read reads as off", () => {
   const { broker, reported } = opened();
   broker.connects();
   broker.says(POWER_STATE, NONSENSE);
-  expect(latest(reported)).toEqual({ connected: true, power: "off" });
+  expect(latest(reported)).toEqual(carries("off"));
 });
 
 test("a row that is not the power row is not read as the power", () => {
@@ -96,7 +102,7 @@ test("a row that is not the power row is not read as the power", () => {
   broker.connects();
   broker.says(POWER_STATE, HOT);
   broker.says("tc49/layout/state/run", COLD);
-  expect(latest(reported)).toEqual({ connected: true, power: "on" });
+  expect(latest(reported)).toEqual(carries("on"));
 });
 
 test("a connection that has not been made yet is a bus that is away", () => {
@@ -135,7 +141,7 @@ test("an ask layout drops changes no reading", () => {
   broker.connects();
   broker.says(POWER_STATE, HOT);
   bus.wants("off");
-  expect(latest(reported)).toEqual({ connected: true, power: "on" });
+  expect(latest(reported)).toEqual(carries("on"));
 });
 
 test("a press asks for one row and not a second", () => {

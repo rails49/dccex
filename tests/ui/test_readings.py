@@ -89,6 +89,12 @@ def reported(*payload: str) -> list[str]:
     return read
 
 
+def named(*payload: str) -> list[str | None]:
+    """What `layout`'s railroad row reads as, for each of `payload` in turn."""
+    read: list[str | None] = drawn(loaded=list(payload))["named"]
+    return read
+
+
 def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
     """One **tile** per track, by the letter of each.
 
@@ -127,14 +133,21 @@ TALKING: tuple[tuple[str, int], ...] = (
     *((line, NOW - 20) for line in POLLED),
 )
 
+#: The railroad `control` has loaded, as its railroad row names it
+#: (the organisation's ADR-0014, #239).
+YARD = "crossover-yard"
+
+#: What the band says where `layout` has named no railroad (#239).
+NO_RAILROAD = "no railroad loaded"
+
 #: What the bus says: the broker, with each of the three rows `layout`
 #: publishes on its power state row, and with none of them arrived yet. A
 #: scenario that says nothing about the bus is a page that has not reached the
 #: broker, which is what one has until it answers (`bus.ts`).
-HOT = {"connected": True, "power": "on"}
-COLD = {"connected": True, "power": "off"}
-HALTED = {"connected": True, "power": "stopped"}
-UNSAID = {"connected": True, "power": None}
+HOT = {"connected": True, "power": "on", "railroad": YARD}
+COLD = {"connected": True, "power": "off", "railroad": YARD}
+HALTED = {"connected": True, "power": "stopped", "railroad": YARD}
+UNSAID = {"connected": True, "power": None, "railroad": None}
 
 
 @lru_cache(maxsize=1)
@@ -145,15 +158,16 @@ def live() -> dict[str, Any]:
 
 
 @pytest.mark.node
-def test_the_band_carries_the_build_the_link_and_the_two_presses() -> None:
-    """The band is the **build**, the **link** and two presses, and nothing
-    else (CONTEXT.md **band**, ADR-0017, ADR-0020). A reading added without a
-    scenario beside it is a reading an operator can be shown that nobody ever
-    read (ADR-0009 d.3)."""
+def test_the_band_carries_the_build_the_railroad_the_link_and_the_presses() -> None:
+    """The band is the **build**, the railroad, the **link** and two presses,
+    and nothing else (CONTEXT.md **band**, ADR-0017, ADR-0020, #239). A reading
+    added without a scenario beside it is a reading an operator can be shown
+    that nobody ever read (ADR-0009 d.3)."""
     assert sorted(live()["band"]) == [
         "answering",
         "build",
         "power",
+        "railroad",
         "says",
         "stop",
     ]
@@ -170,11 +184,50 @@ def test_the_band_reads_the_build_the_link_and_the_power_off_both_channels() -> 
     """
     assert band(said=list(TALKING), now=NOW, layout=HOT) == {
         "build": "9db6d10",
+        "railroad": YARD,
         "answering": True,
         "says": "answering",
         "power": {"reads": "on", "title": "power off", "wants": "off"},
         "stop": {"title": STOPS, "wants": "stopped"},
     }
+
+
+@pytest.mark.node
+def test_the_band_names_the_railroad_control_has_loaded() -> None:
+    """Which railroad `control` has loaded, off its railroad row (the
+    organisation's ADR-0014, #239).
+
+    It is the name and not a sentence about it: the row says what the railroad
+    is called and the band says it, so an operator on a box beside two
+    railroads can read which one the station is being driven for.
+    """
+    assert band(said=list(TALKING), now=NOW, layout=HOT)["railroad"] == YARD
+    loaded = {**HOT, "railroad": "yard"}
+    assert band(said=list(TALKING), now=NOW, layout=loaded)["railroad"] == "yard"
+
+
+@pytest.mark.node
+def test_a_band_with_no_railroad_loaded_says_so() -> None:
+    """`layout` has named none, or the page has not reached the broker at all.
+
+    Both are the same reading on the chrome and neither is blank: a band with
+    nothing where the railroad goes reads as a railroad whose name is missing,
+    where this is a box that has loaded none — an ordinary state of one
+    (control #727, ADR-0009 d.2).
+    """
+    assert band(said=list(TALKING), now=NOW, layout=UNSAID)["railroad"] == NO_RAILROAD
+    assert band(said=list(TALKING), now=NOW)["railroad"] == NO_RAILROAD
+
+
+@pytest.mark.node
+def test_the_railroad_does_not_go_with_the_link() -> None:
+    """It is `layout`'s row and not the station's, so a station that has
+    stopped answering is still a railroad `control` has loaded (ADR-0017,
+    #239). The **build** beside it goes, because that one is the station
+    talking (ADR-0008 d.3)."""
+    gone = band(said=list(TALKING), now=NOW + silent_ms(), layout=HOT)
+    assert gone["railroad"] == YARD
+    assert gone["build"] == ""
 
 
 @pytest.mark.node
@@ -300,6 +353,42 @@ def test_a_power_row_the_page_cannot_read_reads_as_off() -> None:
 
 
 @pytest.mark.node
+def test_the_railroad_row_names_the_railroad_control_has_loaded() -> None:
+    """The `name` field of `tc49/layout/state/railroad`, which is the row the
+    translator reads the same field off (the organisation's ADR-0014,
+    `src/dccex/translator.py`)."""
+    assert named('{"name":"yard"}', '{"name":"crossover-yard"}') == [
+        "yard",
+        "crossover-yard",
+    ]
+
+
+@pytest.mark.node
+def test_a_railroad_row_with_no_name_on_it_is_no_railroad() -> None:
+    """`""` is a box that has loaded none, which control #727 defines, and the
+    page reads nothing else as one either: a row that is not JSON, a document
+    with no `name` in it, and a `name` that is not a string.
+
+    `null` rather than a word of this page's: what the band says about a
+    railroad nobody named is the band's sentence, and a reading nobody took is
+    not a value here (ADR-0009 d.2).
+    """
+    unnamed = (
+        '{"name":""}',
+        "{}",
+        "x",
+        "",
+        "null",
+        "[]",
+        '"yard"',
+        '{"name":null}',
+        '{"name":3}',
+        '{"railroad":"yard"}',
+    )
+    assert named(*unnamed) == [None] * len(unnamed)
+
+
+@pytest.mark.node
 def test_there_is_a_tile_per_track_in_letter_order() -> None:
     """One per track the station names, in letter order (CONTEXT.md **tile**).
     D is set to NONE and has a tile all the same.
@@ -420,6 +509,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     (ADR-0008, control ADR-0066)."""
     assert band(now=NOW) == {
         "build": "",
+        "railroad": NO_RAILROAD,
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": None, "title": "no bus", "wants": None},
@@ -484,6 +574,7 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
 
     assert band(**gone) == {
         "build": "",
+        "railroad": YARD,
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": None, "title": "no station", "wants": None},
