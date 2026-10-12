@@ -310,11 +310,16 @@ def test_the_decoder_is_the_one_place_a_line_is_read() -> None:
     """One place the protocol is known (ADR-0009 d.3), and it is not on the way
     in: the stream carries bytes and reads none of them (ADR-0008 d.2).
 
-    Two modules ask it, and neither of them knows a letter of the station's
+    Three modules ask it, and none of them knows a letter of the station's
     vocabulary. The monitor asks for the sentence it draws beside the bytes,
-    and `readings.js` asks for the fact and folds it into what the band and
-    the tiles show (#7) — which is what keeps the vocabulary in one file when
-    the page grew a second thing to do with it.
+    `readings.js` asks for the fact and folds it into what the band and the
+    tiles show (#7), and `journal.js` asks what a `<p…>` in the **journal**
+    said about a district's power (#265) — which is what keeps the vocabulary
+    in one file as the page grows things to do with it.
+
+    The `<* TRACK X … *>` lines are read in `journal.js` and nowhere here: the
+    monitor shows them raw, the station writing a diagnostic being a line this
+    page has no gloss for.
     """
     importers = {
         module.name
@@ -325,5 +330,6 @@ def test_the_decoder_is_the_one_place_a_line_is_read() -> None:
     }
     assert importers == {
         "dccex-monitor.ts",
+        "journal.js",
         "readings.js",
     }, f"the decoder is read in {importers}"
