@@ -313,16 +313,15 @@ back to `on` as soon as the broadcast is out.
 
 The station has an emergency-stop **lock** in later firmware, `<!P>` until
 `<!R>` with `<!Q>` to ask, which would make `stopped` a state rather than an
-act. It is not used, for two reasons
-([control#463](https://github.com/rails49/control/issues/463),
-[control#464](https://github.com/rails49/control/issues/464)). It is a
-firmware-branch command of one product, so a `stopped` that meant "under a
-lock" would put a station's private vocabulary inside a bus word every
-railroad shares. And the station on the layout is older than it: below the
+act. It is not used: it is a firmware-branch command of one product, so a
+`stopped` that meant "under a lock" would put a station's private vocabulary
+inside a bus word every railroad shares
+([control#464](https://github.com/rails49/control/issues/464)). Below the
 version that has the lock, the `!` opcode takes no suffix, so `<!P>`, `<!R>`
 and `<!Q>` are all read as `<!>` and none of them says so. That is what made a
 `<!Q>` in the poll an emergency stop once a second, and every train move a few
-centimetres and stand.
+centimetres and stand
+([control#463](https://github.com/rails49/control/issues/463)).
 
 **A trip is read from the station's diagnostics.** The station cuts a
 district and prints `<* TRACK B FAST OVERLOAD … *>`, `<* TRACK B POWER
