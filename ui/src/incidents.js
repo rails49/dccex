@@ -121,10 +121,11 @@ const RESTARTED = "the station restarted";
 /** What the link line says when the station stopped answering. */
 const DOWN = "down";
 
-/** Milliseconds in a second and in a minute, for the duration a cut is drawn
- *  as. */
+/** Milliseconds in a second and in a minute, and the seconds in a minute, for
+ *  the duration a cut is drawn as. */
 const SECOND_MS = 1000;
 const MINUTE_MS = 60000;
+const MINUTE = 60;
 
 /** What a file's size steps up at: a thousand and a million bytes. The unit is
  *  the decimal one it is spelt as — `kB` is a thousand bytes, which is what a
@@ -269,8 +270,10 @@ export function lasted(ms) {
   if (ms < MINUTE_MS) {
     return `${(ms / SECOND_MS).toFixed(1)} s`;
   }
-  const minutes = Math.floor(ms / MINUTE_MS);
-  return `${minutes} m ${padded(Math.round((ms % MINUTE_MS) / SECOND_MS))} s`;
+  // Rounded to the second first and split afterwards, so that 119 900 ms is
+  // two minutes rather than one minute and sixty seconds.
+  const seconds = Math.round(ms / SECOND_MS);
+  return `${Math.floor(seconds / MINUTE)} m ${padded(seconds % MINUTE)} s`;
 }
 
 /**
