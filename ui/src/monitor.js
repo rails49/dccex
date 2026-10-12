@@ -28,8 +28,9 @@
  * back while they read (#125).
  *
  * It is JavaScript with its types in JSDoc, as `decoder.js`, `message.js`,
- * `readings.js`, `releases.js`, `flash.js` and `framing.js` are: the modules
- * the gate runs rather than reads, listed in `tests/ui/test_decoder.py`. They
+ * `readings.js`, `releases.js`, `flash.js`, `framing.js` and `journal.js`
+ * are: the modules the gate runs rather than reads, listed in
+ * `tests/ui/test_decoder.py`. They
  * were read for as long as there was no node to run them with, and a stamp an
  * hour out leaves a source saying every right word (#78, #101). `tsc` checks
  * this file as strictly as it checks the rest (`ui/tsconfig.json`).

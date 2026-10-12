@@ -7,7 +7,7 @@ worth keeping — a node that is not there and a runner that did not run are bot
 red, and both say what could not be run — and that no module has a copy of them
 left.
 
-The runners used here are written for the assertion and thrown away. The seven
+The runners used here are written for the assertion and thrown away. The eight
 real ones are each their own module's, and what they answer is that module's
 claim rather than this one's.
 """
@@ -24,7 +24,7 @@ from tests.ui.test_look import ROOT
 #: `node.py` does would show up.
 HERE = Path(__file__).resolve().parent
 
-#: The other half of the same boundary: what the seven runners import for
+#: The other half of the same boundary: what the eight runners import for
 #: stdin and stdout, so that each of them is the mapping it is for.
 PRELUDE = HERE / "each.mjs"
 
@@ -105,7 +105,7 @@ def test_a_runner_is_started_in_one_place() -> None:
 
 @pytest.mark.node
 def test_every_ask_is_answered_in_the_order_it_was_asked(tmp_path: Path) -> None:
-    """And a promise is waited for, which is what one of the seven answers.
+    """And a promise is waited for, which is what one of the eight answers.
 
     The sequence a flash runs is asynchronous (`tests/ui/flash.mjs`), so the
     prelude cannot hand back what `map` gives it: the asks go through one after

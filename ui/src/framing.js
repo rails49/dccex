@@ -28,8 +28,8 @@
  * `message.js`'s, which is another.
  *
  * It is JavaScript with its types in JSDoc, as `decoder.js`, `message.js`,
- * `readings.js`, `releases.js`, `flash.js` and `monitor.js` are: the seven the
- * gate runs rather than reads. These two were read for as long as there was no
+ * `readings.js`, `releases.js`, `flash.js`, `monitor.js` and `journal.js` are:
+ * the eight the gate runs rather than reads. These two were read for as long as there was no
  * node to run them with, and a framing that kept its delimiter or a scheme
  * picked the wrong way round leaves a source saying every right word (#78,
  * #101). `tsc` checks this file as strictly as it checks the rest

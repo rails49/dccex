@@ -1,6 +1,6 @@
 """Running one of the page's own modules, under a bare node.
 
-Seven of the checks here put the page's real functions through themselves
+Eight of the checks here put the page's real functions through themselves
 rather than reading the source that would produce their answers (ADR-0009 d.3,
 `tests/ui/test_decoder.py`), and every one of them needs the same few lines to
 do it: find a node, hand a runner beside this file a JSON payload on stdin,

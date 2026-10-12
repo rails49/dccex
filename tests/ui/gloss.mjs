@@ -13,7 +13,7 @@
 // JavaScript (`ui/src/decoder.js`), as the box's own rule is
 // (`ui/src/message.js`, `tests/ui/message.mjs`).
 //
-// Stdin and stdout are `tests/ui/each.mjs`'s, which the seven runners share.
+// Stdin and stdout are `tests/ui/each.mjs`'s, which the eight runners share.
 
 import { read } from "../../ui/src/decoder.js";
 import { each } from "./each.mjs";
