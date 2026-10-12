@@ -51,6 +51,12 @@ import { mounted, part, press, reads } from "./mounted.js";
 /** The railroad `control` has loaded, and the one it is given instead. */
 const RAILROADS = ["crossover-yard", "bench"];
 
+/** What the page hands down while the railroad is unreported: no railroad row
+ *  has arrived since the connection came up, which is the whole of an outage
+ *  and the gap after a reconnect (#242, `readings.js`). It is not `null`,
+ *  which is a row that says `control` has loaded none. */
+const UNREPORTED = undefined;
+
 /** What the store holds for the first of them. */
 const SCRIPT = '@on("power")\ndef power(t):\n    t.default()\n';
 
@@ -138,7 +144,7 @@ function key(
  *  draws the answer when it arrives, which is two turns. */
 async function loads(
   drawn: DccexScript,
-  railroad: string | null,
+  railroad: string | null | undefined,
 ): Promise<void> {
   drawn.loaded = railroad;
   await drawn.updateComplete;
@@ -308,6 +314,94 @@ test("a railroad unloaded with no edits in it is replaced without a question", a
 
   expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
   expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
+});
+
+test("an unreported railroad keeps the unapplied edits and says nothing", async () => {
+  const [drawn, asked] = await pane();
+  await typed(drawn, "# typed and not applied\n");
+
+  await loads(drawn, UNREPORTED);
+
+  expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
+  expect(edited(drawn)).toBe("# typed and not applied\n");
+  expect(reads(drawn, ".unapplied")).toBe(UNAPPLIED);
+  expect(dead(drawn, ".applies")).toBe(true);
+  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+});
+
+test("an unreported railroad keeps the editor, and asks nothing after it", async () => {
+  const [drawn, asked] = await pane();
+  const made = editor(drawn);
+
+  await loads(drawn, UNREPORTED);
+  expect(drawn.editor).toBe(made);
+  expect(edited(drawn)).toBe(SCRIPT);
+
+  await loads(drawn, RAILROADS[0]);
+  expect(drawn.editor).toBe(made);
+  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+});
+
+test("the Apply warning closes where the railroad goes unreported", async () => {
+  const [drawn, asked] = await pane();
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+  expect(reads(drawn, ".warning .warns")).toBe(STOPS);
+
+  await loads(drawn, UNREPORTED);
+
+  expect(drawn.renderRoot.querySelector(".warning")).toBeNull();
+  expect(asked.applied).toStrictEqual([]);
+});
+
+test("Apply asks nothing while the railroad is unreported", async () => {
+  const [drawn, asked] = await pane();
+  await loads(drawn, UNREPORTED);
+
+  press(drawn, ".applies");
+  await drawn.updateComplete;
+
+  expect(drawn.renderRoot.querySelector(".warning")).toBeNull();
+  expect(asked.applied).toStrictEqual([]);
+});
+
+test("a railroad reported after an unreported one is opened as any other", async () => {
+  const other = "# the bench\n";
+  const [drawn, asked] = await pane({
+    [RAILROADS[0]]: SCRIPT,
+    [RAILROADS[1]]: other,
+  });
+  await loads(drawn, UNREPORTED);
+
+  await loads(drawn, RAILROADS[1]);
+
+  expect(asked.opened).toStrictEqual([RAILROADS[0], RAILROADS[1]]);
+  expect(edited(drawn)).toBe(other);
+  expect(drawn.renderRoot.querySelector(".unloaded")).toBeNull();
+});
+
+test("a railroad reported after an unreported one strands the edits as any other", async () => {
+  const [drawn, asked] = await pane();
+  await typed(drawn, "# typed and not applied\n");
+  await loads(drawn, UNREPORTED);
+
+  await loads(drawn, RAILROADS[1]);
+
+  expect(reads(drawn, ".unloaded .warns")).toBe(GONE);
+  expect(asked.opened).toStrictEqual([RAILROADS[0]]);
+  expect(edited(drawn)).toBe("# typed and not applied\n");
+  expect(dead(drawn, ".applies")).toBe(true);
+});
+
+test("no railroad loaded after an unreported one leaves nothing to edit", async () => {
+  const [drawn] = await pane();
+  await loads(drawn, UNREPORTED);
+
+  await loads(drawn, null);
+
+  expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
+  expect(drawn.editor).toBeNull();
 });
 
 test("the page closing with unapplied edits is refused", async () => {

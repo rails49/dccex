@@ -20,6 +20,14 @@
  * thing that happens to a person rather than one they do. Neither writes
  * anything: the text stays in the editor until somebody says to discard it.
  *
+ * **A bus that goes away is not a railroad being unloaded.** The railroad the
+ * page hands down is unreported for the whole of an outage and until the first
+ * railroad row after a reconnect, and this view does nothing in that state: the
+ * editor, the edits, the undo history and what the last Apply came to all stay,
+ * nothing is asked of the face, and Apply is dead because there is no railroad
+ * to send a text to. What `control` has loaded is a row and not an absence
+ * (issue 242, `readings.js`'s `Layout`, `#unreported`).
+ *
  * **Apply says what it does before it does it** (ADR-0006 d.2, ADR-0015 d.3).
  * The translator exits on a text that differs from the one it is running, which
  * cuts track power and stands the railroad down, and nothing behind the page
@@ -92,14 +100,17 @@ export class DccexScript extends LitElement {
     became: { state: true },
   };
 
-  /** Which railroad `control` has loaded, as the page hands it down, or `null`
-   *  where none is and where the page has not reached the broker (`bus.ts`,
-   *  `readings.js`'s `named`).
+  /** Which railroad `control` has loaded, as the page hands it down: the name,
+   *  `null` where a railroad row says none is, and `undefined` where none has
+   *  been reported since the page reached the broker (`bus.ts`, `readings.js`'s
+   *  `Layout`).
    *
    *  It is what this view edits, and the whole of what says which script is
    *  open: a name that changes opens another script, and `null` leaves nothing
-   *  to edit (ADR-0015 d.5 as amended, issue 238). */
-  loaded: string | null = null;
+   *  to edit (ADR-0015 d.5 as amended, issue 238). Unreported opens nothing and
+   *  closes nothing — it is a reading the page has not got rather than one it
+   *  has (issue 242, `#unreported`). */
+  loaded: string | null | undefined = undefined;
 
   /** What asks the face for one railroad's script, as the page hands it down.
    *
@@ -228,9 +239,34 @@ export class DccexScript extends LitElement {
    * Worked out rather than kept, because it is the two names disagreeing and
    * nothing else: everything that opens a script sets both, so a flag of its
    * own would be a second answer to a question the names already answer.
+   *
+   * A railroad that is unreported disagrees with nothing: there is no name to
+   * disagree with, which is why it is asked first (issue 242).
    */
   #gone(): boolean {
-    return this.railroad !== null && this.railroad !== this.loaded;
+    return (
+      !this.#unreported() &&
+      this.railroad !== null &&
+      this.railroad !== this.loaded
+    );
+  }
+
+  /** Whether the railroad is unreported: no railroad row has arrived since the
+   *  page reached the broker, which is the whole of an outage and the gap
+   *  between a reconnect and the retained row landing (issue 242, `bus.ts`).
+   *
+   * It is the state this view does nothing in. What is open stays open — the
+   * document, the edits, the undo history and what the last Apply came to —
+   * because a broker that went down has said nothing about the railroad those
+   * edits were written for, and a page that read it as an unload would offer
+   * `discard them` for a broker that restarted and ask the face for the same
+   * script again when it came back.
+   *
+   * Apply is dead while it lasts, because there is no railroad to send a text
+   * to and no name to send it under.
+   */
+  #unreported(): boolean {
+    return this.loaded === undefined;
   }
 
   /** What is said about the script in the editor: that a railroad has none and
@@ -310,7 +346,10 @@ export class DccexScript extends LitElement {
         <button
           class="applies"
           type="button"
-          ?disabled=${this.applying || this.warning || this.#gone()}
+          ?disabled=${this.applying ||
+          this.warning ||
+          this.#gone() ||
+          this.#unreported()}
           @click=${() => {
             this.warning = true;
           }}
@@ -359,12 +398,24 @@ export class DccexScript extends LitElement {
    * lands is dropped by the guard in `#applied` below. What is on its way to
    * the store is already on its way.
    *
+   * A railroad that is unreported is none of the three either, and is read
+   * before them: it is not a name this editor is not on, it is no name at all
+   * (issue 242). Nothing opens and nothing closes, and the one thing it does
+   * is shut the Apply warning — a question about standing a railroad down that
+   * the page cannot reach the broker to ask is not a question to leave open,
+   * and nothing was sent.
+   *
    * It is read here rather than in a setter so that one draw carries both the
    * name and what it opened: the railroad is set before the template is read,
    * and the face is asked after it.
    */
   protected override willUpdate(): void {
-    if (this.loaded === this.railroad) {
+    const loaded = this.loaded;
+    if (loaded === undefined) {
+      this.warning = false;
+      return;
+    }
+    if (loaded === this.railroad) {
       return;
     }
     if (
@@ -375,14 +426,17 @@ export class DccexScript extends LitElement {
       this.warning = false;
       return;
     }
-    void this.#shows(this.loaded);
+    void this.#shows(loaded);
   }
 
   /** The edits on an unloaded railroad discarded, which opens the railroad
    *  `control` has loaded now — or leaves nothing to edit, where it has loaded
    *  none. Nothing was written to either railroad. */
   readonly #discards = (): void => {
-    void this.#shows(this.loaded);
+    // The control is drawn on the warning alone, and the warning is a railroad
+    // `control` has loaded another of — so there is a reading here to open and
+    // the railroad is not unreported.
+    void this.#shows(this.loaded ?? null);
   };
 
   /** The Apply warning declined. The edits stay in the editor and the railroad
