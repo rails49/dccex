@@ -14,10 +14,12 @@ message arriving there is the app having acted.
 
 import asyncio
 import contextlib
+import json
 import logging
 import socket
 import time
 from collections.abc import AsyncGenerator, Callable
+from pathlib import Path
 
 import pytest
 from tc49.lib.bus import InProcessBus, Payload
@@ -25,6 +27,7 @@ from tc49.lib.clock import Clock
 from tc49.lib.loading import RAILROAD
 
 from dccex import sample
+from dccex.journal import Journal
 from dccex.store import Scripts
 from dccex.translator import DccEx
 from tests.stores import Store
@@ -166,6 +169,7 @@ async def running(
     text: str = "",
     no_script: bool = False,
     now: Callable[[], float] = time.monotonic,
+    journal: Journal | None = None,
 ) -> AsyncGenerator[DccEx]:
     """The app, constructed on the bus and keeping its link, until the test
     is done with it.
@@ -181,6 +185,7 @@ async def running(
         bus,
         connect=port.connect,
         now=now,
+        journal=journal,
         poll_s=poll_s,
         first_backoff_s=backoff_s,
         max_backoff_s=backoff_s * 4,
@@ -1929,3 +1934,204 @@ async def _standing_down_a_railroad_that_was_never_reached_sends_nothing() -> No
     app = DccEx(bus, connect=Port().connect)
     bus.drain()
     await app.shutdown()  # no link, no writer, and nothing raised
+
+
+# -- the journal: what the station said, kept (ADR-0022) ------------------
+
+AT = "2026-10-12T18:00:12.345+00:00"
+"""The stamp every line here carries, so a line is asserted whole: when a
+line arrived is the journal's clock and not this app's state."""
+
+INVERT = b"<* TRACK C INVERT (fast) *>"
+"""A reverser flipping district C the way it is meant to. The translator
+reads no fact out of it — it is in neither `replies`' diagnostics nor
+anything this app acts on — and the journal keeps it, because telling a good
+flip from one that did not clear a short is a rule the page applies to the
+file afterwards (ADR-0022 d.3)."""
+
+
+def kept(path: Path) -> list[dict[str, object]]:
+    """The journal as it stands, one object per line.
+
+    Read while the app is still running, which is the state the file is read
+    in: letting the link go writes a `down` line of its own.
+    """
+    return [json.loads(said) for said in path.read_text().splitlines()]
+
+
+def journal(tmp_path: Path) -> tuple[Journal, Path]:
+    """A journal on a file of the test's own, with the suite's own stamp."""
+    path = tmp_path / "journal.jsonl"
+    return Journal(path, at=lambda: AT), path
+
+
+def test_a_line_about_a_district_carries_its_mode_and_its_limit(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_line_about_a_district_carries_its_mode_and_its_limit(tmp_path))
+
+
+async def _line_about_a_district_carries_its_mode_and_its_limit(
+    tmp_path: Path,
+) -> None:
+    """The one thing a reader of the file cannot get back afterwards: what
+    the district was set to and allowed when the line arrived (d.2).
+
+    The flip itself is kept verbatim, `<` and `>` included, and nothing is
+    read out of it: a `TRACK C INVERT` is a line this app has no fact for.
+    """
+    bus, _ = bus_and_tap()
+    bus.publish(RAILROAD, {"name": "gleis49"})
+    bus.drain()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(
+            b"<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>",
+            b"<= C MAIN A>",
+            b"<jG 2000 250 500 1500>",
+            INVERT,
+        )
+        await asyncio.sleep(QUIET_S)
+        assert kept(path)[-1] == {
+            "at": AT,
+            "railroad": "gleis49",
+            "build": "v5.6.4-rails49.1",
+            "said": "<* TRACK C INVERT (fast) *>",
+            "district": "C",
+            "mode": "MAIN_AUTO",
+            "limit": 500,
+        }
+
+
+def test_a_power_line_is_kept_and_the_lines_that_say_what_it_meant_are_not(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(
+        _power_line_is_kept_and_the_lines_that_say_what_it_meant_are_not(tmp_path)
+    )
+
+
+async def _power_line_is_kept_and_the_lines_that_say_what_it_meant_are_not(
+    tmp_path: Path,
+) -> None:
+    """Every `<p…>` and every `<* TRACK … *>`, and nothing else on the port:
+    the mode, the limit and the banner are read for the fields a line
+    carries and are not lines of their own (d.2)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(
+            b"<= A MAIN>",
+            b"<jG 2000>",
+            b"<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>",
+            b"<p1 A>",
+            b"<H 12 1>",
+            b"<l 3 1 191 0>",
+        )
+        await asyncio.sleep(QUIET_S)
+        assert [line.get("said") for line in kept(path)] == [None, "<p1 A>"]
+        assert kept(path)[-1] == {
+            "at": AT,
+            "railroad": "",
+            "build": "v5.6.4-rails49.1",
+            "said": "<p1 A>",
+            "district": "A",
+            "mode": "MAIN",
+            "limit": 2000,
+        }
+
+
+def test_a_district_the_station_has_said_nothing_about_carries_neither(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_district_the_station_has_said_nothing_about_carries_neither(tmp_path))
+
+
+async def _district_the_station_has_said_nothing_about_carries_neither(
+    tmp_path: Path,
+) -> None:
+    """`null` and not a number somebody could count: the first second of a
+    link is a station that has been asked and has not answered yet."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p0 B>")
+        await asyncio.sleep(QUIET_S)
+        assert kept(path)[-1]["district"] == "B"
+        assert kept(path)[-1]["mode"] is None
+        assert kept(path)[-1]["limit"] is None
+
+
+def test_the_link_going_down_and_up_is_a_line_each(tmp_path: Path) -> None:
+    asyncio.run(_link_going_down_and_up_is_a_line_each(tmp_path))
+
+
+async def _link_going_down_and_up_is_a_line_each(tmp_path: Path) -> None:
+    """The word moving and not every sentence about it: a connect retried
+    against a station that is not there says `down` on the row each time and
+    writes one line (d.2).
+
+    A process that has just started has a link that is down and has not gone
+    anywhere, so the first line is the first `up`.
+    """
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        first = await port.opened()
+        first.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+        first.hangs_up()
+        second = await port.opened(2)
+        second.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+        assert [line.get("link") for line in kept(path) if "link" in line] == [
+            "up",
+            "down",
+            "up",
+        ]
+
+
+def test_a_restart_is_a_line(tmp_path: Path) -> None:
+    asyncio.run(_restart_is_a_line(tmp_path))
+
+
+async def _restart_is_a_line(tmp_path: Path) -> None:
+    """The stash read back empty, which every boot clears (ADR-0021 d.4).
+    The link did not go, so nothing says it on the row: this is the only
+    record that the station came up again."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+        station.says(EMPTY)
+        await asyncio.sleep(QUIET_S)
+        assert [line for line in kept(path) if "restart" in line] == [
+            {"at": AT, "railroad": "", "build": "", "restart": True}
+        ]
+
+
+def test_with_no_journal_nothing_is_written(tmp_path: Path) -> None:
+    asyncio.run(_with_no_journal_nothing_is_written(tmp_path))
+
+
+async def _with_no_journal_nothing_is_written(tmp_path: Path) -> None:
+    """A box given no file keeps no journal, and the app is the app it was:
+    the station still hears the two questions, and nothing is created
+    anywhere (ADR-0022 d.1)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        station.says(b"<p1 A>", INVERT)
+        await asyncio.sleep(QUIET_S)
+    assert list(tmp_path.iterdir()) == []
