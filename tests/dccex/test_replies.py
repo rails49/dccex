@@ -98,12 +98,23 @@ def test_everything_else_on_the_port_reads_as_nothing() -> None:
 
 # -- a district the station cut itself (ADR-0016) -------------------------
 #
-# Each line as `MotorDriver.cpp` prints it, at fork tag `v5.6.4-rails49.1`:
-# `%4M` pads the milliseconds to four places.
+# Each line as `MotorDriver.cpp` prints it, at fork tag
+# `v5.6.4-rails49.6-ocp-test`: `%4M` pads the milliseconds to four places in
+# the lines the retry prints, and the Guard's cut pads nothing.
 
 
 def test_an_overload_is_a_trip() -> None:
     said = b"<* TRACK B POWER OVERLOAD 3120mA (max 3000mA) detected after    2ms. Pause   40ms *>"
+    assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.TRIP)
+
+
+def test_a_guard_cut_is_a_trip() -> None:
+    said = b"<* TRACK B FAST OVERLOAD 4210mA. Pause 100ms *>"
+    assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.TRIP)
+
+
+def test_a_guard_cut_on_a_fault_pin_is_a_trip() -> None:
+    said = b"<* TRACK B FAST OVERLOAD 4210mA FAULT PIN. Pause 100ms *>"
     assert replies.reply(said) == replies.Diagnostic(track="B", kind=replies.TRIP)
 
 

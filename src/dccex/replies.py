@@ -97,11 +97,14 @@ ALERT = "alert"
 
 _DIAGNOSTIC = re.compile(
     rb"\* TRACK ([A-H]) "
-    rb"(?:(?P<trip>POWER OVERLOAD|FAULT PIN detected)"
+    rb"(?:(?P<trip>POWER OVERLOAD|FAST OVERLOAD|FAULT PIN detected)"
     rb"|(?P<restore>POWER RESTORE)|(?P<normal>NORMAL)|(?P<alert>ALERT))\b"
 )
 """The station's words, from `MotorDriver.cpp` at fork tag
-`v5.6.4-rails49.1`. The rails49 fork owns them (ADR-0016, consequences)."""
+`v5.6.4-rails49.6-ocp-test`. `FAST OVERLOAD` is the cut the Guard makes: on
+rails49 every DCC track is guarded while powered, so it is most cuts and it
+comes with no `ALERT` before it (#251). The rails49 fork owns them (ADR-0016
+d.3 as amended, consequences)."""
 
 
 _STASH = str(STASH_ID).encode()
