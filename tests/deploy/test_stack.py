@@ -125,6 +125,16 @@ BY_ID = "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
 #: container side of `control`'s `devices:` entry before that.
 INSIDE = "/dev/dccex"
 
+#: The volume the **journal** is kept on, and where both containers mount it.
+#: Named rather than a path on the box: nothing on the box has to be made for
+#: it, and the record outlives both images (ADR-0022 d.1, d.4).
+JOURNAL = "journal"
+JOURNAL_AT = "/var/lib/dccex"
+JOURNAL_MOUNT = f"{JOURNAL}:{JOURNAL_AT}"
+
+#: The file on it the translator appends to, which is what `--journal` names.
+JOURNAL_FILE = f"{JOURNAL_AT}/journal.jsonl"
+
 
 def uncommented(text: str) -> list[str]:
     """The file's lines with its prose taken out.
@@ -321,16 +331,41 @@ def test_the_translator_dials_the_broker_on_rails49_and_the_mirror_here() -> Non
     assert "ports:" not in block
 
 
-def test_the_translator_is_given_the_store_and_mounts_nothing() -> None:
+def test_the_translator_is_given_the_store_and_mounts_no_path_of_the_boxs() -> None:
     """The script is a document in the store and no longer a file on the box
     (#175, ADR-0015 d.1), so the service names a store and the deploy makes
-    nothing for it. A mount whose source is missing is made by the daemon as
-    a directory, which is what there is now nothing to get wrong."""
+    nothing for it.
+
+    The one mount is the journal's named volume, below. Nothing here binds a
+    path of the box's: a bind mount whose source is missing is made by the
+    daemon as a directory, which is what there is nothing to get wrong.
+    """
     block = services(BOX)["translator"]
     assert '"--store", "${DCCEX_STORE_URL:-http://store:8765}"' in block
     assert "--startup" not in block
-    assert "volumes:" not in block
+    assert entries(block, "volumes") == [JOURNAL_MOUNT]
     assert "startup" not in DEPLOY.read_text()
+
+
+def test_both_apps_mount_the_journals_volume_where_the_other_does() -> None:
+    """The translator appends to the file and the mirror's face serves it as
+    it is and truncates it on a request from the page (ADR-0022 d.4). The two
+    agree on the volume and the path and on nothing else, so the mount is one
+    line in each and the same line.
+    """
+    assert entries(services(BOX)["translator"], "volumes") == [JOURNAL_MOUNT]
+    assert entries(services(BOX)["mirror"], "volumes") == [JOURNAL_MOUNT]
+    assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)["translator"]
+
+
+def test_the_journals_volume_is_the_boxs_and_not_a_clean_clones() -> None:
+    """Declared in the overlay, where the translator that writes it runs: a
+    clean clone has no broker to dial and no railroad to keep a record of
+    (ADR-0008). Named and empty, so the daemon makes it on the first `up` and
+    a deploy that replaces both images leaves the record where it was."""
+    box = "\n".join(uncommented(BOX.read_text()))
+    assert re.search(rf"^volumes:\n  {JOURNAL}:$", box, re.MULTILINE)
+    assert "volumes:" not in "\n".join(uncommented(BASE.read_text()))
 
 
 def test_the_mirrors_grace_is_a_flashs_and_names_the_page_a_stop_is_on() -> None:

@@ -197,6 +197,13 @@ services:
     networks:
       - default
       - rails49
+    # The **journal**, which the translator beside this writes and this app's
+    # face serves to the page as it is and truncates on a request from it
+    # (ADR-0022 d.4). The same named volume mounted at the same path in both
+    # containers: the two apps agree on nothing more than that, the writer
+    # appending and the reader reading, so a clear loses no line.
+    volumes:
+      - journal:/var/lib/dccex
 
   # The translator: `layout`'s desired rows to the station's commands, and the
   # station's replies to the track and link rows (ADR-0014). Same image as the
@@ -215,16 +222,40 @@ services:
     # (ADR-0015). Behind a variable so a box that serves the store somewhere
     # else overrides one line, the way the device mapping above is.
     #
-    # **No mount and no file.** The startup file went with #175: what a
-    # railroad wants of its station is a document in the store, edited on the
-    # page, and the deploy makes nothing on the box for it.
+    # **No startup file.** It went with #175: what a railroad wants of its
+    # station is a document in the store, edited on the page, and the deploy
+    # makes nothing on the box for it.
+    #
+    # The one file this app does write is the **journal** — every
+    # `<* TRACK … *>` and every `<p…>` the station said, the link going down
+    # and up, and a restart — which is on the named volume below and not a
+    # path of the box's, so nothing has to exist on the box for it either
+    # (ADR-0022 d.1). Left off, this app writes nothing, which is what a
+    # clean clone and a bench get.
     command:
       ["--broker", "broker:1883",
        "--station", "mirror:2560",
-       "--store", "${DCCEX_STORE_URL:-http://store:8765}"]
+       "--store", "${DCCEX_STORE_URL:-http://store:8765}",
+       "--journal", "/var/lib/dccex/journal.jsonl"]
     networks:
       - default
       - rails49
+    # The journal's volume, mounted where the mirror mounts it: this app
+    # appends and the mirror's face reads and clears (ADR-0022 d.4).
+    volumes:
+      - journal:/var/lib/dccex
+
+volumes:
+  # The **journal**, kept by the box and not by either container: the
+  # translator appends to the file on it and the mirror's face serves and
+  # clears the same file, so a deploy that replaces both images leaves the
+  # record where it was (ADR-0022 d.1, d.4). Named rather than a path on the
+  # box, because nothing on the box has to be made for it and the daemon owns
+  # what is in it.
+  #
+  # Not in the clean clone's half, which runs no translator and has no
+  # railroad to keep a record of (ADR-0008).
+  journal:
 
 networks:
   # The installation's, under the fixed name the door and every other stack on
