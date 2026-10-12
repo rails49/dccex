@@ -24,6 +24,9 @@ value that is this deployment's rather than the railroad's:
   route this app reads: `GET /scripts/<railroad>` (rails49/control#586).
 - `--id`, the name its link row is keyed by, defaulting to the package's
   (control#368, decision 7).
+- `--journal <path>`, the file the **journal** is appended to, which is a
+  file on a volume the box keeps and is this deployment's rather than the
+  railroad's. Left out, nothing is written (ADR-0022 d.1).
 
 Neither the drain period nor the poll nor the backoff is a flag — nothing
 outside this process has an opinion about how often it takes what the broker's
@@ -91,6 +94,7 @@ from tc49.lib.startup import (
     retained,
 )
 
+from dccex.journal import Journal
 from dccex.store import Scripts
 from dccex.translator import (
     FIRST_BACKOFF_S,
@@ -105,6 +109,11 @@ CLIENT_PREFIX = "tc49-"
 names a translator rather than a random string and two of them on one railroad
 are two clients. Nothing in the contract reads it: a topic has one writing
 role and no payload says who published (BUS.md, rule 4)."""
+
+JOURNAL_EXAMPLE = "/var/lib/dccex/journal.jsonl"
+"""What a journal's path looks like, for the help. On the box it is a file on
+the named volume the mirror mounts beside this app, whose face serves it to
+the page (`compose.box.yaml`, ADR-0022 d.4)."""
 
 STATION_EXAMPLE = "mirror:2560"
 """What a station address looks like, for the help and for a refusal. The
@@ -126,6 +135,7 @@ def serve(
     station: tuple[str, int],
     stop: threading.Event,
     scripts: Scripts | None = None,
+    journal: Journal | None = None,
     id: str = ID,
     period_s: float = PERIOD_S,
     retained_s: float = RETAINED_S,
@@ -158,6 +168,7 @@ def serve(
         port,
         id=id,
         scripts=scripts,
+        journal=journal,
         script_s=script_s,
         first_backoff_s=first_backoff_s,
         max_backoff_s=max_backoff_s,
@@ -259,6 +270,13 @@ def main() -> None:
         help=f"what this translator calls itself on its link row,"
         f" '{ID}' by default",
     )
+    parser.add_argument(
+        "--journal",
+        metavar="PATH",
+        help="where to keep the journal, which is one JSON object per line"
+        " appended to a file on a volume the box keeps, e.g."
+        f" {JOURNAL_EXAMPLE}; left out, nothing is written",
+    )
     args = parser.parse_args()
     try:
         host, port = address(args.broker)
@@ -283,13 +301,27 @@ def main() -> None:
     signal.signal(signal.SIGTERM, signal.default_int_handler)
     to_stderr(
         f"broker {host}:{port}, station {station[0]}:{station[1]},"
-        f" store {args.store}"
+        f" store {args.store}, journal {args.journal or 'none'}"
     )
     bus = MqttBus(host, port, client_id=f"{CLIENT_PREFIX}{args.id}")
+    # Opened here and not inside the app, so a path that cannot be written
+    # refuses the process rather than being discovered on the first trip
+    # (ADR-0022 d.1). Closed on the way out, which loses nothing either way:
+    # every line is flushed as it is written.
+    journal = Journal(args.journal) if args.journal else None
     try:
         with contextlib.suppress(KeyboardInterrupt):
-            serve(bus, station, threading.Event(), Scripts(args.store), args.id)
+            serve(
+                bus,
+                station,
+                threading.Event(),
+                Scripts(args.store),
+                journal,
+                args.id,
+            )
     finally:
+        if journal is not None:
+            journal.close()
         bus.close()
 
 

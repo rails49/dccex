@@ -21,16 +21,19 @@ there is the app having drained the broker's queue on the loop thread and
 written to the socket.
 """
 
+import json
 import socket
 import threading
 import time
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from tc49.lib.bus import Payload
 from tc49.lib.mqtt import MqttBus
 
 from dccex.__main__ import serve
+from dccex.journal import Journal
 from dccex.store import Scripts
 from tests.brokers import Broker, drained, settle
 from tests.ports import free_port
@@ -172,11 +175,13 @@ class App:
         station: Station,
         store: Store | None = None,
         id: str = "dccex",
+        journal: Journal | None = None,
     ) -> None:
         self.id = id
         self._broker = broker
         self._station = station
         self._store = store
+        self._journal = journal
         self._bus: MqttBus | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -190,6 +195,7 @@ class App:
             args=(self._bus, ("127.0.0.1", self._station.port), self._stop),
             kwargs={
                 "scripts": None if self._store is None else Scripts(self._store.url),
+                "journal": self._journal,
                 "id": self.id,
                 "period_s": 0.01,
                 "retained_s": RETAINED_S,
@@ -539,3 +545,39 @@ def test_a_railroad_that_gives_the_same_text_leaves_it_running(
     assert len(rows(heard, f"{DEVICE_LINK}/{app.id}")) == said, "the row moved"
     hand.close()
     witness.close()
+
+
+def test_the_journal_it_is_given_a_file_for_is_kept(
+    broker: Broker, station: Station, store: Store, tmp_path: Path
+) -> None:
+    """`--journal` down to the file: the station answers with the rails dark
+    and the line is on the disk, in the process the deployment runs
+    (ADR-0022 d.1).
+
+    The app writes it on the loop thread, which is the thread that reads the
+    station, so a line is on the disk before the next one is read.
+    """
+    path = tmp_path / "journal.jsonl"
+    running = App(broker, station, store, journal=Journal(path))
+    try:
+        station.opens()
+        running.start()
+        assert running.up.wait(TIMEOUT_S)
+        assert station.waits_for(POLL)
+        kept = _kept(path)
+    finally:
+        running.stop()
+    assert [line["said"] for line in kept if "said" in line] == ["<p0>"]
+    assert [line["link"] for line in kept if "link" in line] == ["up"]
+
+
+def _kept(path: Path, limit_s: float = TIMEOUT_S) -> list[dict[str, object]]:
+    """The journal as it stands, waiting up to `limit_s` for the app's first
+    line: the file is written on another thread, so a line arriving is a wait
+    and never a given."""
+    deadline = time.monotonic() + limit_s
+    while not path.exists() or not path.read_text():
+        if time.monotonic() > deadline:
+            break
+        time.sleep(0.01)
+    return [json.loads(said) for said in path.read_text().splitlines()]
