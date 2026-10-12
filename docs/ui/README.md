@@ -12,8 +12,8 @@ the installation everything below rests on. The work pane shows one **view** and
 the rail picks it (#169): the monitor view, which is the **tile**s and the
 **monitor** under them — the station's conversation as it arrives, every line
 stamped with the time it arrived, newest at the bottom (#4), and a box at the
-foot that types a whole `<…>` message back (#6) — the **release**s, or the
-railroad's **script**. The band
+foot that types a whole `<…>` message back (#6) — the **release**s, the
+railroad's **script**, or the **journal**. The band
 carries the **build**, the **link** and the power button and the tiles carry the
 particulars — all of them made of what the station said and kept live by the
 page's own polling, except the power, which is a row `layout` reports on the
@@ -21,7 +21,9 @@ bus (#7, #168, #205). The releases are listed newest first with the one
 on the station marked (#8), and choosing one writes it onto the station — which
 is the last thing here that needed a terminal (#9). The script is the
 translator's commands for this railroad's station, edited in an editor and
-applied to `control`'s store through the face (#185). What it says was decided
+applied to `control`'s store through the face (#185). The journal is what the
+station said about power while nobody was watching, read afterwards with the
+counts beside it (#266, ADR-0022). What it says was decided
 in rails49/dccex#1 and the tickets under that spec are each a part of it, as
 [the cutover page](../cutover.md) was written ahead of its evening. What is
 already here besides is the other end: the **mirror**'s **face**, which is the
@@ -44,6 +46,7 @@ https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
 https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
                                                one railroad's script, read and
                                                applied
+https://dccex.$BOX_DOMAIN/dccex-usb/journal    the journal, served and cleared
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad's
                                                power, read and asked for
@@ -60,6 +63,14 @@ page no longer draws it, so what it asks the face for is the releases, a flash
 and how far that flash has got rather than a reading of the station's (#111,
 #172). The count is still the app's own business about itself and the face still
 answers it at the address above.
+
+**The journal is the one thing it asks for that is not about the mirror.** It
+is the **translator**'s record of what the station said about power, kept on a
+volume both apps mount, and the mirror's face serves the file as it stands and
+empties it on a request from the page (ADR-0022 d.4, #264): the translator has
+no face, and a page may talk to its own app's face and no other, which is the
+organisation's ADR-0002. The page asks for it when a reader opens the journal
+view and when they press its reload, and never on a schedule.
 
 **The bus carries two rows up and one down** (ADR-0017, ADR-0020, org
 ADR-0014, #205, #208, #239). The band asks `layout` for power
@@ -203,9 +214,10 @@ build, a railroad and the words with none (#127, #168, #208, #239).
 ### The rail
 
 One button per **view**, in the rail's one run: the monitor as `mdiConsole`,
-the releases as `mdiFlashAlert` and the script as `mdiScriptTextOutline`, each
-carrying the view's own word as a tooltip and as a label (#169, #167, #185).
-Pressing one is what a person changes the work pane with.
+the releases as `mdiFlashAlert`, the script as `mdiScriptTextOutline` and the
+journal as `mdiNotebookOutline`, each carrying the view's own word as a tooltip
+and as a label (#169, #167, #185, #266). Pressing one is what a person changes
+the work pane with.
 
 The button for the view in front of the person wears `--band-ink` as a chip
 with `--rail-group` on the glyph, and the other is that ink on the group.
@@ -215,9 +227,9 @@ glyph is what a control that cannot be pressed looks like on this chrome
 (ADR-0011 d.2). The buttons are `--rail-button` square, which is the look
 rules' minimum for a thumb, and they lie down with the rail on a short window.
 
-**The view is kept in the page's hash** — `#monitor`, `#releases` and
-`#script`, and a hash that names none of them is the monitor, which is what a
-page opens on. So a
+**The view is kept in the page's hash** — `#monitor`, `#releases`, `#script`
+and `#journal`, and a hash that names none of them is the monitor, which is
+what a page opens on. So a
 view can be linked to, a reload comes back where it was, and the back button
 steps through the views rather than off the page. The rail's press writes the
 hash and the page reads it: one direction each, and no second answer to which
@@ -497,6 +509,76 @@ in `control`'s UI and a line in the translator's log, which is where a
 railroad's own state is said (ADR-0015, consequences). Nor is deleting a
 script: this face has no verb for one, as it has none for a document of any
 other kind.
+
+### The journal
+
+The **journal** on a view of its own: the record the **translator** keeps of
+what the station said about power, read afterwards
+([ADR-0022](../adr/0022-the-journal-is-what-the-station-said.md), #266). It is
+the one view about something that happened rather than about what is
+happening, and it is the only one that is not made of the **stream**: the file
+is the translator's and the page reads it through the mirror's **face** (d.4,
+#264).
+
+**It is fetched when the view opens and when the reload is pressed, and never
+on a schedule.** A record read afterwards does not move under the eye, and a
+view polling for a file that grows all evening would be asking the box for a
+megabyte a minute to redraw the same rows (this repository's ADR-0010). The
+pane is taken out of
+the document while another view is showing, so coming back to the journal is
+what asks for it again.
+
+**The period is the reader's**: the last day, the last 7 days, the whole file,
+or one **build** the journal carries — the builds come off the file, newest
+first, and are offered in the same chooser as the three spans, because they are
+the same answer to which lines are read. The two spans are counted back from
+when the face answered rather than from the draw, so nothing drops out of the
+list while somebody is reading it.
+
+**The statistics are at the top**: one row per district the file names, with
+its **incident**s by kind, how many times the station cut it, how long for, the
+highest mA it printed about it, the flips nothing came of, how long it was
+powered and its incidents per hour powered — and one row for the station, which
+is the link losses and the restarts, because those are about no district. Every
+count is a number and a reading nobody took is blank: a district that was never
+powered has no rate, and one the station printed no current about has no peak
+(ADR-0009 d.2). The table scrolls sideways inside itself on a narrow screen and
+never takes the page with it.
+
+**The incidents are below it, newest first.** A row says when it happened,
+which district, which kind, how many times the station cut it, the highest mA
+and how long it was cut for, and it opens on the journal lines it is made of —
+the station's own words, verbatim, so nobody has to read the file to see what
+the reading was made of (d.2, d.3). Which lines those are is the reading's own
+and not a window read off the row: the flip a short outlived comes before the
+line the incident opened at, and the flips a burst took come before the one
+that said so. A toggle brings in the lines no incident took — a flip that
+cleared, a programming track's alert on an acknowledgement, the power going on
+and off — each as a row of its own with the station's words on it and nothing
+counted.
+
+**The file's size, a download and a clear are on the controls.** The size is
+the length of the bytes the face served, the download is a link to
+`/dccex-usb/journal` with `download` on it, so what somebody keeps is the file
+rather than something this page rendered, and the clear says what it does and
+asks a second time before the DELETE goes
+([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md) d.2):
+clearing throws away every line and nothing keeps a copy. The face truncates
+the file the translator is appending to, so no line is lost to the clear
+(d.4), and the file is read again afterwards — what is in it now is the face's
+to say. A refusal is shown in the face's own words.
+
+**A journal with nothing in it and a journal nobody could read are different
+sentences.** The first is a railroad that has said nothing about power, which
+is an ordinary state of a box that has just come up; the second is a page that
+has not been told. Neither draws a table: a row of zeros for a file nobody
+read would be a count nobody made (ADR-0009 d.2).
+
+The reading is `ui/src/journal.js`'s and what is drawn of it is
+`ui/src/incidents.js`'s — both pure, both run rather than read
+(`tests/ui/test_journal.py`, `tests/ui/test_incidents.py`) — and the view is
+four small components: the controls, the table, the list, and the pane that
+holds the period and asks the face (`ui/src/ui/dccex-journal.ts`).
 
 ### The stream
 
@@ -893,7 +975,7 @@ how long it was powered and its incidents per hour powered. Powered is from a
 For the station: how many times the link went down, and how many times it
 restarted.
 
-Nothing draws any of it yet. The view that does is #266.
+What draws it is the journal view, above (#266).
 
 ## How it looks
 
@@ -1084,8 +1166,9 @@ Two things the prototype left open and the tickets settle while building:
   presses that answer it, the bar a flash fills, which wants a flash in
   flight and there is no face behind the page in that job to run one, and the
   **script** view's editor and controls, which want a face with a store behind
-  it for the same reason — every button on the rail is measured there, including
-  that view's, and the pane behind it is not (#185). And what
+  it for the same reason, and the **journal** view's table and list, which want
+  a face with a journal behind it — every button on the rail is measured there,
+  including those two views', and the panes behind them are not (#185, #266). And what
   the check drives is a Chromium at a phone's width
   rather than a phone — a real one was considered for #127 and left out, so the
   thing that is still open is somebody holding one up to it. Mounting the

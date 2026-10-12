@@ -302,7 +302,7 @@ LOOK.md's rather than this repository's.
 
 The chrome down the side of every rails49 UI, carrying what the view in front
 of a person offers. Here that is one button per **view**: the monitor, the
-releases and the **script**. A flash is not one of them: it is a gesture about
+releases, the **script** and the **journal**. A flash is not one of them: it is a gesture about
 one **release** and is pressed on that release's row, where the tag it names
 is (#9). It is the **band**'s counterpart
 and LOOK.md's in the same way, which is why its colour, the width of a button
@@ -326,10 +326,13 @@ second thing).
 ## view
 
 What the work pane shows. The **rail** picks one; the **band** is the same
-over every view. There are three: the **monitor**; the releases, where the
-releases are listed and a flash is pressed and followed; and the **script**,
+over every view. There are four: the **monitor**; the releases, where the
+releases are listed and a flash is pressed and followed; the **script**,
 where the loaded railroad's is opened in the **editor** and applied to
-`control`'s store through the **face** (#185, #238).
+`control`'s store through the **face** (#185, #238); and the **journal**,
+where the record of what the station said about power is read — the counts
+per district, the **incident**s newest first, and the press that clears it
+(#266, ADR-0022).
 
 **Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
 (a mode is what a track is set to).
