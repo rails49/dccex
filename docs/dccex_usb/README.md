@@ -43,7 +43,7 @@ was deleted
 python -m dccex_usb --device /dev/dccex --port 2560
 ```
 
-The device to open and the port to serve it on. Three more are optional:
+The device to open and the port to serve it on. Four more are optional:
 
 - `--firmware-releases <url>`, where releases are read from, this
   installation's fork by default. It is **configuration and never payload** —
@@ -58,6 +58,15 @@ The device to open and the port to serve it on. Three more are optional:
   answers as it always did, and a box holding a cable with nothing else running
   needs none. On the box it is the store service on the `rails49` network, and
   it is the same variable the translator is given (`compose.box.yaml`).
+- `--journal <path>`, the file the **journal** is kept in, which this app's
+  face serves as it is and truncates on a request from the page
+  ([ADR-0022](../adr/0022-the-journal-is-what-the-station-said.md) d.4).
+  Configuration and never payload again. On the box it is
+  `/var/lib/dccex/journal.jsonl` on the named volume the translator beside
+  this app appends to, and it is the one path the two of them agree on
+  (`compose.box.yaml`). **Left out is a mirror with no journal**: the two
+  journal routes answer a status and a sentence, and a box with no translator
+  beside it has no record to serve.
 
 There is no broker argument and no identity argument. Both went with the bus:
 there is nothing to dial and no row to key by a name.
@@ -239,9 +248,10 @@ The face's router is code, and it is in `compose.box.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
 the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
-What it answers, which is seven things — six questions and a conversation.
-Five are about the station and this app, and two are the railroad's script
-([below](#the-railroads-script)):
+What it answers, which is nine things — eight questions and a conversation.
+Five are about the station and this app, two are the railroad's script
+([below](#the-railroads-script)) and two are the **journal**
+([below](#the-journal)):
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -394,13 +404,15 @@ log on the box (control ADR-0050):
   is a `502` below and not this; the railroad with no script is not a thing to
   fix at all, and it is what the page opens the sample under. A face is
   private to its app and is not somewhere else to get at the railroad.
-- `405` — the releases, the count of clients, how far a flash has got and a
-  railroad's script are read, with `GET`; a flash is asked for, with `POST`,
-  and a script is applied, with `PUT`. `/flash` and `/scripts/<railroad>` are
+- `405` — the releases, the count of clients, how far a flash has got, a
+  railroad's script and the journal are read, with `GET`; a flash is asked
+  for, with `POST`, a script is applied, with `PUT`, and the journal is
+  emptied, with `DELETE`. `/flash`, `/scripts/<railroad>` and `/journal` are
   the paths with two of them on each, and the split is the point: a page that
-  reloaded a read would not write the station again, nor store a text again.
-  There is nothing at `/clients` to change, because who is on 2560 is decided
-  by who dialled it.
+  reloaded a read would not write the station again, nor store a text again,
+  nor throw the record away. There is nothing at `/clients` to change, because
+  who is on 2560 is decided by who dialled it. Nothing writes a line of the
+  journal through here either: the record is the translator's to keep.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
@@ -438,7 +450,12 @@ log on the box (control ADR-0050):
 - `503` — and a mirror started with no `--store`, on the three script routes.
   It is a state of the installation rather than of the request, and it is what
   a box mirroring a cable with nothing else running answers: the sentence names
-  the flag.
+  the flag. **A mirror started with no `--journal` answers its two routes the
+  same way**, for the same reason and in the same shape.
+- `500` — the journal could not be read or emptied: the path is not a file
+  this app can open, which is a mount somebody has to fix on the box. A
+  journal that is simply not there is not this — it is an empty body and a
+  clear of nothing.
 
 Whoever asked is told, and the box's log is told only what is not the
 caller's doing: a source that could not be read is a line on stderr as well,
@@ -464,6 +481,63 @@ Nothing in the gate reaches a store either. The script routes are asked against
 a fake of `control`'s routes on loopback — the same fake the translator's own
 reader is asserted against, because the routes are `control`'s and documented
 there rather than copied here (`tests/stores.py`, ADR-0014, consequences).
+
+The journal's two routes are asked against a real file in a temporary
+directory, and not against a stand-in: what they are about is the file, and a
+fake that answered bytes would say nothing about a clear the translator's next
+append lands at the start of (`tests/dccex_usb/test_face.py`).
+
+### The journal
+
+The **journal** is the translator's record of what the station said about
+power, and of the link going down and the station restarting: one JSON object
+per line, appended to a file on a volume the box keeps whether or not anyone is
+watching
+([ADR-0022](../adr/0022-the-journal-is-what-the-station-said.md) d.1,
+[docs/dccex/README.md](../dccex/README.md)). The translator has no face, and
+the page reaches this app's and the bus and nothing else (ADR-0017), so the
+file is served and cleared here — the two containers mount the one volume and
+agree on nothing else (d.4):
+
+```
+$ curl http://dccex-usb:8080/journal
+{"at":"2026-10-12T18:00:12.345+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<* TRACK C INVERT (fast) *>","district":"C","mode":"MAIN_AUTO","limit":500}
+{"at":"2026-10-12T18:00:19.004+00:00","railroad":"gleis49","build":"","link":"down"}
+
+$ curl -X DELETE http://dccex-usb:8080/journal
+{"cleared": 255}
+
+$ curl http://dccex-usb:8080/journal
+$
+```
+
+**The file as it is, under what it is.** It goes back as
+`application/x-ndjson` and not as a document: one JSON object per line is what
+the translator writes, and a reader that parsed the whole file as JSON would
+have a parse error for a record with two lines in it. **No line is read
+here** — not to count one, not to check one. Whether a line is part of an
+**incident**, and which kind, is the page's over the whole file, in one pure
+function with no clock and no socket (d.3, d.5, `ui/src/journal.js`): a rule
+that changes reads the same file again under itself, which is only possible
+because nothing on the way through it dropped a line.
+
+**A journal that is not there is an empty body and not a `404`.** It is the
+ordinary state of a box whose translator has written no line yet: the volume is
+mounted and the file is made by the first append. A status that said the record
+was missing would send somebody looking for a mount that is there.
+
+**A clear truncates the file and never removes it**, and answers how many bytes
+went. That is the whole of the agreement between the two apps: the translator
+opens the file once for appending and does not reopen it, so a write under
+`O_APPEND` lands at whatever the end of the file is at the moment it happens —
+a line written during a clear is not lost, and the line after one lands at the
+start of the same file (d.4, `src/dccex/journal.py`). Bytes and not lines,
+because counting lines would be reading them.
+
+The record grows until somebody clears it from the page, and nothing caps it
+(ADR-0022, consequences). Clearing it is a gesture about what a person has
+read: the journal is not a railroad's document and nothing here guards it, as
+nothing here guards a flash.
 
 ### The monitor's stream
 
