@@ -33,12 +33,13 @@ was typed; `ui/src/readings.js`, what the band and the tiles read;
 `ui/src/releases.js`, how the releases are listed; `ui/src/flash.js`, what is
 done to the railroad before one is written; `ui/src/framing.js`, where the
 stream is and where a line ends; `ui/src/monitor.js`, what the monitor
-works out without drawing; and `ui/src/journal.js`, what the journal comes to
-— eight, each run rather than read for the same
+works out without drawing; `ui/src/journal.js`, what the journal comes to; and
+`ui/src/incidents.js`, what the journal **view** draws of it
+— nine, each run rather than read for the same
 reason this one is (`tests/ui/test_message.py`, `tests/ui/test_readings.py`,
 `tests/ui/test_releases.py`, `tests/ui/test_flash.py`,
 `tests/ui/test_stream.py`, `tests/ui/test_monitor.py`,
-`tests/ui/test_journal.py`). Every other module
+`tests/ui/test_journal.py`, `tests/ui/test_incidents.py`). Every other module
 under `ui/src` is TypeScript and needs a browser, which is what keeps it out of
 this list (`tests/ui/test_stream.py`).
 
