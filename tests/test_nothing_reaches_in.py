@@ -53,6 +53,7 @@ def test_the_package_is_all_that_is_here() -> None:
         "face.py",
         "firmware.py",
         "framing.py",
+        "journal.py",
         "station.py",
         "store.py",
         "stream.py",

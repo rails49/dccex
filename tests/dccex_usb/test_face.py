@@ -38,6 +38,7 @@ import pytest
 from dccex_usb.face import (
     CRLF,
     HEAD_END,
+    NO_JOURNAL,
     NO_STORE,
     STATUS,
     Answered,
@@ -46,6 +47,7 @@ from dccex_usb.face import (
     Face,
     Joins,
     Keeps,
+    Kept,
     Loopback,
     Server,
     Writes,
@@ -54,6 +56,7 @@ from dccex_usb.face import (
 )
 from dccex_usb.firmware import Doing, Flasher, Ran, Refusal, Saw, Stage, Wrote
 from dccex_usb.framing import MAX_MESSAGE
+from dccex_usb.journal import Journal
 from dccex_usb.station import READ_SIZE, to_stderr
 from dccex_usb.store import Store
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
@@ -191,6 +194,7 @@ def face(
     flasher: Writes | None = None,
     counts: Counts | None = None,
     store: Keeps | None = None,
+    journal: Kept | None = None,
 ) -> Face:
     """The face a test asks something of, built in one place.
 
@@ -204,6 +208,10 @@ def face(
     `--store`: the three script routes then answer a status and a sentence,
     and every other route answers as it always did. What the script routes are
     asked of is a face built with `holding()` below.
+
+    The **journal** is left out by default for the same reason and says so the
+    same way, and what its two routes are asked of is a face built with
+    `kept()` below (ADR-0022 d.4).
     """
     return Face(
         releases,
@@ -211,6 +219,7 @@ def face(
         flasher=flasher if flasher is not None else Writing(),
         counts=counts if counts is not None else Counting(),
         store=store,
+        journal=journal,
     )
 
 
@@ -903,6 +912,208 @@ def test_the_railroad_a_path_names_is_the_name_itself(
     own paths (rails49/control#586).
     """
     assert under(path) == railroad
+
+
+# -- the journal -------------------------------------------------------------
+
+LINES = (
+    '{"at": "2026-10-12T18:00:00.000+00:00", "railroad": "crossover-yard",'
+    ' "build": "g1", "said": "<p1>"}\n'
+    '{"at": "2026-10-12T18:00:01.000+00:00", "railroad": "crossover-yard",'
+    ' "build": "g1", "said": "<* TRACK C INVERT (fast) *>", "district": "C",'
+    ' "mode": "MAIN_AUTO", "limit": 2000}\n'
+)
+"""Two lines of a journal, as the translator wrote them (ADR-0022 d.2,
+`dccex.journal`). Text and not objects: what the face serves is the file's
+bytes, so what a test writes is what it expects back."""
+
+
+def kept(path: Path, text: str = LINES) -> Face:
+    """A face serving the journal at `path`, which is the file the translator
+    appends to on the volume both containers mount (ADR-0022 d.4).
+
+    The real reader on a real file, because what is asserted of these two
+    routes is the file: a stand-in that answered bytes would say nothing about
+    a clear the translator's next append lands at the start of.
+    """
+    if text:
+        path.write_text(text, encoding="utf-8")
+    return face(journal=Journal(path))
+
+
+def test_the_journal_goes_back_as_the_bytes_the_translator_wrote(
+    tmp_path: Path,
+) -> None:
+    """The file as it is, and nothing read out of it: the face serves what
+    another app wrote and decides nothing about a line (ADR-0022 d.4, d.3).
+
+    What a line means is the page's, in one pure function over the whole file
+    (d.5, `ui/src/journal.js`).
+    """
+    path = tmp_path / "journal.jsonl"
+
+    answered = asyncio.run(kept(path).answer("GET", "/journal", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == LINES.encode()
+    assert answered.body == {}
+
+
+def test_a_journal_that_is_not_there_is_an_empty_body_and_not_a_404(
+    tmp_path: Path,
+) -> None:
+    """The ordinary state of a box whose translator has written no line yet:
+    the volume is mounted and the file is not made until something is
+    appended. A status that said the record was missing would send somebody
+    looking for a mount that is there."""
+    answered = asyncio.run(
+        kept(tmp_path / "journal.jsonl", "").answer("GET", "/journal", b"")
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == b""
+
+
+def test_the_face_reads_no_line_of_the_journal(tmp_path: Path) -> None:
+    """The bytes as they are, whatever is in them (ADR-0022 d.4).
+
+    A journal whose last line is half written is what a reader finds while the
+    translator is in the middle of one, and a face that parsed the file would
+    answer an outage for a record that is perfectly good up to there. What a
+    line means is the page's, over the whole file (d.3, d.5).
+    """
+    path = tmp_path / "journal.jsonl"
+    half = LINES + '{"at": "2026-10-12T18:00:02.000+00:00", "rail'
+
+    answered = asyncio.run(kept(path, half).answer("GET", "/journal", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == half.encode()
+
+
+def test_the_journal_goes_back_as_lines_and_not_as_a_document(
+    tmp_path: Path,
+) -> None:
+    """One JSON object per line is what the translator writes, and it is what
+    the answer says it is: a page that read this as JSON would have one
+    document to parse and a parse error for a file with two lines in it."""
+    path = tmp_path / "journal.jsonl"
+
+    on_the_wire = response(asyncio.run(kept(path).answer("GET", "/journal", b"")))
+
+    assert b"Content-Type: application/x-ndjson" in on_the_wire
+    assert on_the_wire.endswith(LINES.encode())
+    assert f"Content-Length: {len(LINES.encode())}".encode() in on_the_wire
+
+
+def test_a_clear_empties_the_journal_and_says_how_many_bytes_went(
+    tmp_path: Path,
+) -> None:
+    """What the page presses when somebody has read the record (ADR-0022
+    d.4). The file is left where it was with nothing in it, and the answer is
+    the bytes rather than the lines: the face reads no line of it."""
+    path = tmp_path / "journal.jsonl"
+
+    answered = asyncio.run(kept(path).answer("DELETE", "/journal", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"cleared": len(LINES.encode())}
+    assert path.exists()
+    assert path.read_bytes() == b""
+
+
+def test_a_clear_of_a_journal_that_is_not_there_clears_nothing(
+    tmp_path: Path,
+) -> None:
+    """Nothing to empty is an answer and not an outage, as nothing to serve
+    is: a page that pressed clear on a box whose translator has written no
+    line is told that no bytes went."""
+    answered = asyncio.run(
+        kept(tmp_path / "journal.jsonl", "").answer("DELETE", "/journal", b"")
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.body == {"cleared": 0}
+
+
+def test_a_line_appended_after_a_clear_lands_at_the_start_of_the_file(
+    tmp_path: Path,
+) -> None:
+    """The agreement between the two apps, and the whole of it (ADR-0022
+    d.4): the translator holds a handle it opened once for appending and does
+    not reopen, and this clear truncates that same file.
+
+    So the next line lands at the start and the one before it was not lost.
+    The handle here is opened before the clear and written after it, which is
+    the translator's process across a press on the page.
+    """
+    path = tmp_path / "journal.jsonl"
+    asked = kept(path)
+    later = '{"at": "2026-10-12T18:01:00.000+00:00", "restart": true}\n'
+
+    with path.open("a", encoding="utf-8") as appending:
+        answered = asyncio.run(asked.answer("DELETE", "/journal", b""))
+        appending.write(later)
+
+    assert answered.status == HTTPStatus.OK
+    assert path.read_text(encoding="utf-8") == later
+    assert asyncio.run(asked.answer("GET", "/journal", b"")).served == later.encode()
+
+
+def test_a_mirror_with_no_journal_says_so_on_both_routes() -> None:
+    """A box mirroring a cable with nothing else running has no translator
+    beside it and no record to serve (ADR-0022 d.1), so the two routes answer
+    a status and a sentence the way the script routes do with no store. The
+    station's own routes answer as they always did."""
+    asked = face()
+
+    for method in ("GET", "DELETE"):
+        answered = asyncio.run(asked.answer(method, "/journal", b""))
+
+        assert answered.status == HTTPStatus.SERVICE_UNAVAILABLE, method
+        assert answered.body == {"reason": NO_JOURNAL}, method
+        assert answered.served is None, method
+
+    assert asyncio.run(asked.answer("GET", "/releases", b"")).status == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    "method",
+    [pytest.param("PUT", id="put"), pytest.param("POST", id="posted")],
+)
+def test_the_journal_is_read_with_get_and_emptied_with_delete(
+    tmp_path: Path, method: str
+) -> None:
+    """Two verbs and no third. Nothing writes a line through the face: the
+    journal is the translator's to keep, and a request that carried one would
+    be a second app writing the record (ADR-0022 d.1)."""
+    path = tmp_path / "journal.jsonl"
+
+    answered = asyncio.run(kept(path).answer(method, "/journal", LINES.encode()))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+    assert path.read_text(encoding="utf-8") == LINES
+
+
+@pytest.mark.parametrize(
+    "method", [pytest.param("GET", id="served"), pytest.param("DELETE", id="cleared")]
+)
+def test_a_page_from_another_origin_reaches_no_journal(
+    tmp_path: Path, method: str
+) -> None:
+    """The record keeps the rule the rest of the face keeps (ADR-0004 d.4). A
+    page somewhere else that could read it would be reading what a railroad
+    has been doing through an interface private to this app, and one that
+    could clear it would be throwing the record away."""
+    path = tmp_path / "journal.jsonl"
+
+    answered = asyncio.run(
+        kept(path).answer(method, "/journal", b"", origin=ELSEWHERE_ORIGIN, host=LABEL)
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert answered.served is None
+    assert path.read_text(encoding="utf-8") == LINES
 
 
 # -- the stream --------------------------------------------------------------
