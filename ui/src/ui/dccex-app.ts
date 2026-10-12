@@ -279,7 +279,9 @@ export class DccexApp extends LitElement {
    *  A page that has not reached the broker has not reached it — that is the
    *  reading, and it is what disables the band's button rather than a hedge
    *  (`bus.ts`). The name on it is the railroad the **script** view edits as
-   *  well as the one the band says (issue 238). */
+   *  well as the one the band says (issue 238), and it carries the railroad
+   *  being unreported apart from `control` having loaded none, because the two
+   *  are different things to a pane holding somebody's edits (issue 242). */
   layout: Layout = UNREACHABLE;
 
   /** What the face said the configured source carries, or `null` where it has
@@ -456,7 +458,11 @@ export class DccexApp extends LitElement {
    *  Hidden rather than taken away while another view is showing, for the
    *  reason the releases are: unapplied edits are held in that pane and
    *  nowhere else until Apply, and a pane built again on the way back would
-   *  have discarded them (ADR-0015 d.5). */
+   *  have discarded them (ADR-0015 d.5).
+   *
+   *  The reading is handed down whole, so the pane is told when the railroad is
+   *  unreported rather than reading an outage as the railroad being unloaded
+   *  (issue 242, `readings.js`'s `Layout`). */
   #script(): TemplateResult {
     return html`
       <dccex-script
