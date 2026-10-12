@@ -16,7 +16,6 @@ import asyncio
 import contextlib
 import json
 import logging
-import os
 import socket
 import time
 from collections.abc import AsyncGenerator, Callable
@@ -2247,31 +2246,6 @@ async def _first_power_line_after_a_restart_is_a_line(tmp_path: Path) -> None:
         await asyncio.sleep(QUIET_S)
         assert [line["said"] for line in kept(path) if "said" in line] == [
             "<p1 A>",
-            "<p1 A>",
-        ]
-
-
-def test_the_first_power_line_after_a_clear_is_a_line(tmp_path: Path) -> None:
-    asyncio.run(_first_power_line_after_a_clear_is_a_line(tmp_path))
-
-
-async def _first_power_line_after_a_clear_is_a_line(tmp_path: Path) -> None:
-    """The page clears the journal through the mirror's face, which tells the
-    translator nothing (d.4). A journal that held the `<p1 A>` from before the
-    clear would say nothing about A's power until it changed (#276). A line
-    of another kind written first does not hide the clear."""
-    bus, _ = bus_and_tap()
-    port = Port()
-    kept_in, path = journal(tmp_path)
-    async with running(bus, port, journal=kept_in):
-        station = await port.opened()
-        station.says(b"<p1 A>")
-        await asyncio.sleep(QUIET_S)
-        os.truncate(path, 0)
-        station.says(INVERT, b"<p1 A>", b"<p1 A>")
-        await asyncio.sleep(QUIET_S)
-        assert [line["said"] for line in kept(path) if "said" in line] == [
-            INVERT.decode(),
             "<p1 A>",
         ]
 

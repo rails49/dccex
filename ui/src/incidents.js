@@ -81,20 +81,6 @@ export const HEADINGS = [
 export const RELOADS = "reload";
 export const DOWNLOADS = "download";
 export const ROUTINE = "show routine lines";
-export const CLEARS = "clear";
-
-/** What a reader is told before the journal is emptied, and the two presses
- *  that answer it.
- *
- *  A clear is not undoable and the record is what nobody was watching, so the
- *  gesture says what it does and is asked a second time — the rule a flash and
- *  an Apply are on (ADR-0006 d.2, ADR-0015 d.3). It is the page's own warning:
- *  the face empties the file it is asked to empty and guards nothing
- *  (`face.py`). */
-export const WARNS =
-  "clearing the journal throws away every line in it, and nothing keeps a copy";
-export const CONFIRMS = "yes, clear it";
-export const CANCELS = "cancel";
 
 /** What stands where the rows would be: a journal with nothing in it, and one
  *  the face did not serve.
@@ -104,12 +90,6 @@ export const CANCELS = "cancel";
  *  that could not be asked is a page that has not been told (ADR-0009 d.2). */
 export const EMPTY = "there is nothing in the journal yet";
 export const UNREADABLE = "the journal could not be read";
-
-/** What is said where the face did not answer a clear. The face's own sentence
- *  is shown where there is one — a mirror started with no journal says so, and
- *  a page that wrote its own words over it would be guessing at an answer it
- *  was given (control ADR-0050). */
-export const UNANSWERED = "the mirror did not say whether the journal was cleared";
 
 /** What a line about the link and a line about a restart are drawn as. The
  *  station's words are drawn verbatim where it has any, and these two lines
@@ -205,14 +185,6 @@ const M = 1000000;
  * @typedef {object} Served
  * @property {Line[]} lines what the file says, in the order it was written
  * @property {number} bytes how big the file is
- */
-
-/**
- * What became of a clear: the bytes that went, or the face's own refusal.
- *
- * @typedef {object} Cleared
- * @property {boolean} cleared whether the face said it emptied the file
- * @property {string} says what is shown about it
  */
 
 /**
@@ -540,14 +512,4 @@ export function shown(lines, period = {}, routine = false) {
         : apart;
     }),
   };
-}
-
-/**
- * What the face said about a clear, as it is shown.
- *
- * @param {number} bytes how many bytes it said went
- * @returns {string}
- */
-export function emptied(bytes) {
-  return `the journal is empty: ${size(bytes)} cleared`;
 }

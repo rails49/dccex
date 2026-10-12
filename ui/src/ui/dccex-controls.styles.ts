@@ -11,12 +11,6 @@ import { css } from "lit";
  * thumb: `--rail-button` is the look rules' minimum for one, which is what a
  * control pressed on a phone held at the layout asks for
  * (`dccex-monitor.styles.ts`, `ui/look/README.md`).
- *
- * **The yes is drawn as the dangerous press it is**, and the warning above it
- * in the theme's own warning ink — the way a flash's is
- * (`dccex-releases.styles.ts`). Clearing the journal is the one gesture on
- * this view that throws something away, and nothing behind the page guards it
- * (ADR-0006).
  */
 export const controlsStyles = css`
   :host {
@@ -84,9 +78,8 @@ export const controlsStyles = css`
     color: var(--sl-color-primary-700);
   }
 
-  /* What is pressed: the reload, the clear, and the two the warning asks
-     with. They keep their size whatever the width, because that size is what a
-     thumb has to hit. */
+  /* What is pressed: the reload. It keeps its size whatever the width,
+     because that size is what a thumb has to hit. */
   button {
     flex: none;
     box-sizing: border-box;
@@ -99,53 +92,5 @@ export const controlsStyles = css`
     font-family: var(--sl-font-sans);
     font-size: var(--sl-font-size-small);
     cursor: pointer;
-  }
-
-  /* Nothing to press while the warning the press opened is open. */
-  button[disabled] {
-    background: var(--sl-color-neutral-300);
-    color: var(--sl-color-neutral-600);
-    cursor: default;
-  }
-
-  /* The warning, and the two presses that answer it. It takes the whole width
-     under the controls, so what is being thrown away is never off the side of
-     the sentence about throwing it away. */
-  .warning {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0 0.25rem;
-  }
-
-  /* What clearing does. It takes its own line above the presses: a sentence
-     beside a button is a sentence read after it. */
-  .warns {
-    flex: 1 0 100%;
-    margin: 0;
-    color: var(--sl-color-warning-700);
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-font-size-small);
-  }
-
-  /* The yes, drawn as the dangerous press it is, and never the quieter of the
-     two. */
-  .confirms {
-    background: var(--sl-color-danger-600);
-  }
-
-  /* And the no, which is the ordinary way out of a warning. */
-  .cancels {
-    background: var(--sl-color-neutral-100);
-    color: var(--sl-color-neutral-900);
-  }
-
-  /* What became of the last clear, in the face's own words. */
-  .says {
-    margin: 0.5rem 0 0;
-    color: var(--sl-color-neutral-700);
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-font-size-small);
   }
 `;

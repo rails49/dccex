@@ -52,7 +52,7 @@ def asked_of_the_face(page: str) -> set[str]:
     """The names the page imports from the **face**.
 
     Read rather than matched against a line, because the line wraps: the page
-    asks the face for seven things now and what a reader of either suite wants
+    asks the face for six things now and what a reader of either suite wants
     to know is that the name is there, not which column it sits in (#185,
     #238, issue 266).
     """
@@ -338,7 +338,6 @@ def test_the_journal_view_is_drawn_only_while_it_is_showing() -> None:
     view = view[: view.index("\n  }")]
     assert "<dccex-journal" in view
     assert ".reads=${this.#reads}" in view, "the pane is handed no way to read"
-    assert ".empties=${this.#empties}" in view, "the pane is handed no way to empty"
 
 
 def test_the_page_asks_the_face_for_the_journal_and_the_pane_times_it() -> None:
@@ -347,12 +346,11 @@ def test_the_page_asks_the_face_for_the_journal_and_the_pane_times_it() -> None:
     no schedule at all (ADR-0010, `dccex-journal.ts`).
 
     So the page holds no timer for it — all three schedules are the ones held
-    above — and what it hands down is the two asks.
+    above — and what it hands down is the one ask.
     """
     page = code(APP.read_text())
-    assert {"journal", "clears"} <= asked_of_the_face(page)
+    assert "journal" in asked_of_the_face(page)
     assert "#reads = (): Promise<Served | null> => journal()" in page
-    assert "#empties = (): Promise<Cleared> => clears()" in page
 
 
 def test_the_releases_are_hidden_and_not_taken_away() -> None:

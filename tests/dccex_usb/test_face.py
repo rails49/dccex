@@ -932,9 +932,9 @@ def kept(path: Path, text: str = LINES) -> Face:
     """A face serving the journal at `path`, which is the file the translator
     appends to on the volume both containers mount (ADR-0022 d.4).
 
-    The real reader on a real file, because what is asserted of these two
-    routes is the file: a stand-in that answered bytes would say nothing about
-    a clear the translator's next append lands at the start of.
+    The real reader on a real file, because what is asserted of this route
+    is the file: a stand-in that answered bytes would say nothing about a trim
+    the translator renames over it.
     """
     if text:
         path.write_text(text, encoding="utf-8")
@@ -1006,87 +1006,52 @@ def test_the_journal_goes_back_as_lines_and_not_as_a_document(
     assert f"Content-Length: {len(LINES.encode())}".encode() in on_the_wire
 
 
-def test_a_clear_empties_the_journal_and_says_how_many_bytes_went(
+def test_a_trim_renamed_over_the_journal_is_what_is_served_next(
     tmp_path: Path,
 ) -> None:
-    """What the page presses when somebody has read the record (ADR-0022
-    d.4). The file is left where it was with nothing in it, and the answer is
-    the bytes rather than the lines: the face reads no line of it."""
-    path = tmp_path / "journal.jsonl"
-
-    answered = asyncio.run(kept(path).answer("DELETE", "/journal", b""))
-
-    assert answered.status == HTTPStatus.OK
-    assert answered.body == {"cleared": len(LINES.encode())}
-    assert path.exists()
-    assert path.read_bytes() == b""
-
-
-def test_a_clear_of_a_journal_that_is_not_there_clears_nothing(
-    tmp_path: Path,
-) -> None:
-    """Nothing to empty is an answer and not an outage, as nothing to serve
-    is: a page that pressed clear on a box whose translator has written no
-    line is told that no bytes went."""
-    answered = asyncio.run(
-        kept(tmp_path / "journal.jsonl", "").answer("DELETE", "/journal", b"")
-    )
-
-    assert answered.status == HTTPStatus.OK
-    assert answered.body == {"cleared": 0}
-
-
-def test_a_line_appended_after_a_clear_lands_at_the_start_of_the_file(
-    tmp_path: Path,
-) -> None:
-    """The agreement between the two apps, and the whole of it (ADR-0022
-    d.4): the translator holds a handle it opened once for appending and does
-    not reopen, and this clear truncates that same file.
-
-    So the next line lands at the start and the one before it was not lost.
-    The handle here is opened before the clear and written after it, which is
-    the translator's process across a press on the page.
-    """
+    """The translator trims the file by renaming a new one over it (ADR-0022
+    d.4), and the face opens the file by name on every read."""
     path = tmp_path / "journal.jsonl"
     asked = kept(path)
-    later = '{"at": "2026-10-12T18:01:00.000+00:00", "restart": true}\n'
+    asyncio.run(asked.answer("GET", "/journal", b""))
+    trimmed = tmp_path / "journal.jsonl.trimmed"
+    trimmed.write_text(LINES.splitlines(keepends=True)[-1], encoding="utf-8")
+    trimmed.replace(path)
 
-    with path.open("a", encoding="utf-8") as appending:
-        answered = asyncio.run(asked.answer("DELETE", "/journal", b""))
-        appending.write(later)
+    answered = asyncio.run(asked.answer("GET", "/journal", b""))
 
-    assert answered.status == HTTPStatus.OK
-    assert path.read_text(encoding="utf-8") == later
-    assert asyncio.run(asked.answer("GET", "/journal", b"")).served == later.encode()
+    assert answered.served == LINES.splitlines(keepends=True)[-1].encode()
 
 
-def test_a_mirror_with_no_journal_says_so_on_both_routes() -> None:
+def test_a_mirror_with_no_journal_says_so() -> None:
     """A box mirroring a cable with nothing else running has no translator
-    beside it and no record to serve (ADR-0022 d.1), so the two routes answer
-    a status and a sentence the way the script routes do with no store. The
+    beside it and no record to serve (ADR-0022 d.1), so the route answers a
+    status and a sentence the way the script routes do with no store. The
     station's own routes answer as they always did."""
     asked = face()
 
-    for method in ("GET", "DELETE"):
-        answered = asyncio.run(asked.answer(method, "/journal", b""))
+    answered = asyncio.run(asked.answer("GET", "/journal", b""))
 
-        assert answered.status == HTTPStatus.SERVICE_UNAVAILABLE, method
-        assert answered.body == {"reason": NO_JOURNAL}, method
-        assert answered.served is None, method
+    assert answered.status == HTTPStatus.SERVICE_UNAVAILABLE
+    assert answered.body == {"reason": NO_JOURNAL}
+    assert answered.served is None
 
     assert asyncio.run(asked.answer("GET", "/releases", b"")).status == HTTPStatus.OK
 
 
 @pytest.mark.parametrize(
     "method",
-    [pytest.param("PUT", id="put"), pytest.param("POST", id="posted")],
+    [
+        pytest.param("PUT", id="put"),
+        pytest.param("POST", id="posted"),
+        pytest.param("DELETE", id="deleted"),
+    ],
 )
-def test_the_journal_is_read_with_get_and_emptied_with_delete(
+def test_the_journal_is_read_with_get_and_nothing_else(
     tmp_path: Path, method: str
 ) -> None:
-    """Two verbs and no third. Nothing writes a line through the face: the
-    journal is the translator's to keep, and a request that carried one would
-    be a second app writing the record (ADR-0022 d.1)."""
+    """Nothing writes or empties the file through the face: the journal is
+    the translator's to keep, and it trims it itself (ADR-0022 d.1, d.4)."""
     path = tmp_path / "journal.jsonl"
 
     answered = asyncio.run(kept(path).answer(method, "/journal", LINES.encode()))
@@ -1095,20 +1060,14 @@ def test_the_journal_is_read_with_get_and_emptied_with_delete(
     assert path.read_text(encoding="utf-8") == LINES
 
 
-@pytest.mark.parametrize(
-    "method", [pytest.param("GET", id="served"), pytest.param("DELETE", id="cleared")]
-)
-def test_a_page_from_another_origin_reaches_no_journal(
-    tmp_path: Path, method: str
-) -> None:
+def test_a_page_from_another_origin_reaches_no_journal(tmp_path: Path) -> None:
     """The record keeps the rule the rest of the face keeps (ADR-0004 d.4). A
     page somewhere else that could read it would be reading what a railroad
-    has been doing through an interface private to this app, and one that
-    could clear it would be throwing the record away."""
+    has been doing through an interface private to this app."""
     path = tmp_path / "journal.jsonl"
 
     answered = asyncio.run(
-        kept(path).answer(method, "/journal", b"", origin=ELSEWHERE_ORIGIN, host=LABEL)
+        kept(path).answer("GET", "/journal", b"", origin=ELSEWHERE_ORIGIN, host=LABEL)
     )
 
     assert answered.status == HTTPStatus.FORBIDDEN

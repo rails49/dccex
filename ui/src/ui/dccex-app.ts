@@ -154,7 +154,6 @@ import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { Bus } from "../bus.js";
 import {
   applies,
-  clears,
   flash,
   flashing,
   journal,
@@ -163,7 +162,7 @@ import {
 } from "../face.js";
 import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
-import { type Cleared, type Served } from "../incidents.js";
+import { type Served } from "../incidents.js";
 import {
   OPENED,
   type Conversation,
@@ -504,8 +503,7 @@ export class DccexApp extends LitElement {
    *  ADR-0002). */
   #journal(): TemplateResult {
     return html`
-      <dccex-journal .reads=${this.#reads} .empties=${this.#empties}>
-      </dccex-journal>
+      <dccex-journal .reads=${this.#reads}></dccex-journal>
     `;
   }
 
@@ -659,11 +657,6 @@ export class DccexApp extends LitElement {
    * under the eye (ADR-0010, ADR-0022 d.1).
    */
   readonly #reads = (): Promise<Served | null> => journal();
-
-  /** Ask the face to empty it, which the operator has been warned about and
-   *  asked twice for (ADR-0006 d.2, ADR-0022 d.4). The face truncates the file
-   *  the translator is appending to, so no line is lost to the clear. */
-  readonly #empties = (): Promise<Cleared> => clears();
 
   /** Ask the face to write a named release, and follow the write while it runs.
    *

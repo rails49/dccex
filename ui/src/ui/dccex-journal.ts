@@ -28,10 +28,8 @@
  * second is a page that has not been told. Neither draws a table: a row of
  * zeros for a file nobody read would be a count nobody made.
  *
- * **Clearing is the one gesture here that changes anything**, and it is the
- * controls' (`dccex-controls.ts`): the operator is told what it does and asked
- * a second time, and what the face answers is shown as it came. The file is
- * asked for again afterwards, because what is in it now is the face's to say.
+ * **Nothing here changes the file.** The translator keeps it to a size
+ * itself (ADR-0022 d.4).
  *
  * **And nothing here fetches.** The page asks the face and hands this pane the
  * two asks, as it does with the releases and the **script**: a pane holding its
@@ -45,7 +43,6 @@ import {
   ALL,
   EMPTY,
   UNREADABLE,
-  type Cleared,
   type Served,
   choices,
   over,
@@ -61,12 +58,10 @@ export class DccexJournal extends LitElement {
 
   static override readonly properties = {
     reads: { attribute: false },
-    empties: { attribute: false },
     served: { state: true },
     answered: { state: true },
     choice: { state: true },
     routine: { state: true },
-    says: { state: true },
   };
 
   /** What asks the face for the journal, as the page hands it down (`face.ts`).
@@ -74,13 +69,6 @@ export class DccexJournal extends LitElement {
    *  A pane nobody handed one to reads nothing, which is what a page with no
    *  way to ask has to show: the journal could not be read (ADR-0009 d.2). */
   reads: () => Promise<Served | null> = () => Promise.resolve(null);
-
-  /** What asks the face to empty it, as the page hands it down.
-   *
-   *  A pane nobody handed one to says the mirror could not be asked: nothing
-   *  said is not nothing cleared. */
-  empties: () => Promise<Cleared> = () =>
-    Promise.resolve({ cleared: false, says: UNREADABLE });
 
   /** What the face served, or `null` where it did not. */
   served: Served | null = null;
@@ -96,9 +84,6 @@ export class DccexJournal extends LitElement {
 
   /** Whether the lines no incident took are rows as well. */
   routine = false;
-
-  /** What became of the last clear, or empty where none has been asked for. */
-  says = "";
 
   /** When the face answered, on the page's clock.
    *
@@ -131,8 +116,6 @@ export class DccexJournal extends LitElement {
         .toggles=${this.#toggles}
         .bytes=${this.served === null ? null : this.served.bytes}
         .reloads=${this.#reloads}
-        .empties=${this.#clears}
-        .says=${this.says}
       ></dccex-controls>
       ${this.#nothing()}
       ${lines.length === 0
@@ -178,22 +161,6 @@ export class DccexJournal extends LitElement {
   readonly #reloads = (): void => {
     void this.#shows();
   };
-
-  /** The journal emptied, once the operator has said yes.
-   *
-   * What the face answered is shown as it came, and the file is asked for
-   * again: what is in it after a clear is the face's to say, and the
-   * translator may have appended a line in between (ADR-0022 d.4).
-   */
-  readonly #clears = (): void => {
-    void this.#cleared();
-  };
-
-  async #cleared(): Promise<void> {
-    const cleared = await this.empties();
-    this.says = cleared.says;
-    await this.#shows();
-  }
 
   /** The journal as the face has it now.
    *

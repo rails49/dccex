@@ -366,7 +366,6 @@ def test_the_file_s_size_is_drawn_in_the_unit_it_is_spelt_in() -> None:
         "1.5 kB",
         "2.5 MB",
     ]
-    assert drawn[3]["emptied"] == "the journal is empty: 1.5 kB cleared"
 
 
 @pytest.mark.node
@@ -408,12 +407,7 @@ def test_a_stamp_carries_the_day_and_is_the_clock_of_the_machine_reading_it() ->
 @pytest.mark.node
 def test_the_words_the_controls_are_pressed_with_are_the_module_s() -> None:
     """Every sentence an operator reads on this view, asserted as the words
-    they are rather than against the template that would show them.
-
-    The warning says what clearing does before it is asked a second time: the
-    record is what nobody was watching, nothing keeps a copy, and the face
-    guards nothing (ADR-0006 d.2, `face.py`).
-    """
+    they are rather than against the template that would show them."""
     says = own()["says"]
     assert says["ALL"] == "all"
     assert says["DAY"] == "last day"
@@ -422,10 +416,6 @@ def test_the_words_the_controls_are_pressed_with_are_the_module_s() -> None:
     assert says["RELOADS"] == "reload"
     assert says["DOWNLOADS"] == "download"
     assert says["ROUTINE"] == "show routine lines"
-    assert says["CLEARS"] == "clear"
-    assert says["CONFIRMS"] == "yes, clear it"
-    assert says["CANCELS"] == "cancel"
-    assert "nothing keeps a copy" in says["WARNS"]
     assert own()["spans"] == ["all", "last day", "last 7 days"]
 
 
@@ -483,7 +473,7 @@ def test_the_pane_holds_no_counterparty_of_its_own() -> None:
     the releases and the **script** (the organisation's ADR-0002,
     `dccex-app.ts`).
 
-    The view is handed what reads the journal and what empties it; the three
+    The view is handed what reads the journal; the three
     components under it are handed words and rows. A pane that fetched would be
     a second answer to what the page talks to.
     """
@@ -493,7 +483,6 @@ def test_the_pane_holds_no_counterparty_of_its_own() -> None:
             assert reached not in drawn, f"{component.name} reaches {reached}"
     view = code(VIEW.read_text())
     assert "this.reads()" in view, "the view asks nobody for the journal"
-    assert "this.empties()" in view, "the view asks nobody to empty it"
 
 
 def test_the_view_asks_on_opening_and_on_the_reload_and_on_no_schedule() -> None:

@@ -147,10 +147,9 @@ services:
     # clone gets.
     #
     # The **journal** is the file on the volume below, and it is the same file
-    # the translator appends to: this app's face serves it as it is and
-    # truncates it on a request from the page (ADR-0022 d.4). One path named
-    # twice in this file and nowhere else. Left out, the face answers those
-    # two routes with a sentence, which a clean clone with no translator
+    # the translator appends to and trims: this app's face serves it as it is
+    # (ADR-0022 d.4). One path named twice in this file and nowhere else. Left
+    # out, the face answers that route with a sentence, which a clean clone with no translator
     # beside this app gets.
     command:
       ["--device", "/dev/dccex", "--port", "2560",
@@ -205,13 +204,12 @@ services:
     networks:
       - default
       - rails49
-    # The **journal**, which the translator beside this writes and this app's
-    # face serves to the page as it is and truncates on a request from it
-    # (ADR-0022 d.4). The same named volume mounted at the same path in both
-    # containers: the two apps agree on nothing more than that, the writer
-    # appending and the reader reading, so a clear loses no line.
+    # The **journal**, which the translator beside this writes and trims and
+    # this app's face serves to the page as it is (ADR-0022 d.4). The same
+    # named volume mounted at the same path in both containers, read-only
+    # here.
     volumes:
-      - journal:/var/lib/dccex
+      - journal:/var/lib/dccex:ro
 
   # The translator: `layout`'s desired rows to the station's commands, and the
   # station's replies to the track and link rows (ADR-0014). Same image as the
@@ -249,14 +247,14 @@ services:
       - default
       - rails49
     # The journal's volume, mounted where the mirror mounts it: this app
-    # appends and the mirror's face reads and clears (ADR-0022 d.4).
+    # appends and trims, and the mirror's face reads (ADR-0022 d.4).
     volumes:
       - journal:/var/lib/dccex
 
 volumes:
   # The **journal**, kept by the box and not by either container: the
-  # translator appends to the file on it and the mirror's face serves and
-  # clears the same file, so a deploy that replaces both images leaves the
+  # translator appends to the file on it and trims it, and the mirror's face
+  # serves the same file, so a deploy that replaces both images leaves the
   # record where it was (ADR-0022 d.1, d.4). Named rather than a path on the
   # box, because nothing on the box has to be made for it and the daemon owns
   # what is in it.

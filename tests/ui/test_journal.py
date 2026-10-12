@@ -262,7 +262,7 @@ RODE_OUT: list[Line] = [
 ]
 
 #: A flip the station did not call fast, on a district the file never says
-#: the power of: the journal was cleared while the railroad was running.
+#: the power of: the journal was trimmed while the railroad was running.
 A_SLOW_FLIP: list[Line] = [
     said(0, invert("D", fast=False), district="D", mode="MAIN_AUTO", limit=3000),
     said(2_000, "<p0 D>", district="D", mode="MAIN_AUTO", limit=3000),

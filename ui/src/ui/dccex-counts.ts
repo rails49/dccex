@@ -15,7 +15,7 @@
  * there is no trip, no peak and no rate to put there, and a zero in those
  * columns would be a reading nobody took (ADR-0009 d.2).
  *
- * **It presses nothing.** The period, the toggle, the reload and the clear are
+ * **It presses nothing.** The period, the toggle and the reload are
  * the controls' (`dccex-controls.ts`), and a table that offered one of them
  * would be a second place this view is driven from.
  */

@@ -328,8 +328,8 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
     the mirror and the page do; the six modules of the package that came across
     with its prose and six of the seven suites that check them; four of the
     translator's modules and two of its suites (#180); the check that
-    holds the package to importing nothing, and five of the page's suites; seven
-    of the page's own modules and five of its components; and the `Dockerfile`
+    holds the package to importing nothing, and five of the page's suites; six
+    of the page's own modules and four of its components; and the `Dockerfile`
     the box runs the mirror from. `firmware.py` cites five of the seven
     numbers, which is the file whose whole subject — writing a build onto the
     station the mirror is holding — was settled over there.
@@ -380,13 +380,11 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
         "ui/src/bus.ts",
         "ui/src/face.ts",
         "ui/src/flash.js",
-        "ui/src/incidents.js",
         "ui/src/readings.js",
         "ui/src/releases.js",
         "ui/src/script.ts",
         "ui/src/ui/dccex-app.ts",
         "ui/src/ui/dccex-band.ts",
-        "ui/src/ui/dccex-controls.ts",
         "ui/src/ui/dccex-releases.ts",
         "ui/src/ui/dccex-script.ts",
     }

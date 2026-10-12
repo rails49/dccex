@@ -1,6 +1,6 @@
 /**
  * The **journal** view's controls: the period, the toggle, the reload, the
- * file's size, the download and the clear.
+ * file's size and the download.
  *
  * **It decides nothing.** Which period is read, whether the routine lines are
  * shown and when the journal is asked for again are the view's, kept there and
@@ -17,28 +17,12 @@
  * address with `download` on it, so the file a person keeps is the bytes the
  * mirror served and not something this page rendered (ADR-0022 d.4,
  * `face.ts`).
- *
- * **And the clear says what it does before it does it** (ADR-0006 d.2). The
- * journal is the record of what nobody was watching, nothing keeps a copy and
- * the face guards nothing: so the warning opens under the control, the yes is
- * drawn as the dangerous press it is, and what the face answered is shown as it
- * came (control ADR-0050). The words are `incidents.js`'s and are run rather
- * than read (`tests/ui/test_incidents.py`).
  */
 
-import { LitElement, html, nothing, type TemplateResult } from "lit";
+import { LitElement, html, type TemplateResult } from "lit";
 
 import { JOURNAL_PATH } from "../face.js";
-import {
-  CANCELS,
-  CLEARS,
-  CONFIRMS,
-  DOWNLOADS,
-  RELOADS,
-  ROUTINE,
-  WARNS,
-  size,
-} from "../incidents.js";
+import { DOWNLOADS, RELOADS, ROUTINE, size } from "../incidents.js";
 import { controlsStyles } from "./dccex-controls.styles.js";
 
 /** What the chooser is labelled. The word is the one the glossary spends on
@@ -60,9 +44,6 @@ export class DccexControls extends LitElement {
     toggles: { attribute: false },
     bytes: { attribute: false },
     reloads: { attribute: false },
-    empties: { attribute: false },
-    says: { attribute: false },
-    asked: { state: true },
   };
 
   /** The periods on offer: the spans, and one per build in the journal. */
@@ -89,17 +70,6 @@ export class DccexControls extends LitElement {
 
   /** What asks the face for the journal again. */
   reloads: () => void = () => {};
-
-  /** What asks the face to empty it, once the operator has said yes. */
-  empties: () => void = () => {};
-
-  /** What became of the last clear, as the view hands it down: the face's own
-   *  sentence, or the page's where there was no answer to read. */
-  says = "";
-
-  /** Whether the warning the clear opens is open. Nothing has reached the face
-   *  while it is: it is the gesture made and the yes not yet given. */
-  asked = false;
 
   override render(): TemplateResult {
     return html`
@@ -136,42 +106,6 @@ export class DccexControls extends LitElement {
         <a class="downloads" href=${JOURNAL_PATH} download=${FILE}>
           ${DOWNLOADS}
         </a>
-        <button
-          class="clears"
-          type="button"
-          ?disabled=${this.asked}
-          @click=${this.#clears}
-        >
-          ${CLEARS}
-        </button>
-      </div>
-      ${this.#warning()}
-      ${this.says === ""
-        ? nothing
-        : html`<p class="says" aria-live="polite">${this.says}</p>`}
-    `;
-  }
-
-  /** What an operator is told before the journal is emptied, and the two
-   *  presses that answer it.
-   *
-   * The second press is what makes the gesture a thing somebody meant: the
-   * guard is the person, and a person can only be one if they are told what
-   * the gesture does before they are asked (ADR-0006 d.2).
-   */
-  #warning(): TemplateResult | typeof nothing {
-    if (!this.asked) {
-      return nothing;
-    }
-    return html`
-      <div class="warning">
-        <p class="warns" role="alert">${WARNS}</p>
-        <button class="confirms" type="button" @click=${this.#confirms}>
-          ${CONFIRMS}
-        </button>
-        <button class="cancels" type="button" @click=${this.#cancels}>
-          ${CANCELS}
-        </button>
       </div>
     `;
   }
@@ -191,23 +125,6 @@ export class DccexControls extends LitElement {
    *  (ADR-0010 d.1: the page asks). */
   readonly #reloads = (): void => {
     this.reloads();
-  };
-
-  /** The clear pressed: the warning opens and nothing else happens. */
-  readonly #clears = (): void => {
-    this.asked = true;
-  };
-
-  /** The warning declined. Nothing was asked of the face, so there is nothing
-   *  to report about a journal nobody emptied. */
-  readonly #cancels = (): void => {
-    this.asked = false;
-  };
-
-  /** The yes. The warning shuts and the view asks the face. */
-  readonly #confirms = (): void => {
-    this.asked = false;
-    this.empties();
   };
 }
 

@@ -35,9 +35,6 @@
 
 import {
   ALL,
-  CANCELS,
-  CLEARS,
-  CONFIRMS,
   DAY,
   DOWNLOADS,
   EMPTY,
@@ -46,13 +43,10 @@ import {
   ROUTINE,
   SPANS,
   STATION,
-  UNANSWERED,
   UNREADABLE,
-  WARNS,
   WEEK,
   builds,
   choices,
-  emptied,
   lasted,
   over,
   parsed,
@@ -75,13 +69,8 @@ const answered = (ask) => {
         RELOADS,
         DOWNLOADS,
         ROUTINE,
-        CLEARS,
-        WARNS,
-        CONFIRMS,
-        CANCELS,
         EMPTY,
         UNREADABLE,
-        UNANSWERED,
       },
     };
   }
@@ -93,7 +82,7 @@ const answered = (ask) => {
     return over(ask.choice, Date.parse(ask.now));
   }
   if ("bytes" in ask) {
-    return { size: size(ask.bytes), emptied: emptied(ask.bytes) };
+    return { size: size(ask.bytes) };
   }
   if ("ms" in ask) {
     return lasted(ask.ms);
