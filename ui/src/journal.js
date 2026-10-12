@@ -28,8 +28,8 @@
  * rather than this module's to guess at.
  *
  * It is JavaScript with its types in JSDoc, as `decoder.js`, `message.js`,
- * `readings.js`, `releases.js`, `flash.js`, `framing.js` and `monitor.js` are:
- * the modules the gate runs rather than reads, listed in
+ * `readings.js`, `releases.js`, `flash.js`, `framing.js`, `monitor.js` and
+ * `incidents.js` are: the modules the gate runs rather than reads, listed in
  * `tests/ui/test_decoder.py`. `tsc` checks this file as it checks the rest
  * (`ui/tsconfig.json`).
  */
@@ -176,6 +176,8 @@ const HOUR_MS = 3600000;
  * @property {number} trips how many times the station cut the district in it
  * @property {number | null} milliamps the highest it printed in it
  * @property {number} cut how long the district was cut for, in milliseconds
+ * @property {number[]} taken which journal lines it is made of, by their place
+ *   in the lines this was handed, in the order they were written
  */
 
 /**
@@ -327,6 +329,27 @@ function inside(at, line, period) {
 }
 
 /**
+ * Whether the period reads `line`, which is the question `read` below asks of
+ * every line and the one the view asks again of the lines it draws.
+ *
+ * One rule and one place: the lines an **incident** is made of and the ones no
+ * incident took are the period's as much as the counts are, so a second
+ * spelling of it in `incidents.js` would be a second answer to which lines a
+ * reader is looking at (#266).
+ *
+ * A line nobody can place in time is read as nothing at all: every count here
+ * is of when something happened.
+ *
+ * @param {Line} line one line of the journal
+ * @param {Period} [period] which lines are read; all of them by default
+ * @returns {boolean}
+ */
+export function reads(line, period = {}) {
+  const at = Date.parse(line.at);
+  return !Number.isNaN(at) && inside(at, line, period);
+}
+
+/**
  * A district as it is counted up, before the hours are divided out.
  *
  * @typedef {object} Counted
@@ -359,6 +382,7 @@ function inside(at, line, period) {
  * @property {boolean} repeated whether a flip of it was the third in a second
  * @property {boolean} slow whether a flip of it was not a fast one
  * @property {boolean} caused whether an alert or a trip followed a flip of it
+ * @property {number[]} taken which lines have been folded into it
  */
 
 /**
@@ -367,6 +391,7 @@ function inside(at, line, period) {
  * @typedef {object} Flip
  * @property {string} district
  * @property {number} at
+ * @property {number} index where its line sits in the journal
  * @property {boolean} fast
  * @property {boolean} spent whether an incident has taken it
  */
@@ -377,15 +402,17 @@ function inside(at, line, period) {
  * @param {string | null} district which district, or `null` for the station's
  * @param {string} start the stamp of the line that opened it
  * @param {string | null} mode what the station had said that district was
+ * @param {number} index where the line that opened it sits in the journal
  * @param {string | null} [fixed] the kind, where it is not read off what
  *   happened
  * @returns {Reading}
  */
-function reading(district, start, mode, fixed = null) {
+function reading(district, start, mode, index, fixed = null) {
   return {
     district,
     start,
     fixed,
+    taken: [index],
     trips: 0,
     milliamps: null,
     cut: 0,
@@ -557,6 +584,10 @@ export function read(lines, period = {}) {
       trips: held.trips,
       milliamps: held.milliamps,
       cut: held.cut,
+      // The flips a burst took are folded in after the line that opened the
+      // reading, and a line reached twice is one line: what goes out is the
+      // journal's own order, once each.
+      taken: [...new Set(held.taken)].sort((first, second) => first - second),
     });
     if (held.district !== null) {
       const counts = counted(held.district);
@@ -566,11 +597,24 @@ export function read(lines, period = {}) {
     }
   };
 
-  /** @param {string} name */
-  const closes = (name) => {
+  /**
+   * One district's incident closed.
+   *
+   * The line that closed it is part of what it is made of — the `NORMAL`, the
+   * power going off, the link going — and is named where there is one. The
+   * journal running out is not one: the last line of the file closes whatever
+   * is open, and it is somebody else's line.
+   *
+   * @param {string} name
+   * @param {number | null} [index] where the line that closed it sits
+   */
+  const closes = (name, index = null) => {
     const held = open.get(name);
     if (held !== undefined) {
       open.delete(name);
+      if (index !== null) {
+        held.taken.push(index);
+      }
       closed(held);
     }
   };
@@ -592,11 +636,9 @@ export function read(lines, period = {}) {
     }
   };
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const when = Date.parse(line.at);
-    if (Number.isNaN(when) || !inside(when, line, period)) {
-      // A line nobody can place in time is read as nothing at all: every count
-      // here is of when something happened.
+    if (!reads(line, period)) {
       continue;
     }
     at = when;
@@ -604,19 +646,20 @@ export function read(lines, period = {}) {
     if (line.link === DOWN) {
       station.links += 1;
       for (const name of [...open.keys()]) {
-        closes(name);
+        closes(name, index);
       }
       for (const name of [...districts.keys()]) {
         unpowers(name);
       }
-      outage ??= reading(null, line.at, null, LINK);
+      outage ??= reading(null, line.at, null, index, LINK);
     } else if (line.link !== undefined && outage !== null) {
+      outage.taken.push(index);
       closed(outage);
       outage = null;
     }
     if (line.restart === true) {
       station.restarts += 1;
-      closed(reading(null, line.at, null, RESTART));
+      closed(reading(null, line.at, null, index, RESTART));
     }
     if (line.said === undefined) {
       continue;
@@ -631,7 +674,7 @@ export function read(lines, period = {}) {
         if (power.hot) {
           powers(name);
         } else {
-          closes(name);
+          closes(name, index);
           unpowers(name);
         }
       }
@@ -648,32 +691,37 @@ export function read(lines, period = {}) {
       const within = flips.filter(
         (found) => found.district === name && at - found.at < REPEATED_MS,
       );
-      const flip = { district: name, at, fast: told.fast, spent: false };
+      const flip = { district: name, at, index, fast: told.fast, spent: false };
       flips.push(flip);
       const repeated = within.length + 1 >= REPEATS;
       let held = open.get(name);
       if (held === undefined && (repeated || !told.fast)) {
-        held = reading(name, line.at, line.mode ?? null);
+        held = reading(name, line.at, line.mode ?? null, index);
         open.set(name, held);
       }
       if (held !== undefined) {
         held.repeated = held.repeated || repeated;
         held.slow = held.slow || !told.fast;
         flip.spent = true;
+        held.taken.push(index);
         // The flips the third one counted are part of what it says, so a burst
         // of three is one reading and not an incident with two good flips
         // beside it.
         for (const counting of within) {
           counting.spent = true;
+          held.taken.push(counting.index);
         }
       }
       continue;
     }
     if (told.word === "restore") {
       const held = open.get(name);
-      if (held !== undefined && held.from !== null) {
-        held.cut += at - held.from;
-        held.from = null;
+      if (held !== undefined) {
+        held.taken.push(index);
+        if (held.from !== null) {
+          held.cut += at - held.from;
+          held.from = null;
+        }
       }
       continue;
     }
@@ -682,7 +730,7 @@ export function read(lines, period = {}) {
       if (held !== undefined) {
         held.normal = true;
         held.milliamps = highest(held.milliamps, told.milliamps);
-        closes(name);
+        closes(name, index);
       }
       powers(name);
       continue;
@@ -690,15 +738,20 @@ export function read(lines, period = {}) {
     // An alert or a trip: the district is the thing to look at from here.
     let held = open.get(name);
     if (held === undefined) {
-      held = reading(name, line.at, line.mode ?? null);
+      held = reading(name, line.at, line.mode ?? null, index);
       open.set(name, held);
     }
+    held.taken.push(index);
     held.milliamps = highest(held.milliamps, told.milliamps);
     const flip = flipped(flips, at);
     if (flip !== undefined) {
       held.caused = true;
       held.repeated = held.repeated || repeats(flips, flip);
       flip.spent = true;
+      // The flip the short outlived is part of the incident rather than a flip
+      // the reverser got away with, so the line it is on is one of this
+      // incident's.
+      held.taken.push(flip.index);
     }
     if (told.word === "trip") {
       held.tripped = true;
