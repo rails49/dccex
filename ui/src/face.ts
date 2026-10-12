@@ -25,6 +25,14 @@
  * — the store is the mirror's configuration in exactly the way the release API
  * is (ADR-0015 d.5, `face.py`).
  *
+ * **The journal is the one thing here the page does not ask about the
+ * mirror.** It is the **translator**'s record of what the station said about
+ * power, kept on a volume both apps mount, and the mirror's face serves the
+ * file as it is and empties it on a request from the page (ADR-0022 d.4): the
+ * translator has no face, and a page may talk to its own app's face and no
+ * other (the organisation's ADR-0002). What the page makes of the bytes is
+ * `incidents.js`'s, as what it makes of a release document is `releases.js`'s.
+ *
  * **The store is asked through here and never directly.** A UI talks to the
  * bus, the store and its own app's face (the organisation's ADR-0002), and the
  * store this page's script lives in is on the box's own network where a browser
@@ -42,6 +50,13 @@ import {
   type Wrote,
   progress,
 } from "./flash.js";
+import {
+  UNANSWERED as UNANSWERED_CLEAR,
+  type Cleared,
+  type Served,
+  emptied,
+  parsed,
+} from "./incidents.js";
 import { carried, type Carried } from "./releases.js";
 import {
   UNANSWERED as UNANSWERED_APPLY,
@@ -218,6 +233,92 @@ export async function flashing(): Promise<Flashing | null> {
     return progress((said as Record<string, unknown>)[FLASHING]);
   } catch {
     return null;
+  }
+}
+
+/** Where the **journal** is served and cleared.
+ *
+ *  Two things on one address, which is the face's own arrangement: a GET hands
+ *  back the file as it stands and a DELETE empties it, so a page that reloaded
+ *  the read has thrown nothing away (ADR-0022 d.4, `face.py`). It is also what
+ *  the download link on the view points at, which is a browser fetching the
+ *  same address for itself. */
+export const JOURNAL_PATH = `${FACE}/journal`;
+
+/** How the journal is emptied, and what the answer says went: the bytes, which
+ *  is what the face can count without reading a line of the file. */
+const DELETE = "DELETE";
+const CLEARED = "cleared";
+
+/**
+ * The **journal** as the file stands, or `null` where the face did not serve
+ * it.
+ *
+ * **Nothing said is not an empty journal**, so anything but an answer comes
+ * back as `null`: a face that is away, a mirror started with no journal, a
+ * status that is not a 200. A page drawing no incidents for any of them would
+ * be reporting a railroad that said nothing about power when it had not been
+ * told (ADR-0009 d.2). A journal with nothing in it is a different sentence
+ * and it is the face's empty body.
+ *
+ * **It is read as bytes and counted as bytes.** The size on the view is the
+ * file's size, which is the length of what came back rather than a header the
+ * door may have changed; the lines come off the same bytes, so the two cannot
+ * disagree. What is made of them — the lines, a half-written last one dropped,
+ * the incidents and the counts — is `incidents.js`'s and `journal.js`'s, which
+ * is the seam the releases are split on (`tests/ui/test_incidents.py`).
+ */
+export async function journal(): Promise<Served | null> {
+  try {
+    const answered = await fetch(JOURNAL_PATH);
+    if (!answered.ok) {
+      return null;
+    }
+    const served = await answered.arrayBuffer();
+    return {
+      lines: parsed(new TextDecoder().decode(served)),
+      bytes: served.byteLength,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The **journal** emptied, and what became of that.
+ *
+ * The file is truncated where it is, by the face, so the translator's next
+ * line lands at the start of it and no line is lost to the clear (ADR-0022
+ * d.4). Nothing here keeps a copy and nothing can be undone, which is what the
+ * warning on the view is for.
+ *
+ * **A refusal is the face's sentence and not one of this page's**: a mirror
+ * started with no journal says so, and a path it could not empty says which
+ * path (control ADR-0050, `face.py`). What this page says instead is
+ * `incidents.js`'s `UNANSWERED`, and only where there was no answer to read.
+ *
+ * It answers rather than raising, as the asks above do.
+ */
+export async function clears(): Promise<Cleared> {
+  try {
+    const answered = await fetch(JOURNAL_PATH, { method: DELETE });
+    const said: unknown = await answered.json().catch(() => null);
+    const fields =
+      typeof said === "object" && said !== null
+        ? (said as Record<string, unknown>)
+        : {};
+    const cleared = fields[CLEARED];
+    if (answered.ok && typeof cleared === "number") {
+      return { cleared: true, says: emptied(cleared) };
+    }
+    const reason = fields[REASON];
+    return {
+      cleared: false,
+      says:
+        typeof reason === "string" && reason !== "" ? reason : UNANSWERED_CLEAR,
+    };
+  } catch {
+    return { cleared: false, says: UNANSWERED_CLEAR };
   }
 }
 
