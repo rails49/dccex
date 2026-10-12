@@ -374,7 +374,8 @@ def test_a_duration_is_drawn_in_the_unit_a_reader_can_hold() -> None:
     """Milliseconds under a second, because the station cuts a district and
     retries it inside one (ADR-0016); seconds under a minute; minutes and
     seconds above that."""
-    assert run([{"ms": ms} for ms in (0, 40, 999, 1_000, 1_100, 59_900, 70_000)]) == [
+    drawn = (0, 40, 999, 1_000, 1_100, 59_900, 70_000, 119_900, 300_000)
+    assert run([{"ms": ms} for ms in drawn]) == [
         "0 ms",
         "40 ms",
         "999 ms",
@@ -382,6 +383,8 @@ def test_a_duration_is_drawn_in_the_unit_a_reader_can_hold() -> None:
         "1.1 s",
         "59.9 s",
         "1 m 10 s",
+        "2 m 00 s",
+        "5 m 00 s",
     ]
 
 
