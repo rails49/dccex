@@ -58,11 +58,14 @@ sub-addresses under each of 511 decoder addresses. What the drawing types on
 a turnout is this number, the one a throttle and DecoderPro show, and
 splitting it into the packet's address and sub-address is this app's."""
 
-EXTENDED_MAX = 2047
-"""The addresses an extended accessory packet reaches, its address field
-being eleven bits. A signal is addressed in that space and not in the linear
-one: it takes an aspect rather than a pair of positions, so nothing is split
-off it."""
+EXTENDED_MAX = 2044
+"""The addresses the station takes for an extended accessory packet, `0`
+upward. The station adds the RCN-213 offset of 3 to the address it is given,
+and the packet's address field is eleven bits, so the last address that fits
+is `2044` and `<A 2045 0>` is answered `<X>` (#252, rails49/CommandStation-EX
+`docs/commands.md`, *Accessories*). A signal is addressed in that space and
+not in the linear one: it takes an aspect rather than a pair of positions, so
+nothing is split off it."""
 
 STATUS = b"<s>"
 """One half of a poll, `STASH` the other. `<s>` makes the station restate

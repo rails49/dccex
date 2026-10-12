@@ -70,6 +70,14 @@ def test_a_signal_is_an_extended_accessory_packet() -> None:
     assert commands.signal("40", "clear") == b"<A 40 2>"
 
 
+def test_the_last_signal_address_is_the_one_the_station_takes() -> None:
+    """The station adds the RCN-213 offset of 3 to the address it is given,
+    so the eleven-bit packet address runs out at `2044` and `<A 2045 0>` is
+    answered `<X>`, checked on the layout (#252)."""
+    assert commands.signal("2044", "stop") == b"<A 2044 0>"
+    assert commands.signal("2045", "stop") is None
+
+
 def test_an_aspect_no_head_here_is_wired_for_sends_nothing() -> None:
     """An aspect is a name and not an enum, so what a head shows is wiring:
     one this translator has no packet for is silence rather than a guess."""
