@@ -800,10 +800,8 @@ asked of every machine the gate runs on: these checks carry the `node` marker,
 `scripts/check.sh` does not collect them, and the workflow runs them in a job a
 pull request requires (#101). Where they do run, a node that is not there is red
 rather than skipped, as everything else a gate needs is. It is why
-`ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
-`ui/src/releases.js`, `ui/src/flash.js`, `ui/src/framing.js`,
-`ui/src/monitor.js` and `ui/src/journal.js` are the eight modules of the page
-written as JavaScript with their types in JSDoc: `tsc` checks them as strictly as the rest
+the modules `tests/ui/test_decoder.py` lists are written as JavaScript with
+their types in JSDoc: `tsc` checks them as strictly as the rest
 (`ui/tsconfig.json`), and a bare node can still run them.
 
 What is left in the modules those came out of is what needs a browser — the
