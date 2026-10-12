@@ -74,9 +74,12 @@ mirror passes on, and not from the poll: the digit reads `0` for a tripped
 district and for a powered one near its limit (ADR-0016).
 
 Nothing else is asked, because a station is polled only for what it can
-answer. A poll is this and the stash whatever build the station runs: the
-stop this app sends is the one-shot, which asks for no lock, so there is no
-lock state to read back (control#463)."""
+answer. A poll is this and the stash whatever build the station runs. The lock
+is not asked about, for the reasons `track()` and control#464 give. The lock is
+one firmware branch's command, so this app does not use it, and on a station
+older than the lock `<!Q>` is read as `<!>`, the emergency stop itself
+(control#463). A lock another throttle sets is still read, off the station's
+`<!PAUSED>` and `<!RESUMED>` broadcasts (`replies.Lock`)."""
 
 STASH_ID = 32000
 """The stash entry this app owns, and the only one it writes or reads
