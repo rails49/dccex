@@ -10,11 +10,13 @@
  *
  * **The railroad is a reading and not a control** (the organisation's
  * ADR-0014, issue 239). It is the name off `tc49/layout/state/railroad`, or
- * `no railroad loaded` where `control` has loaded none and where this page has
- * no broker — the band's own sentence for it is the readings module's, as the
- * link's words are. Nothing on this page loads a railroad: that is `control`'s
- * UI next door, so this is a `span` and the two presses stay the only controls
- * on the chrome.
+ * `no railroad loaded` where a row says `control` has loaded none — the band's
+ * own sentence for it is the readings module's, as the link's words are. The
+ * slot is blank while no railroad row has arrived since the connection came up,
+ * which is a page with no broker and the gap after a reconnect: `control` may
+ * have a railroad loaded the whole time (issue 246, `readings.js`). Nothing on
+ * this page loads a railroad: that is `control`'s UI next door, so this is a
+ * `span` and the two presses stay the only controls on the chrome.
  *
  * **It asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1). A press
  * used to send `<1>` or `<0>` through the **face**, which skipped `layout` and
@@ -54,7 +56,8 @@
  * are the dot's label in either state, so a reader who cannot see it is told
  * which reading it is. The build goes blank with the link: what the station
  * last said is not a reading once the station has stopped talking. The
- * railroad's name does not, because that one is `layout` talking.
+ * railroad's name does not, because that one is `layout` talking; what leaves
+ * that slot blank is the bus going rather than the station going quiet.
  */
 
 import { mdiPower } from "@mdi/js";
