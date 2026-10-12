@@ -24,13 +24,13 @@ address it loads is `http://127.0.0.1/` and no port has to be agreed between
 them. The gate is untouched by all of it, which is the criterion #127 ends on.
 
 **There is no face behind the page here**, and no broker either, so the stream
-never opens, the link reads as not answering, the build is blank and the band
-reads `no railroad loaded` — the "nothing said" state, and enough for layout.
-The one exception is the release list: rows are what the wrap rule is about,
-and a page with none of them cannot be asked whether they wrap, so the browser
-answers that one request with three releases and nothing else is stood up.
-They go in through the page's own `fetch`, so what is measured is the rows the
-page draws rather than a shape poked into a component.
+never opens, the link reads as not answering, the build is blank and the band's
+railroad slot is blank with it — the "nothing said" state, and enough for
+layout. The one exception is the release list: rows are what the wrap rule is
+about, and a page with none of them cannot be asked whether they wrap, so the
+browser answers that one request with three releases and nothing else is stood
+up. They go in through the page's own `fetch`, so what is measured is the rows
+the page draws rather than a shape poked into a component.
 
 **The script view is the one thing handed to a component here** (#238). The
 railroad it edits is the one `control` has loaded, which the page reads off the
@@ -522,8 +522,10 @@ def test_the_narrow_band_keeps_the_dot_and_both_presses(
     is held here is that a browser does it: at both phone widths the **build**,
     the railroad's name and the link's words are not laid out, the dot, the
     power button and STOP are, and at a desktop width the words and the
-    railroad are back. The last of them is what keeps the rest from passing on
-    a page that drew no band at all.
+    railroad are back. The words are what keep the rest from passing on a page
+    that drew no band at all: with no broker behind this page the railroad is
+    unreported and its slot is blank, so what is asserted of it is that it is
+    laid out (#246).
 
     Each press is measured against `--rail-button` as well, which is the look
     rules' minimum for a thumb: they are pressed on the phone held at the
@@ -561,14 +563,12 @@ def test_the_narrow_band_keeps_the_dot_and_both_presses(
         desktop["says"]["display"] != "none"
     ), "the band drops the words at every width"
     assert desktop["says"]["box"]["width"] > 0, "the band says nothing at any width"
-    # With no face and no broker behind the page the band reads `no railroad
-    # loaded`, which is a drawn reading and not a blank (issue 239).
+    # With no broker behind the page the railroad is unreported, so the slot is
+    # blank and a box of no width is what a drawn one and a dropped one both
+    # measure (#246). The display is the whole of what can be held here.
     assert (
         desktop["railroad"]["display"] != "none"
     ), "the band drops the railroad at every width"
-    assert (
-        desktop["railroad"]["box"]["width"] > 0
-    ), "the band names no railroad at any width"
 
 
 def test_the_command_box_is_on_a_phone_s_screen_and_can_be_typed_into(
