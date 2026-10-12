@@ -259,6 +259,23 @@ A_SLOW_FLIP: list[Line] = [
     said(2_000, "<p0 D>", district="D", mode="MAIN_AUTO", limit=3000),
 ]
 
+#: A journal from before the translator stopped keeping them (#269): the
+#: station's answers to `<s>` are still in it, so the bare `<p0>` and `<p1>`
+#: and the ones naming a mode group sit among the lines that name a district.
+#: A district is cut and comes back while they go by, and another is named by
+#: a flip and by no `<p…>` of its own.
+LINES_NAMING_NO_DISTRICT: list[Line] = [
+    said(0, "<p1 A>", district="A", mode="MAIN", limit=3000),
+    said(100, invert("B", fast=False), district="B", mode="MAIN_AUTO", limit=3000),
+    said(1_000, overload("A"), district="A", mode="MAIN", limit=3000),
+    said(1_040, "<p0 PROG>"),
+    said(1_100, "<p0>"),
+    said(1_200, "<p1 MAIN>"),
+    said(1_300, "<p1>"),
+    said(2_000, normal("A"), district="A", mode="MAIN", limit=3000),
+    said(3_601_000, "<p0 A>", district="A", mode="MAIN", limit=3000),
+]
+
 #: Every journal above, read over the period it is read over. A name, a
 #: journal and a period, so that one file read two ways is two of these.
 ASKS: dict[str, dict[str, Any]] = {
@@ -281,6 +298,7 @@ ASKS: dict[str, dict[str, Any]] = {
     },
     "what the station rode out": {"journal": RODE_OUT},
     "a slow flip": {"journal": A_SLOW_FLIP},
+    "lines naming no district": {"journal": LINES_NAMING_NO_DISTRICT},
     "nothing at all": {"journal": []},
 }
 
@@ -503,6 +521,37 @@ def test_a_district_the_file_never_says_the_power_of_has_no_rate() -> None:
     counts = district("a slow flip", "D")
     assert counts["hours"] == 0
     assert counts["rate"] is None
+
+
+@pytest.mark.node
+def test_a_power_line_naming_no_district_is_passed_over() -> None:
+    """The bare `<p0>` and `<p1>`, and the ones naming `MAIN`, `PROG` or
+    `JOIN`: the station prints them after a `<pN X>` line for each district,
+    so they say nothing those do not, and the page reads them as the
+    translator does (`replies.kept`, ADR-0022 d.2 as amended). The trip ends
+    on the `NORMAL` rather than on the `<p0 PROG>` 40 ms after the cut, and
+    neither line is part of what either incident is made of.
+    """
+    cut, slow = incidents("lines naming no district")
+    assert cut["kind"] == "trip"
+    assert cut["district"] == "A"
+    assert cut["end"] == at(2_000)
+    assert cut["cut"] == 1_000
+    assert cut["taken"] == [2, 7], "the cut and the normal"
+    assert slow["kind"] == "slow reversal"
+    assert slow["end"] == at(3_601_000)
+    assert slow["taken"] == [1], "the flip"
+
+
+@pytest.mark.node
+def test_a_power_line_naming_no_district_powers_no_district() -> None:
+    """A district the file says no `<pN X>` about was powered for none of the
+    journal, whatever the lines naming none of them said. The one the file
+    does say it about is powered across them."""
+    assert district("lines naming no district", "B")["hours"] == 0
+    assert district("lines naming no district", "B")["rate"] is None
+    assert district("lines naming no district", "A")["hours"] == 1.0
+    assert district("lines naming no district", "A")["rate"] == 1.0
 
 
 @pytest.mark.node

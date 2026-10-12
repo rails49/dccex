@@ -666,17 +666,21 @@ export function read(lines, period = {}) {
     }
     const power = decoded(line.said);
     if (power !== null && power.hot !== undefined) {
-      // A line naming no district says the same of every one of them: the
-      // station sends it only where they are all on or all off.
-      const named =
-        power.track === undefined ? [...districts.keys()] : [power.track];
-      for (const name of named) {
-        if (power.hot) {
-          powers(name);
-        } else {
-          closes(name, index);
-          unpowers(name);
-        }
+      // A `<p…>` naming no district is passed over, as `replies.kept` passes
+      // it over in the translator: the bare `<p0>` and `<p1>`, and the ones
+      // naming MAIN, PROG or JOIN, are printed in `broadcastPower()` alone and
+      // always after a `<pN X>` line for each district, so they say nothing
+      // those do not (ADR-0022 d.2 as amended, #269). A journal written before
+      // that still carries them, and read as every district's they would close
+      // every open incident and move every powered clock.
+      if (power.track === undefined) {
+        continue;
+      }
+      if (power.hot) {
+        powers(power.track);
+      } else {
+        closes(power.track, index);
+        unpowers(power.track);
       }
       continue;
     }
