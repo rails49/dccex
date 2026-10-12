@@ -8,8 +8,8 @@
  * way `view.test.ts` runs the hash's; what is asserted on the page is what the
  * loaded railroad does to it: the script that opens, the editor, the warning
  * that says applying stops the railroad, the edits left stranded by an unload,
- * and the mirror's own sentence where the script does not compile (issue 185,
- * issue 238, ADR-0015 d.5).
+ * the editor an outage leaves alone, and the mirror's own sentence where the
+ * script does not compile (issue 185, issue 238, issue 242, ADR-0015 d.5).
  *
  * **The editor is read off its own state** and not off a box's value
  * (ADR-0019). What the keys in it do is the editor's own suite's
@@ -52,9 +52,10 @@ import { mounted, part, press, reads } from "./mounted.js";
 const RAILROADS = ["crossover-yard", "bench"];
 
 /** What the page hands down while the railroad is unreported: no railroad row
- *  has arrived since the connection came up, which is the whole of an outage
- *  and the gap after a reconnect (#242, `readings.js`). It is not `null`,
- *  which is a row that says `control` has loaded none. */
+ *  has arrived since the connection came up, which is the whole of an outage,
+ *  the gap after a reconnect, and a page that has not reached the broker at all
+ *  (#242, `readings.js`). It is not `null`, which is a row that says `control`
+ *  has loaded none. */
 const UNREPORTED = undefined;
 
 /** What the store holds for the first of them. */
@@ -214,6 +215,27 @@ test("no railroad loaded leaves no editor and nothing to apply", async () => {
   expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
   expect(drawn.renderRoot.querySelector(".script")).toBeNull();
   expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
+});
+
+test("a pane nobody has handed a railroad opens nothing, and opens one when it is", async () => {
+  const asked: string[] = [];
+  const drawn = new DccexScript();
+  drawn.opens = (railroad: string): Promise<Opened> => {
+    asked.push(railroad);
+    return Promise.resolve(opened(SCRIPT));
+  };
+  await mounted(drawn);
+  await drawn.updateComplete;
+
+  expect(drawn.loaded).toBe(UNREPORTED);
+  expect(asked).toStrictEqual([]);
+  expect(drawn.renderRoot.querySelector(".editing")).toBeNull();
+  expect(drawn.renderRoot.querySelector(".applies")).toBeNull();
+
+  await loads(drawn, RAILROADS[0]);
+
+  expect(asked).toStrictEqual([RAILROADS[0]]);
+  expect(edited(drawn)).toBe(SCRIPT);
 });
 
 test("a railroad with no script opens on the sample, commented out", async () => {
