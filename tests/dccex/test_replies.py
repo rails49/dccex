@@ -239,20 +239,30 @@ def test_a_limit_line_of_another_shape_reads_as_nothing() -> None:
 def test_the_journal_keeps_every_track_diagnostic_and_the_district_it_names() -> None:
     """Wider than what this app acts on: a reverser flipping a district is a
     line the journal keeps and no fact here (d.3)."""
-    assert replies.kept(b"<* TRACK C INVERT (fast) *>") == replies.Kept(district="C")
+    assert replies.kept(b"<* TRACK C INVERT (fast) *>") == replies.Kept(
+        district="C", power=False
+    )
     assert replies.kept(
         b"<* TRACK B FAST OVERLOAD 4210mA. Pause 100ms *>"
-    ) == replies.Kept(district="B")
+    ) == replies.Kept(district="B", power=False)
 
 
-def test_the_journal_keeps_every_power_line_and_the_district_it_names() -> None:
-    """A `<p…>` line naming `MAIN` or `JOIN` is naming a mode, and the line
-    that names nothing is about every track at once: both are kept, and
-    neither names a district."""
-    assert replies.kept(b"<p1 A>") == replies.Kept(district="A")
-    assert replies.kept(b"<p0>") == replies.Kept(district="")
-    assert replies.kept(b"<p1 MAIN>") == replies.Kept(district="")
-    assert replies.kept(b"<p1 JOIN>") == replies.Kept(district="")
+def test_the_journal_keeps_a_power_line_that_names_a_district() -> None:
+    """The district is read off it, and the line says it is a `<p…>`: the
+    journal keeps one of those only where it says something different from
+    the last one about the same district (ADR-0022 d.2 as amended)."""
+    assert replies.kept(b"<p1 A>") == replies.Kept(district="A", power=True)
+    assert replies.kept(b"<p0 C>") == replies.Kept(district="C", power=True)
+
+
+def test_the_journal_keeps_no_power_line_that_names_no_district() -> None:
+    """The bare `<p0>`/`<p1>` and the `MAIN`, `PROG` and `JOIN` lines. The
+    station prints them in `broadcastPower()` alone, always after a `<pN X>`
+    for each district, so they say nothing a line of the journal does not
+    already carry (rails49/CommandStation-EX, `CommandDistributor.cpp:306`,
+    #269)."""
+    for other in (b"<p0>", b"<p1>", b"<p1 MAIN>", b"<p0 PROG>", b"<p1 JOIN>"):
+        assert replies.kept(other) is None
 
 
 def test_the_journal_keeps_nothing_else_on_the_port() -> None:

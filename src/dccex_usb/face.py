@@ -50,8 +50,9 @@ which is what a box mirroring a cable with nothing else running gets.
 
 **And two about the journal, which the translator keeps and the page reads**
 (ADR-0022 d.4): the file as it is, and the file emptied. The record is the
-translator's — every `<* TRACK … *>` and every `<p…>` the station said, the
-link going down and up, and a restart, each stamped with when it arrived — and
+translator's — every `<* TRACK … *>` the station said, every `<p…>` that said
+something new about a district, the link going down and up, and a restart,
+each stamped with when it arrived — and
 this app's part in it is the volume the two containers share: the file is
 served as the bytes it is and truncated on a request from the page, and **no
 line of it is read here**. What a line means, and whether it is part of an
