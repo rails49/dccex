@@ -52,13 +52,19 @@ from tests.ui.test_journal import (
     restore,
 )
 from tests.ui.test_look import UI
-from tests.ui.test_stream import code
+from tests.ui.test_stream import code, quoted
 
 #: What the view draws, and the module it is the whole of.
 INCIDENTS = UI / "src" / "incidents.js"
 
 #: What puts a journal through it.
 RUNNER = Path(__file__).resolve().parent / "incidents.mjs"
+
+#: The view, and the three components it hands what is read down to.
+VIEW = UI / "src" / "ui" / "dccex-journal.ts"
+TABLE = UI / "src" / "ui" / "dccex-counts.ts"
+LIST = UI / "src" / "ui" / "dccex-incidents.ts"
+CONTROLS = UI / "src" / "ui" / "dccex-controls.ts"
 
 #: When the journals are read: the moment after the last line of them, so that
 #: a span counted back from it holds every line. The module takes the clock as
@@ -450,3 +456,53 @@ def test_the_view_s_reading_holds_no_clock_and_no_socket() -> None:
             continue
         assert held not in source, f"the view's reading reaches {held}"
     assert "Date.now" not in source, "the view's reading reaches for a clock"
+
+
+def test_the_components_write_none_of_the_module_s_sentences_out_again() -> None:
+    """A word drawn in a template is a word two places can disagree about, and
+    the one that is run is the module's (`tests/ui/test_releases.py`).
+
+    Held against the literals rather than the file, because the prose says
+    these words to explain what is drawn and saying a word is not drawing it.
+    The sentences rather than every word: a one-word label is the class on the
+    element it is drawn in as well, and a check reading literals cannot tell
+    `station` the word from `station` the selector.
+    """
+    says = [said for said in own()["says"].values() if " " in said]
+    for component in (VIEW, TABLE, LIST, CONTROLS):
+        written = quoted(component.read_text())
+        for word in says:
+            assert word not in written, f"{component.name} writes {word!r} out again"
+
+
+def test_the_pane_holds_no_counterparty_of_its_own() -> None:
+    """The page asks the **face** and hands the answers down, as it does with
+    the releases and the **script** (the organisation's ADR-0002,
+    `dccex-app.ts`).
+
+    The view is handed what reads the journal and what empties it; the three
+    components under it are handed words and rows. A pane that fetched would be
+    a second answer to what the page talks to.
+    """
+    for component in (VIEW, TABLE, LIST, CONTROLS):
+        drawn = code(component.read_text())
+        for reached in ("fetch(", "new WebSocket", "new Bus("):
+            assert reached not in drawn, f"{component.name} reaches {reached}"
+    view = code(VIEW.read_text())
+    assert "this.reads()" in view, "the view asks nobody for the journal"
+    assert "this.empties()" in view, "the view asks nobody to empty it"
+
+
+def test_the_view_asks_on_opening_and_on_the_reload_and_on_no_schedule() -> None:
+    """A record read afterwards is not a reading that moves under the eye, and
+    the page takes the pane away when another **view** is showing — so coming
+    to the journal is what asks for it (ADR-0010, `dccex-app.ts`).
+
+    What a press does is asserted by mounting the pane
+    (`ui/test/journal.test.ts`); what is held here is that there is no timer to
+    find.
+    """
+    drawn = code(VIEW.read_text())
+    assert "connectedCallback" in drawn, "the view never asks"
+    for held in ("setInterval", "setTimeout"):
+        assert held not in drawn, f"the view polls the journal with {held}"
