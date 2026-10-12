@@ -48,6 +48,17 @@ the process that holds the cable is the translator's job and not this one's
 them with a status and a sentence and is otherwise the app it has always been,
 which is what a box mirroring a cable with nothing else running gets.
 
+**And two about the journal, which the translator keeps and the page reads**
+(ADR-0022 d.4): the file as it is, and the file emptied. The record is the
+translator's — every `<* TRACK … *>` and every `<p…>` the station said, the
+link going down and up, and a restart, each stamped with when it arrived — and
+this app's part in it is the volume the two containers share: the file is
+served as the bytes it is and truncated on a request from the page, and **no
+line of it is read here**. What a line means, and whether it is part of an
+**incident**, is the page's over the whole file, under a rule that can change
+while the file does not (d.3, d.5). A mirror started with no journal answers
+both of them with a status and a sentence, as one with no store does.
+
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
 about a railroad — so the guarantee that a station is not written under a
@@ -292,6 +303,30 @@ store. It is a state of the installation and not of the request, and it is the
 answer a page gets on a box where this app is mirroring a cable with nothing
 else running (`__main__.py`)."""
 
+JOURNAL_PATH = "/journal"
+"""What the **journal** is served and cleared at, with the door's prefix
+already off it (ADR-0004). Two things and no third: a GET is the file as it is
+and a DELETE empties it, so a page that reloaded the read has cleared
+nothing."""
+
+NDJSON = "application/x-ndjson"
+"""What the journal goes back as: one JSON object per line, which is the shape
+the translator writes and not a document (ADR-0022 d.1). The face's own
+answers are JSON."""
+
+CLEARED = "cleared"
+"""What a clear says how many bytes went under. The record and not the lines:
+the face reads no line of the journal, so bytes are what it can count."""
+
+NO_JOURNAL = (
+    "this mirror was given no journal, so it can neither serve nor clear"
+    " one: the path is --journal on its command line"
+)
+"""What the two journal routes answer where the app was started with no
+journal. It is a state of the installation and not of the request, as a mirror
+with no store is: a box mirroring a cable with nothing else running has no
+translator beside it and no record to serve (`__main__.py`, ADR-0022 d.1)."""
+
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
     # for a build (CONTEXT.md), and a body that names no tag asks nothing.
@@ -390,18 +425,44 @@ class Keeps(Protocol):
     async def puts(self, railroad: str, text: str) -> None: ...
 
 
+class Kept(Protocol):
+    """What the face needs of the **journal**: the file's bytes as they are,
+    where it is, and the file emptied.
+
+    Three members and no reading, which is the whole of ADR-0022 d.4: the
+    translator writes the record and the page decides what a line means, so
+    this app's part is the bytes and the truncation. `Journal` satisfies it
+    (`journal.py`).
+    """
+
+    @property
+    def where(self) -> str: ...
+
+    async def served(self) -> bytes: ...
+
+    async def cleared(self) -> int: ...
+
+
 class Answered(NamedTuple):
-    """What routing comes to: a status, a body to be rendered as JSON, and the
-    token that answers a browser's key where what was asked for is the stream.
+    """What routing comes to: a status, a body to be rendered as JSON, the
+    token that answers a browser's key where what was asked for is the stream,
+    and — where what was asked for is a file this app serves rather than an
+    answer of its own — those bytes and what they are.
 
     The token is the whole of what routing says about a stream, and it is the
     one answer that does not end the connection: what the caller does next is
     talk, which is the server's to carry (`Monitor`).
+
+    `served` is the **journal**, and `None` and not empty is what says there
+    are no bytes to pass on: a journal with nothing in it is `b""` and an
+    answer of the face's own is rendered from `body` (ADR-0022 d.4).
     """
 
     status: HTTPStatus
     body: dict[str, object]
     upgrade: str = ""
+    served: bytes | None = None
+    kind: str = JSON
 
 
 class Carried(NamedTuple):
@@ -609,12 +670,13 @@ class Face:
     nothing, and one served without the mirror would answer that nobody is on
     a port it is not serving.
 
-    **The store is the one that may be absent**, and `None` is what says so.
-    A mirror is an app that holds a cable and repeats it, and a box running one
-    beside a command station and nothing else has no store to be given
-    (ADR-0001, `__main__.py`): the face is served either way, and the three
-    script routes answer a status and a sentence rather than an editor that
-    quietly writes nowhere.
+    **The store and the journal are the two that may be absent**, and `None`
+    is what says so. A mirror is an app that holds a cable and repeats it, and
+    a box running one beside a command station and nothing else has no store
+    to be given and no translator writing a record (ADR-0001, ADR-0022 d.1,
+    `__main__.py`): the face is served either way, and those routes answer a
+    status and a sentence rather than an editor that quietly writes nowhere or
+    a record that is quietly empty.
     """
 
     def __init__(
@@ -625,12 +687,14 @@ class Face:
         flasher: Writes,
         counts: Counts,
         store: Keeps | None = None,
+        journal: Kept | None = None,
     ) -> None:
         self._releases = releases
         self._fetch = fetch
         self._flasher = flasher
         self._counts = counts
         self._store = store
+        self._journal = journal
 
     async def answer(
         self,
@@ -652,8 +716,8 @@ class Face:
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
         prefix is already off it: what the face answers is `/releases`,
-        `/flash`, `/clients`, `/stream` and `/scripts/<railroad>`, and a prefix
-        that arrived is a path this does not answer (ADR-0004).
+        `/flash`, `/clients`, `/stream`, `/scripts/<railroad>` and `/journal`,
+        and a prefix that arrived is a path this does not answer (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
@@ -723,6 +787,16 @@ class Face:
                     f"{asked} is read with GET, and this was {method}",
                 )
             return Answered(HTTPStatus.OK, {CLIENTS: self._counts.clients})
+        if asked == JOURNAL_PATH:
+            if method == "GET":
+                return await self._kept()
+            if method != "DELETE":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET and emptied with DELETE,"
+                    f" and this was {method}",
+                )
+            return await self._cleared()
         if asked == STREAM_PATH:
             if method != "GET":
                 return refused(
@@ -794,6 +868,53 @@ class Face:
         if wrote.refusal is None:
             return Answered(HTTPStatus.OK, {FLASHED: tag})
         return refused(STATUS[wrote.refusal], wrote.said)
+
+    async def _kept(self) -> Answered:
+        """The **journal** as it stands, the bytes the translator wrote and
+        nothing read out of them (ADR-0022 d.4).
+
+        **A journal that is not there is an empty body and not a `404`.** It is
+        the ordinary state of a box whose translator has written no line yet,
+        and the page reads nothing out of a file with nothing in it either
+        way: a status that said the record was missing would send somebody
+        looking for a volume that is mounted and empty.
+        """
+        journal = self._journal
+        if journal is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_JOURNAL)
+        try:
+            served = await journal.served()
+        except OSError as unreadable:
+            return refused(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"the journal at {journal.where} could not be read: {unreadable}",
+            )
+        return Answered(HTTPStatus.OK, {}, served=served, kind=NDJSON)
+
+    async def _cleared(self) -> Answered:
+        """The **journal** emptied, and how many bytes went (ADR-0022 d.4).
+
+        The file is truncated and not removed, which is the agreement between
+        the two apps: the translator appends to a handle it opened once, so a
+        line written after this lands at the start of the same file and a line
+        written during it is not lost (`journal.py`, `dccex.journal`).
+
+        **Nothing here guards the record.** Clearing it is a gesture on the
+        page about what a person has read, and the journal is not a railroad's
+        document: what the counts said before the press is what the page was
+        showing.
+        """
+        journal = self._journal
+        if journal is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_JOURNAL)
+        try:
+            cleared = await journal.cleared()
+        except OSError as unwritable:
+            return refused(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"the journal at {journal.where} could not be cleared: {unwritable}",
+            )
+        return Answered(HTTPStatus.OK, {CLEARED: cleared})
 
     async def _script(self, railroad: str) -> Answered:
         """One railroad's **script**, as the text the store holds, or a `404`
@@ -962,6 +1083,10 @@ def response(answered: Answered) -> bytes:
 
     An upgrade is the one answer that ends neither: it hands the connection
     over, and what is on it after this is frames (`stream.py`).
+
+    The **journal** is the one body that is not rendered here: it is a file
+    another app wrote and it goes out as it is, under what it is rather than
+    under JSON (ADR-0022 d.4).
     """
     if answered.upgrade:
         return (
@@ -970,10 +1095,14 @@ def response(answered: Answered) -> bytes:
             f"Connection: Upgrade{CRLF}"
             f"Sec-WebSocket-Accept: {answered.upgrade}{CRLF}{CRLF}"
         ).encode()
-    body = json.dumps(answered.body).encode()
+    body = (
+        json.dumps(answered.body).encode()
+        if answered.served is None
+        else answered.served
+    )
     head = (
         f"HTTP/1.1 {int(answered.status)} {answered.status.phrase}{CRLF}"
-        f"Content-Type: {JSON}{CRLF}"
+        f"Content-Type: {answered.kind}{CRLF}"
         f"Content-Length: {len(body)}{CRLF}"
         f"Connection: close{CRLF}{CRLF}"
     )
