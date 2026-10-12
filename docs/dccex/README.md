@@ -435,10 +435,21 @@ should not happen on this railroad except where a reverser flips a district,
 and finding the ones that do needs a record kept while nobody is looking. It
 is `--journal <path>` and nothing is written without one.
 
-**A line is written for** every `<* TRACK … *>` and every `<p…>` the station
-sends, the link going down and the link coming up, and a station restart
-(d.2). Nothing else: a mode, a limit and the banner are read for the fields a
-line carries rather than kept as lines of their own.
+**A line is written for** every `<* TRACK … *>` the station sends, every
+`<p…>` that says something different from the last `<p…>` about the same
+district, the link going down and the link coming up, and a station restart
+(d.2 as amended). Nothing else: a mode, a limit and the banner are read for
+the fields a line carries rather than kept as lines of their own.
+
+**A `<p…>` that says what the last one did is no line**, and one that names
+no district — the bare `<p0>` and `<p1>`, and `MAIN`, `PROG` and `JOIN` — is
+no line at all. The station answers the one-second `<s>` with a line per
+district, so a line for each of them was half a million a day on a railroad
+where nothing happened, and the page reads the whole file to open the view
+(#269). What is held is the line and not the station's words alone: a
+district set to another mode is a line, the mode being part of what a line
+says. What the journal last kept goes with the link and with a restart, so
+the first `<p…>` of a link says what the railroad is in rather than nothing.
 
 **Every line carries** `at`, when it arrived, ISO 8601 in UTC to the
 millisecond — the station cuts a district and retries it inside one second, so

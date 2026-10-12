@@ -1,7 +1,8 @@
 # ADR-0022 — the journal is what the station said
 
-- **Status:** accepted, 2026-10-12
-- **Ticket:** #263, #264, #265, #266
+- **Status:** accepted, 2026-10-12; d.2 amended 2026-10-12 (#269): it kept
+  every `<p…>` the station said
+- **Ticket:** #263, #264, #265, #266, #269
 - **Related:** ADR-0010 (the page polls, and the mirror originates nothing),
   ADR-0016 (a trip is read from the station's diagnostics), ADR-0009 (the
   decoder is a pure function), ADR-0017 (the UI talks to one face and the
@@ -38,6 +39,21 @@ station sends, and for the link going down or up and the station restarting
 (ADR-0021). Each carries `at` (when it arrived), `railroad` and `build`. A
 station line carries its text verbatim as `said`, and where it names a
 district, the district's `mode` and `limit` at that moment.
+
+> **Amended 2026-10-12:** A `<p…>` is written only where it says something
+> different from the last `<p…>` about the same district, and one that names
+> no district is not written at all. The station answers the one-second `<s>`
+> with a line per district, so a line for every one of them was about
+> 518 000 lines and 84 MB a day on a railroad where nothing happened, and the
+> page fetched, parsed and read all of it to open the journal view. The lines
+> naming no district — the bare `<p0>` and `<p1>`, and `MAIN`, `PROG` and
+> `JOIN` — are printed in `CommandDistributor::broadcastPower()` alone,
+> always after a `<pN X>` line for each district
+> (`rails49/CommandStation-EX`, `CommandDistributor.cpp:306`), so they say
+> nothing those do not. What a line says is the line and not the station's
+> words alone: the mode and the limit it carries are held with them, so a
+> district set to another mode is a line. Every power change stays, and the
+> answers to `<s>` from the poll, the page and JMRI drop out (#269).
 
 **d.3** The translator decides nothing about a line. Whether a line is part
 of an **incident**, and which kind, is decided by the page when it reads the
