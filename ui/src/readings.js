@@ -69,27 +69,40 @@ const STOPPED = "stopped";
  * from `off`: a railroad nobody has reported the power of is not a railroad
  * with the power off (ADR-0009 d.2), and it is what the button is disabled on.
  *
- * `railroad` is the name off `tc49/layout/state/railroad`, read by `named`,
- * and `null` where `control` has loaded none or has not said. It is the one
- * reading here that is about the railroad rather than about the rails, and it
- * is on this value because it comes up the same connection (the organisation's
- * ADR-0014, #239).
+ * `railroad` is the name off `tc49/layout/state/railroad`, read by `named`.
+ * It is the one reading here that is about the railroad rather than about the
+ * rails, and it is on this value because it comes up the same connection (the
+ * organisation's ADR-0014, #239).
+ *
+ * **It has three answers and not two** (#242). The name is the railroad
+ * `control` has loaded. `null` is a railroad row that says none is, which is
+ * an ordinary state of a box (control #727). `undefined` is unreported: no
+ * railroad row has arrived since the connection came up, which is the whole of
+ * an outage and the gap between a reconnect and the retained row landing. The
+ * band says `no railroad loaded` for either of the last two, and the
+ * **script** view acts on them differently — a row that says none is loaded
+ * leaves nothing to edit, and an outage leaves the editor where it is
+ * (`dccex-script.ts`).
  *
  * @typedef {object} Layout
  * @property {boolean} connected whether the page has the broker
  * @property {string | null} power what `layout` last reported — `on`, `off` or
  *   `stopped` — and `null` until it has reported
- * @property {string | null} railroad which railroad `control` has loaded, and
- *   `null` where none is loaded or none has been reported
+ * @property {string | null | undefined} railroad which railroad `control` has
+ *   loaded: the name, `null` where a row says none is, and `undefined` where
+ *   none has been reported since the connection came up
  */
 
 /** A page that has not reached the broker: no connection, and nothing
  *  reported. It is what a band nobody handed a bus reading to carries, and it
- *  is what the page holds until the broker answers (`bus.ts`). */
+ *  is what the page holds until the broker answers (`bus.ts`). The railroad is
+ *  unreported rather than none loaded — nothing has said which railroad
+ *  `control` has, and a page that lost the broker is in this state as much as
+ *  one that never reached it (#242). */
 export const UNREACHABLE = /** @type {Layout} */ ({
   connected: false,
   power: null,
-  railroad: null,
+  railroad: undefined,
 });
 
 /**
@@ -177,10 +190,10 @@ const STOPS = "stop every locomotive where it stands";
 const ANSWERING = "answering";
 const OFFLINE = "dcc-ex offline";
 
-/** What the band says where `control` has loaded no railroad, or has not said
- *  which (#239). A sentence rather than a blank: nothing where a name goes
- *  reads as a name that went missing, and a box with no railroad loaded is an
- *  ordinary state of one (control #727, ADR-0009 d.2). */
+/** What the band says where `control` has loaded no railroad, and where none
+ *  has been reported (#239, #242). A sentence rather than a blank: nothing
+ *  where a name goes reads as a name that went missing, and a box with no
+ *  railroad loaded is an ordinary state of one (control #727, ADR-0009 d.2). */
 const NO_RAILROAD = "no railroad loaded";
 
 /**
@@ -503,6 +516,11 @@ function stop(layout) {
  * `control` has loaded; what takes it away is the bus going, which hands this
  * module `UNREACHABLE` (`bus.ts`). The **build** beside it goes with the link,
  * because that one is the station talking.
+ *
+ * **A railroad nobody has reported reads here as one nobody has loaded.** The
+ * two are different states on the value and this is where they are not told
+ * apart: what the band owes a reader is that it cannot name a railroad, and
+ * `no railroad loaded` is that sentence in both (#242).
  *
  * **The two presses are not disabled on the same facts.** The power button
  * offers a state the other of, so it needs the station and a word from

@@ -12,7 +12,10 @@
 //      "layout": {"connected": true, "power": "on"}}
 //
 // A scenario that says nothing about the bus is a page that has not reached
-// the broker, which is what one has until it answers.
+// the broker, which is what one has until it answers. A scenario whose bus
+// names no `railroad` is one whose railroad is unreported, which is what the
+// value carries as `undefined`: no railroad row has arrived since the
+// connection came up (#242).
 //
 // What comes back is the readings themselves and the two things drawn out of
 // them — the band's readings and the tiles', each as what it is called and

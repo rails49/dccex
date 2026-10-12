@@ -149,6 +149,13 @@ COLD = {"connected": True, "power": "off", "railroad": YARD}
 HALTED = {"connected": True, "power": "stopped", "railroad": YARD}
 UNSAID = {"connected": True, "power": None, "railroad": None}
 
+#: The broker with the railroad unreported: no railroad row has arrived since
+#: the connection came up, which is the gap after a reconnect (#242). The key
+#: is absent rather than `None` because that is what the state is on the value
+#: the bus hands up — `None` is a row that says no railroad is loaded
+#: (`readings.js`'s `Layout`).
+UNREPORTED = {"connected": True, "power": None}
+
 
 @lru_cache(maxsize=1)
 def live() -> dict[str, Any]:
@@ -208,14 +215,20 @@ def test_the_band_names_the_railroad_control_has_loaded() -> None:
 
 @pytest.mark.node
 def test_a_band_with_no_railroad_loaded_says_so() -> None:
-    """`layout` has named none, or the page has not reached the broker at all.
+    """`layout` has named none, the railroad is unreported, or the page has not
+    reached the broker at all.
 
-    Both are the same reading on the chrome and neither is blank: a band with
+    All three are the same reading on the chrome and none is blank: a band with
     nothing where the railroad goes reads as a railroad whose name is missing,
     where this is a box that has loaded none — an ordinary state of one
-    (control #727, ADR-0009 d.2).
+    (control #727, ADR-0009 d.2). The three are different states on the value
+    and the band is where they are not told apart, because what it owes a
+    reader is that it cannot name a railroad (#242).
     """
     assert band(said=list(TALKING), now=NOW, layout=UNSAID)["railroad"] == NO_RAILROAD
+    assert (
+        band(said=list(TALKING), now=NOW, layout=UNREPORTED)["railroad"] == NO_RAILROAD
+    )
     assert band(said=list(TALKING), now=NOW)["railroad"] == NO_RAILROAD
 
 

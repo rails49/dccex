@@ -85,6 +85,16 @@ export const RECONNECT_MS = 2000;
  * what this page remembered of them. Both are retained, so a reconnect is
  * handed them without asking.
  *
+ * **What goes with it is unreported and not none loaded** (#242). The railroad
+ * row is the one of the two a pane acts on rather than draws, and `control`
+ * having loaded no railroad is a state of its own that arrives as a row. So
+ * from the moment a connection drops until the first railroad row after a
+ * reconnect — `UNREACHABLE`, and the reading made on `connect`, which carries
+ * the railroad forward and has nothing to carry — the railroad is unreported,
+ * and the **script** view keeps the editor it has open rather than reading the
+ * outage as its railroad being unloaded (`readings.js`'s `Layout`,
+ * `dccex-script.ts`).
+ *
  * **Nothing is held to be published when the connection comes back.** A press
  * is a command about a railroad, and asking for power seconds later, when the
  * operator has moved on, is worse than not asking (`stream.ts`, #6) — so the
