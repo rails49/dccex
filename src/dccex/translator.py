@@ -58,6 +58,11 @@ control ADR-0022, control ADR-0050).
 ten intervals of silence lower it with the connection still there
 (`_said_link`, `_lower_if_silent`, control ADR-0066).
 
+**It keeps the journal** where it is given a file for one: every
+`<* TRACK … *>` and every `<p…>` the station sends, the link going down and
+up, and a restart, each stamped with when it arrived (`_journalled`,
+`journal.py`, ADR-0022). It decides nothing about a line (d.3).
+
 The framing and the mapping are pure and live in `replies` and `commands`;
 what is here is the connection and the state that a connection is made of.
 """
@@ -81,6 +86,7 @@ from tc49.lib.payload import (
 )
 
 from dccex import commands, replies, script
+from dccex.journal import Journal, Line
 from dccex.store import Scripts, Unanswered
 
 _log = logging.getLogger(__name__)
@@ -346,6 +352,7 @@ class DccEx:
         connect: Connect | None = None,
         now: Now = time.monotonic,
         scripts: Scripts | None = None,
+        journal: Journal | None = None,
         poll_s: float = POLL_S,
         script_s: float = SCRIPT_S,
         first_backoff_s: float = FIRST_BACKOFF_S,
@@ -359,6 +366,9 @@ class DccEx:
         )
         self._now = now
         self._scripts = scripts
+        # Where the journal is kept, and `None` where this app keeps none:
+        # a box given no file writes nothing (ADR-0022 d.1).
+        self._journal = journal
         self._script_s = script_s
         self._poll_s = poll_s
         self._first_backoff_s = first_backoff_s
@@ -924,6 +934,9 @@ class DccEx:
         # (ADR-0021 d.4).
         restarted = isinstance(told, replies.Stash) and not told.held
         if restarted:
+            # Written before the link's readings go, so the line carries the
+            # build the station was last saying it ran (ADR-0022 d.2).
+            self._journalled({"restart": True})
             # What it said before the restart is no longer true of it, and a
             # handler `start` replays reads its reports (ADR-0018 d.3).
             self._forget()
@@ -965,6 +978,7 @@ class DccEx:
         self._last_heard = self._now()
         self._publish_link(True, f"connected to {self._where}")
         self._publish_track()
+        self._journalled_said(message)
         self._reports(told)
         if restarted:
             self._started()
@@ -1123,7 +1137,18 @@ class DccEx:
 
     def _publish_link(self, up: bool, detail: str) -> None:
         """What the station is doing, which is what the link row is: said
-        again whenever it moves."""
+        again whenever it moves, and written to the **journal** where the
+        word itself moves.
+
+        The row is republished when only the detail changes — a connect
+        retried against a station that is not there says so each time — and
+        the journal keeps the link going down and coming up rather than every
+        sentence about it (ADR-0022 d.2). A process that has just started has
+        a link that is down and has not gone anywhere, which is why the
+        constructor says the row without coming through here.
+        """
+        if up != self._reached[0]:
+            self._journalled({"link": UP if up else DOWN})
         self._reached = (up, detail)
         self._said_link()
 
@@ -1147,6 +1172,46 @@ class DccEx:
         self._link = said
         frame: Payload = {"id": self._id, "link": UP if up else DOWN, "detail": detail}
         self._bus.publish(device_topic(DEVICE_LINK, self._id), frame)
+
+    # -- the journal: what the station said, kept (ADR-0022) -----------------
+
+    def _journalled_said(self, message: bytes) -> None:
+        """One message the **journal** keeps, as a line of it.
+
+        Every `<* TRACK … *>` and every `<p…>`, whole and verbatim, `<` and
+        `>` included, so that a rule changed later is run over the station's
+        own words rather than over a reading this app made of them (d.2,
+        d.3). Where the line names a district it carries that district's
+        **mode** and **limit** as the station last reported them, which is
+        the one thing a reader cannot get back afterwards: the file says what
+        a district was set to and allowed at the moment the line arrived.
+
+        `null` where the station has not said either yet. A field that is
+        absent is a reading nobody took, and the empty picture is an ordinary
+        state of the first second of a link.
+        """
+        kept = replies.kept(message)
+        if kept is None:
+            return
+        line: Line = {"said": message.decode(errors="replace")}
+        if kept.district:
+            line["district"] = kept.district
+            line["mode"] = self._modes.get(kept.district)
+            line["limit"] = self._limits.get(kept.district)
+        self._journalled(line)
+
+    def _journalled(self, line: Line) -> None:
+        """One line of the journal, where this app is keeping one.
+
+        The railroad and the build go on every line (d.2): a file read a week
+        later is read without a second one beside it saying which railroad
+        was loaded and what the station was running. `at` is the journal's,
+        stamped as the line is written (`journal.Journal`).
+        """
+        journal = self._journal
+        if journal is None:
+            return
+        journal.wrote({"railroad": self._railroad, "build": self._build, **line})
 
 
 def _asked(scripts: Scripts, railroad: str) -> Asked:
