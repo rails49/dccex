@@ -508,6 +508,41 @@ function drawn(held) {
 }
 
 /**
+ * What a line before the period says about which districts were powered.
+ *
+ * The journal keeps a `<p…>` only where it changed (ADR-0022 d.2 as amended),
+ * so a period that opens with a district already on may carry no `<p1 X>` for
+ * it; this is what the period starts from instead (#275). A link that went and
+ * a station that restarted are followed by a `<p…>` for every district, so
+ * what came before them is forgotten.
+ *
+ * @param {Map<string, boolean>} powered by district, whether it was on
+ * @param {Line} line
+ */
+function was(powered, line) {
+  if (line.link === DOWN || line.restart === true) {
+    powered.clear();
+    return;
+  }
+  if (line.said === undefined) {
+    return;
+  }
+  const power = decoded(line.said);
+  if (power !== null && power.hot !== undefined) {
+    if (power.track !== undefined) {
+      powered.set(power.track, power.hot);
+    }
+    return;
+  }
+  const told = diagnosed(line.said);
+  if (told?.word === "trip") {
+    powered.set(told.district, false);
+  } else if (told?.word === "normal") {
+    powered.set(told.district, true);
+  }
+}
+
+/**
  * The incidents in `lines`, and the counts per district and for the station.
  *
  * @param {readonly Line[]} lines the journal, in the order it was written
@@ -528,6 +563,8 @@ export function read(lines, period = {}) {
   let outage = null;
   let ended = "";
   let at = 0;
+  /** @type {Map<string, boolean> | null} */
+  let before = new Map();
 
   /**
    * The district's counts, started where this is the first line about it: a
@@ -639,7 +676,21 @@ export function read(lines, period = {}) {
   for (const [index, line] of lines.entries()) {
     const when = Date.parse(line.at);
     if (!reads(line, period)) {
+      if (before !== null) {
+        was(before, line);
+      }
       continue;
+    }
+    if (before !== null) {
+      // The period starts powered where the lines before it left a district
+      // on, from its start where it has one.
+      at = period.start === undefined ? when : Date.parse(period.start);
+      for (const [name, on] of before) {
+        if (on) {
+          powers(name);
+        }
+      }
+      before = null;
     }
     at = when;
     ended = line.at;

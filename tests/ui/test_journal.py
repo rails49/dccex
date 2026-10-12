@@ -211,6 +211,15 @@ A_TRIP_AND_A_LINK_LOSS: list[Line] = [
     up(5_000),
 ]
 
+#: A district on when the link went, and a flip on it after the link was back
+#: with no `<p…>` between them.
+A_LINK_LOSS_WHILE_POWERED: list[Line] = [
+    said(0, "<p1 C>", district="C", mode="MAIN_AUTO", limit=3000),
+    down(3_000),
+    up(5_000),
+    said(6_000, invert("C", fast=False), district="C", mode="MAIN_AUTO", limit=3000),
+]
+
 #: Half an hour of power in three quarters of an hour of journal: on, cut a
 #: quarter of an hour in, itself again five minutes later, off at the end.
 POWERED: list[Line] = [
@@ -287,6 +296,14 @@ ASKS: dict[str, dict[str, Any]] = {
     "an alert before a mode": {"journal": AN_ALERT_BEFORE_A_MODE},
     "a trip and a link loss": {"journal": A_TRIP_AND_A_LINK_LOSS},
     "powered": {"journal": POWERED},
+    "powered, from before the period": {
+        "journal": POWERED,
+        "period": {"start": at(450_000)},
+    },
+    "a link loss before the period": {
+        "journal": A_LINK_LOSS_WHILE_POWERED,
+        "period": {"start": at(4_000)},
+    },
     "two builds": {"journal": TWO_BUILDS},
     "the build it came back as": {
         "journal": TWO_BUILDS,
@@ -500,6 +517,22 @@ def test_powered_is_on_until_the_district_is_cut_and_on_again_from_normal() -> N
     assert counts["hours"] == 0.5
     assert counts["cut"] == 300_000
     assert counts["rate"] == 2.0
+
+
+@pytest.mark.node
+def test_a_period_starts_powered_where_the_lines_before_it_left_a_district_on() -> None:
+    """The journal keeps a `<p…>` only where it changed (ADR-0022 d.2 as
+    amended), so a period that opens after the `<p1 A>` has none for A. It is
+    powered from the period's start until the cut, and from the `NORMAL` until
+    the `<p0 A>`: seven and a half minutes and a quarter of an hour (#275)."""
+    assert district("powered, from before the period", "A")["hours"] == 0.375
+
+
+@pytest.mark.node
+def test_a_link_lost_before_the_period_leaves_nothing_powered_in_it() -> None:
+    """A link that went is followed by a `<p…>` for every district once it is
+    back, so what was on before it is not carried into the period."""
+    assert district("a link loss before the period", "C")["hours"] == 0
 
 
 @pytest.mark.node
