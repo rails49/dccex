@@ -557,6 +557,14 @@ cleared, a programming track's alert on an acknowledgement, the power going on
 and off — each as a row of its own with the station's words on it and nothing
 counted.
 
+**A `<p…>` naming no district is read as nothing.** The bare `<p0>` and `<p1>`
+and the ones naming `MAIN`, `PROG` or `JOIN` are printed after a `<pN X>` line
+for each district, so they say nothing those do not, and the translator stopped
+keeping them (ADR-0022 d.2 as amended, #269). A journal written before that
+still carries them, and the page passes them over rather than reading one as a
+line about every district: it is the same reading the translator makes of the
+same line (#270).
+
 **The file's size, a download and a clear are on the controls.** The size is
 the length of the bytes the face served, the download is a link to
 `/dccex-usb/journal` with `download` on it, so what somebody keeps is the file
