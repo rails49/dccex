@@ -104,7 +104,9 @@ it), *off* (a district someone turned off).
 The translator's record of what the station said about power, and of the
 link going down and the station restarting, each stamped with when it
 arrived. It is kept on the box whether or not anyone is watching, and read
-afterwards, on a **view** of its own.
+afterwards, on a **view** of its own. It holds the newest lines and drops
+the oldest as it grows, keeping the last power line about each district.
+Nobody clears it.
 
 **Not:** *log* (the log is what the apps say on stderr), *trace* (`control`'s
 recording of the bus), *history*, *event log* (an **event** is what a handler
@@ -331,8 +333,7 @@ releases are listed and a flash is pressed and followed; the **script**,
 where the loaded railroad's is opened in the **editor** and applied to
 `control`'s store through the **face** (#185, #238); and the **journal**,
 where the record of what the station said about power is read — the counts
-per district, the **incident**s newest first, and the press that clears it
-(#266, ADR-0022).
+per district and the **incident**s newest first (#266, ADR-0022).
 
 **Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
 (a mode is what a track is set to).

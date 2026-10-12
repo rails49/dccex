@@ -448,11 +448,9 @@ district, so a line for each of them was half a million a day on a railroad
 where nothing happened, and the page reads the whole file to open the view
 (#269). What is held is the line and not the station's words alone: a
 district set to another mode is a line, the mode being part of what a line
-says. What the journal last kept goes with the link, with a restart and with
-a clear, so the first `<p…>` after any of them says what the railroad is in
-rather than nothing. A clear is the file found shorter than the translator
-left it, since the mirror's face does it and tells the translator nothing
-(#276).
+says. What the journal last kept goes with the link and with a restart, so
+the first `<p…>` after either says what the railroad is in rather than
+nothing.
 
 **Every line carries** `at`, when it arrived, ISO 8601 in UTC to the
 millisecond — the station cuts a district and retries it inside one second, so
@@ -490,13 +488,15 @@ that changes is run over the whole journal again under itself. A `TRACK C
 INVERT` is a reverser doing its job and is kept exactly as a cut that followed
 one would be.
 
-**The file is opened once, for appending, and is neither reopened, rotated nor
-truncated here** (d.4). Each line is flushed as it is written, so a reader is
-never a line behind the railroad. Clearing it is the mirror's face, on a
-request from the page, and the two apps agree on nothing more than the volume:
-under `O_APPEND` a write lands at whatever the end of the file is at the
-moment it happens, so a clear loses no line and the line after one starts the
-file. Nothing caps its growth.
+**The file is opened for appending, and this app keeps it to a size** (d.4
+as amended). Each line is flushed as it is written, so a reader is never a
+line behind the railroad. Above `TRIMMED_ABOVE` bytes (10 MB) the oldest lines
+go, down to the newest `TRIMMED_TO` bytes (8 MB); the two are constants in
+`src/dccex/journal.py`. The last `<p…>` about each district from the part
+that went stays in front of what is kept, with its own `at`, so the file
+still says each district's power. The trim is written beside the journal and
+renamed over it, and the mirror's face opens the file by name on each read,
+so it serves the old file or the new one whole. Nobody clears it.
 
 ## Standing the railroad down
 
