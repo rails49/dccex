@@ -845,6 +845,56 @@ that port has, including being cut off once it falls too far behind and being
 disconnected alongside the throttles when the device has been away past the
 grace ([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
 
+## What it makes of the journal
+
+The **journal** is the translator's record of what the station said about
+power, kept on the box whether or not anyone is watching
+([ADR-0022](../adr/0022-the-journal-is-what-the-station-said.md) d.1,
+`docs/dccex/README.md`). Being an **incident** is a reading of that file and
+not something written in it (d.3), so the rule is here and a rule that changes
+is run over the whole journal again under itself.
+
+**One pure function**, `ui/src/journal.js`: journal lines in, incidents and
+counts out (d.5). No socket and no clock — the only time it knows is the `at`
+each line carries — so what it makes of a file is asserted as that file and
+that reading on a machine with nothing plugged in
+(`tests/ui/test_journal.py`). Splitting the served file into lines is the
+caller's: the mirror serves it while the translator appends to it, so a
+truncated last line is the page's to drop.
+
+**One incident per district**, from its first `ALERT` or trip until the
+station says `NORMAL`, a `<p0 X>` or a `<p0>`, or the link goes down — however
+many times the station cut it in between. It carries the start, the end, how
+many times it was cut, the highest mA the station printed in it and how long
+it was cut for, which is each trip until the next `POWER RESTORE` or until the
+end.
+
+**Its kind is the most specific reading of what happened**, in this order: a
+`repeated reversal`, three flips on one district inside a second; a
+`reversal`, an alert or a trip within 250 ms of a flip on any district; a
+`slow reversal`, an `INVERT` the station did not call fast; a `trip`, anything
+with a cut in it; and a `spike`, a current over the limit that did not become
+one. The link going down and the station restarting are the station's own and
+are `link` and `restart`. The 250 ms and the three in a second are named
+constants and they are the page's own: the station prints no flip count, and
+the right numbers are not known before the record exists (ADR-0022, context).
+
+**What is the railroad working is not an incident**: a flip nothing came of,
+which is counted as a flip and nothing more; an `ALERT` that ended in `NORMAL`
+on a district the station said was `PROG`, which is a decoder acknowledging;
+and the lines the station wrote about a district it did not cut, which are
+read as nothing at all.
+
+**The counts are over a period** given as a start and an end, as a build, or
+as the whole file. Per district: its incidents by kind, how many times it was
+cut, how long for, the highest mA printed about it, the flips nothing came of,
+how long it was powered and its incidents per hour powered. Powered is from a
+`<p1 X>` until a `<p0 X>`, a link loss or a trip, and again from a `NORMAL`.
+For the station: how many times the link went down, and how many times it
+restarted.
+
+Nothing draws any of it yet. The view that does is #266.
+
 ## How it looks
 
 The look rules are the organisation's, in LOOK.md, and their values arrive here

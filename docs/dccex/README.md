@@ -470,7 +470,8 @@ line. A restart carries `restart: true`, and is the only record of one — the
 link did not go, so nothing says it on the row (ADR-0021 d.4).
 
 **This app decides nothing about a line** (d.3). Whether a line is part of an
-**incident**, and which kind, is the page's as it reads the file, so a rule
+**incident**, and which kind, is the page's as it reads the file
+([docs/ui/README.md](../ui/README.md)), so a rule
 that changes is run over the whole journal again under itself. A `TRACK C
 INVERT` is a reverser doing its job and is kept exactly as a cut that followed
 one would be.
