@@ -55,17 +55,20 @@ def test_the_lock_is_read_off_what_the_station_broadcasts() -> None:
     assert replies.reply(b"<!RESUMED>") == replies.Lock(locked=False)
 
 
-def test_the_banner_reads_as_nothing() -> None:
-    """The banner names the build the station runs, and this app reads none
-    of it: the build left the contract with the mirror (#567). The banner
-    still raises the link, the station having answered, but that is the
-    translator's reading and not a fact out of this line."""
-    assert (
-        replies.reply(
-            b"<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>"
-        )
-        is None
-    )
+def test_the_banner_reads_as_the_build_the_station_runs() -> None:
+    """The `G-` field, which is the **build**. It reaches no row this app
+    publishes — that went to the mirror's face with the flash (control#567) —
+    and is read because every journal line carries it (ADR-0022 d.2)."""
+    assert replies.reply(
+        b"<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>"
+    ) == replies.Banner(build="v5.6.4-rails49.1")
+
+
+def test_a_banner_without_a_build_reads_as_nothing() -> None:
+    """A banner this app can read no field off raises the link just the same,
+    the station having answered, but that is the translator's reading and not
+    a fact out of this line."""
+    assert replies.reply(b"<iDCC-EX V-5.6.4 / ESP32>") is None
     assert replies.reply(b"<iDCC-EX>") is None
     assert replies.reply(b"<i>") is None
 
@@ -186,3 +189,84 @@ def test_the_boot_is_nothing() -> None:
     assert replies.reply(b"<* License GPLv3 fsf.org (c) dcc-ex.com *>") is None
     assert replies.reply(b'<@ 0 0 "DCC-EX v5.6.4">') is None
     assert replies.reply(b'<@ 0 3 "Free RAM=  312Kb">') is None
+
+
+# -- what a track is set to and the most it may draw (ADR-0022 d.2) -------
+
+
+def test_what_a_track_is_set_to_reads_as_the_mode() -> None:
+    """The word the `<=` command takes, which is what a **script** writes:
+    a DC track carries its cab after the mode and the cab is left on the
+    line."""
+    assert replies.reply(b"<= A MAIN>") == replies.Mode(track="A", mode="MAIN")
+    assert replies.reply(b"<= B PROG>") == replies.Mode(track="B", mode="PROG")
+    assert replies.reply(b"<= C DC 3>") == replies.Mode(track="C", mode="DC")
+    assert replies.reply(b"<= H NONE>") == replies.Mode(track="H", mode="NONE")
+
+
+def test_a_modifier_reads_as_the_word_the_command_takes_for_it() -> None:
+    """MAIN and BOOST carry `A` for auto-reverse and `I` for inverted, and
+    the station names AUTO alone where both are set."""
+    assert replies.reply(b"<= C MAIN A>") == replies.Mode(track="C", mode="MAIN_AUTO")
+    assert replies.reply(b"<= D MAIN I>") == replies.Mode(track="D", mode="MAIN_INV")
+    assert replies.reply(b"<= E BOOST A>") == replies.Mode(track="E", mode="BOOST_AUTO")
+    assert replies.reply(b"<= E BOOST I>") == replies.Mode(track="E", mode="BOOST_INV")
+
+
+def test_a_mode_line_of_another_shape_reads_as_nothing() -> None:
+    for other in (b"<= Z MAIN>", b"<= A>", b"<= C MAIN X>", b"<= C PROG A>", b"<=>"):
+        assert replies.reply(other) is None
+
+
+def test_the_most_each_track_may_draw_reads_as_the_limits() -> None:
+    """One line carries every track, A first, in milliamps."""
+    assert replies.reply(b"<jG 1233 1233 250 250>") == replies.Limits(
+        milliamps=(1233, 1233, 250, 250)
+    )
+    assert replies.reply(b"<jG 2000>") == replies.Limits(milliamps=(2000,))
+
+
+def test_a_limit_line_of_another_shape_reads_as_nothing() -> None:
+    """`<jI …>` is what each track is drawing rather than what it may, and is
+    not read here."""
+    for other in (b"<jG>", b"<jG A 2000>", b"<jI 13 2 0 0>"):
+        assert replies.reply(other) is None
+
+
+# -- what the journal keeps (ADR-0022 d.2) --------------------------------
+
+
+def test_the_journal_keeps_every_track_diagnostic_and_the_district_it_names() -> None:
+    """Wider than what this app acts on: a reverser flipping a district is a
+    line the journal keeps and no fact here (d.3)."""
+    assert replies.kept(b"<* TRACK C INVERT (fast) *>") == replies.Kept(district="C")
+    assert replies.kept(
+        b"<* TRACK B FAST OVERLOAD 4210mA. Pause 100ms *>"
+    ) == replies.Kept(district="B")
+
+
+def test_the_journal_keeps_every_power_line_and_the_district_it_names() -> None:
+    """A `<p…>` line naming `MAIN` or `JOIN` is naming a mode, and the line
+    that names nothing is about every track at once: both are kept, and
+    neither names a district."""
+    assert replies.kept(b"<p1 A>") == replies.Kept(district="A")
+    assert replies.kept(b"<p0>") == replies.Kept(district="")
+    assert replies.kept(b"<p1 MAIN>") == replies.Kept(district="")
+    assert replies.kept(b"<p1 JOIN>") == replies.Kept(district="")
+
+
+def test_the_journal_keeps_nothing_else_on_the_port() -> None:
+    """The rest is another client's conversation, and the journal is what the
+    station said about power (CONTEXT.md, **journal**)."""
+    for other in (
+        b"<* Calling EXRAIL *>",
+        b"<* License GPLv3 fsf.org (c) dcc-ex.com *>",
+        b"<= A MAIN>",
+        b"<jG 1233 1233 250 250>",
+        b"<iDCC-EX V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874 G-v5.6.4-rails49.1>",
+        b"<jM 32000 0>",
+        b"<H 12 1>",
+        b"<l 3 0 128 0>",
+        b"<>",
+    ):
+        assert replies.kept(other) is None
