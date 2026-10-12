@@ -1,10 +1,10 @@
 /**
- * The two asks about the **journal**, driven against a face with nothing
+ * The ask about the **journal**, driven against a face with nothing
  * behind it.
  *
  * What the page makes of the file is the reading module's and is run through it
  * (`tests/ui/test_incidents.py`); what is asserted here is the asking — the
- * address, the method, the bytes counted as bytes, and what a face that said
+ * address, the bytes counted as bytes, and what a face that said
  * nothing comes back as, none of which a Python gate with no browser can reach
  * (ADR-0022 d.4, `ui/src/face.ts`).
  *
@@ -16,8 +16,7 @@
 
 import { afterEach, expect, test } from "vitest";
 
-import { JOURNAL_PATH, clears, journal } from "../src/face.js";
-import { UNANSWERED } from "../src/incidents.js";
+import { JOURNAL_PATH, journal } from "../src/face.js";
 
 /** One ask the page made, as it made it. */
 interface Asked {
@@ -85,28 +84,4 @@ test("a face that would not serve it says nothing rather than nothing in it", as
   expect(await journal()).toBeNull();
   away();
   expect(await journal()).toBeNull();
-});
-
-test("the journal is emptied with a DELETE of the same address", async () => {
-  answering(() => new Response('{"cleared":1500}', { status: 200 }));
-  expect(await clears()).toStrictEqual({
-    cleared: true,
-    says: "the journal is empty: 1.5 kB cleared",
-  });
-  expect(asked).toStrictEqual([{ url: JOURNAL_PATH, method: "DELETE" }]);
-});
-
-test("a refusal is the face's own sentence", async () => {
-  const reason = "this mirror was given no journal";
-  answering(() => new Response(JSON.stringify({ reason }), { status: 503 }));
-  expect(await clears()).toStrictEqual({ cleared: false, says: reason });
-});
-
-test("a face that said nothing about a clear is said to have said nothing", async () => {
-  // Nothing said is not nothing cleared: what the page says is its own
-  // sentence, and only where there was no answer to read (ADR-0009 d.2).
-  answering(() => new Response("not json", { status: 200 }));
-  expect(await clears()).toStrictEqual({ cleared: false, says: UNANSWERED });
-  away();
-  expect(await clears()).toStrictEqual({ cleared: false, says: UNANSWERED });
 });

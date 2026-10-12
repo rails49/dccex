@@ -5,23 +5,16 @@
  * The reading is the module's and is run through it
  * (`tests/ui/test_incidents.py`); what is asserted here is the pane — that
  * opening it asks the **face** once, that the reload asks again, that a period
- * and the toggle change what is counted without asking anything, and that a
- * clear reaches the face only after the warning was answered and then reads the
- * file again (ADR-0022 d.4, #126).
+ * and the toggle change what is counted without asking anything.
  *
- * The two asks are the ones the page hands down, and nothing here fetches: a
+ * The ask is the one the page hands down, and nothing here fetches: a
  * pane holding its own counterparty would be a second answer to what the page
  * talks to (the organisation's ADR-0002, `dccex-app.ts`).
  */
 
 import { expect, test } from "vitest";
 
-import {
-  EMPTY,
-  UNREADABLE,
-  type Cleared,
-  type Served,
-} from "../src/incidents.js";
+import { EMPTY, UNREADABLE, type Served } from "../src/incidents.js";
 import { type DccexControls } from "../src/ui/dccex-controls.js";
 import { type DccexCounts } from "../src/ui/dccex-counts.js";
 import { type DccexIncidents } from "../src/ui/dccex-incidents.js";
@@ -74,18 +67,12 @@ const JOURNAL: Served = {
  *  check can say what the file was at each ask. */
 async function view(
   serves: () => Served | null = () => JOURNAL,
-  empties: () => Cleared = () => ({ cleared: true, says: "emptied" }),
-): Promise<{ drawn: DccexJournal; read: number; cleared: number }> {
+): Promise<{ drawn: DccexJournal; read: number }> {
   let read = 0;
-  let cleared = 0;
   const drawn = new DccexJournal();
   drawn.reads = () => {
     read += 1;
     return Promise.resolve(serves());
-  };
-  drawn.empties = () => {
-    cleared += 1;
-    return Promise.resolve(empties());
   };
   await mounted(drawn);
   // The pane asks where it joins the document, which is one turn of the loop
@@ -96,9 +83,6 @@ async function view(
     drawn,
     get read(): number {
       return read;
-    },
-    get cleared(): number {
-      return cleared;
     },
   };
 }
@@ -183,20 +167,7 @@ test("the periods on offer are the spans and the builds in the file", async () =
   expect(controls(opened.drawn).bytes).toBe(JOURNAL.bytes);
 });
 
-test("a clear reaches the face once it is answered, and the file is read again", async () => {
-  const opened = await view();
-  press(controls(opened.drawn), ".clears");
-  await controls(opened.drawn).updateComplete;
-  expect(opened.cleared).toBe(0);
-  press(controls(opened.drawn), ".confirms");
-  await opened.drawn.updateComplete;
-  await opened.drawn.updateComplete;
-  expect(opened.cleared).toBe(1);
-  expect(opened.read).toBe(2);
-  expect(controls(opened.drawn).says).toBe("emptied");
-});
-
-test("a pane nobody handed the asks to says the journal could not be read", async () => {
+test("a pane nobody handed the ask to says the journal could not be read", async () => {
   const drawn = await mounted(new DccexJournal());
   await drawn.updateComplete;
   expect(reads(drawn, ".empty")).toBe(UNREADABLE);

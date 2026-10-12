@@ -10,12 +10,13 @@ What goes on a line is the translator's (`DccEx._journalled`); what is here is
 the file and the clock. Each line is stamped with when it arrived and flushed
 as it is written, so a reader of the file is never one line behind a railroad.
 
-**The file is opened once, for appending, and is not reopened, rotated or
-truncated here** (d.4). Clearing it is the mirror's face, on a request from
-the page, and the two apps agree on nothing more than the volume: appending is
-what makes that safe, a write under `O_APPEND` landing at whatever the end of
-the file is at the moment it happens. So a clear loses no line, and the line
-after one lands at the start of the file.
+**The translator is the only writer, and it keeps the file to a size.**
+Above `TRIMMED_ABOVE` bytes the oldest lines go, down to the newest
+`TRIMMED_TO` bytes, and the last `<p…>` about each district from the part that
+went is kept in front of them, so the file still says each district's power
+(ADR-0022 d.4 as amended). The trim is written to a file beside the journal
+and renamed over it, so the mirror's face, which opens the file by name on
+every read, serves the old file or the new one and never half of either.
 """
 
 import json
@@ -24,6 +25,12 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO
+
+TRIMMED_ABOVE = 10_000_000
+"""The journal's size in bytes above which its oldest lines go."""
+
+TRIMMED_TO = 8_000_000
+"""The most bytes of newest lines a trim keeps."""
 
 Line = dict[str, object]
 """One line, as the translator hands it over: the fields that are this line's,
@@ -50,21 +57,44 @@ class Journal:
     """The file the translator appends to, open for as long as the process
     runs."""
 
-    def __init__(self, path: str | Path, *, at: Stamp = arrived) -> None:
-        # Open for as long as the process is, which is what d.4 asks for: a
-        # context manager here would close the file after one line and reopen
-        # it for the next.
-        self._file: IO[str] = Path(path).open("a", encoding="utf-8")  # noqa: SIM115
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        at: Stamp = arrived,
+        above: int = TRIMMED_ABOVE,
+        to: int = TRIMMED_TO,
+    ) -> None:
+        self._path = Path(path)
         self._at = at
-        self._end = self._size()
+        self._above = above
+        self._to = to
+        self._file = self._opened()
+        self._trimmed()
 
-    def _size(self) -> int:
-        return os.fstat(self._file.fileno()).st_size
+    def _opened(self) -> IO[str]:
+        # Open until the next trim or the end of the process: a context
+        # manager here would close the file after one line.
+        return self._path.open("a", encoding="utf-8")
 
-    def cleared(self) -> bool:
-        """Whether the file is shorter than this left it: the mirror's face
-        truncated it since the last line written here (d.4)."""
-        return self._size() < self._end
+    def _trimmed(self) -> None:
+        """The oldest lines gone where the file is over its size, and the
+        last power line about each district from them kept."""
+        if os.fstat(self._file.fileno()).st_size <= self._above:
+            return
+        whole = self._path.read_bytes()
+        cut = whole.find(b"\n", len(whole) - self._to - 1) + 1
+        power: dict[object, bytes] = {}
+        for said in whole[:cut].splitlines(keepends=True):
+            line = json.loads(said)
+            if "district" in line and str(line.get("said")).startswith("<p"):
+                power.pop(line["district"], None)
+                power[line["district"]] = said
+        trimmed = self._path.with_name(self._path.name + ".trimmed")
+        trimmed.write_bytes(b"".join(power.values()) + whole[cut:])
+        trimmed.replace(self._path)
+        self._file.close()
+        self._file = self._opened()
 
     def wrote(self, line: Line) -> None:
         """One line, stamped with when it arrived and on the disk before this
@@ -76,7 +106,7 @@ class Journal:
         """
         self._file.write(json.dumps({"at": self._at(), **line}) + "\n")
         self._file.flush()
-        self._end = self._size()
+        self._trimmed()
 
     def close(self) -> None:
         """Let the file go. Nothing is lost by not calling it — every line is

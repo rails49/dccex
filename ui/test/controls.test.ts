@@ -4,15 +4,13 @@
  *
  * The words and the periods are the reading module's and are run through it
  * (`tests/ui/test_incidents.py`); what is asserted here is that a press hands
- * its answer up and keeps none of its own, that the download points at the
- * face's own address, and that the clear asks before anything is asked of the
- * face (ADR-0006 d.2, #126).
+ * its answer up and keeps none of its own, and that the download points at
+ * the face's own address.
  */
 
 import { expect, test } from "vitest";
 
 import { JOURNAL_PATH } from "../src/face.js";
-import { CLEARS, WARNS } from "../src/incidents.js";
 import { DccexControls } from "../src/ui/dccex-controls.js";
 import { all, mounted, part, press, reads } from "./mounted.js";
 
@@ -33,12 +31,10 @@ async function controls(
   picked: string[];
   toggled: boolean[];
   reloaded: number;
-  emptied: number;
 }> {
   const picked: string[] = [];
   const toggled: boolean[] = [];
   let reloaded = 0;
-  let emptied = 0;
   const drawn = new DccexControls();
   drawn.choices = CHOICES;
   drawn.choice = "all";
@@ -51,22 +47,16 @@ async function controls(
   drawn.reloads = () => {
     reloaded += 1;
   };
-  drawn.empties = () => {
-    emptied += 1;
-  };
   Object.assign(drawn, given);
   await mounted(drawn);
   return {
     drawn,
     picked,
     toggled,
-    // The two counts are read after the presses below rather than before them,
-    // so they are read off the helper rather than copied out of it.
+    // The count is read after the presses below rather than before them, so
+    // it is read off the helper rather than copied out of it.
     get reloaded(): number {
       return reloaded;
-    },
-    get emptied(): number {
-      return emptied;
     },
   };
 }
@@ -121,43 +111,11 @@ test("the download is a link to the face's own address", async () => {
   expect(link.hasAttribute("download")).toBe(true);
 });
 
-test("the clear asks first and nothing is asked of the face until it is answered", async () => {
-  const asked = await controls();
-  expect(reads(asked.drawn, ".clears")).toBe(CLEARS);
-  press(asked.drawn, ".clears");
-  await asked.drawn.updateComplete;
-  expect(reads(asked.drawn, ".warns")).toBe(WARNS);
-  expect(asked.emptied).toBe(0);
-  press(asked.drawn, ".confirms");
-  await asked.drawn.updateComplete;
-  expect(asked.emptied).toBe(1);
-  expect(asked.drawn.renderRoot.querySelector(".warning")).toBeNull();
-});
-
-test("a clear declined asks nothing and leaves no sentence behind it", async () => {
-  const asked = await controls();
-  press(asked.drawn, ".clears");
-  await asked.drawn.updateComplete;
-  press(asked.drawn, ".cancels");
-  await asked.drawn.updateComplete;
-  expect(asked.emptied).toBe(0);
-  expect(asked.drawn.renderRoot.querySelector(".warning")).toBeNull();
-  expect(asked.drawn.renderRoot.querySelector(".says")).toBeNull();
-});
-
-test("what became of a clear is the sentence the view hands down", async () => {
-  const said = "this mirror was given no journal";
-  expect(reads((await controls({ says: said })).drawn, ".says")).toBe(said);
-});
-
 test("controls nobody handed anything to press nothing", async () => {
   // Which period is read and when the journal is asked for are the view's: a
   // control that answered for itself would draw one period while the table
   // counted another.
   const drawn = await mounted(new DccexControls());
   press(drawn, ".reloads");
-  press(drawn, ".clears");
-  await drawn.updateComplete;
-  press(drawn, ".confirms");
   expect(all(drawn, ".choices option")).toStrictEqual([]);
 });

@@ -348,23 +348,22 @@ def test_the_translator_is_given_the_store_and_mounts_no_path_of_the_boxs() -> N
 
 
 def test_both_apps_mount_the_journals_volume_where_the_other_does() -> None:
-    """The translator appends to the file and the mirror's face serves it as
-    it is and truncates it on a request from the page (ADR-0022 d.4). The two
-    agree on the volume and the path and on nothing else, so the mount is one
-    line in each and the same line.
+    """The translator appends to the file and trims it, and the mirror's face
+    serves it as it is (ADR-0022 d.4). The two agree on the volume and the
+    path and on nothing else. The mirror's mount is read-only.
     """
     assert entries(services(BOX)["translator"], "volumes") == [JOURNAL_MOUNT]
-    assert entries(services(BOX)["mirror"], "volumes") == [JOURNAL_MOUNT]
+    assert entries(services(BOX)["mirror"], "volumes") == [f"{JOURNAL_MOUNT}:ro"]
     assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)["translator"]
 
 
 def test_both_apps_are_given_the_one_file_on_that_volume() -> None:
     """The writer and the reader name the same file, which is the whole of
     what they agree on (ADR-0022 d.4): the translator appends to it and the
-    mirror's face serves and clears it, and a stack that named two paths would
+    mirror's face serves it, and a stack that named two paths would
     come up and keep a record nobody serves.
 
-    Left off the mirror, the face answers the two journal routes with a
+    Left off the mirror, the face answers the journal route with a
     sentence (`dccex_usb.face`), which is what a clean clone gets.
     """
     for app in ("translator", "mirror"):

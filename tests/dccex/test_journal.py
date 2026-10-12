@@ -3,12 +3,11 @@ as it is written (ADR-0022 d.1, d.4).
 
 What goes on a line is `test_translator.py`'s, where there is a station to
 say it. What is here is the file: that a line is whole JSON, that it is
-stamped, that nothing already in the file is rewritten, and that a clear by
-another process loses no line and is not fought over.
+stamped, that nothing already in the file is rewritten until it is over its
+size, and what a trim keeps.
 """
 
 import json
-import os
 from pathlib import Path
 
 from dccex.journal import Journal
@@ -58,39 +57,70 @@ def test_a_journal_opened_on_a_file_that_is_there_appends_to_it(
     assert [line["at"] for line in lines(path)] == ["before", AT]
 
 
-def test_a_line_arriving_after_a_clear_lands_at_the_start_of_the_file(
+def power(said: str, district: str) -> dict[str, object]:
+    """A `<p…>` line about a district, as the translator hands one over."""
+    return {"said": said, "district": district}
+
+
+def test_a_file_over_its_size_keeps_its_newest_lines(tmp_path: Path) -> None:
+    """Whole lines, the newest that fit, and nothing older (d.4 as amended)."""
+    path = tmp_path / "journal.jsonl"
+    journal = Journal(path, at=lambda: AT, above=500, to=400)
+    for n in range(20):
+        journal.wrote({"link": str(n)})
+    assert path.stat().st_size <= 500
+    links = [line["link"] for line in lines(path)]
+    assert links == [str(n) for n in range(20 - len(links), 20)]
+    journal.wrote({"link": "20"})
+    assert lines(path)[-1]["link"] == "20"
+
+
+def test_a_trim_keeps_the_last_power_line_about_each_district(
     tmp_path: Path,
 ) -> None:
-    """The mirror's face truncates the file on a request from the page, and
-    the translator is appending to it at the time (d.4).
-
-    Under `O_APPEND` a write lands at whatever the end of the file is at the
-    moment it happens, so a clear loses no line and the next line starts the
-    file rather than sitting at the offset the cleared lines reached. A
-    journal that held its own offset would leave a reader bytes of nothing to
-    get past.
-    """
+    """A district whose power has not changed since its last line would say
+    nothing about it after the trim (#275). Its last line stays, in front of
+    the newest lines and in the order it was written."""
     path = tmp_path / "journal.jsonl"
-    journal = Journal(path, at=lambda: AT)
-    journal.wrote({"said": "<p1 A>"})
-    os.truncate(path, 0)
-    journal.wrote({"said": "<p0 A>"})
-    assert path.read_text() == json.dumps({"at": AT, "said": "<p0 A>"}) + "\n"
+    journal = Journal(path, at=lambda: AT, above=1000, to=400)
+    journal.wrote(power("<p1 A>", "A"))
+    journal.wrote(power("<p1 B>", "B"))
+    journal.wrote(power("<p0 A>", "A"))
+    journal.wrote({"said": "<* TRACK A ALERT *>", "district": "A"})
+    for n in range(30):
+        journal.wrote({"link": str(n)})
+    said = [line.get("said") for line in lines(path)]
+    assert said[:2] == ["<p1 B>", "<p0 A>"]
+    assert "<* TRACK A ALERT *>" not in said
+    assert lines(path)[-1] == {"at": AT, "link": "29"}
 
 
-def test_a_clear_is_seen_until_the_next_line_is_written(tmp_path: Path) -> None:
-    """The translator asks before it decides whether a `<p…>` is a line
-    (#276). A file that was there when the journal opened is not a clear."""
+def test_a_file_over_its_size_is_trimmed_when_it_is_opened(
+    tmp_path: Path,
+) -> None:
+    """A journal left large by a process that kept a larger size."""
     path = tmp_path / "journal.jsonl"
-    path.write_text('{"at": "before", "said": "<p1 A>"}\n')
-    journal = Journal(path, at=lambda: AT)
-    assert not journal.cleared()
-    journal.wrote({"said": "<p0 A>"})
-    assert not journal.cleared()
-    os.truncate(path, 0)
-    assert journal.cleared()
-    journal.wrote({"said": "<p1 A>"})
-    assert not journal.cleared()
+    path.write_text("".join(f'{{"at": "before", "link": "{n}"}}\n' for n in range(50)))
+    Journal(path, at=lambda: AT, above=500, to=400)
+    assert path.stat().st_size <= 400
+    assert lines(path)[-1]["link"] == "49"
+
+
+def test_a_reader_holding_the_file_through_a_trim_reads_it_whole(
+    tmp_path: Path,
+) -> None:
+    """The trim is a new file renamed over the old one, so a reader that
+    opened the file before it reads the old file, whole lines from its
+    start up to the trim."""
+    path = tmp_path / "journal.jsonl"
+    journal = Journal(path, at=lambda: AT, above=500, to=400)
+    journal.wrote({"link": "0"})
+    with path.open() as reading:
+        for n in range(1, 20):
+            journal.wrote({"link": str(n)})
+        held = [json.loads(said)["link"] for said in reading.read().splitlines()]
+    assert held == [str(n) for n in range(len(held))]
+    assert len(held) < 20
 
 
 def test_the_stamp_is_iso_8601_to_the_millisecond(tmp_path: Path) -> None:

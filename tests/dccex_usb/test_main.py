@@ -116,7 +116,7 @@ def test_the_store_the_script_is_edited_in_is_named_on_the_command_line() -> Non
 JOURNAL = "/var/lib/dccex/journal.jsonl"
 """The file on the volume both containers mount, which is what the box passes
 (`compose.box.yaml`, ADR-0022 d.4). Nothing here opens it: the face is what
-serves and clears it, and what it answers is `test_face.py`'s."""
+serves it, and what it answers is `test_face.py`'s."""
 
 
 def test_no_journal_is_the_mirror_a_box_with_a_cable_and_nothing_else_runs() -> None:

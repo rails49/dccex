@@ -48,17 +48,16 @@ the process that holds the cable is the translator's job and not this one's
 them with a status and a sentence and is otherwise the app it has always been,
 which is what a box mirroring a cable with nothing else running gets.
 
-**And two about the journal, which the translator keeps and the page reads**
-(ADR-0022 d.4): the file as it is, and the file emptied. The record is the
+**And one about the journal, which the translator keeps and the page reads**
+(ADR-0022 d.4): the file as it is. The record is the
 translator's — every `<* TRACK … *>` the station said, every `<p…>` that said
 something new about a district, the link going down and up, and a restart,
 each stamped with when it arrived — and
 this app's part in it is the volume the two containers share: the file is
-served as the bytes it is and truncated on a request from the page, and **no
-line of it is read here**. What a line means, and whether it is part of an
+served as the bytes it is, and **no line of it is read here**. What a line means, and whether it is part of an
 **incident**, is the page's over the whole file, under a rule that can change
 while the file does not (d.3, d.5). A mirror started with no journal answers
-both of them with a status and a sentence, as one with no store does.
+it with a status and a sentence, as one with no store does.
 
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
@@ -305,25 +304,19 @@ answer a page gets on a box where this app is mirroring a cable with nothing
 else running (`__main__.py`)."""
 
 JOURNAL_PATH = "/journal"
-"""What the **journal** is served and cleared at, with the door's prefix
-already off it (ADR-0004). Two things and no third: a GET is the file as it is
-and a DELETE empties it, so a page that reloaded the read has cleared
-nothing."""
+"""What the **journal** is served at, with the door's prefix already off it
+(ADR-0004). A GET is the file as it is."""
 
 NDJSON = "application/x-ndjson"
 """What the journal goes back as: one JSON object per line, which is the shape
 the translator writes and not a document (ADR-0022 d.1). The face's own
 answers are JSON."""
 
-CLEARED = "cleared"
-"""What a clear says how many bytes went under. The record and not the lines:
-the face reads no line of the journal, so bytes are what it can count."""
-
 NO_JOURNAL = (
-    "this mirror was given no journal, so it can neither serve nor clear"
+    "this mirror was given no journal, so it cannot serve"
     " one: the path is --journal on its command line"
 )
-"""What the two journal routes answer where the app was started with no
+"""What the journal route answers where the app was started with no
 journal. It is a state of the installation and not of the request, as a mirror
 with no store is: a box mirroring a cable with nothing else running has no
 translator beside it and no record to serve (`__main__.py`, ADR-0022 d.1)."""
@@ -428,20 +421,17 @@ class Keeps(Protocol):
 
 class Kept(Protocol):
     """What the face needs of the **journal**: the file's bytes as they are,
-    where it is, and the file emptied.
+    and where it is.
 
-    Three members and no reading, which is the whole of ADR-0022 d.4: the
-    translator writes the record and the page decides what a line means, so
-    this app's part is the bytes and the truncation. `Journal` satisfies it
-    (`journal.py`).
+    No reading, which is the whole of ADR-0022 d.4: the translator writes the
+    record and the page decides what a line means, so this app's part is the
+    bytes. `Journal` satisfies it (`journal.py`).
     """
 
     @property
     def where(self) -> str: ...
 
     async def served(self) -> bytes: ...
-
-    async def cleared(self) -> int: ...
 
 
 class Answered(NamedTuple):
@@ -789,15 +779,12 @@ class Face:
                 )
             return Answered(HTTPStatus.OK, {CLIENTS: self._counts.clients})
         if asked == JOURNAL_PATH:
-            if method == "GET":
-                return await self._kept()
-            if method != "DELETE":
+            if method != "GET":
                 return refused(
                     HTTPStatus.METHOD_NOT_ALLOWED,
-                    f"{asked} is read with GET and emptied with DELETE,"
-                    f" and this was {method}",
+                    f"{asked} is read with GET, and this was {method}",
                 )
-            return await self._cleared()
+            return await self._kept()
         if asked == STREAM_PATH:
             if method != "GET":
                 return refused(
@@ -891,31 +878,6 @@ class Face:
                 f"the journal at {journal.where} could not be read: {unreadable}",
             )
         return Answered(HTTPStatus.OK, {}, served=served, kind=NDJSON)
-
-    async def _cleared(self) -> Answered:
-        """The **journal** emptied, and how many bytes went (ADR-0022 d.4).
-
-        The file is truncated and not removed, which is the agreement between
-        the two apps: the translator appends to a handle it opened once, so a
-        line written after this lands at the start of the same file and a line
-        written during it is not lost (`journal.py`, `dccex.journal`).
-
-        **Nothing here guards the record.** Clearing it is a gesture on the
-        page about what a person has read, and the journal is not a railroad's
-        document: what the counts said before the press is what the page was
-        showing.
-        """
-        journal = self._journal
-        if journal is None:
-            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_JOURNAL)
-        try:
-            cleared = await journal.cleared()
-        except OSError as unwritable:
-            return refused(
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                f"the journal at {journal.where} could not be cleared: {unwritable}",
-            )
-        return Answered(HTTPStatus.OK, {CLEARED: cleared})
 
     async def _script(self, railroad: str) -> Answered:
         """One railroad's **script**, as the text the store holds, or a `404`

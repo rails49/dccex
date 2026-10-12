@@ -7,9 +7,9 @@ onto the command station, which only the process holding the device can do
 (control ADR-0065, `firmware.py`), the face that is asked about it
 (`face.py`), the store the page edits this railroad's **script** in through
 that face (ADR-0015 d.5, `store.py`), and the **journal** that face serves to
-the page and clears for it, which the translator beside this app writes
-(ADR-0022 d.4, `journal.py`). There is still no bind address, because both servers
-bind every interface and what limits their reach is the LAN (control
+the page, which the translator beside this app writes (ADR-0022 d.4,
+`journal.py`). There is still no bind address, because both servers bind every
+interface and what limits their reach is the LAN (control
 ADR-0042).
 
 - `--device <path>`, the serial device to open.
@@ -30,10 +30,9 @@ ADR-0042).
   a cable with nothing else running is still this app's installation
   (ADR-0001). Configuration and never payload, like the source of releases.
 - `--journal <path>`, the file the **journal** is kept in, which the face
-  serves as it is and truncates on a request from the page (ADR-0022 d.4). On
-  the box it is a file on the named volume the translator beside this app
-  mounts and appends to. **Left out is a mirror with no journal**: the two
-  journal routes answer a status and a sentence, and a box holding a cable
+  serves as it is (ADR-0022 d.4). On the box it is a file on the named volume
+  the translator beside this app mounts and appends to. **Left out is a mirror
+  with no journal**: the journal route answers a status and a sentence, and a box holding a cable
   with no translator beside it has no record to serve. Configuration and never
   payload, like the store.
 
@@ -65,7 +64,7 @@ from dccex_usb.store import Store
 JOURNAL_EXAMPLE = "/var/lib/dccex/journal.jsonl"
 """What a journal's path looks like, for the help. On the box it is the file on
 the named volume the translator beside this app appends to, which this app's
-face serves and clears (`compose.box.yaml`, ADR-0022 d.4) — the same spelling
+face serves (`compose.box.yaml`, ADR-0022 d.4) — the same spelling
 the writer's own help carries (`dccex.__main__`)."""
 
 PERIOD_S = 0.5
@@ -115,9 +114,9 @@ def serve(
     # face says so on the three routes that need one.
     #
     # And the journal, where it was given a path: the record is the
-    # translator's to write and this app's to serve and clear on the volume
-    # the two of them share (ADR-0022 d.4, `journal.py`). Nothing is opened
-    # here — the file is read and truncated at the request — so a path that is
+    # translator's to write and this app's to serve on the volume the two of
+    # them share (ADR-0022 d.4, `journal.py`). Nothing is opened here — the
+    # file is read at the request — so a path that is
     # not there yet is a journal with nothing in it rather than a process that
     # refuses to start, which is the opposite of the writer's side of it
     # (`dccex.__main__`).
@@ -228,8 +227,8 @@ def command_line() -> argparse.ArgumentParser:
         default="",
         metavar="PATH",
         help="the journal the translator keeps, which the face serves to the"
-        f" page and clears for it, e.g. {JOURNAL_EXAMPLE}; left out, the face"
-        " answers the journal routes with a sentence",
+        f" page, e.g. {JOURNAL_EXAMPLE}; left out, the face answers the"
+        " journal route with a sentence",
     )
     return parser
 
