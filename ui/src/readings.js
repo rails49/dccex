@@ -79,10 +79,10 @@ const STOPPED = "stopped";
  * an ordinary state of a box (control #727). `undefined` is unreported: no
  * railroad row has arrived since the connection came up, which is the whole of
  * an outage and the gap between a reconnect and the retained row landing. The
- * band says `no railroad loaded` for either of the last two, and the
- * **script** view acts on them differently — a row that says none is loaded
- * leaves nothing to edit, and an outage leaves the editor where it is
- * (`dccex-script.ts`).
+ * three are three readings on the band — the name, `no railroad loaded`, and a
+ * blank slot (#246) — and the **script** view acts on them differently: a row
+ * that says none is loaded leaves nothing to edit, and an outage leaves the
+ * editor where it is (`dccex-script.ts`).
  *
  * @typedef {object} Layout
  * @property {boolean} connected whether the page has the broker
@@ -190,10 +190,13 @@ const STOPS = "stop every locomotive where it stands";
 const ANSWERING = "answering";
 const OFFLINE = "dcc-ex offline";
 
-/** What the band says where `control` has loaded no railroad, and where none
- *  has been reported (#239, #242). A sentence rather than a blank: nothing
- *  where a name goes reads as a name that went missing, and a box with no
- *  railroad loaded is an ordinary state of one (control #727, ADR-0009 d.2). */
+/** What the band says where a railroad row says `control` has loaded none
+ *  (#239). A sentence rather than a blank: nothing where a name goes reads as
+ *  a name that went missing, and a box with no railroad loaded is an ordinary
+ *  state of one (control #727, ADR-0009 d.2).
+ *
+ *  It is not what an unreported railroad reads as. Nothing has said which
+ *  railroad `control` has there, so the slot is blank (#246). */
 const NO_RAILROAD = "no railroad loaded";
 
 /**
@@ -347,8 +350,9 @@ export const QUIET = /** @type {Kept} */ ({
  * @typedef {object} Band
  * @property {string} build what the station says it is running, blank while
  *   the link is down
- * @property {string} railroad which railroad `control` has loaded, or
- *   `no railroad loaded` where none is
+ * @property {string} railroad which railroad `control` has loaded,
+ *   `no railroad loaded` where a row says none is, and blank while no row has
+ *   arrived since the connection came up
  * @property {boolean} answering whether the station is answering — the link,
  *   which is the dot's colour
  * @property {string} says what the link reads in words, which is what a reader
@@ -517,10 +521,13 @@ function stop(layout) {
  * module `UNREACHABLE` (`bus.ts`). The **build** beside it goes with the link,
  * because that one is the station talking.
  *
- * **A railroad nobody has reported reads here as one nobody has loaded.** The
- * two are different states on the value and this is where they are not told
- * apart: what the band owes a reader is that it cannot name a railroad, and
- * `no railroad loaded` is that sentence in both (#242).
+ * **A railroad nobody has reported is blank and not a sentence** (#246). An
+ * outage, and the gap after a reconnect, leave the railroad unreported, and
+ * `control` may have one loaded the whole time — so `no railroad loaded` there
+ * is the page reporting a state nobody told it (ADR-0009 d.2). Blank, as the
+ * build is while the station is not answering, and the power button beside it
+ * already reads `no bus`. A row that says none is loaded is the other state
+ * and keeps the sentence (#242, `Layout`).
  *
  * **The two presses are not disabled on the same facts.** The power button
  * offers a state the other of, so it needs the station and a word from
@@ -544,7 +551,8 @@ function stop(layout) {
 export function band(readings, layout) {
   return {
     build: readings.build ?? BLANK,
-    railroad: layout.railroad ?? NO_RAILROAD,
+    railroad:
+      layout.railroad === undefined ? BLANK : (layout.railroad ?? NO_RAILROAD),
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
     power: power(readings, layout),
