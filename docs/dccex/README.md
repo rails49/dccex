@@ -58,6 +58,13 @@ stay as the station reports them and come back when a person presses ON
 (ADR-0013 d.6). Every other value replays through its handler, in the order
 the topics were first heard.
 
+**Between the two it asks `<=>` and `<JG>`, once.** What each track is set to
+and the most each may draw, which are the two fields a **journal** line about
+a district carries beside it (below). After `start`, because `start` is where
+a railroad sets both: asking before it would read back the picture the script
+has just replaced. Neither is in the poll — the station broadcasts a mode the
+moment it changes, and a limit changes when a script does.
+
 **A station restart is handled as a connect.** On every connect this app sets
 stash `32000` with `<JM 32000 1>`, before `start` and the replay, and the poll
 reads it back. A boot clears the stash, so `<jM 32000 0>` is a station that
@@ -398,14 +405,15 @@ mid-session, and the mirror closing its clients is what reports the outages
 that actually happen
 ([ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
 
-**The banner raises the link and goes no further.** It is what `<s>` is
-answered with, so a station that sends one is a station answering — and that
-is the whole of what this app makes of it. Which build is on the box rode on
-this row until control#567 and does not any more: the flash gesture went with
-the mirror, onto the face this repository serves, and a microcontroller's
-firmware is not the railroad (the organisation's ADR-0002). A banner this app
-can read no field off raises the link just the same, a message this app reads
-nothing out of being the station answering as much as one it does.
+**The banner raises the link and reaches no row.** It is what `<s>` is
+answered with, so a station that sends one is a station answering. Which build
+is on the box rode on this row until control#567 and does not any more: the
+flash gesture went with the mirror, onto the face this repository serves, and a
+microcontroller's firmware is not the railroad (the organisation's ADR-0002).
+The `G-` field is read all the same, for the **journal**, which carries the
+**build** on every line (below); nothing published here says it. A banner this
+app can read no field off raises the link just the same, a message this app
+reads nothing out of being the station answering as much as one it does.
 
 **No `device/point`.** This railroad's turnouts have no feedback and the
 station's answer to a throw is one it faked
@@ -417,6 +425,63 @@ Everything else on the port is another client's conversation — a slot's speed,
 a turnout the station keeps of its own, a sensor it polls, a fast clock — and
 is passed over unread. Parsing what the mapping does not need is work with
 nobody to read it.
+
+## The journal
+
+**What the station said about power, kept on the box**, whether or not anyone
+is watching: one JSON object per line, appended to a file on a volume
+([ADR-0022](../adr/0022-the-journal-is-what-the-station-said.md) d.1). Shorts
+should not happen on this railroad except where a reverser flips a district,
+and finding the ones that do needs a record kept while nobody is looking. It
+is `--journal <path>` and nothing is written without one.
+
+**A line is written for** every `<* TRACK … *>` and every `<p…>` the station
+sends, the link going down and the link coming up, and a station restart
+(d.2). Nothing else: a mode, a limit and the banner are read for the fields a
+line carries rather than kept as lines of their own.
+
+**Every line carries** `at`, when it arrived, ISO 8601 in UTC to the
+millisecond — the station cuts a district and retries it inside one second, so
+a stamp to the second would put a trip and its retry at the same moment — and
+`railroad` and `build`, so that a file read a week later needs nothing beside
+it. The build is empty whenever the station is not answering, which is what
+the word means (CONTEXT.md, **build**).
+
+A line about something the station said carries `said`: the whole message
+verbatim, `<` and `>` included. Where it names a district it carries
+`district`, and that district's `mode` and `limit` as the station last
+reported them — the one thing a reader of the file cannot get back afterwards.
+Either is `null` where the station has not said yet, which is an ordinary
+state of the first second of a link; a field absent is a reading nobody took,
+never a number somebody could count.
+
+```json
+{"at":"2026-10-12T18:00:12.345+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<* TRACK C INVERT (fast) *>","district":"C","mode":"MAIN_AUTO","limit":500}
+{"at":"2026-10-12T18:00:12.361+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<p0 C>","district":"C","mode":"MAIN_AUTO","limit":500}
+{"at":"2026-10-12T18:00:19.004+00:00","railroad":"gleis49","build":"","link":"down"}
+{"at":"2026-10-12T18:00:21.118+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","link":"up"}
+{"at":"2026-10-12T18:02:03.772+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","restart":true}
+```
+
+A link line carries `link`, `down` or `up`, and is written where the word
+moves rather than on every sentence about it: a connect retried against a
+station that is not there says `down` on the row each time and writes one
+line. A restart carries `restart: true`, and is the only record of one — the
+link did not go, so nothing says it on the row (ADR-0021 d.4).
+
+**This app decides nothing about a line** (d.3). Whether a line is part of an
+**incident**, and which kind, is the page's as it reads the file, so a rule
+that changes is run over the whole journal again under itself. A `TRACK C
+INVERT` is a reverser doing its job and is kept exactly as a cut that followed
+one would be.
+
+**The file is opened once, for appending, and is neither reopened, rotated nor
+truncated here** (d.4). Each line is flushed as it is written, so a reader is
+never a line behind the railroad. Clearing it is the mirror's face, on a
+request from the page, and the two apps agree on nothing more than the volume:
+under `O_APPEND` a write lands at whatever the end of the file is at the
+moment it happens, so a clear loses no line and the line after one starts the
+file. Nothing caps its growth.
 
 ## Standing the railroad down
 
@@ -438,7 +503,7 @@ reach is one it was not driving, and `_send` drops rather than queues.
 
 ```
 python -m dccex --broker <host:port> --store <url> --station <host:port>
-                     [--id <name>]
+                     [--id <name>] [--journal <path>]
 ```
 
 The process a container runs, coming up alone against a broker
@@ -448,8 +513,10 @@ do, and as `dccex-usb` has all along.
 
 **A store, and no railroad on the command line.** `--station` is where
 `dccex-usb` serves the command station, `--store` where the store serves the
-documents, and `--id` the name the link row is keyed by, the package's where
-it is given no other. There is no `--railroad`: the one document this app
+documents, `--id` the name the link row is keyed by, the package's where it is
+given no other, and `--journal` the file the journal is appended to, on the
+box `/var/lib/dccex/journal.jsonl` on the volume the mirror mounts beside this
+app. There is no `--railroad`: the one document this app
 reads is its railroad's script, and which railroad that is is the row's to
 say (above). An address is the string the hardware answers to rather than
 something looked up, so nothing else here is a railroad's. The id names the
