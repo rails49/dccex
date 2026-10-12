@@ -16,9 +16,9 @@ polls, a fast clock — is another client's business and is passed over unread.
 The mode, the limit and the build are read for the **journal**, which stamps
 what a district was set to and allowed when a line about it arrived
 (ADR-0022 d.2). `kept` is the other half of that: which messages the journal
-keeps, and the district each names, which is a wider reading than `reply`'s —
-a `<* TRACK C INVERT (fast) *>` is a line the journal keeps whole and no fact
-this app acts on.
+keeps, the district each names and which of the two kinds it is, which is a
+wider reading than `reply`'s — a `<* TRACK C INVERT (fast) *>` is a line the
+journal keeps whole and no fact this app acts on.
 
 Pure, all of them. `messages` is the framing rule, bytes in and whole
 messages out; `reply` is one message read into a fact or into `None`. Neither
@@ -213,17 +213,25 @@ class Banner:
 @dataclass(frozen=True)
 class Kept:
     """What the **journal** keeps one message for: the district it names, and
-    the empty string where it names none.
+    which of the two kinds it is.
 
     A wider reading than the facts above and a shallower one. The journal
-    keeps every `<* TRACK … *>` and every `<p…>` whole and decides nothing
-    about it (ADR-0022 d.2, d.3), so a line this app acts on nothing out of —
+    keeps every `<* TRACK … *>` whole and decides nothing about it
+    (ADR-0022 d.2, d.3), so a line this app acts on nothing out of —
     `<* TRACK C INVERT (fast) *>`, which is a reverser doing its job — is kept
     all the same, and the district is read off it so that a reader of the
     journal can count by district without reading the station's words again.
+    `district` is the empty string on a `<* … *>` line about something other
+    than a track.
+
+    `power` says the message is a `<p…>`, which the journal keeps only where
+    it says something different from the last one about the same district
+    (`DccEx._journalled_said`). Which kind a line is is read here, the `<…>`
+    syntax being known in this module and not in the app.
     """
 
     district: str
+    power: bool
 
 
 def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
@@ -364,16 +372,24 @@ def kept(message: bytes) -> Kept | None:
     """Whether the **journal** keeps this message, and the district it names,
     or None where the journal keeps it not at all.
 
-    Every `<* TRACK … *>` and every `<p…>`, which is what ADR-0022 d.2 names.
-    The district is the letter either kind names where it names one: a `<p…>`
-    line naming `MAIN` or `JOIN` is naming a **mode**, and a `<* … *>` line
-    the station wrote about something other than a track names none.
+    Every `<* TRACK … *>`, and every `<p…>` that names a district
+    (ADR-0022 d.2 as amended). The district is the letter either kind names;
+    a `<* … *>` line the station wrote about something other than a track
+    names none.
+
+    **A `<p…>` naming no district is kept not at all**: the bare `<p0>` and
+    `<p1>`, and the ones naming `MAIN`, `PROG` or `JOIN`, which are naming a
+    **mode**. The station prints them in `broadcastPower()` alone, always
+    after a `<pN X>` line for each district, so they say nothing the lines
+    beside them do not (rails49/CommandStation-EX,
+    `CommandDistributor.cpp:306`, #269).
     """
     body = message[1:-1]
     if body.startswith(b"p"):
-        return Kept(district=_district(body[2:]))
+        district = _district(body[2:])
+        return Kept(district=district, power=True) if district else None
     if body.startswith(b"* TRACK "):
-        return Kept(district=_district(body[8:]))
+        return Kept(district=_district(body[8:]), power=False)
     return None
 
 

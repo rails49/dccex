@@ -2068,6 +2068,188 @@ async def _district_the_station_has_said_nothing_about_carries_neither(
         assert kept(path)[-1]["limit"] is None
 
 
+def test_a_power_line_naming_no_district_is_no_line_at_all(tmp_path: Path) -> None:
+    asyncio.run(_power_line_naming_no_district_is_no_line_at_all(tmp_path))
+
+
+async def _power_line_naming_no_district_is_no_line_at_all(tmp_path: Path) -> None:
+    """The bare `<p0>`/`<p1>` and the `MAIN`, `PROG` and `JOIN` lines. The
+    station prints them after a line per district and they say nothing those
+    do not, so the journal keeps none of them (d.2 as amended, #269).
+
+    The link is up all the same: the link is the station having answered and
+    never what the journal made of what it said.
+    """
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1>", b"<p1 MAIN>", b"<p1 PROG>", b"<p1 JOIN>", b"<p0>")
+        await asyncio.sleep(QUIET_S)
+        assert [line.get("said") for line in kept(path)] == [None]
+        assert kept(path)[0]["link"] == "up"
+
+
+def test_a_power_line_saying_what_the_last_one_said_is_not_a_line(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_power_line_saying_what_the_last_one_said_is_not_a_line(tmp_path))
+
+
+async def _power_line_saying_what_the_last_one_said_is_not_a_line(
+    tmp_path: Path,
+) -> None:
+    """The word moving and not every sentence about it, which is the rule the
+    link row is already on (d.2 as amended).
+
+    The station answers the one-second poll with a line per district, so a
+    journal that kept every one of them would grow by half a million lines a
+    day on a railroad where nothing happened (#269).
+    """
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1 A>", b"<p1 A>", b"<p1 A>", b"<p0 A>", b"<p0 A>")
+        await asyncio.sleep(QUIET_S)
+        assert [line["said"] for line in kept(path) if "said" in line] == [
+            "<p1 A>",
+            "<p0 A>",
+        ]
+
+
+def test_a_power_line_is_held_against_the_last_one_about_its_district(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_power_line_is_held_against_the_last_one_about_its_district(tmp_path))
+
+
+async def _power_line_is_held_against_the_last_one_about_its_district(
+    tmp_path: Path,
+) -> None:
+    """One district at a time: the poll prints every district on one breath,
+    so a line held against the last line of any district would keep one
+    district's power and drop the rest."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1 A>", b"<p1 B>", b"<p1 A>", b"<p1 B>", b"<p0 B>")
+        await asyncio.sleep(QUIET_S)
+        assert [line["said"] for line in kept(path) if "said" in line] == [
+            "<p1 A>",
+            "<p1 B>",
+            "<p0 B>",
+        ]
+
+
+def test_a_power_line_whose_district_was_set_to_another_mode_is_a_line(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_power_line_whose_district_was_set_to_another_mode_is_a_line(tmp_path))
+
+
+async def _power_line_whose_district_was_set_to_another_mode_is_a_line(
+    tmp_path: Path,
+) -> None:
+    """What a line says is the line and not the station's words alone: the
+    **mode** and the **limit** it carries are the part a reader cannot get
+    back afterwards, so a district set to another mode says something new
+    about itself in the same words (d.2 as amended)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<= A MAIN>", b"<p1 A>", b"<= A MAIN A>", b"<p1 A>")
+        await asyncio.sleep(QUIET_S)
+        assert [line["mode"] for line in kept(path) if "said" in line] == [
+            "MAIN",
+            "MAIN_AUTO",
+        ]
+
+
+def test_a_track_diagnostic_is_a_line_every_time_the_station_says_it(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_track_diagnostic_is_a_line_every_time_the_station_says_it(tmp_path))
+
+
+async def _track_diagnostic_is_a_line_every_time_the_station_says_it(
+    tmp_path: Path,
+) -> None:
+    """A flip said twice is two flips. Only the `<p…>` is held against the
+    last one: a district that flipped, flipped again and tripped is a reading
+    the page makes of how close together they were (d.3)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(INVERT, INVERT)
+        await asyncio.sleep(QUIET_S)
+        assert [line["said"] for line in kept(path) if "said" in line] == [
+            INVERT.decode(),
+            INVERT.decode(),
+        ]
+
+
+def test_the_first_power_line_after_the_link_came_back_is_a_line(
+    tmp_path: Path,
+) -> None:
+    asyncio.run(_first_power_line_after_the_link_came_back_is_a_line(tmp_path))
+
+
+async def _first_power_line_after_the_link_came_back_is_a_line(
+    tmp_path: Path,
+) -> None:
+    """What the station last said goes with the link, here as everywhere
+    else: the station on the far end of the next one may be another one, and
+    the journal says what it is in rather than nothing at all
+    (`_forget`)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        first = await port.opened()
+        first.says(b"<p1 A>")
+        await asyncio.sleep(QUIET_S)
+        first.hangs_up()
+        second = await port.opened(2)
+        second.says(b"<p1 A>")
+        await asyncio.sleep(QUIET_S)
+        assert [line["said"] for line in kept(path) if "said" in line] == [
+            "<p1 A>",
+            "<p1 A>",
+        ]
+
+
+def test_the_first_power_line_after_a_restart_is_a_line(tmp_path: Path) -> None:
+    asyncio.run(_first_power_line_after_a_restart_is_a_line(tmp_path))
+
+
+async def _first_power_line_after_a_restart_is_a_line(tmp_path: Path) -> None:
+    """The link did not go, so nothing else says the station came up again:
+    a journal that dropped the first `<p…>` after a restart would say the
+    district had been on across it (ADR-0021 d.4)."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1 A>")
+        await asyncio.sleep(QUIET_S)
+        station.says(EMPTY, b"<p1 A>")
+        await asyncio.sleep(QUIET_S)
+        assert [line["said"] for line in kept(path) if "said" in line] == [
+            "<p1 A>",
+            "<p1 A>",
+        ]
+
+
 def test_the_link_going_down_and_up_is_a_line_each(tmp_path: Path) -> None:
     asyncio.run(_link_going_down_and_up_is_a_line_each(tmp_path))
 

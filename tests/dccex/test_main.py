@@ -122,7 +122,11 @@ class Station:
             return  # closed before anything connected, which is a test ending
         with connection:
             try:
-                connection.sendall(b"<p0>")  # answering: the rails are dark
+                # Answering: district A is dark. The district is named
+                # because the journal keeps no `<p…>` that names none
+                # (ADR-0022 d.2 as amended, #269), and the line below is the
+                # record this app is asserted to have written.
+                connection.sendall(b"<p0 A>")
                 while True:
                     arrived = connection.recv(4096)
                     if not arrived:
@@ -567,7 +571,7 @@ def test_the_journal_it_is_given_a_file_for_is_kept(
         kept = _kept(path)
     finally:
         running.stop()
-    assert [line["said"] for line in kept if "said" in line] == ["<p0>"]
+    assert [line["said"] for line in kept if "said" in line] == ["<p0 A>"]
     assert [line["link"] for line in kept if "link" in line] == ["up"]
 
 

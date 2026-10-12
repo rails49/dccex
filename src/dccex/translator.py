@@ -59,9 +59,10 @@ ten intervals of silence lower it with the connection still there
 (`_said_link`, `_lower_if_silent`, control ADR-0066).
 
 **It keeps the journal** where it is given a file for one: every
-`<* TRACK … *>` and every `<p…>` the station sends, the link going down and
-up, and a restart, each stamped with when it arrived (`_journalled`,
-`journal.py`, ADR-0022). It decides nothing about a line (d.3).
+`<* TRACK … *>` the station sends, every `<p…>` that says something different
+from the last one about the same district, the link going down and up, and a
+restart, each stamped with when it arrived (`_journalled`, `journal.py`,
+ADR-0022). It decides nothing about a line (d.3).
 
 The framing and the mapping are pure and live in `replies` and `commands`;
 what is here is the connection and the state that a connection is made of.
@@ -407,6 +408,12 @@ class DccEx:
         self._modes: dict[str, str] = {}
         self._limits: dict[str, int] = {}
         self._build = ""
+        # The last `<p…>` line the journal kept about each district, which
+        # the next one about it is held against: the station answers the poll
+        # with a line per district every second, and a journal that kept them
+        # all would be half a million lines a day on a railroad where nothing
+        # happened (ADR-0022 d.2 as amended, #269).
+        self._kept_power: dict[str, Line] = {}
         # Districts the station said it cut, and districts it said are near
         # their limit with no trip since (ADR-0016 d.3, d.4).
         self._tripped: set[str] = set()
@@ -1053,6 +1060,10 @@ class DccEx:
         self._modes.clear()
         self._limits = {}
         self._build = ""
+        # And what the journal last kept about each district goes with them,
+        # so the first `<p…>` of the next link is a line: the station on the
+        # far end may be another one.
+        self._kept_power.clear()
 
     def _send(self, message: bytes) -> None:
         """One whole message to the station, or nothing at all because the
@@ -1178,17 +1189,25 @@ class DccEx:
     def _journalled_said(self, message: bytes) -> None:
         """One message the **journal** keeps, as a line of it.
 
-        Every `<* TRACK … *>` and every `<p…>`, whole and verbatim, `<` and
-        `>` included, so that a rule changed later is run over the station's
-        own words rather than over a reading this app made of them (d.2,
-        d.3). Where the line names a district it carries that district's
-        **mode** and **limit** as the station last reported them, which is
-        the one thing a reader cannot get back afterwards: the file says what
-        a district was set to and allowed at the moment the line arrived.
+        Every `<* TRACK … *>` whole and verbatim, `<` and `>` included, so
+        that a rule changed later is run over the station's own words rather
+        than over a reading this app made of them (d.2, d.3). Where the line
+        names a district it carries that district's **mode** and **limit** as
+        the station last reported them, which is the one thing a reader
+        cannot get back afterwards: the file says what a district was set to
+        and allowed at the moment the line arrived.
 
         `null` where the station has not said either yet. A field that is
         absent is a reading nobody took, and the empty picture is an ordinary
         state of the first second of a link.
+
+        **A `<p…>` only where it says something different from the last one
+        about the same district**, which is the rule the link row is already
+        on (d.2 as amended, #269). The whole line is what is held, the mode
+        and the limit with the words: a district set to another mode says
+        something new about itself in the same words. Which messages are
+        `<p…>` at all is `replies.kept`'s, and a `<p…>` naming no district is
+        not one of them.
         """
         kept = replies.kept(message)
         if kept is None:
@@ -1198,6 +1217,10 @@ class DccEx:
             line["district"] = kept.district
             line["mode"] = self._modes.get(kept.district)
             line["limit"] = self._limits.get(kept.district)
+        if kept.power:
+            if line == self._kept_power.get(kept.district):
+                return
+            self._kept_power[kept.district] = line
         self._journalled(line)
 
     def _journalled(self, line: Line) -> None:
