@@ -389,6 +389,14 @@ class DccEx:
         self._last_heard: float | None = None
         self._tracks: dict[str, bool] = {}
         self._every: bool | None = None
+        # What each track is set to and the most each may draw, as the
+        # station last said, and the build off its banner. Asked for once a
+        # connect and read for the journal, which stamps a district's mode
+        # and limit on a line about it and the build on every line
+        # (ADR-0022 d.2).
+        self._modes: dict[str, str] = {}
+        self._limits: dict[str, int] = {}
+        self._build = ""
         # Districts the station said it cut, and districts it said are near
         # their limit with no trip since (ADR-0016 d.3, d.4).
         self._tripped: set[str] = set()
@@ -569,11 +577,18 @@ class DccEx:
         but the power, so a point handler that sets a district's mode runs
         after `start` set them all (ADR-0018 d.3). `start` has no default
         (d.4).
+
+        The two questions the **journal** needs go between them, once a
+        connect: `start` is where a railroad sets its modes and limits, so
+        what comes back is the picture it has just established
+        (`commands.MODES`, ADR-0022 d.2).
         """
         self._send(commands.MARK)
         handlers = self._handlers(script.START, None)
         if handlers:
             self._ran(handlers, self._firing(script.START, None, None))
+        self._send(commands.MODES)
+        self._send(commands.LIMITS)
         for wanted in self._applied():
             self._act(wanted)
 
@@ -898,8 +913,8 @@ class DccEx:
         another client's conversation and is passed over.
 
         The link is the station having answered and never the parse: a
-        message this app reads nothing out of — the banner among them, which
-        this app reads no field off — raises it just the same.
+        message this app reads nothing out of — a slot's speed, a sensor it
+        polls — raises it just the same.
         """
         told = replies.reply(message)
         if isinstance(told, replies.Stash):
@@ -938,6 +953,14 @@ class DccEx:
             # somebody's hand-held throttle is a railroad no train may move
             # over, and that is a fact about the supply whoever caused it.
             self._paused = told.locked
+        elif isinstance(told, replies.Mode):
+            self._modes[told.track] = told.mode
+        elif isinstance(told, replies.Limits):
+            # One line carries every track, A first, so the answer replaces
+            # what was held rather than adding to it.
+            self._limits = dict(zip(replies.TRACKS, told.milliamps, strict=False))
+        elif isinstance(told, replies.Banner):
+            self._build = told.build
         self._answered = True
         self._last_heard = self._now()
         self._publish_link(True, f"connected to {self._where}")
@@ -1009,6 +1032,13 @@ class DccEx:
         self._alerted.clear()
         self._paused = False
         self._reported.clear()
+        # What a track is set to, what it may draw and what the station says
+        # it is running are the station's too: the build is empty whenever it
+        # is not answering (CONTEXT.md, **build**), and a connect asks the
+        # other two again.
+        self._modes.clear()
+        self._limits = {}
+        self._build = ""
 
     def _send(self, message: bytes) -> None:
         """One whole message to the station, or nothing at all because the

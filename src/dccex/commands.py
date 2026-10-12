@@ -16,12 +16,14 @@ than silence, which is the same rule that keeps a commanded position from
 being echoed back as a measured one (control ADR-0022, control ADR-0050).
 
 The words that are not table rows are here too — `STATUS` and `STASH`, the
-two a poll is made of, and `MARK`, which sets the stash a restart is read off
-(ADR-0021) — because they are bytes on the same wire and belong beside the
-rest of the protocol. What a railroad wants of its station that no row
-here covers — a track's mode, a district's current limit — is its **script**'s
-and is written in the station's own language, so nothing here has a
-vocabulary for it (ADR-0013, `script.py`).
+two a poll is made of, `MARK`, which sets the stash a restart is read off
+(ADR-0021), and `MODES` and `LIMITS`, the two a connect asks for the
+**journal** (ADR-0022) — because they are bytes on the same wire and belong
+beside the rest of the protocol. What a railroad wants of its station that no
+row here covers — a track's mode, a district's current limit — is its
+**script**'s and is written in the station's own language, so nothing here
+has a vocabulary for setting either; the two that ask are the station's own
+questions and name no mode and no number (ADR-0013, `script.py`).
 """
 
 from tc49.lib.inventory import OFF, ON, STOPPED
@@ -97,6 +99,19 @@ STASH = f"<JM {STASH_ID}>".encode()
 """The other half of a poll. `<JM id>` answers `<jM id loco>`, `0` where the
 entry is unset, and sets nothing — the property a polled command has to have
 (`STATUS`)."""
+
+MODES = b"<=>"
+LIMITS = b"<JG>"
+"""The two asked once on a connect, after `start` (ADR-0022 d.2). `<=>` makes
+the station name what every track is set to and `<JG>` the most each may
+draw, which are the two fields a journal line about a district carries beside
+it. They are asked after `start` because `start` is where a railroad sets
+both, so what comes back is the picture the script has just established and
+not the one it replaced.
+
+Not in the poll. The station broadcasts a mode the moment it changes
+(`TrackManager.cpp`), a limit is a railroad's own setting and changes when its
+script does, and a poll is for what moves on its own (`STATUS`)."""
 
 HOST_TIMEOUT = b"<G 3>"
 """Sent on each `tc49/layout/alive_confirmed`. The station cuts track power

@@ -50,6 +50,10 @@ EMPTY = b"<jM 32000 0>"
 # and the two answers it can get back (ADR-0021). `Port.opened` takes the mark
 # off the wire, so a test that is not about it asserts what follows.
 
+ASKS = [b"<=>", b"<JG>"]
+# What every connect asks for the journal, after `start` (ADR-0022 d.2).
+# `Port.opened` takes these off the wire too, for the same reason.
+
 TRACK = "tc49/layout/state/wanted/track"
 TRACTION = "tc49/layout/state/wanted/traction"
 POINT = "tc49/layout/state/wanted/point"
@@ -108,13 +112,20 @@ class Port:
         self._opened.set()
         return end
 
-    async def opened(self, count: int = 1, *, mark: bool = True) -> Station:
+    async def opened(
+        self, count: int = 1, *, mark: bool = True, asks: bool = True
+    ) -> Station:
         """The station's end of the `count`-th attempt, waiting for it.
 
         The mark goes out before anything else on every connect, so it is
         taken off the wire here and every test asserts it: what a test about
         the replay asserts is the replay. `mark=False` leaves it there for
         the tests that are about the order (ADR-0021 d.2).
+
+        The two the journal needs are taken off the same way. They go out
+        after `start`, so they are the next two on the wire for every script
+        here but the two that have one — those pass `asks=False` and assert
+        where the questions land themselves (ADR-0022 d.2).
         """
         while len(self.attempts) < count:
             self._opened.clear()
@@ -124,6 +135,8 @@ class Port:
         station = self.attempts[count - 1]
         if mark:
             assert await station.heard(1) == [MARK]
+        if asks:
+            assert await station.heard(2) == ASKS
         return station
 
 
@@ -752,16 +765,22 @@ async def _mark_goes_out_before_start_and_the_replay() -> None:
     follow is one the next poll still sees (ADR-0021 d.2). A point handler
     may set a district's mode, so it runs after `start` sets them all
     (ADR-0018 d.3). `start` has no default: `t.default()` in it sends
-    nothing (d.4). The power is not replayed."""
+    nothing (d.4). The power is not replayed.
+
+    The two questions the journal needs come after `start` and before the
+    replay: `start` is where a railroad sets the modes and the limits, so
+    asking before it would read back the picture the script replaced
+    (ADR-0022 d.2)."""
     bus, _ = bus_and_tap()
     wanted(bus, TRACK, "", {"power": "on"})
     wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
     port = Port()
     async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
-        station = await port.opened(mark=False)
-        assert await station.heard(4) == [
+        station = await port.opened(mark=False, asks=False)
+        assert await station.heard(6) == [
             MARK,
             b"<= D MAIN>",
+            *ASKS,
             b"<a 3 3 1>",
             b"<= D MAIN_INV>",
         ]
@@ -783,13 +802,14 @@ async def _empty_stash_runs_start_and_the_replay_again() -> None:
     wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
     port = Port()
     async with running(bus, port, text=SETS_UP + "\n\n" + REVERSER):
-        station = await port.opened()
-        await station.heard(3)
+        station = await port.opened(asks=False)
+        await station.heard(5)
 
         station.says(EMPTY)
-        assert await station.heard(4) == [
+        assert await station.heard(6) == [
             MARK,
             b"<= D MAIN>",
+            *ASKS,
             b"<a 3 3 1>",
             b"<= D MAIN_INV>",
         ]
@@ -857,14 +877,14 @@ async def _restart_forgets_what_the_station_reported() -> None:
     wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
     port = Port()
     async with running(bus, port, text=sample.TEXT):
-        station = await port.opened()
-        await station.heard(8 + 2)
+        station = await port.opened(asks=False)
+        await station.heard(8 + 2 + 2)
 
         station.says(b"<p1 D>")
         await station.heard_nothing_more()
 
         station.says(EMPTY)
-        assert await station.heard(1 + 8 + 2) == [MARK] + SAMPLE_START + [
+        assert await station.heard(1 + 8 + 2 + 2) == [MARK] + SAMPLE_START + ASKS + [
             b"<a 3 3 0>",
             b"<= D MAIN_AUTO>",
         ]
@@ -897,8 +917,8 @@ async def _sample_sets_the_tracks_up_and_power_on_is_the_default() -> None:
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
-        station = await port.opened()
-        assert await station.heard(8) == SAMPLE_START
+        station = await port.opened(asks=False)
+        assert await station.heard(8 + 2) == SAMPLE_START + ASKS
         await station.heard_nothing_more()
 
         wanted(bus, TRACK, "", {"power": "on"})
@@ -918,8 +938,8 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
-        station = await port.opened()
-        await station.heard(8)
+        station = await port.opened(asks=False)
+        await station.heard(8 + 2)
 
         wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
         bus.drain()
