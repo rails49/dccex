@@ -705,8 +705,10 @@ the stream is and where a line ends (`tests/ui/framing.mjs`), and
 `tests/ui/test_monitor.py` puts a scroller, a time and whole conversations —
 lines arriving, a pause, a resume, a clear — through the rules that answer
 whether the reader is at the bottom, what the stamp beside a line reads and
-what is on the screen afterwards (`tests/ui/monitor.mjs`). The last two cannot
-either, and were read off
+what is on the screen afterwards (`tests/ui/monitor.mjs`), and
+`tests/ui/test_journal.py` puts whole journals through the function that reads
+them into incidents and counts (`tests/ui/journal.mjs`). The framing and the
+monitor's rules cannot either, and were read off
 their sources only for as long as there was no node here to run them with: a
 framing that kept its delimiter, a scheme picked the wrong way round and a
 stamp an hour out all leave a module saying every right word, which is what
@@ -717,9 +719,9 @@ asked of every machine the gate runs on: these checks carry the `node` marker,
 pull request requires (#101). Where they do run, a node that is not there is red
 rather than skipped, as everything else a gate needs is. It is why
 `ui/src/decoder.js`, `ui/src/message.js`, `ui/src/readings.js`,
-`ui/src/releases.js`, `ui/src/flash.js`, `ui/src/framing.js` and
-`ui/src/monitor.js` are the seven modules of the page written as JavaScript
-with their types in JSDoc: `tsc` checks them as strictly as the rest
+`ui/src/releases.js`, `ui/src/flash.js`, `ui/src/framing.js`,
+`ui/src/monitor.js` and `ui/src/journal.js` are the eight modules of the page
+written as JavaScript with their types in JSDoc: `tsc` checks them as strictly as the rest
 (`ui/tsconfig.json`), and a bare node can still run them.
 
 What is left in the modules those came out of is what needs a browser — the

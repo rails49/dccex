@@ -1,12 +1,12 @@
 // Every ask on stdin, answered on stdout.
 //
 // The runners beside this file are each one mapping of the page's, and this is
-// the part all seven of them had: read stdin to a string, `JSON.parse`, map,
+// the part all eight of them had: read stdin to a string, `JSON.parse`, map,
 // `JSON.stringify` to stdout, in the order they came. It was written once per
 // issue, each copy taken from the last, which is what `tests/ui/node.py` is on
 // the other side of the same boundary (#98).
 //
-// An answer may be a promise — one of the seven runs a sequence the page
+// An answer may be a promise — one of the eight runs a sequence the page
 // awaits (`tests/ui/flash.mjs`) — and the asks are answered one after another
 // so that what comes back is in the order it was asked whatever the mapping
 // does.
