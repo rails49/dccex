@@ -76,8 +76,8 @@ origin (`compose.box.yaml`); the page names no host and no port, as it names
 none for the face. The STOP is on the same row the power button writes and
 asks for `stopped`, which `layout` holds until an `on` (ADR-0020 d.2). On a box
 with no `control` beside it neither row arrives: both presses are disabled and
-the band reads `no railroad loaded`, which is the same page with its controls
-turned off rather than a second page.
+the band names no railroad, which is the same page with its controls turned off
+rather than a second page.
 
 **The one document it edits goes through the face too, and for a reason of the
 door's rather than of the rule's** (#185,
@@ -121,10 +121,13 @@ the page saying what it cannot see (ADR-0008 d.3).
 **The band names the railroad `control` has loaded** (org ADR-0014, #239). It
 is the `name` off `tc49/layout/state/railroad` — the row the **translator**
 loads a **script** off — and `no railroad loaded` where that name is empty,
-which is an ordinary state of a box that has chosen none (control #727), or
-where this page has no broker. A reading and not a control: nothing on this
-page loads a railroad, so it presses nothing and the two presses stay the only
-controls on the chrome.
+which is an ordinary state of a box that has chosen none (control #727). The
+slot is blank while no railroad row has arrived since the connection came up —
+a page with no broker, and the gap after a reconnect — because `control` may
+have a railroad loaded the whole time, and the sentence there would be a state
+nobody reported (#246). A reading and not a control: nothing on this page loads
+a railroad, so it presses nothing and the two presses stay the only controls on
+the chrome.
 
 It does not go with the link. The name is `layout` talking, so a station that
 has stopped answering is still a railroad `control` has loaded; what takes it
