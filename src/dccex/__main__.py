@@ -303,12 +303,13 @@ def main() -> None:
         f"broker {host}:{port}, station {station[0]}:{station[1]},"
         f" store {args.store}, journal {args.journal or 'none'}"
     )
-    bus = MqttBus(host, port, client_id=f"{CLIENT_PREFIX}{args.id}")
     # Opened here and not inside the app, so a path that cannot be written
     # refuses the process rather than being discovered on the first trip
-    # (ADR-0022 d.1). Closed on the way out, which loses nothing either way:
-    # every line is flushed as it is written.
+    # (ADR-0022 d.1). Before the broker, so that refusal happens with nothing
+    # of this process running yet. Closed on the way out, which loses nothing
+    # either way: every line is flushed as it is written.
     journal = Journal(args.journal) if args.journal else None
+    bus = MqttBus(host, port, client_id=f"{CLIENT_PREFIX}{args.id}")
     try:
         with contextlib.suppress(KeyboardInterrupt):
             serve(
