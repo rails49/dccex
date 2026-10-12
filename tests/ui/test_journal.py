@@ -429,6 +429,39 @@ def test_a_trip_the_link_ended_closes_where_the_link_went() -> None:
 
 
 @pytest.mark.node
+def test_an_incident_names_the_journal_lines_it_is_made_of() -> None:
+    """By their place in the journal it was read out of.
+
+    Which lines are an incident's is this module's reading and not the view's
+    (ADR-0022 d.3): the flip a short outlived is one of them and it is before
+    the line the reading opened at, and the line that closed it is one of them
+    too. A view reading a window off the start and the end would get both
+    wrong, so the reading says which lines it took (#266,
+    `tests/ui/test_incidents.py`).
+    """
+    (one,) = incidents("a flip the short outlived")
+    assert one["taken"] == [1, 2, 3, 4], "the flip, the cut, the retry, the normal"
+    (burst,) = incidents("three flips")
+    assert burst["taken"] == [1, 2, 3, 4], "three flips and the power going off"
+    cut, _ = incidents("a trip and a link loss")
+    assert cut["taken"] == [1, 2], "the cut, and the link going while it was cut"
+    (slow,) = incidents("a slow flip")
+    assert slow["taken"] == [0, 1], "the flip, and the power going off"
+
+
+@pytest.mark.node
+def test_the_stations_own_incident_takes_the_lines_that_name_no_district() -> None:
+    """A restart is the one line it is written on, and an outage is the line
+    the link went on and the line it came back on. A district's words inside
+    the same seconds are that district's, which is why they are separate
+    readings."""
+    (rode,) = [line for line in incidents("two builds") if line["kind"] == "restart"]
+    assert rode["taken"] == [3]
+    _, outage = incidents("a trip and a link loss")
+    assert outage["taken"] == [2, 3]
+
+
+@pytest.mark.node
 def test_the_link_losses_and_the_restarts_are_the_stations_own() -> None:
     """They are about no district, so they are counted where the journal says
     them: of the station."""
