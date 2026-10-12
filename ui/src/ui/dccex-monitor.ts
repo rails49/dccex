@@ -159,7 +159,7 @@ const EMPTIES = "clear";
 
 /** Where the commands the box takes are listed, and what the link says. */
 const REFERENCE =
-  "https://dcc-ex.com/reference/software/command-summary-consolidated.html";
+  "https://github.com/rails49/CommandStation-EX/blob/runtime-current-limits/docs/commands.md";
 const REFERS = "commands ↗";
 
 /** Where a reader who has scrolled up is, kept across an update: a row, and
