@@ -1,4 +1,4 @@
-"""What the station says, and the three facts this app reads out of it.
+"""What the station says, and the facts this app reads out of it.
 
 The station writes `<…>` messages to every client, replies and unasked
 broadcasts alike, and one byte stream cannot say which a line is —
@@ -6,11 +6,21 @@ broadcasts alike, and one byte stream cannot say which a line is —
 (control ADR-0043). So what arrives here is everything the station has to say to
 anyone, and the reading is deliberately narrow: the power each track is in,
 whether the emergency-stop lock is on, the diagnostic lines that say a district
-tripped (ADR-0016), the stash entry a boot clears (ADR-0021), and the turnouts the station keeps of its own, which are read for a **script** to be keyed on and for nothing else
-(ADR-0013 d.3). Everything else — the banner, a slot's speed, a sensor it
+tripped (ADR-0016), the stash entry a boot clears (ADR-0021), what each track
+is set to and the most each may draw, the **build** off the banner's `G-`
+field, and the turnouts the station keeps of its own, which are read for a
+**script** to be keyed on and for nothing else
+(ADR-0013 d.3). Everything else — a slot's speed, a sensor it
 polls, a fast clock — is another client's business and is passed over unread.
 
-Pure, both of them. `messages` is the framing rule, bytes in and whole
+The mode, the limit and the build are read for the **journal**, which stamps
+what a district was set to and allowed when a line about it arrived
+(ADR-0022 d.2). `kept` is the other half of that: which messages the journal
+keeps, and the district each names, which is a wider reading than `reply`'s —
+a `<* TRACK C INVERT (fast) *>` is a line the journal keeps whole and no fact
+this app acts on.
+
+Pure, all of them. `messages` is the framing rule, bytes in and whole
 messages out; `reply` is one message read into a fact or into `None`. Neither
 raises, and a message this app does not recognise is not an error: it is the
 ordinary case, most of the traffic on the port being somebody else's.
@@ -138,6 +148,84 @@ class Diagnostic:
     kind: str
 
 
+_MODIFIERS = {b"A": "AUTO", b"I": "INV"}
+"""The letters the station puts after MAIN or BOOST, and the word the `<=`
+command takes for each. The station names AUTO alone where both are set."""
+
+_MODE = re.compile(rb"= ([A-H]) (?:(MAIN|BOOST) ([AI])|([A-Z]+)(?: \d+)?)$")
+"""What a track is set to, as the station answers `<=>`: `<= A MAIN>`. A DC
+track carries its cab after the mode (`<= C DC 3>`) and the cab is left on the
+line; MAIN and BOOST carry a modifier where they have one (`<= C MAIN A>`).
+The page reads the same line the same way (`ui/src/decoder.js`), and neither
+reads the other's copy — the `<…>` syntax is the hardware's."""
+
+_LIMITS = re.compile(rb"jG((?: -?\d+)+)$")
+"""The most each track may draw, in milliamps and track A first, as the
+station answers `<JG>`: `<jG 1233 1233 250 250>`. The letter says which `j`
+line it is; `<jI …>` is the current each is drawing and is not read here."""
+
+_BANNER = re.compile(rb"iDCC-EX V-\S+ / \S+ / \S+ G-(\S+)$")
+"""The banner, for the one field this app reads off it: `G-` is the **build**
+(CONTEXT.md). A banner without one is no reading — the station would be saying
+it came up without saying as what."""
+
+
+@dataclass(frozen=True)
+class Mode:
+    """What one `<= X MODE>` line says: which track, and the word the `<=`
+    command takes for what it is set to.
+
+    Read for the **journal**, which stamps a district's mode on a line about
+    it (ADR-0022 d.2). Nothing else here acts on a mode: which mode a track
+    is set to is the railroad's **script**'s to decide (ADR-0013).
+    """
+
+    track: str
+    mode: str
+
+
+@dataclass(frozen=True)
+class Limits:
+    """What one `<jG …>` line says: the most each track may draw, in
+    milliamps, track A first.
+
+    One line carries every track, so this is the list and not a pair. Read
+    for the **journal** (ADR-0022 d.2).
+    """
+
+    milliamps: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class Banner:
+    """What the station says it is running: the `G-` field of the banner it
+    sends when it comes up and answers `<s>` with.
+
+    The **build**, which is a fact reported by the hardware and goes with the
+    **link** (CONTEXT.md). Read for the **journal**, which carries it on every
+    line (ADR-0022 d.2); the row this app publishes carries no build, which
+    went to the mirror's face with the flash (control#567).
+    """
+
+    build: str
+
+
+@dataclass(frozen=True)
+class Kept:
+    """What the **journal** keeps one message for: the district it names, and
+    the empty string where it names none.
+
+    A wider reading than the facts above and a shallower one. The journal
+    keeps every `<* TRACK … *>` and every `<p…>` whole and decides nothing
+    about it (ADR-0022 d.2, d.3), so a line this app acts on nothing out of —
+    `<* TRACK C INVERT (fast) *>`, which is a reverser doing its job — is kept
+    all the same, and the district is read off it so that a reader of the
+    journal can count by district without reading the station's words again.
+    """
+
+    district: str
+
+
 def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     """Fold `arrived` into `buffered`: what is still partial, and the
     messages that completed, delimiters included and in the order they
@@ -164,16 +252,26 @@ def messages(buffered: bytes, arrived: bytes) -> tuple[bytes, list[bytes]]:
     return partial, whole
 
 
-def reply(
-    message: bytes,
-) -> Power | Lock | Turnout | Diagnostic | Stash | None:
+Told = Power | Lock | Turnout | Diagnostic | Stash | Mode | Limits | Banner
+"""Everything one message can be read into. Named because the union is what
+the translator holds a message as, and what it does with each is one place
+(`DccEx._heard`)."""
+
+
+def reply(message: bytes) -> Told | None:
     """The fact one whole message states, or None where it states none of
     those this app reads."""
     body = message[1:-1]
     if body.startswith(b"jM "):
         return _stash(body[3:])
+    if body.startswith(b"jG"):
+        return _limits(body)
     if body.startswith(b"*"):
         return _diagnostic(body)
+    if body.startswith(b"="):
+        return _mode(body)
+    if body.startswith(b"i"):
+        return _banner(body)
     if body == b"!PAUSED":
         return Lock(locked=True)
     if body == b"!RESUMED":
@@ -228,3 +326,60 @@ def _diagnostic(body: bytes) -> Diagnostic | None:
         return None
     kind = next(name for name, said in found.groupdict().items() if said)
     return Diagnostic(track=found.group(1).decode(), kind=kind)
+
+
+def _mode(body: bytes) -> Mode | None:
+    """A `<= X MODE>` line read, or None where it is no such line. The longer
+    forms `<=>` is answered with for a track it has nothing to say about name
+    more or fewer fields and are not read."""
+    found = _MODE.match(body)
+    if found is None:
+        return None
+    named = found.group(4)
+    if named is None:
+        named = f"{found.group(2).decode()}_{_MODIFIERS[found.group(3)]}".encode()
+    return Mode(track=found.group(1).decode(), mode=named.decode())
+
+
+def _limits(body: bytes) -> Limits | None:
+    """A `<jG …>` line read, or None where it is no such line."""
+    found = _LIMITS.match(body)
+    if found is None:
+        return None
+    return Limits(milliamps=tuple(int(said) for said in found.group(1).split()))
+
+
+def _banner(body: bytes) -> Banner | None:
+    """The banner read for its `G-` field, or None where the line carries
+    none. The link is the station having answered and never the parse, so a
+    banner that reads as nothing here raises it just the same
+    (`DccEx._heard`)."""
+    found = _BANNER.match(body)
+    if found is None:
+        return None
+    return Banner(build=found.group(1).decode(errors="replace"))
+
+
+def kept(message: bytes) -> Kept | None:
+    """Whether the **journal** keeps this message, and the district it names,
+    or None where the journal keeps it not at all.
+
+    Every `<* TRACK … *>` and every `<p…>`, which is what ADR-0022 d.2 names.
+    The district is the letter either kind names where it names one: a `<p…>`
+    line naming `MAIN` or `JOIN` is naming a **mode**, and a `<* … *>` line
+    the station wrote about something other than a track names none.
+    """
+    body = message[1:-1]
+    if body.startswith(b"p"):
+        return Kept(district=_district(body[2:]))
+    if body.startswith(b"* TRACK "):
+        return Kept(district=_district(body[8:]))
+    return None
+
+
+def _district(rest: bytes) -> str:
+    """The district the first field of `rest` names, or the empty string
+    where it names none: one letter, and one the hardware can have."""
+    named = rest.split()[:1]
+    letter = named[0].decode(errors="replace") if named else ""
+    return letter if len(letter) == 1 and letter in TRACKS else ""

@@ -960,17 +960,7 @@ class DccEx:
         elif told.kind == replies.ALERT and district not in self._tripped:
             self._alerted.add(district)
 
-    def _reports(
-        self,
-        told: (
-            replies.Power
-            | replies.Lock
-            | replies.Turnout
-            | replies.Diagnostic
-            | replies.Stash
-            | None
-        ),
-    ) -> None:
+    def _reports(self, told: replies.Told | None) -> None:
         """The script's handlers for what the station just reported, run after
         the fact.
 
