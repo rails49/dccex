@@ -1212,6 +1212,10 @@ class DccEx:
         kept = replies.kept(message)
         if kept is None:
             return
+        # A cleared journal says nothing about power until each district's is
+        # written again (#276).
+        if self._journal is not None and self._journal.cleared():
+            self._kept_power.clear()
         line: Line = {"said": message.decode(errors="replace")}
         if kept.district:
             line["district"] = kept.district

@@ -19,6 +19,7 @@ after one lands at the start of the file.
 """
 
 import json
+import os
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -55,6 +56,15 @@ class Journal:
         # it for the next.
         self._file: IO[str] = Path(path).open("a", encoding="utf-8")  # noqa: SIM115
         self._at = at
+        self._end = self._size()
+
+    def _size(self) -> int:
+        return os.fstat(self._file.fileno()).st_size
+
+    def cleared(self) -> bool:
+        """Whether the file is shorter than this left it: the mirror's face
+        truncated it since the last line written here (d.4)."""
+        return self._size() < self._end
 
     def wrote(self, line: Line) -> None:
         """One line, stamped with when it arrived and on the disk before this
@@ -66,6 +76,7 @@ class Journal:
         """
         self._file.write(json.dumps({"at": self._at(), **line}) + "\n")
         self._file.flush()
+        self._end = self._size()
 
     def close(self) -> None:
         """Let the file go. Nothing is lost by not calling it — every line is

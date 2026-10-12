@@ -78,6 +78,21 @@ def test_a_line_arriving_after_a_clear_lands_at_the_start_of_the_file(
     assert path.read_text() == json.dumps({"at": AT, "said": "<p0 A>"}) + "\n"
 
 
+def test_a_clear_is_seen_until_the_next_line_is_written(tmp_path: Path) -> None:
+    """The translator asks before it decides whether a `<p…>` is a line
+    (#276). A file that was there when the journal opened is not a clear."""
+    path = tmp_path / "journal.jsonl"
+    path.write_text('{"at": "before", "said": "<p1 A>"}\n')
+    journal = Journal(path, at=lambda: AT)
+    assert not journal.cleared()
+    journal.wrote({"said": "<p0 A>"})
+    assert not journal.cleared()
+    os.truncate(path, 0)
+    assert journal.cleared()
+    journal.wrote({"said": "<p1 A>"})
+    assert not journal.cleared()
+
+
 def test_the_stamp_is_iso_8601_to_the_millisecond(tmp_path: Path) -> None:
     """The station cuts a district and retries it inside one second
     (ADR-0016), so a stamp to the second would put a trip and its retry at
