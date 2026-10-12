@@ -52,9 +52,9 @@ def asked_of_the_face(page: str) -> set[str]:
     """The names the page imports from the **face**.
 
     Read rather than matched against a line, because the line wraps: the page
-    asks the face for five things now and what a reader of either suite wants
+    asks the face for seven things now and what a reader of either suite wants
     to know is that the name is there, not which column it sits in (#185,
-    #238).
+    #238, issue 266).
     """
     block = re.search(r"""import \{([^}]*)\} from "\.\./face\.js";""", page)
     assert block is not None, "the page asks the face for nothing"
@@ -320,6 +320,39 @@ def test_the_monitor_view_is_drawn_only_while_it_is_showing() -> None:
     assert "<dccex-releases" not in monitor, "the releases are drawn on both views"
     assert "<dccex-script" not in monitor, "the script is drawn on both views"
     assert 'this.view === "monitor" ? this.#monitor() : nothing' in drawn
+
+
+def test_the_journal_view_is_drawn_only_while_it_is_showing() -> None:
+    """Taken away rather than hidden, as the monitor is and for its own reason
+    (issue 266, ADR-0022 d.4).
+
+    There is no gesture in flight to come back to, and what a reader coming
+    back wants is what the file says now — which is what a pane built again
+    asks the face for. A whole journal and the rows made of it kept in the
+    document behind another view would be a megabyte nobody is looking at.
+    """
+    drawn = code(APP.read_text())
+    assert 'this.view === "journal" ? this.#journal() : nothing' in drawn
+    assert '?hidden=${this.view !== "journal"}' not in drawn, "the pane is hidden"
+    view = drawn[drawn.index("#journal(): TemplateResult {") :]
+    view = view[: view.index("\n  }")]
+    assert "<dccex-journal" in view
+    assert ".reads=${this.#reads}" in view, "the pane is handed no way to read"
+    assert ".empties=${this.#empties}" in view, "the pane is handed no way to empty"
+
+
+def test_the_page_asks_the_face_for_the_journal_and_the_pane_times_it() -> None:
+    """The counterparty is the page's (the organisation's ADR-0002) and the
+    asking is the pane's to time: it asks on opening and on the reload, and on
+    no schedule at all (ADR-0010, `dccex-journal.ts`).
+
+    So the page holds no timer for it — all three schedules are the ones held
+    above — and what it hands down is the two asks.
+    """
+    page = code(APP.read_text())
+    assert {"journal", "clears"} <= asked_of_the_face(page)
+    assert "#reads = (): Promise<Served | null> => journal()" in page
+    assert "#empties = (): Promise<Cleared> => clears()" in page
 
 
 def test_the_releases_are_hidden_and_not_taken_away() -> None:

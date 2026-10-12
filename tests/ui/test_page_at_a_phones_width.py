@@ -290,6 +290,7 @@ MEASURE = """
       monitor: button("button.monitor"),
       releases: button("button.releases"),
       script: button("button.script"),
+      journal: button("button.journal"),
     },
     typed: typed,
     send: send,

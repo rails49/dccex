@@ -12,7 +12,12 @@
  * (`ui/test/mounted.ts`, `tests/ui/test_rail.py`).
  */
 
-import { mdiConsole, mdiFlashAlert, mdiScriptTextOutline } from "@mdi/js";
+import {
+  mdiConsole,
+  mdiFlashAlert,
+  mdiNotebookOutline,
+  mdiScriptTextOutline,
+} from "@mdi/js";
 import { expect, test } from "vitest";
 
 import { type DccexIcon } from "../src/ui/dccex-icon.js";
@@ -58,12 +63,12 @@ test("the rail carries one button per view and no others", async () => {
   // Written out rather than read off `VIEWS`, for the reason the list of views
   // is written out in `ui/test/view.test.ts`: a count taken from the thing
   // being checked would pass on whatever that list happened to say.
-  expect(drawn.renderRoot.querySelectorAll("button")).toHaveLength(3);
+  expect(drawn.renderRoot.querySelectorAll("button")).toHaveLength(4);
 });
 
 test("each button carries its view's word as a tooltip and as a label", async () => {
   const { drawn } = await rail();
-  for (const view of ["monitor", "releases", "script"] as const) {
+  for (const view of ["monitor", "releases", "script", "journal"] as const) {
     expect(button(drawn, view).tooltip).toBe(view);
     expect(button(drawn, view).label).toBe(view);
   }
@@ -74,6 +79,7 @@ test("each view is drawn as its own shape", async () => {
   expect(button(drawn, "monitor").path).toBe(mdiConsole);
   expect(button(drawn, "releases").path).toBe(mdiFlashAlert);
   expect(button(drawn, "script").path).toBe(mdiScriptTextOutline);
+  expect(button(drawn, "journal").path).toBe(mdiNotebookOutline);
 });
 
 test("a button drawn as an icon says nothing in text", async () => {
@@ -83,6 +89,7 @@ test("a button drawn as an icon says nothing in text", async () => {
   expect(reads(drawn, "button.monitor")).toBe("");
   expect(reads(drawn, "button.releases")).toBe("");
   expect(reads(drawn, "button.script")).toBe("");
+  expect(reads(drawn, "button.journal")).toBe("");
 });
 
 test("the view being shown is the one marked, and it is the only one", async () => {
@@ -90,6 +97,7 @@ test("the view being shown is the one marked, and it is the only one", async () 
   expect(button(drawn, "releases").current).toBe("page");
   expect(button(drawn, "monitor").current).toBe(null);
   expect(button(drawn, "script").current).toBe(null);
+  expect(button(drawn, "journal").current).toBe(null);
 });
 
 test("a rail nobody told which view is showing marks the one a page opens on", async () => {
@@ -97,14 +105,16 @@ test("a rail nobody told which view is showing marks the one a page opens on", a
   expect(button(drawn, "monitor").current).toBe("page");
   expect(button(drawn, "releases").current).toBe(null);
   expect(button(drawn, "script").current).toBe(null);
+  expect(button(drawn, "journal").current).toBe(null);
 });
 
 test("pressing a button picks that view", async () => {
   const { drawn, picked } = await rail();
   press(drawn, "button.releases");
   press(drawn, "button.script");
+  press(drawn, "button.journal");
   press(drawn, "button.monitor");
-  expect(picked).toStrictEqual(["releases", "script", "monitor"]);
+  expect(picked).toStrictEqual(["releases", "script", "journal", "monitor"]);
 });
 
 test("a rail nobody handed a picking to picks nothing", async () => {

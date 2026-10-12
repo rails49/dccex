@@ -9,12 +9,13 @@
  * second client of the mirror's port for one page.
  *
  * The work pane shows one **view** and the **rail** picks it (CONTEXT.md,
- * issue 169). There are three: the monitor view, which is the **tile**s and
+ * issue 169). There are four: the monitor view, which is the **tile**s and
  * the **monitor** under them — the station's particulars and its conversation
  * as it arrives (#4, #6, #7) — the releases, which is what the station could
- * be written with (#8), and the **script**, which is what this railroad wants
+ * be written with (#8), the **script**, which is what this railroad wants
  * of the station and is a document in `control`'s store (issue 185,
- * ADR-0015). What the page around them proves is the installation the rest of
+ * ADR-0015), and the **journal**, which is what the station said about power
+ * while nobody was watching (issue 266, ADR-0022). What the page around them proves is the installation the rest of
  * the UI rests on: it is built by node inside the image, served by nginx out
  * of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
  *
@@ -23,6 +24,13 @@
  * is on: one can be sent to somebody, a reload comes back where it was, and
  * the back button steps through the views. One direction each, and no field
  * here holding a second answer.
+ *
+ * **The journal view is taken away with it, and for the opposite reason.** It
+ * holds no gesture anybody is waiting on: a reader who comes back to it is
+ * asking what the file says now, which is what building the pane again asks
+ * the **face** (`dccex-journal.ts`, ADR-0022 d.4). Keeping a whole journal and
+ * the rows made of it in the document behind another view would be a megabyte
+ * nobody is looking at.
  *
  * **The monitor view is drawn while it is showing and not otherwise.** What
  * the page holds crosses a switch — the lines, the queue behind a pause, the
@@ -144,9 +152,18 @@
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { Bus } from "../bus.js";
-import { applies, flash, flashing, releases, script } from "../face.js";
+import {
+  applies,
+  clears,
+  flash,
+  flashing,
+  journal,
+  releases,
+  script,
+} from "../face.js";
 import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
+import { type Cleared, type Served } from "../incidents.js";
 import {
   OPENED,
   type Conversation,
@@ -169,6 +186,7 @@ import { Stream } from "../stream.js";
 import { OPENS, type View, hashed, viewed } from "../view.js";
 import { appStyles } from "./dccex-app.styles.js";
 import "./dccex-band.js";
+import "./dccex-journal.js";
 import "./dccex-monitor.js";
 import "./dccex-rail.js";
 import "./dccex-releases.js";
@@ -406,6 +424,7 @@ export class DccexApp extends LitElement {
       <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
       <div class="work ${this.view}">
         ${this.view === "monitor" ? this.#monitor() : nothing}
+        ${this.view === "journal" ? this.#journal() : nothing}
         ${this.#releases()} ${this.#script()}
       </div>
     `;
@@ -471,6 +490,22 @@ export class DccexApp extends LitElement {
         .opens=${this.#opens}
         .applies=${this.#applies}
       ></dccex-script>
+    `;
+  }
+
+  /** The journal view: what the station said about power, read afterwards
+   *  (ADR-0022).
+   *
+   *  Taken away rather than hidden while another view is showing, as the
+   *  monitor is and for its own reason: there is no gesture in flight to come
+   *  back to, and what a reader coming back wants is what the file says now —
+   *  which is what a pane built again asks the face for. The two asks are
+   *  handed down, because the counterparty is the page's (the organisation's
+   *  ADR-0002). */
+  #journal(): TemplateResult {
+    return html`
+      <dccex-journal .reads=${this.#reads} .empties=${this.#empties}>
+      </dccex-journal>
     `;
   }
 
@@ -615,6 +650,20 @@ export class DccexApp extends LitElement {
    */
   readonly #applies = (railroad: string, text: string): Promise<Applied> =>
     applies(railroad, text);
+
+  /** Ask the face for the **journal** as the file stands (`face.ts`).
+   *
+   * The counterparty is the page's and the asking is the pane's to time: it
+   * asks when a reader opens the view and when they press the reload, and on
+   * no schedule at all — a record read afterwards is not a reading that moves
+   * under the eye (ADR-0010, ADR-0022 d.1).
+   */
+  readonly #reads = (): Promise<Served | null> => journal();
+
+  /** Ask the face to empty it, which the operator has been warned about and
+   *  asked twice for (ADR-0006 d.2, ADR-0022 d.4). The face truncates the file
+   *  the translator is appending to, so no line is lost to the clear. */
+  readonly #empties = (): Promise<Cleared> => clears();
 
   /** Ask the face to write a named release, and follow the write while it runs.
    *

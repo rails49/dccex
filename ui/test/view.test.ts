@@ -12,8 +12,13 @@ import { expect, test } from "vitest";
 
 import { OPENS, VIEWS, type View, hashed, viewed } from "../src/view.js";
 
-test("the three views are the monitor, the releases and the script", () => {
-  expect([...VIEWS]).toStrictEqual(["monitor", "releases", "script"]);
+test("the four views are the monitor, the releases, the script and the journal", () => {
+  expect([...VIEWS]).toStrictEqual([
+    "monitor",
+    "releases",
+    "script",
+    "journal",
+  ]);
 });
 
 test("a page opened with no hash shows the monitor", () => {
@@ -29,6 +34,11 @@ test("the releases are the hash the link names", () => {
 test("and so is the script", () => {
   expect(hashed("script")).toBe("#script");
   expect(viewed("#script")).toBe("script");
+});
+
+test("and so is the journal", () => {
+  expect(hashed("journal")).toBe("#journal");
+  expect(viewed("#journal")).toBe("journal");
 });
 
 test("what the rail writes is what the page reads back", () => {
