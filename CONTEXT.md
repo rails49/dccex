@@ -99,6 +99,33 @@ turns power off
 **Not:** *short* (one cause of a trip), *fault* (what control's band calls
 it), *off* (a district someone turned off).
 
+## journal
+
+The translator's record of what the station said about power, and of the
+link going down and the station restarting, each stamped with when it
+arrived. It is kept on the box whether or not anyone is watching, and read
+afterwards, on a **view** of its own.
+
+**Not:** *log* (the log is what the apps say on stderr), *trace* (`control`'s
+recording of the bus), *history*, *event log* (an **event** is what a handler
+is keyed on).
+
+## incident
+
+Something in the **journal** a person should look at: a trip, a current over
+a district's limit that did not become one, a reversal that did not clear or
+that repeats, the link going down, the station restarting. One short is one
+incident, from the district's first alert or trip until it is normal, off,
+or the link goes down, however many times the station cut it in between.
+
+Being an incident is a reading of the journal and not something written in
+it, so the rule can change and the journal is read again under the new one.
+A reverser flipping a district the way it is meant to, a programming track's
+alert on a decoder's acknowledgement, and the inrush after power on are in
+the journal and are not incidents.
+
+**Not:** *error*, *fault*, *event*, *alarm*, *short* (one cause of a trip).
+
 ## face
 
 An app's own interface, served on the UI's origin and behind the same door,
