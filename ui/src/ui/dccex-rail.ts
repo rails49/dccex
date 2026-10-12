@@ -1,12 +1,13 @@
 /**
  * The rail: what the current view offers.
  *
- * What it offers is the other **view**s. There are three — the **monitor**, the
- * releases and the **script** — and one button each, in a run of their own
- * (CONTEXT.md, issue 166, issue 169, issue 185). Each is drawn as an icon
- * carrying the view's own word as a tooltip and as a label, so the word is
- * there for a reader who is not reading the shape (issue 167); the word is the
- * glossary's, which is what the page calls the thing everywhere else.
+ * What it offers is the other **view**s. There are four — the **monitor**, the
+ * releases, the **script** and the **journal** — and one button each, in a run
+ * of their own (CONTEXT.md, issue 166, issue 169, issue 185, issue 266). Each
+ * is drawn as an icon carrying the view's own word as a tooltip and as a
+ * label, so the word is there for a reader who is not reading the shape (issue
+ * 167); the word is the glossary's, which is what the page calls the thing
+ * everywhere else.
  *
  * The flash's are not them: a flash is a gesture about one **release**, so it
  * is pressed on that release's row where the tag it names is, and a button
@@ -23,7 +24,12 @@
  * strip on a short window; the buttons lie down with it.
  */
 
-import { mdiConsole, mdiFlashAlert, mdiScriptTextOutline } from "@mdi/js";
+import {
+  mdiConsole,
+  mdiFlashAlert,
+  mdiNotebookOutline,
+  mdiScriptTextOutline,
+} from "@mdi/js";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { OPENS, VIEWS, type View } from "../view.js";
@@ -32,7 +38,8 @@ import { railStyles } from "./dccex-rail.styles.js";
 
 /** The shape each view is drawn as: a console for the station's conversation,
  *  a firmware warning for the releases, which is where one is written onto the
- *  station, and a script for the railroad's own commands.
+ *  station, a script for the railroad's own commands, and a notebook for the
+ *  **journal**, which is the record of what the station said about power.
  *
  *  The paths are named here rather than in `dccex-icon`, which knows no icon's
  *  name (issue 167). It is a record over `View`, so another view is a shape
@@ -41,6 +48,7 @@ const DRAWN: Record<View, string> = {
   monitor: mdiConsole,
   releases: mdiFlashAlert,
   script: mdiScriptTextOutline,
+  journal: mdiNotebookOutline,
 };
 
 export class DccexRail extends LitElement {
