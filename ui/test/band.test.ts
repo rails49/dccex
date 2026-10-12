@@ -259,14 +259,14 @@ test("a band whose layout has named no railroad says so", async () => {
   expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
 });
 
-test("a band whose railroad is unreported says the same", async () => {
+test("a band whose railroad is unreported draws the slot empty", async () => {
   const { drawn } = await band(TALKED, SOON, UNREPORTED);
-  expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
+  expect(reads(drawn, ".railroad")).toBe("");
 });
 
-test("a closed connection says no railroad is loaded", async () => {
+test("a closed connection leaves the slot empty too", async () => {
   const { drawn } = await band(TALKED, SOON, UNREACHABLE);
-  expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
+  expect(reads(drawn, ".railroad")).toBe("");
 });
 
 test("a station that stopped answering still names the railroad", async () => {

@@ -215,21 +215,29 @@ def test_the_band_names_the_railroad_control_has_loaded() -> None:
 
 @pytest.mark.node
 def test_a_band_with_no_railroad_loaded_says_so() -> None:
-    """`layout` has named none, the railroad is unreported, or the page has not
-    reached the broker at all.
+    """A railroad row has said `control` has loaded none.
 
-    All three are the same reading on the chrome and none is blank: a band with
-    nothing where the railroad goes reads as a railroad whose name is missing,
-    where this is a box that has loaded none — an ordinary state of one
-    (control #727, ADR-0009 d.2). The three are different states on the value
-    and the band is where they are not told apart, because what it owes a
-    reader is that it cannot name a railroad (#242).
+    A sentence and not a blank: a band with nothing where the railroad goes
+    reads as a name that went missing, and a box with no railroad loaded is an
+    ordinary state of one (control #727, ADR-0009 d.2).
     """
     assert band(said=list(TALKING), now=NOW, layout=UNSAID)["railroad"] == NO_RAILROAD
-    assert (
-        band(said=list(TALKING), now=NOW, layout=UNREPORTED)["railroad"] == NO_RAILROAD
-    )
-    assert band(said=list(TALKING), now=NOW)["railroad"] == NO_RAILROAD
+
+
+@pytest.mark.node
+def test_a_band_whose_railroad_is_unreported_names_nothing() -> None:
+    """No railroad row has arrived since the connection came up, which is the
+    gap after a reconnect and a page that has not reached the broker at all
+    (#246).
+
+    Blank, as the **build** is while the station is not answering: `control`
+    may have a railroad loaded the whole time, and `no railroad loaded` here
+    would be the page reporting a state nobody told it (ADR-0009 d.2). The band
+    is where the two are told apart, and what tells them apart is whether a row
+    arrived (#242, `readings.js`'s `Layout`).
+    """
+    assert band(said=list(TALKING), now=NOW, layout=UNREPORTED)["railroad"] == ""
+    assert band(said=list(TALKING), now=NOW)["railroad"] == ""
 
 
 @pytest.mark.node
@@ -522,7 +530,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     (ADR-0008, control ADR-0066)."""
     assert band(now=NOW) == {
         "build": "",
-        "railroad": NO_RAILROAD,
+        "railroad": "",
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": None, "title": "no bus", "wants": None},
