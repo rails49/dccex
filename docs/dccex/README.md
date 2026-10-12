@@ -563,8 +563,7 @@ sends `<JM 32000 1>`, then the script's `start` lines — the sample's four
 `<= …>` and four `<JG …>` — and then the replay. `<=` with no arguments lists
 the modes the station now has (ADR-0018, ADR-0021).
 
-The version in the banner is worth reading. This station is older than the
-firmware the mapping was researched against, and the difference is silent: an
-unknown command draws no `<X>` and no reply at all, so a command this station
-does not have does something else or does nothing, with nothing said either
-way.
+The version in the banner is worth reading. The difference between the
+mapping here and whatever build the station runs is silent: an unknown command
+draws no `<X>` and no reply at all, so a command a station does not have does
+something else or does nothing, with nothing said either way.
