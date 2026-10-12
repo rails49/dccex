@@ -131,8 +131,8 @@ services:
       - "${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}:/dev/dccex"
     # What the image's own `CMD` already is, written out because a stack that
     # does not say which device on which port is a stack somebody has to read
-    # a Dockerfile to understand — and the store, which the `CMD` has no
-    # default for.
+    # a Dockerfile to understand — and the store and the journal, which the
+    # `CMD` has no defaults for.
     #
     # The store is `control`'s, on the installation's network under its
     # service name as the broker is, and it is the same variable the
@@ -145,9 +145,17 @@ services:
     # name, off the bus (#238). Left out, the face answers those two routes
     # with a sentence and mirrors the cable as ever, which is what a clean
     # clone gets.
+    #
+    # The **journal** is the file on the volume below, and it is the same file
+    # the translator appends to: this app's face serves it as it is and
+    # truncates it on a request from the page (ADR-0022 d.4). One path named
+    # twice in this file and nowhere else. Left out, the face answers those
+    # two routes with a sentence, which a clean clone with no translator
+    # beside this app gets.
     command:
       ["--device", "/dev/dccex", "--port", "2560",
-       "--store", "${DCCEX_STORE_URL:-http://store:8765}"]
+       "--store", "${DCCEX_STORE_URL:-http://store:8765}",
+       "--journal", "/var/lib/dccex/journal.jsonl"]
     # Long enough for a flash to be waited out. `firmware.py` gives esptool
     # 300 seconds before it kills it, and a container killed in the middle of
     # a write leaves the command station half written; the app closes its face

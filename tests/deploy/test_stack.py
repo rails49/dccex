@@ -358,6 +358,20 @@ def test_both_apps_mount_the_journals_volume_where_the_other_does() -> None:
     assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)["translator"]
 
 
+def test_both_apps_are_given_the_one_file_on_that_volume() -> None:
+    """The writer and the reader name the same file, which is the whole of
+    what they agree on (ADR-0022 d.4): the translator appends to it and the
+    mirror's face serves and clears it, and a stack that named two paths would
+    come up and keep a record nobody serves.
+
+    Left off the mirror, the face answers the two journal routes with a
+    sentence (`dccex_usb.face`), which is what a clean clone gets.
+    """
+    for app in ("translator", "mirror"):
+        assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)[app], app
+    assert "--journal" not in BASE.read_text()
+
+
 def test_the_journals_volume_is_the_boxs_and_not_a_clean_clones() -> None:
     """Declared in the overlay, where the translator that writes it runs: a
     clean clone has no broker to dial and no railroad to keep a record of
