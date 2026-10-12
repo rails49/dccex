@@ -60,11 +60,18 @@ const NO_RAILROAD = "no railroad loaded";
 const YARD = "crossover-yard";
 
 /** What the bus says: the broker and each of the three rows `layout`
- *  publishes, and the broker with nothing reported on it yet. */
+ *  publishes, the broker with a row that says no railroad is loaded and no
+ *  power reported, and the broker with the railroad unreported — the gap
+ *  between a reconnect and the retained row landing (#242). */
 const HOT: Layout = { connected: true, power: "on", railroad: YARD };
 const COLD: Layout = { connected: true, power: "off", railroad: YARD };
 const HALTED: Layout = { connected: true, power: "stopped", railroad: YARD };
 const UNSAID: Layout = { connected: true, power: null, railroad: null };
+const UNREPORTED: Layout = {
+  connected: true,
+  power: null,
+  railroad: undefined,
+};
 
 /** A band handed what the page knew at `now` and what the bus said, and what
  *  it asked `layout` for. */
@@ -249,6 +256,11 @@ test("the band names the railroad layout has loaded", async () => {
 
 test("a band whose layout has named no railroad says so", async () => {
   const { drawn } = await band(TALKED, SOON, UNSAID);
+  expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
+});
+
+test("a band whose railroad is unreported says the same", async () => {
+  const { drawn } = await band(TALKED, SOON, UNREPORTED);
   expect(reads(drawn, ".railroad")).toBe(NO_RAILROAD);
 });
 

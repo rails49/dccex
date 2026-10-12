@@ -56,8 +56,13 @@ function opened(): { bus: Bus; broker: Dialled; reported: Layout[] } {
 }
 
 /** What the bus hands up with the broker there: one of `layout`'s power words
- *  and the railroad it has loaded, each `null` until its row has arrived. */
-function carries(power: string | null, railroad: string | null = null): Layout {
+ *  and the railroad it has loaded — the power `null` until its row has
+ *  arrived, and the railroad unreported until its row has (#242,
+ *  `readings.js`). */
+function carries(
+  power: string | null,
+  railroad: string | null | undefined = undefined,
+): Layout {
   return { connected: true, power, railroad };
 }
 
@@ -136,6 +141,22 @@ test("a row that is not the power row is not read as the power", () => {
 test("a connection that has not been made yet is a bus that is away", () => {
   const { reported } = opened();
   expect(reported).toEqual([]);
+});
+
+test("the railroad is unreported until a row arrives, and from an outage on", () => {
+  const { broker, reported } = opened();
+  broker.connects();
+  expect(latest(reported).railroad).toBeUndefined();
+
+  broker.says(RAILROAD_STATE, LOADED);
+  broker.closes();
+  expect(latest(reported).railroad).toBeUndefined();
+
+  broker.connects();
+  expect(latest(reported).railroad).toBeUndefined();
+
+  broker.says(RAILROAD_STATE, NONE);
+  expect(latest(reported).railroad).toBeNull();
 });
 
 test("a connection that goes takes both rows with it", () => {
