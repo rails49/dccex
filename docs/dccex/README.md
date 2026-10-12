@@ -324,13 +324,17 @@ and `<!Q>` are all read as `<!>` and none of them says so. That is what made a
 `<!Q>` in the poll an emergency stop once a second, and every train move a few
 centimetres and stand.
 
-**A trip is read from the station's diagnostics.** The firmware cuts a
-district and prints `<* TRACK B POWER OVERLOAD … *>` or `<* TRACK B FAULT PIN
-detected … *>` to USB, and the mirror passes every USB line to every client.
-The district is tripped until `<* TRACK B NORMAL … *>` or `<p1 B>`, which the
-station prints only for a district that is on; a commanded OFF and a lost link
-end every trip. Against the station's own TCP port no such line
-arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
+**A trip is read from the station's diagnostics.** The station cuts a
+district and prints `<* TRACK B FAST OVERLOAD … *>`, `<* TRACK B POWER
+OVERLOAD … *>` or `<* TRACK B FAULT PIN detected … *>` to USB, and the mirror
+passes every USB line to every client. The first is the Guard's cut, and on
+rails49 it is most of them: every DCC track is guarded while powered, and that
+line comes with no `ALERT` before it (#251). The district is tripped until
+`<* TRACK B NORMAL … *>` or `<p1 B>`, which the station prints only for a
+district that is on; a commanded OFF and a lost link end every trip. Against
+the station's own TCP port no such line
+arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)
+d.3 as amended).
 
 **The station is polled with `<s>` and `<JM 32000>` and nothing else**, and
 the answers are what the link is measured by. Once a second `<s>` makes the

@@ -1,6 +1,7 @@
 # ADR-0016 — a trip is read from the station's diagnostics
 
-- **Status:** accepted, 2026-09-30; d.5 amended 2026-10-01
+- **Status:** accepted, 2026-09-30; d.5 amended 2026-10-01, d.3 amended
+  2026-10-12
 - **Ticket:** #188, rails49/control#601
 - **Amends:** ADR-0009 d.4 (the translator now reads one kind of diagnostic
   line)
@@ -35,6 +36,12 @@ not poll `<JI>`.
 **d.3** A district is tripped from `POWER OVERLOAD` or `FAULT PIN detected`
 until `NORMAL` for that district. A commanded OFF and a link loss clear every
 trip.
+
+> **Amended 2026-10-12:** `FAST OVERLOAD` is a third word a district is
+> tripped from. The fork's Guard cuts a district itself and prints that line
+> (`MotorDriver.cpp`, fork tag `v5.6.4-rails49.6-ocp-test`); on rails49 every
+> DCC track is guarded while powered, so most cuts print it and no `ALERT`
+> before it (#251).
 
 **d.4** A district in `ALERT`, with no trip since, counts as powered until
 `NORMAL`. Otherwise its `<s>` digit decides. A `0` no line explains is off.
