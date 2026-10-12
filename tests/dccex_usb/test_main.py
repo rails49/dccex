@@ -113,6 +113,34 @@ def test_the_store_the_script_is_edited_in_is_named_on_the_command_line() -> Non
     assert args.store == STORE
 
 
+JOURNAL = "/var/lib/dccex/journal.jsonl"
+"""The file on the volume both containers mount, which is what the box passes
+(`compose.box.yaml`, ADR-0022 d.4). Nothing here opens it: the face is what
+serves and clears it, and what it answers is `test_face.py`'s."""
+
+
+def test_no_journal_is_the_mirror_a_box_with_a_cable_and_nothing_else_runs() -> None:
+    """A box mirroring a cable with nothing else running has no translator
+    beside it and no record to serve (ADR-0022 d.1).
+
+    The two journal routes then answer a status and a sentence and the rest of
+    the face answers as it always did (`face.py`), the way a mirror with no
+    `--store` is the app it has always been.
+    """
+    args = command_line().parse_args(STARTED)
+
+    assert args.journal == ""
+
+
+def test_the_journal_the_face_serves_is_named_on_the_command_line() -> None:
+    """The same file the translator appends to, on the named volume both
+    containers mount (ADR-0022 d.4, `compose.box.yaml`). Configuration and
+    never payload, like the store: no request can name a path."""
+    args = command_line().parse_args([*STARTED, "--journal", JOURNAL])
+
+    assert args.journal == JOURNAL
+
+
 def test_the_face_is_served_on_a_port_of_its_own_by_default() -> None:
     """A port that is not the mirror's: 2560 carries the station's own
     conversation, and the door reaches the face on this one."""
