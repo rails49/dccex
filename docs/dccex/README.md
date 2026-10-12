@@ -448,8 +448,11 @@ district, so a line for each of them was half a million a day on a railroad
 where nothing happened, and the page reads the whole file to open the view
 (#269). What is held is the line and not the station's words alone: a
 district set to another mode is a line, the mode being part of what a line
-says. What the journal last kept goes with the link and with a restart, so
-the first `<p…>` of a link says what the railroad is in rather than nothing.
+says. What the journal last kept goes with the link, with a restart and with
+a clear, so the first `<p…>` after any of them says what the railroad is in
+rather than nothing. A clear is the file found shorter than the translator
+left it, since the mirror's face does it and tells the translator nothing
+(#276).
 
 **Every line carries** `at`, when it arrived, ISO 8601 in UTC to the
 millisecond — the station cuts a district and retries it inside one second, so

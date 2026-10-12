@@ -54,6 +54,10 @@ district, the district's `mode` and `limit` at that moment.
 > words alone: the mode and the limit it carries are held with them, so a
 > district set to another mode is a line. Every power change stays, and the
 > answers to `<s>` from the poll, the page and JMRI drop out (#269).
+> What was last written is forgotten where the link goes, the station
+> restarts or the file is cleared, so the next `<p…>` about each district is
+> written (#276). A period read from the file starts from the last `<p…>`
+> before it (#275).
 
 **d.3** The translator decides nothing about a line. Whether a line is part
 of an **incident**, and which kind, is decided by the page when it reads the
