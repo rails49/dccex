@@ -191,15 +191,16 @@ def read() -> dict[str, tuple[tuple[tuple[int, str], ...], str]]:
 def modules() -> dict[str, str]:
     """Every module the page is made of, by file name.
 
-    Both languages. Eight of them are JavaScript with their types in JSDoc —
+    Both languages. Nine of them are JavaScript with their types in JSDoc —
     what a line means, what is sent for what was typed, what the band and the
     tiles read, how the releases are listed, what is done to the railroad
     before one is written, where the stream is and where a line ends, what
-    the monitor works out without drawing, and what the journal comes to —
-    because those eight are run under a bare node
-    (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
+    the monitor works out without drawing, what the journal comes to, and what
+    the journal **view** draws of it — because those nine are run under a bare
+    node (`tests/ui/test_decoder.py`, `tests/ui/test_message.py`,
     `tests/ui/test_readings.py`, `tests/ui/test_releases.py`,
-    `tests/ui/test_flash.py`, `tests/ui/test_journal.py`, and this module and
+    `tests/ui/test_flash.py`, `tests/ui/test_journal.py`,
+    `tests/ui/test_incidents.py`, and this module and
     `tests/ui/test_monitor.py`),
     and a rule held over "every module" that looked at one language would stop
     holding the day a module changed it.
