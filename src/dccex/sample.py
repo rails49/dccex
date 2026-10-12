@@ -62,11 +62,10 @@ def configure(t):
 def wx310_crossing(t):
     # set correct track polarity depending on turnout position
     t.default()
-    t.send("<= D MAIN_AUTO>")
     if t.desired("point", "12") == "thrown":
-        t.send("<= D INV>")          # implies MAIN_AUTO and MAIN_INV (not documented)
-    if t.reported("power", "D") == "on":
-        t.send("<1 D>")              # the mode change cut D's power
+        t.send("<= D MAIN_AUTO_INV>")
+    else:
+        t.send("<= D MAIN_AUTO>")
 
 
 # @on("point", "20")

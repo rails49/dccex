@@ -912,9 +912,9 @@ def test_the_sample_reverses_the_district_behind_point_12() -> None:
 
 
 async def _sample_reverses_the_district_behind_point_12() -> None:
-    """The turnout throws and the track behind it is inverted with it. A
-    mode change cuts the track's power, so where the station reported D on
-    the handler turns it back on; where D is off it does not."""
+    """The turnout throws and the track behind it is inverted with it, in
+    one command each way. A change of INV alone keeps D's power on, so the
+    handler sends no `<1 D>`."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
@@ -923,10 +923,9 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
 
         wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
         bus.drain()
-        assert await station.heard(3) == [
+        assert await station.heard(2) == [
             b"<a 3 3 1>",
-            b"<= D MAIN_AUTO>",
-            b"<= D INV>",
+            b"<= D MAIN_AUTO_INV>",
         ]
         await station.heard_nothing_more()
 
@@ -934,10 +933,9 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
         await station.heard_nothing_more()
         wanted(bus, POINT, "12", {"addr": "12", "position": "closed"})
         bus.drain()
-        assert await station.heard(3) == [
+        assert await station.heard(2) == [
             b"<a 3 3 0>",
             b"<= D MAIN_AUTO>",
-            b"<1 D>",
         ]
         await station.heard_nothing_more()
 
