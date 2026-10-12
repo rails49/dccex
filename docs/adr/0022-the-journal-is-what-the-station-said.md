@@ -1,7 +1,8 @@
 # ADR-0022 — the journal is what the station said
 
 - **Status:** accepted, 2026-10-12; d.2 amended 2026-10-12 (#269): it kept
-  every `<p…>` the station said
+  every `<p…>` the station said; d.4 amended 2026-10-12: the page cleared the
+  journal and nothing capped it
 - **Ticket:** #263, #264, #265, #266, #269
 - **Related:** ADR-0010 (the page polls, and the mirror originates nothing),
   ADR-0016 (a trip is read from the station's diagnostics), ADR-0009 (the
@@ -67,6 +68,20 @@ journal. A changed rule reads the whole journal again under itself.
 is, and truncates it to empty on a request from the page. The translator
 opens the file for appending, so a clear loses no line.
 
+> **Amended 2026-10-12:** Nothing clears the journal. The translator keeps it
+> to a size: above `TRIMMED_ABOVE` (10 MB) it drops the oldest lines down to
+> the newest `TRIMMED_TO` (8 MB), at a line boundary. The two are constants in
+> `src/dccex/journal.py`. The last `<p…>` about each district from the part
+> that goes is kept in front, with its own `at`, because `<p…>` lines are
+> written only on change (d.2 as amended) and a period starts from the last
+> one before it (#275). The trim is written to a file beside the journal and
+> renamed over it, and the translator reopens its handle. The mirror opens the
+> file by name on each read, so it serves the old file or the new one whole,
+> and it mounts the volume read-only. A clear needed a person to remember it
+> and threw away the whole record. The race the first trim was rejected for
+> came from the mirror rewriting a file the translator appends to; the writer
+> trimming its own file has none.
+
 **d.5** The page computes incidents and statistics in one pure function from
 the whole file: journal lines in, incidents and counts out. No socket and no
 clock, as the decoder (ADR-0009).
@@ -81,6 +96,8 @@ limit is the threshold. A spike under it is not seen.
   the record, which is what ADR-0010's last consequence anticipated.
 - On a bench with no railroad loaded there is no translator and no journal.
 - The journal grows until someone clears it from the page. Nothing caps it.
+  *(Superseded by d.4 as amended: it is capped at 10 MB and cannot be
+  cleared.)*
 - The `<* … *>` lines are written to USB only, so the journal depends on the
   mirror, as trips do (ADR-0016).
 
@@ -92,5 +109,6 @@ limit is the threshold. A spike under it is not seen.
 - **The bus, or `control`'s store.** The bus has no district, and the store
   takes no run-time writes.
 - **Clearing older lines only.** A rewrite races the translator's appends and
-  needs the two apps to agree on a reopen.
+  needs the two apps to agree on a reopen. *(Taken by d.4 as amended, with the
+  translator doing the rewrite.)*
 - **The page recording.** It records nothing while it is closed.

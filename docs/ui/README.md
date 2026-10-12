@@ -46,7 +46,7 @@ https://dccex.$BOX_DOMAIN/dccex-usb/clients    how many are on the mirror's port
 https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
                                                one railroad's script, read and
                                                applied
-https://dccex.$BOX_DOMAIN/dccex-usb/journal    the journal, served and cleared
+https://dccex.$BOX_DOMAIN/dccex-usb/journal    the journal, served
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad's
                                                power, read and asked for
@@ -66,8 +66,8 @@ answers it at the address above.
 
 **The journal is the one thing it asks for that is not about the mirror.** It
 is the **translator**'s record of what the station said about power, kept on a
-volume both apps mount, and the mirror's face serves the file as it stands and
-empties it on a request from the page (ADR-0022 d.4, #264): the translator has
+volume both apps mount, and the mirror's face serves the file as it stands
+(ADR-0022 d.4, #264): the translator has
 no face, and a page may talk to its own app's face and no other, which is the
 organisation's ADR-0002. The page asks for it when a reader opens the journal
 view and when they press its reload, and never on a schedule.
@@ -565,16 +565,11 @@ still carries them, and the page passes them over rather than reading one as a
 line about every district: it is the same reading the translator makes of the
 same line (#270).
 
-**The file's size, a download and a clear are on the controls.** The size is
-the length of the bytes the face served, the download is a link to
+**The file's size and a download are on the controls.** The size is the
+length of the bytes the face served, and the download is a link to
 `/dccex-usb/journal` with `download` on it, so what somebody keeps is the file
-rather than something this page rendered, and the clear says what it does and
-asks a second time before the DELETE goes
-([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md) d.2):
-clearing throws away every line and nothing keeps a copy. The face truncates
-the file the translator is appending to, so no line is lost to the clear
-(d.4), and the file is read again afterwards — what is in it now is the face's
-to say. A refusal is shown in the face's own words.
+rather than something this page rendered. Nothing on the page clears the
+journal: the translator keeps it to a size (d.4 as amended).
 
 **A journal with nothing in it and a journal nobody could read are different
 sentences.** The first is a railroad that has said nothing about power, which
