@@ -66,6 +66,16 @@ export const appStyles = css`
     overflow: hidden;
   }
 
+  /* The journal view is one thing and takes the whole of the pane, as the
+     script does: the list in it scrolls its own rows, so the pane must not
+     scroll instead of it — an evening's incidents under a window that scrolled
+     would put the period and the reload above the fold. */
+  .work.journal {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
   @media (max-height: ${unsafeCSS(RAIL_TURNS_PX)}px) {
     :host {
       grid-template-areas:
