@@ -18,7 +18,7 @@ the same claim: no host and no port is written into the page, so the one thing
 this module may name is a prefix on the page's own origin.
 """
 
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 from tests.ui.test_stream import code, modules, quoted
 
 #: The connection: where the broker is, what is subscribed to, and what a

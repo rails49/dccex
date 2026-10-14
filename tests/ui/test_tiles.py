@@ -15,7 +15,7 @@ draw the same words.
 
 import re
 
-from tests.ui.test_look import HEX, UI
+from tests.ui.paths import HEX, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import code
 
@@ -118,7 +118,7 @@ def test_the_tiles_press_nothing() -> None:
 def test_the_tiles_are_the_work_pane_s_and_not_the_chrome_s() -> None:
     """The chrome's four values say *this is the same project* across rails49's
     UIs and stay on the chrome; a pane follows the system's theme, which is
-    Shoelace's tokens (LOOK.md)."""
+    Shoelace's tokens (`look.css`)."""
     styles = STYLES.read_text()
     assert not HEX.findall(styles), "the tiles write a colour out"
     asked = set(re.findall(r"var\((--[a-z0-9-]+)\)", styles))

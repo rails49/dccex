@@ -41,7 +41,7 @@ from typing import cast
 
 import pytest
 
-from tests.ui.test_look import COPY, ROOT, declarations
+from tests.ui.paths import ROOT
 
 pytestmark = pytest.mark.docker
 
@@ -211,29 +211,35 @@ def test_the_image_serves_the_page_it_built(serving: Serving) -> None:
 
 
 def test_the_band_and_the_rail_are_in_what_was_built(serving: Serving) -> None:
-    """The two pieces of chrome, in the artefact rather than in the sources.
+    """look's band and rail, in the artefact rather than in the sources.
 
     A page that compiled and drew neither would pass every other check here.
     """
     _, page = served(serving.port, "/")
     status, module = served(serving.port, named(page, r'src="([^"]*\.js)"'))
     assert status == 200
-    for element in ["dccex-band", "dccex-rail"]:
+    for element in ["look-band", "look-rail", "look-power"]:
         assert element in module, f"{element} is not in the built page"
 
 
-def test_the_chrome_draws_with_the_copied_values(serving: Serving) -> None:
-    """What a browser receives, against `ui/look/tokens.css`.
-
-    `test_look.py` holds the sources against that copy. This holds the served
-    bytes against it, which is the same claim with a build, a bundler and a
-    server between it and nothing left to assume.
-    """
+def test_looks_stylesheet_is_served(serving: Serving) -> None:
+    """`look.css`, bundled: the chrome's tokens and Shoelace's themes."""
     _, page = served(serving.port, "/")
     status, stylesheet = served(serving.port, named(page, r'href="([^"]*\.css)"'))
     assert status == 200
-    for token, value in declarations(COPY.read_text()).items():
-        assert f"{token}: {value}" in stylesheet, f"{token} is not what is served"
+    for carried in ["--band:", "--sl-color-primary-600:"]:
+        assert carried in stylesheet, f"{carried} is not in what is served"
+
+
+def test_a_glyph_is_served_from_the_pages_own_origin(serving: Serving) -> None:
+    """Shoelace fetches its glyphs from `/shoelace` on the page's origin
+    (`ui/src/main.ts`), and nginx serves what the build copied there. A glyph
+    that is not there is a 404, not the page."""
+    status, glyph = served(serving.port, "/shoelace/assets/icons/power.svg")
+    assert status == 200
+    assert glyph.lstrip().startswith("<svg"), "the glyph is not an SVG"
+    status, _ = served(serving.port, "/shoelace/assets/icons/no-such-glyph.svg")
+    assert status == 404
 
 
 def test_a_path_the_page_owns_is_the_page(serving: Serving) -> None:

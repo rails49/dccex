@@ -115,7 +115,9 @@ so the source does not arrive in the words the page shows either
 ## What is on it
 
 The **band** across the top, the rail down the side, and the work pane between
-them. The band and the rail are LOOK.md's and do not vary between rails49 UIs.
+them. The band and the rail are `@rails49/look`'s elements and do not vary
+between rails49 UIs (ADR-0023). What this page puts in them is
+`ui/src/ui/chrome.ts`.
 The band is the same over every view; the rail is what picks the view, and the
 work pane is what changes.
 
@@ -145,87 +147,52 @@ has stopped answering is still a railroad `control` has loaded; what takes it
 away is the bus going. The build beside it does go, because that one is the
 station talking.
 
-The link is a dot, green while the station is answering and red with `dcc-ex
-offline` beside it while it is not. **The link says so when the station stops
+The link is a `look-dot`, green while the station is answering and red with
+`dcc-ex offline` beside it while it is not. **The link says so when the station stops
 answering**, rather than leaving the page looking merely idle, which is the
 difference between a dead station and a quiet one and the reason any of this
-exists. The words are the dot's label in either state, so a reader who cannot
-see it is told which reading it is.
+exists. 
 
 **The band asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1, d.2
 and d.4). The button used to send `<0>` or `<1>` through the face, which
 skipped `layout` and the **translator**: `layout` is what refuses an OFF while
 a run is going and zeroes every locomotive's speed before a cut (control
-ADR-0062), and the translator is what runs the **script**'s power handler. So
-`mdiPower` is a reading and a control at once, and both of them are
-`layout`'s — the button reads `tc49/layout/state/power` and a press publishes
-`tc49/layout/power_wanted`: `off` while it reads `on`, and `on` otherwise, so
-the one press on the chrome is the way out of every state including `stopped`.
-It carries the word for what a press will do as a tooltip and as a label
-(#167).
+ADR-0062), and the translator is what runs the **script**'s power handler. So track
+power is `look-power`, a reading and a control at once, and both of them are
+`layout`'s — its `state` is `tc49/layout/state/power`, and a press publishes
+`tc49/layout/power_wanted`. The toggle asks for `off` while it reads `on` and
+for `on` otherwise, so it is the way out of every state including `stopped`.
+The stop sign right of it asks for `stopped` (ADR-0020).
 
-`on` is green. `off` is an outlined chip in the band's own ink — a state
-somebody chose rather than a fault. `stopped` is red, which is where a railroad
-`layout` has halted sits until an `on` (#208). An OFF that `layout` drops shows
-nothing: no state row follows it, so the button stays as it was (ADR-0017 d.4).
+`on` is green, `off` is dimmed and `stopped` is red; the colours are look's
+(ADR-0023). An OFF that `layout` drops shows nothing: no state row follows it,
+so the toggle stays as it was (ADR-0017 d.4).
 
-Disabled while the bus is unreachable, the link is down, or no state row has
-arrived (ADR-0017 d.3). It is then a dim glyph with no chip, and its title says
-which of the three it is: `no bus`, `no station`, `no layout`. Each is a
-different absence — a press with no broker reaches nothing, a press with no
-station is a railroad `layout` cannot apply it to, and a railroad whose power
-nobody has reported has no state to offer the other of. The page asks for no
-confirmation: the guard is `layout` and then the operator (ADR-0006).
+The toggle is held while the bus is unreachable, the link is down, or no state
+row has arrived (ADR-0017 d.3); STOP only while the bus is unreachable (ADR-0020
+d.3), because `layout` holds a stop for a silent station. A held press is
+dimmed and its tooltip says which absence it is: `no bus`, `no station`, `no
+layout`. On look's element that is `reason` for both and `toggle-reason` for
+the toggle alone. The page asks for no confirmation: the guard is `layout` and
+then the operator (ADR-0006).
 
-It is the only control on the chrome and the only power control on the page:
-the per-track readings in the monitor view show state and press nothing
+These are the only controls on the chrome and the only power controls on the
+page: the per-track readings in the monitor view show state and press nothing
 (ADR-0011 d.3). The flash sequence cuts power as its own step, at the station,
 and asks the operator first.
 
-No emergency stop is drawn on the chrome yet (#208). LOOK.md keeps red there
-for stop or a fault, and both reds on this band are one of those: the link that
-is down is the fault, in words on `--stop` with the dot in `--stop-ink` (#138),
-and a railroad `layout` reports as `stopped` is the stop. The green is
-`--rail-group`, which is the one green this chrome has; grey is the band's own
-ink at half strength, because none of the six colours is a dimmer ink.
-
-Neither of those colours is laid straight on the band's blue: `--rail-group` on
-`--band` is 1.8 to 1 and `--stop-ink` on it is 1.3, where a control a person has
-to read needs 3. So the dot is ringed in the band's ink, the words sit on
-`--stop`, the green sits on a chip of the band's ink and the red sits on
-`--stop`. Both chips go when the button does, which is the difference a reader
-who cannot tell the green from the red is left with.
-
-The band gives things up at two widths rather than wrapping. Below 560px the
-build and the railroad's name go: between them they are the longest thing on
-the band, and they are the two readings on it that do not change while the
-station is up — what the station is doing is on the tiles and what it is
-running is not, and which railroad `control` has loaded was true before the
-page opened. Below 400px the link's words go and the
-link is the dot alone, the dot being the reading and the words that reading a
-second time. The dot and both presses stay at every width — a thumb has to
-reach each of them on the phone at the layout. Both numbers are this page's own
-rather than a look rule, written in `dccex-band.styles.ts` beside the rules they
-are about, and a browser is what does it:
-`tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px and at
-375px and reads back a dot and two thumb-sized presses with a size, and a
-build, a railroad and the words with none (#127, #168, #208, #239).
+How the band fits a narrow screen is look's. It no longer drops the build, the
+railroad and the link's words below 560px and 400px (#208, ADR-0023).
+`tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px, 375px
+and a desktop width and reads back the dot, the toggle and STOP on the screen.
 
 ### The rail
 
-One button per **view**, in the rail's one run: the monitor as `mdiConsole`,
-the releases as `mdiFlashAlert`, the script as `mdiScriptTextOutline` and the
-journal as `mdiNotebookOutline`, each carrying the view's own word as a tooltip
-and as a label (#169, #167, #185, #266). Pressing one is what a person changes
-the work pane with.
-
-The button for the view in front of the person wears `--band-ink` as a chip
-with `--rail-group` on the glyph, and the other is that ink on the group.
-White on the group is 3.8 to 1, where a control a person has to read needs 3.
-Dimming the other button was the alternative and says the wrong thing: a dim
-glyph is what a control that cannot be pressed looks like on this chrome
-(ADR-0011 d.2). The buttons are `--rail-button` square, which is the look
-rules' minimum for a thumb, and they lie down with the rail on a short window.
+One `look-view` per **view**: Monitor `terminal`, Releases `lightning-charge`,
+Script `file-earmark-code` and Journal `journal-text`, each a Bootstrap glyph
+with its word under it (#169, #185, #266, ADR-0023). Choosing one is what a
+person changes the work pane with. Which one is showing is marked by look, and
+on a short window the rail lies along the top of the work pane.
 
 **The view is kept in the page's hash** — `#monitor`, `#releases`, `#script`
 and `#journal`, and a hash that names none of them is the monitor, which is
@@ -691,13 +658,9 @@ is doing while a reader holds the monitor still.
 while the view is held, so what is drawn is what pressing it will do; the clear
 is the lines going. Each button carries its word — *pause*, *resume*, *clear* —
 as a tooltip and as an aria-label, because a shape is not a word and the phone
-at the layout has no pointer to hover with. The shapes come from `@mdi/js`
-(Apache-2.0), which is a module of path strings and no components, so what is
-bundled is the paths a control names. Drawing one is
-`ui/src/ui/dccex-icon.ts`: a component handed a path, at the size and in the
-colour of whatever it sits in, and hidden from the accessibility tree since the
-control beside it says the word. It is the page's first icon and it is meant
-for the next ones (#168, #169).
+at the layout has no pointer to hover with. The glyphs are
+Bootstrap Icons drawn by Shoelace — `pause-fill`, `play-fill` and `eraser` —
+served from the page's own origin, like every glyph on the page (ADR-0023).
 
 Two things a full queue is owed, and did not get until #144. **A line the
 queue drops is forgotten as well as counted.** A status line is shown only when
@@ -980,34 +943,19 @@ What draws it is the journal view, above (#266).
 
 ## How it looks
 
-The look rules are the organisation's, in LOOK.md, and their values arrive here
-as a verbatim copy at a fixed path with the commit it was taken at recorded
-beside it: `ui/look/tokens.css`, with
-[`ui/look/README.md`](../../ui/look/README.md) saying where it came from and at
-which commit. That page is the one place the commit is written and this one
-does not restate it: the "Taking a change" procedure there is the whole of
-refreshing the copy, and a second pin it never mentions would be a line going
-stale where no check can see it (#62). `control`'s `ui/look/README.md` is the
-shape that follows. The copy is inert: nothing imports it, no build reads it
-and the page does not link it.
+The chrome is `@rails49/look`'s: the band, the rail, track power, the dialog
+shell, the Shoelace theme and the glyphs, pinned to a release tag in
+`ui/package.json` ([ADR-0023](../adr/0023-the-chrome-comes-from-look.md)). A
+new look release reaches this page as a pull request that moves the tag. Each
+work-pane component puts look's `lookTheme` first in its styles, and the gate
+runs look's `look-check`, which fails on app code that styles the chrome.
 
-What the page draws with is `ui/src/look.css`, a `:root` block of this UI's
-own, and `tests/ui/test_look.py` asserts the two agree token for token — in
-both directions, so a value that drifted here and a token that arrived over
-there with nothing to spend it on both go red. It also holds that block to
-being the only place a colour is written: a hex in a component stylesheet, in
-a component's own template, in `ui/src/page.css` or in the page's own markup is
-red, because each of those paints and none of them is that one place (#60,
-#85). It reads the copy and the
-files beside it and nothing outside this repository, which is what lets it run
-in this gate rather than somewhere that fetches
-([org ADR-0010](https://github.com/rails49/.github/blob/main/docs/adr/0010-the-values-check-runs-in-the-consumers-gate-because-it-fetches-nothing.md)).
-`--rail-turns` is the one value a stylesheet cannot read for itself — a media
-query cannot take a custom property — so it reaches the two sheets that turn as
-one number in `ui/src/look.ts`, and the test holds those two to it.
+Glyphs are Bootstrap Icons, which Shoelace fetches from `/shoelace` on the
+page's own origin. The build copies them there (`ui/vite.config.ts`) and
+nginx answers a missing one with 404 (`deploy/nginx.conf`).
 
-It takes the system's light or dark setting and offers no toggle, as the other
-rails49 UIs do, and it works at the width of a phone held at the layout.
+The work pane takes the system's light or dark setting through `look.css` and
+offers no toggle; the chrome keeps one look in both.
 
 ## How it is built and served
 

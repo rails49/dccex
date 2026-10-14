@@ -21,8 +21,7 @@ one stays read whatever else is run — it is a claim about every literal in
 every module, which no running of a function can make.
 
 What none of the reading proves is that a browser does any of this. That is the
-cost of a page checked in a Python gate, and it is the same cost
-`test_look.py` names.
+cost of a page checked in a Python gate.
 """
 
 import re
@@ -34,7 +33,7 @@ from urllib.parse import urlsplit
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 
 #: The socket: where the stream is held open, and what is done with what
 #: arrives on it.

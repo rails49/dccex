@@ -42,6 +42,16 @@ export const VIEWS: readonly View[] = [
 /** The view a page with no view named in its hash opens on. */
 export const OPENS: View = "monitor";
 
+/** What each view is called and drawn as on the rail: Bootstrap glyphs,
+ *  served by Shoelace from the page's own origin (`main.ts`). A record over
+ *  `View`, so another view is a glyph the type checker asks for. */
+export const DRAWN: Record<View, { label: string; icon: string }> = {
+  monitor: { label: "Monitor", icon: "terminal" },
+  releases: { label: "Releases", icon: "lightning-charge" },
+  script: { label: "Script", icon: "file-earmark-code" },
+  journal: { label: "Journal", icon: "journal-text" },
+};
+
 /** The view `hash` names, or `OPENS` where it names none.
  *
  *  `location.hash` carries its `#` and a hand-written name may not, so both

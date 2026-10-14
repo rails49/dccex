@@ -12,8 +12,8 @@
  *
  * **And the controls are drawn as icons and pressed** (#144, #167). Which
  * shape each carries and the word it carries as a tooltip and as a label are
- * read back off the mounted button; the shape itself is `dccex-icon`'s
- * (`ui/test/icon.test.ts`). That the pause and the clear run
+ * read back off the mounted button; the glyphs are Bootstrap's, drawn by
+ * Shoelace (ADR-0023). That the pause and the clear run
  * what they were handed, that the pause names what pressing it will do, and
  * what the count beside them reads were held against the source of this
  * component until here — which is the instrument #111 was filed to remove,
@@ -26,12 +26,10 @@
  * happy-dom does no layout and has no cascade to ask.
  */
 
-import { mdiNotificationClearAll, mdiPause, mdiPlay } from "@mdi/js";
 import { expect, test } from "vitest";
 
 import { gloss } from "../src/decoder.js";
 import { type Behind, type Line, type Shown } from "../src/monitor.js";
-import { type DccexIcon } from "../src/ui/dccex-icon.js";
 import { DccexMonitor } from "../src/ui/dccex-monitor.js";
 import { all, mounted, part, press, reads } from "./mounted.js";
 
@@ -149,17 +147,17 @@ test("pressing the clear runs what the page handed it", async () => {
   expect(pressed).toStrictEqual(["clears"]);
 });
 
-/** What `selector` is drawn as: the word it carries both ways, and the path
- *  of the icon in it. */
+/** What `selector` is drawn as: the word it carries both ways, and the
+ *  glyph in it. */
 function control(
   drawn: DccexMonitor,
   selector: string,
-): { tooltip: string | null; label: string | null; path: string } {
+): { tooltip: string | null; label: string | null; glyph: string | null } {
   const pressed = part(drawn, selector);
   return {
     tooltip: pressed.getAttribute("title"),
     label: pressed.getAttribute("aria-label"),
-    path: (part(drawn, `${selector} dccex-icon`) as DccexIcon).path,
+    glyph: part(drawn, `${selector} sl-icon`).getAttribute("name"),
   };
 }
 
@@ -173,14 +171,14 @@ test("the pause names what pressing it will do, either way round", async () => {
 
 test("the pause is drawn as a pause, and as a play while it is holding", async () => {
   const { drawn: holding } = await controls(false);
-  expect(control(holding, ".hold").path).toBe(mdiPause);
+  expect(control(holding, ".hold").glyph).toBe("pause-fill");
   const { drawn: held } = await controls(true);
-  expect(control(held, ".hold").path).toBe(mdiPlay);
+  expect(control(held, ".hold").glyph).toBe("play-fill");
 });
 
 test("the clear is drawn as the lines going", async () => {
   const { drawn } = await controls(false);
-  expect(control(drawn, ".empty").path).toBe(mdiNotificationClearAll);
+  expect(control(drawn, ".empty").glyph).toBe("eraser");
 });
 
 test("each control carries its word as a tooltip and as a label", async () => {

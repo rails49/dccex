@@ -5,15 +5,15 @@ import { css } from "lit";
  *
  * It is the work pane's rather than the chrome's, so its colours are
  * Shoelace's theme tokens and it follows the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **It scrolls sideways inside itself and never takes the page with it.** The
  * columns are the kinds and the counts and there are a dozen of them, which is
  * wider than the phone at the layout: a table that made the page scroll would
  * put the **rail** off the side of the screen (docs/ui/README.md; the issue
  * that holds the widths is named there rather than here, because an issue
- * number in the hundreds is three hex digits and `tests/ui/test_look.py`'s
- * scan reads one in a sheet as a colour).
+ * number in the hundreds is three hex digits and the colour scan
+ * (`tests/ui/paths.py`) reads one in a sheet as a colour).
  *
  * **The numbers are tabular and the headings are quiet.** A column a person
  * reads down is a column, and what they are reading down is the counts rather

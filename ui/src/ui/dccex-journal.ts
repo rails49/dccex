@@ -37,6 +37,7 @@
  * organisation's ADR-0002).
  */
 
+import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import {
@@ -54,7 +55,7 @@ import "./dccex-incidents.js";
 import { journalStyles } from "./dccex-journal.styles.js";
 
 export class DccexJournal extends LitElement {
-  static override readonly styles = journalStyles;
+  static override readonly styles = [lookTheme, journalStyles];
 
   static override readonly properties = {
     reads: { attribute: false },

@@ -59,7 +59,7 @@ from pathlib import Path
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 
 #: The pure function, and the module it is the whole of.
 DECODER = UI / "src" / "decoder.js"

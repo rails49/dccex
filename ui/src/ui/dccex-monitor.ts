@@ -94,12 +94,12 @@
  * cannot scroll it.
  */
 
-import { mdiNotificationClearAll, mdiPause, mdiPlay } from "@mdi/js";
+import { lookTheme } from "@rails49/look";
+import "@shoelace-style/shoelace/dist/components/icon/icon.js";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
 import { gloss } from "../decoder.js";
-import "./dccex-icon.js";
 import {
   EMPTIED,
   type Behind,
@@ -201,7 +201,7 @@ function holding(scroller: Element): Held | null {
 }
 
 export class DccexMonitor extends LitElement {
-  static override readonly styles = monitorStyles;
+  static override readonly styles = [lookTheme, monitorStyles];
 
   static override readonly properties = {
     said: { attribute: false },
@@ -287,7 +287,7 @@ export class DccexMonitor extends LitElement {
           aria-label=${this.paused ? RESUMES : PAUSES}
           @click=${this.pauses}
         >
-          <dccex-icon .path=${this.paused ? mdiPlay : mdiPause}></dccex-icon>
+          <sl-icon name=${this.paused ? "play-fill" : "pause-fill"}></sl-icon>
         </button>
         <button
           type="button"
@@ -296,7 +296,7 @@ export class DccexMonitor extends LitElement {
           aria-label=${EMPTIES}
           @click=${this.clears}
         >
-          <dccex-icon .path=${mdiNotificationClearAll}></dccex-icon>
+          <sl-icon name="eraser"></sl-icon>
         </button>
         ${waits === null
           ? nothing

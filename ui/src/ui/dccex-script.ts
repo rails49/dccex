@@ -61,6 +61,7 @@
  */
 
 import { EditorView } from "@codemirror/view";
+import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import {
@@ -86,7 +87,7 @@ import { editing, mark } from "./editor.js";
 const LABEL = "script";
 
 export class DccexScript extends LitElement {
-  static override readonly styles = scriptStyles;
+  static override readonly styles = [lookTheme, scriptStyles];
 
   static override readonly properties = {
     loaded: { attribute: false },

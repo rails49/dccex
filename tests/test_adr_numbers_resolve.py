@@ -37,8 +37,8 @@ organisation's under the same number (`ambiguous()`, #159).
 **What is read.** Every tree a reader of this repository reads: the two pages
 at the root, the package under `src/` with the provenance note beside it,
 every page of `docs/`, the page's own modules and the stylesheets beside them
-under `ui/src/`, the suites that mount its components under `ui/test/`, the
-page beside the look rules' copy, every check under `tests/` and the node
+under `ui/src/`, the suites that mount its components under `ui/test/`,
+every check under `tests/` and the node
 runners among them, and what the box is built and served from under `deploy/`.
 The same trees the module beside this one reads, so a number owes a reader an
 owner in the same places whichever half of the rule is asking (#150).
@@ -55,13 +55,6 @@ time and is not edited to satisfy a check (#123): each one names `control`'s
 repository in its **Related:** links and then uses the number alone in the
 prose below it, which is a shorthand that reads inside one page. The bare
 citations in this module are what the scan is run over.
-
-`ui/look/tokens.css` is not read either, and is not globbed rather than
-excluded: it is `rails49/.github`'s file, copied verbatim and pinned to the
-commit it was taken at, and the two bare citations in it are that
-repository's prose read in that repository. Qualifying them here would be an
-edit to a copy whose whole use is diffing clean against its source
-(`ui/look/README.md`).
 
 **Three trees are left for the next widening**, and are named here rather than
 left to be rediscovered: the compose files and `scripts/` at the root, and
@@ -87,23 +80,16 @@ ADRS = ROOT / "docs" / "adr"
 #: What this scan reads, tree by tree and with the depth in the glob: the two
 #: pages at the root, the package's prose and the provenance note beside it,
 #: the pages under `docs/`, the page's modules and the stylesheets beside them,
-#: the suites that mount its components, the page beside the look rules' copy,
-#: the checks under `tests/` with the node runners among them, and what the box
+#: the suites that mount its components, the checks under `tests/` with the node runners among them, and what the box
 #: is built and served from. The root is read flat — everything below it worth
 #: reading is a tree of its own here, and the rest is what a build, an
 #: environment or a package manager left there.
-#:
-#: `ui/look/` is read for its README alone. `tokens.css` beside it is another
-#: repository's file, copied verbatim and pinned to a commit so that diffing
-#: the two is a diff of the same thing, and its prose is that repository's to
-#: qualify.
 PROSE = {
     ROOT: ("*.md",),
     ROOT / "src": ("**/*.py", "**/*.md"),
     ROOT / "docs": ("**/*.md",),
     ROOT / "ui" / "src": ("**/*.ts", "**/*.js", "**/*.css", "**/*.md"),
     ROOT / "ui" / "test": ("**/*.ts",),
-    ROOT / "ui" / "look": ("*.md",),
     ROOT / "tests": ("**/*.py", "**/*.mjs"),
     ROOT / "deploy": ("*Dockerfile", "*.conf"),
 }
@@ -372,7 +358,6 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
         "tests/dccex_usb/test_store.py",
         "tests/dccex_usb/test_stream.py",
         "tests/test_nothing_reaches_in.py",
-        "tests/ui/test_band.py",
         "tests/ui/test_flash.py",
         "tests/ui/test_page.py",
         "tests/ui/test_readings.py",
@@ -384,7 +369,6 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
         "ui/src/releases.js",
         "ui/src/script.ts",
         "ui/src/ui/dccex-app.ts",
-        "ui/src/ui/dccex-band.ts",
         "ui/src/ui/dccex-releases.ts",
         "ui/src/ui/dccex-script.ts",
     }
@@ -431,18 +415,6 @@ def test_a_bare_citation_under_the_pages_own_suites_is_caught() -> None:
     assert len(unresolved(text)) == 1, unresolved(text)
     assert borrowed(text) == unresolved(text)
     assert unresolved(text)[0].endswith("bind every interface (ADR-0042")
-
-
-def test_a_bare_citation_beside_the_look_rules_copy_is_caught() -> None:
-    """A plant in `ui/look/`, on the page that says where the copy came from.
-
-    The copy itself is not globbed, for the reason written beside `PROSE`. The
-    page beside it is this repository's own prose, and every citation on it is
-    one of the organisation's and says so (#150, #151).
-    """
-    text = planted(ROOT / "ui" / "look" / "README.md")
-    assert len(unresolved(text)) == 1, unresolved(text)
-    assert borrowed(text) == unresolved(text)
 
 
 def test_a_struck_owner_in_what_the_box_runs_is_caught() -> None:
@@ -584,12 +556,12 @@ def test_no_number_the_page_cites_as_the_organisations_is_cited_bare() -> None:
 
 
 def test_a_bare_number_beside_the_organisations_is_caught() -> None:
-    """A plant in `ui/look/README.md`, which cites org ADR-0010 (#159)."""
-    page = ROOT / "ui" / "look" / "README.md"
+    """A plant in `ui/src/bus.ts`, which cites org ADR-0014 (#159)."""
+    page = ROOT / "ui" / "src" / "bus.ts"
     assert ambiguous(page.read_text()) == []
-    text = f"{page.read_text()}\nthe page polls (ADR-0010)\n"
+    text = f"{page.read_text()}\nthe translator is on the bus (ADR-0014)\n"
     assert len(ambiguous(text)) == 1, ambiguous(text)
-    assert ambiguous(text)[0].endswith("the page polls (ADR-0010")
+    assert ambiguous(text)[0].endswith("the translator is on the bus (ADR-0014")
 
 
 def test_a_bare_number_the_page_never_cites_as_the_organisations_passes() -> None:

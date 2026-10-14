@@ -34,6 +34,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import HELD, ran
+from tests.ui.paths import UI
 from tests.ui.test_journal import (
     A_CLEAN_FLIP,
     A_FLIP_THE_SHORT_OUTLIVED,
@@ -51,7 +52,6 @@ from tests.ui.test_journal import (
     normal,
     restore,
 )
-from tests.ui.test_look import UI
 from tests.ui.test_stream import code, quoted
 
 #: What the view draws, and the module it is the whole of.

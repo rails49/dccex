@@ -39,7 +39,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import HELD, ran
-from tests.ui.test_look import HEX, ROOT, UI
+from tests.ui.paths import HEX, ROOT, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import NAMED, code, quoted
 
@@ -393,7 +393,7 @@ def test_the_rows_wrap_at_the_width_of_a_phone() -> None:
 def test_the_row_is_the_work_pane_s_and_not_the_chrome_s() -> None:
     """The chrome's four values say *this is the same project* across rails49's
     UIs and stay on the chrome; a pane follows the system's theme, which is
-    Shoelace's tokens (LOOK.md).
+    Shoelace's tokens (`look.css`).
 
     The one look value it may ask for is `--rail-button`, and it is a size
     rather than a colour: it is the rules' minimum for a thumb, and the control

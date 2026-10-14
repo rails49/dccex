@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from tests.ui.test_look import ROOT
+from tests.ui.paths import ROOT
 from tests.ui.test_page_serves import (
     BUILD_SECONDS,
     REVISION,

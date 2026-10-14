@@ -61,7 +61,6 @@ from typing import Any, cast
 
 import pytest
 
-from tests.ui.test_look import COPY, declarations
 from tests.ui.test_page_serves import (
     BUILD_SECONDS,
     DOCKERFILE,
@@ -100,16 +99,13 @@ DRIVE = (
 PAGE = "http://127.0.0.1/"
 
 #: A phone held upright, which is the thing at the layout: an iPhone's CSS
-#: width and height. 375 is under both widths the band gives something up at —
-#: the build and the railroad's name below 560 and the link's words below 400.
+#: width and height.
 PHONE = (375, 812)
 
 #: The narrowest phone this page is read on, at the same height. 320 is the
-#: width #208 asks the band to fit in: the chrome carries the name, the link
-#: and two thumb-wide presses there, and nothing is dropped between here and
-#: 375. The height is the phone's above rather than a short screen's, because
-#: what this width is about is the band and a window under `--rail-turns` is
-#: the **rail** lying down as well (`dccex-rail.styles.ts`).
+#: width #208 asked the band to fit in. The height is the phone's above rather
+#: than a short screen's, because what this width is about is the band and a
+#: short window is look's rail lying down as well.
 NARROW = (320, 812)
 
 #: A desktop, which is where what the band gives up on a phone has to be back.
@@ -167,11 +163,9 @@ RELEASES = "**/dccex-usb/releases"
 #: to send it on and nothing here presses the send.
 TYPED = "<s>"
 
-#: The look rules' minimum for a thumb, read off the copy the page draws with
-#: rather than written out: the two presses on the band and the two buttons on
-#: the rail are pressed on the phone this check is about (`ui/look/README.md`,
-#: ADR-0011 d.1, ADR-0020 d.1, #169).
-THUMB = int(declarations(COPY.read_text())["--rail-button"].removesuffix("px"))
+#: look's minimum for a button on the rail, `--rail-button`: the views are
+#: pressed on the phone this check is about (#169).
+THUMB = 44
 
 #: A pixel of slack on a comparison between two rendered edges. Layout is
 #: worked out in fractions and rounded for painting, and a rule that read a
@@ -258,18 +252,13 @@ MEASURE = """
       ),
     };
   }
-  const band = app.renderRoot.querySelector("dccex-band");
-  // What one part of the band was drawn as. The display is read as well as the
-  // box: the build is blank with no face behind the page, so a box of no width
-  // is what a drawn one and a dropped one both measure.
-  const part = (selector) => {
-    const drawn = band.renderRoot.querySelector(selector);
-    return drawn === null
-      ? null
-      : { box: box(drawn), display: getComputedStyle(drawn).display };
-  };
-  const rail = app.renderRoot.querySelector("dccex-rail");
-  const button = (selector) => box(rail.renderRoot.querySelector(selector));
+  // The band's parts are look's elements, in the page's shadow root; the two
+  // presses are inside look-power's.
+  const part = (drawn) => (drawn === null ? null : box(drawn));
+  const power = app.renderRoot.querySelector("look-power");
+  const dot = app.renderRoot.querySelector("look-dot");
+  const button = (view) =>
+    box(app.renderRoot.querySelector(`look-view[name=${view}]`));
   const monitor = app.renderRoot.querySelector("dccex-monitor");
   const typed = box(monitor.renderRoot.querySelector("input.typed"));
   const send = box(monitor.renderRoot.querySelector(".box button[type=submit]"));
@@ -279,18 +268,16 @@ MEASURE = """
     hash: location.hash,
     scrollWidth: wide,
     band: {
-      build: part(".build"),
-      railroad: part(".railroad"),
-      dot: part(".dot"),
-      says: part(".says"),
-      power: part(".power"),
-      stop: part(".stop"),
+      dot: part(dot),
+      says: dot === null ? null : dot.textContent.trim(),
+      power: part(power === null ? null : power.renderRoot.querySelector(".power")),
+      stop: part(power === null ? null : power.renderRoot.querySelector(".stop")),
     },
     rail: {
-      monitor: button("button.monitor"),
-      releases: button("button.releases"),
-      script: button("button.script"),
-      journal: button("button.journal"),
+      monitor: button("monitor"),
+      releases: button("releases"),
+      script: button("script"),
+      journal: button("journal"),
     },
     typed: typed,
     send: send,
@@ -322,10 +309,10 @@ def measured(page, width, height):
     drawn = page.evaluate(MEASURE, MONITOR)
     page.fill("input.typed", TYPED)
     drawn["reads"] = page.input_value("input.typed")
-    page.click(f"dccex-rail button.{RELEASES_VIEW}")
+    page.click(f"look-view[name={RELEASES_VIEW}]")
     page.wait_for_selector(".release")
     drawn[RELEASES_VIEW] = page.evaluate(MEASURE, RELEASES_VIEW)
-    page.click(f"dccex-rail button.{SCRIPT_VIEW}")
+    page.click(f"look-view[name={SCRIPT_VIEW}]")
     page.evaluate(LOADS, RAILROAD)
     page.wait_for_selector("dccex-script .script")
     drawn[SCRIPT_VIEW] = page.evaluate(MEASURE, SCRIPT_VIEW)
@@ -512,64 +499,29 @@ def test_the_rail_offers_both_views_and_is_pressed_to_reach_one(
         ), "pressing the rail did not put the view in the hash"
 
 
-def test_the_narrow_band_keeps_the_dot_and_both_presses(
+def test_the_band_keeps_the_link_and_both_presses_on_screen(
     drawn: dict[str, Any],
 ) -> None:
-    """Below the widths the band gives things up at, what survives is the link
-    at a glance and the two controls.
+    """At every width the band draws the link, with its words while the station
+    is silent, and the power toggle with STOP right of it, inside the screen.
 
-    `tests/ui/test_band.py` holds the rules as they are written — which part
-    each query names, and that none of them names the dot or either press. What
-    is held here is that a browser does it: at both phone widths the **build**,
-    the railroad's name and the link's words are not laid out, the dot, the
-    power button and STOP are, and at a desktop width the words and the
-    railroad are back. The words are what keep the rest from passing on a page
-    that drew no band at all: with no broker behind this page the railroad is
-    unreported and its slot is blank, so what is asserted of it is that it is
-    laid out (#246).
-
-    Each press is measured against `--rail-button` as well, which is the look
-    rules' minimum for a thumb: they are pressed on the phone held at the
-    layout, and a rule that asked for that height inside a row that squashed it
-    would read as this passing (ADR-0011 d.1, ADR-0020 d.1).
-
-    **320px is where the second press had to fit** (#208). The band carries the
-    name, the link and two thumbs there, and that is the width the whole of it
-    is asserted at rather than the width it happens to be read at.
+    There is no face or broker behind this page, so the link is down and its
+    words are drawn. How the band fits a narrow screen is look's (ADR-0023).
     """
-    desktop = drawn["desktop"]["band"]
-    for width in ("narrow", "phone"):
-        page = drawn[width]
+    for width, page in drawn.items():
         band = page["band"]
-        for name in ("build", "railroad", "dot", "says", "power", "stop"):
-            assert band[name] is not None, f"the band drew no {name} at all"
-        assert band["build"]["display"] == "none", f"a {width} band keeps the build"
-        assert (
-            band["railroad"]["display"] == "none"
-        ), f"a {width} band keeps the railroad"
-        assert band["says"]["display"] == "none", f"a {width} band keeps the words"
-        assert band["dot"]["box"]["width"] > 0, f"a {width} band drops the link"
-        for press in ("power", "stop"):
-            box = band[press]["box"]
+        for name in ("dot", "power", "stop"):
+            assert band[name] is not None, f"the band drew no {name} in a {width}"
+            box = band[name]
             assert (
-                box["width"] >= THUMB - SLACK and box["height"] >= THUMB - SLACK
-            ), f"the {press} press is under a thumb in a {width}: {box}"
-            assert (
-                box["left"] >= -SLACK and box["right"] <= page["innerWidth"] + SLACK
-            ), f"the {press} press is off the side of a {width}: {box}"
+                box["width"] > 0
+                and box["left"] >= -SLACK
+                and box["right"] <= page["innerWidth"] + SLACK
+            ), f"the band's {name} is not on the screen of a {width}: {box}"
+        assert band["says"] == "dcc-ex offline", f"a {width} band says {band['says']!r}"
         assert (
-            band["stop"]["box"]["left"] >= band["power"]["box"]["right"] - SLACK
-        ), f"STOP is not right of the power button in a {width}"
-    assert (
-        desktop["says"]["display"] != "none"
-    ), "the band drops the words at every width"
-    assert desktop["says"]["box"]["width"] > 0, "the band says nothing at any width"
-    # With no broker behind the page the railroad is unreported, so the slot is
-    # blank and a box of no width is what a drawn one and a dropped one both
-    # measure (#246). The display is the whole of what can be held here.
-    assert (
-        desktop["railroad"]["display"] != "none"
-    ), "the band drops the railroad at every width"
+            band["stop"]["left"] >= band["power"]["right"] - SLACK
+        ), f"STOP is not right of the power toggle in a {width}"
 
 
 def test_the_command_box_is_on_a_phone_s_screen_and_can_be_typed_into(

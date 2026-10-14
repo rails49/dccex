@@ -29,7 +29,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 
 #: The pure function, and the module it is the whole of.
 JOURNAL = UI / "src" / "journal.js"

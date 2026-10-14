@@ -20,6 +20,7 @@
  * would be a second place this view is driven from.
  */
 
+import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { HEADINGS, type Row, type Standing } from "../incidents.js";
@@ -30,7 +31,7 @@ import { countsStyles } from "./dccex-counts.styles.js";
 const SPANNED = HEADINGS.length - 2;
 
 export class DccexCounts extends LitElement {
-  static override readonly styles = countsStyles;
+  static override readonly styles = [lookTheme, countsStyles];
 
   static override readonly properties = {
     districts: { attribute: false },

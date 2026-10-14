@@ -5,12 +5,12 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **They wrap rather than running off the side**, and each is sized for a
  * thumb: `--rail-button` is the look rules' minimum for one, which is what a
  * control pressed on a phone held at the layout asks for
- * (`dccex-monitor.styles.ts`, `ui/look/README.md`).
+ * (`dccex-monitor.styles.ts`).
  */
 export const controlsStyles = css`
   :host {
