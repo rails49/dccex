@@ -41,7 +41,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 from tests.ui.test_page import asked_of_the_face
 from tests.ui.test_stream import code, quoted
 

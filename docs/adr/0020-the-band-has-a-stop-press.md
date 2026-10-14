@@ -1,6 +1,6 @@
 # ADR-0020 — the band has a STOP press
 
-- **Status:** accepted, 2026-10-09
+- **Status:** accepted, 2026-10-09; d.1 amended by [ADR-0023](0023-the-chrome-comes-from-look.md)
 - **Ticket:** #208
 - **Related:** ADR-0017 (the band asks `layout` for power), `control` ADR-0062
 

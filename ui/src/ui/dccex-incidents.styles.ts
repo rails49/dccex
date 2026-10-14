@@ -6,7 +6,7 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **A row wraps rather than running off the side**, as a **release** row does
  * and for the same reason: the phone at the layout is where this is read, and a

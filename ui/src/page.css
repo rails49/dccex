@@ -4,7 +4,7 @@
  *
  * It is a plain stylesheet rather than a component's, so it cannot ask a Lit
  * sheet for anything; what it names are Shoelace's theme tokens, which is
- * where the typeface and the work pane's colours come from (LOOK.md).
+ * where the typeface and the work pane's colours come from (`look.css`).
  */
 
 html,

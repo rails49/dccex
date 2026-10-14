@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import ROOT
+from tests.ui.paths import ROOT
 
 #: The suite's own directory: where the runners are, and where a copy of what
 #: `node.py` does would show up.

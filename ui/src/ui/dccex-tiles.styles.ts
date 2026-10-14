@@ -6,7 +6,7 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **A tile is a column and it is centred.** The track's letter heads it, the
  * power symbol is the largest thing on it, and the three words go under it:
@@ -61,7 +61,7 @@ export const tilesStyles = css`
   /* Whether the track has power: the one reading on a tile that is a colour
      rather than a word. Larger than the words under it, because it is what the
      eye lands on; the colour reaches the icon through currentColor and the font
-     size is what the icon is a multiple of (dccex-icon.styles.ts). */
+     size is what the icon is a multiple of. */
   .power {
     display: inline-flex;
     flex: none;

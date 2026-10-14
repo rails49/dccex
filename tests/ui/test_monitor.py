@@ -40,7 +40,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 
 #: The page the station's conversation is drawn on.
 MONITOR = UI / "src" / "ui" / "dccex-monitor.ts"
@@ -373,7 +373,7 @@ def test_the_box_is_usable_at_the_width_of_a_phone() -> None:
     """A thumb's worth of height, and a field that shrinks rather than pushing
     the send button off the side.
 
-    `--rail-button` is the look rules' minimum for a thumb (`look.css`). It is
+    `--rail-button` is look's minimum for a thumb (`look.css`). It is
     a size and not one of the chrome's colours, which is what makes it the one
     look value a control on the work pane may ask for — this box's send, and the
     flash on a release's row (#9, `tests/ui/test_releases.py`).

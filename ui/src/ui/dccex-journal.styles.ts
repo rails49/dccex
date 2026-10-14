@@ -6,7 +6,7 @@ import { css } from "lit";
  *
  * It is the work pane's rather than the chrome's, so its colours are
  * Shoelace's theme tokens and it follows the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **The controls stay where they are and the list scrolls under them.** A
  * journal is as long as the evening was, and a reader at the foot of it still

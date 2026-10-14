@@ -16,13 +16,19 @@
  * **There is no layout here.** happy-dom draws no boxes, so nothing in these
  * checks may assert a width, a wrap or a height; a rule that is about the
  * shape of the page is still held against the stylesheet it is written in
- * (`tests/ui/test_look.py`, `tests/ui/test_band.py`), and the ones that are
+ * (`tests/ui/test_tiles.py`, `tests/ui/test_releases.py`), and the ones that are
  * about a phone are drawn in a real browser against the built image instead
  * (`tests/ui/test_page_at_a_phones_width.py`, #127).
  */
 
-import { type LitElement } from "lit";
+import { registerIconLibrary } from "@shoelace-style/shoelace/dist/utilities/icon-library.js";
+import { type LitElement, type TemplateResult, render } from "lit";
 import { afterEach } from "vitest";
+
+// The suites draw no glyphs, so Shoelace fetches nothing: there is no server
+// behind `/shoelace` here.
+registerIconLibrary("default", { resolver: () => "" });
+
 
 /** `element`, in a document and drawn once.
  *
@@ -32,6 +38,20 @@ export async function mounted<T extends LitElement>(element: T): Promise<T> {
   document.body.append(element);
   await element.updateComplete;
   return element;
+}
+
+/** `template`, drawn into a document, and the element it was drawn into.
+ *
+ *  For what the page draws as a template rather than a component: the band
+ *  and the rail (`chrome.ts`). The look elements in it are drawn as well. */
+export async function drawn(template: TemplateResult): Promise<HTMLElement> {
+  const into = document.createElement("div");
+  document.body.append(into);
+  render(template, into);
+  for (const element of into.querySelectorAll("*")) {
+    await (element as Partial<LitElement>).updateComplete;
+  }
+  return into;
 }
 
 /** What the one part of `element` matching `selector` reads, or `null` where

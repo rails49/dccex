@@ -5,7 +5,7 @@ import { css } from "lit";
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
- * (LOOK.md, `theme.ts`). The chrome's six colours stay on the chrome.
+ * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **A release wraps rather than running off the side.** The phone at the
  * layout is where this is read and a **tag** is long: the date and what is
@@ -31,8 +31,7 @@ import { css } from "lit";
  * **The yes is drawn as the dangerous press it is**, and the warning above it
  * in the theme's own warning ink: this is the one gesture on the page that
  * stops a railroad, and nothing behind the page guards it (ADR-0006). They are
- * Shoelace's `danger` and `warning`, which the work pane follows the theme for;
- * the look rules' `--stop` is the chrome's, and means a fault or a stop there.
+ * Shoelace's `danger` button and `warning` ink in look's dialog (ADR-0023).
  */
 export const releasesStyles = css`
   :host {
@@ -176,38 +175,11 @@ export const releasesStyles = css`
     cursor: default;
   }
 
-  /* The warning, and the two presses that answer it. It opens across the whole
-     of the row it belongs to, under the tag it is about, so what is being
-     written is never off the side of the sentence about writing it. */
-  .warning {
-    flex: 1 0 100%;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0 0.25rem;
-  }
-
-  /* What flashing does, in the sequence's words. It takes its own line above
-     the presses: a sentence beside a button is a sentence read after it. */
+  /* What flashing does, in the sequence's words, in the theme's warning
+     ink. */
   .warns {
-    flex: 1 0 100%;
     margin: 0;
     color: var(--sl-color-warning-700);
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-font-size-small);
-  }
-
-  /* The yes. Drawn as the dangerous press it is, and never the quieter of the
-     two. */
-  .confirms {
-    background: var(--sl-color-danger-600);
-  }
-
-  /* And the no, which is the ordinary way out of a warning. */
-  .cancels {
-    background: var(--sl-color-neutral-100);
-    color: var(--sl-color-neutral-900);
   }
 
   /* Which step is running, under the row and so still there when it is shut:

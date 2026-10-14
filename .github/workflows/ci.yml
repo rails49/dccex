@@ -14,6 +14,13 @@ jobs:
         if: hashFiles('pyproject.toml') != ''
       - run: uv sync
         if: hashFiles('pyproject.toml') != ''
+      # The gate's one node check, `look-check`, is look's bin and runs out of
+      # the page's packages (`scripts/check.sh`, ADR-0023). Run from `ui/`
+      # so corepack reads `packageManager`, as the `node` job does.
+      - run: corepack enable
+      - name: the page's packages, for look-check
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
       - name: gate
         run: |
           cmd=$(sed -n 's/^ci:[[:space:]]*//p' CLAUDE.md 2>/dev/null | head -1)

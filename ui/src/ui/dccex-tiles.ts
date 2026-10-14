@@ -30,15 +30,15 @@
  * own step, and a tile beside it that could be pressed would be a second one.
  */
 
-import { mdiPower } from "@mdi/js";
+import { lookTheme } from "@rails49/look";
+import "@shoelace-style/shoelace/dist/components/icon/icon.js";
 import { LitElement, html, type TemplateResult } from "lit";
 
 import { QUIET, asOf, tiles, type Readings, type Tile } from "../readings.js";
-import "./dccex-icon.js";
 import { tilesStyles } from "./dccex-tiles.styles.js";
 
 export class DccexTiles extends LitElement {
-  static override readonly styles = tilesStyles;
+  static override readonly styles = [lookTheme, tilesStyles];
 
   static override readonly properties = {
     readings: { attribute: false },
@@ -60,7 +60,7 @@ export class DccexTiles extends LitElement {
               role="img"
               aria-label=${tile.says}
             >
-              <dccex-icon .path=${mdiPower}></dccex-icon>
+              <sl-icon name="power"></sl-icon>
             </span>
             <span class="mode">${tile.mode}</span>
             <span class="draws">${tile.draws}</span>

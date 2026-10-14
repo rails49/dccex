@@ -20,7 +20,7 @@ the DOM back:
 holds the drawing itself against the component's source
 (`tests/ui/test_band.py`, `tests/ui/test_tiles.py`). The words an operator sees
 are asserted here; that those words reach the screen is the part a Python gate
-cannot reach, which is the cost `tests/ui/test_look.py` already names.
+cannot reach, which is the cost `tests/ui/test_stream.py` already names.
 """
 
 import re
@@ -31,7 +31,7 @@ from typing import Any
 import pytest
 
 from tests.ui.node import HELD, ran
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 from tests.ui.test_stream import code
 
 #: The readings, and the module they are the whole of.

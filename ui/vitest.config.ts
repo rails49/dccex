@@ -8,9 +8,9 @@ import { defineConfig } from "vitest/config";
 // `happy-dom` is the DOM the components are mounted in: custom elements, a
 // shadow root, an animation frame and the rectangles Lit asks for, in a
 // process rather than a browser. It does no layout — nothing here may assert
-// a width, a wrap or a height — which is why the look rules and the widths a
-// phone reads at are still held against the stylesheets
-// (`tests/ui/test_look.py`, #126).
+// a width, a wrap or a height — which is why the widths a phone reads at are
+// held against the built page in a browser
+// (`tests/ui/test_page_at_a_phones_width.py`, #126).
 //
 // `mqtt` is aliased to a broker with nothing behind it, for the same reason:
 // the page is a client of `control`'s broker and there is none here, so what a
@@ -31,5 +31,13 @@ export default defineConfig({
     environment: "happy-dom",
     include: ["test/**/*.test.ts"],
     setupFiles: ["test/mounted.ts"],
+    // A Shoelace dialog shut while it opens cancels its animation, and
+    // happy-dom rejects the cancelled animation's promise where a browser
+    // marks it handled. That rejection, and no other, is not a failure.
+    onUnhandledError: (error) =>
+      error.name === "AbortError" &&
+      error.message === "The animation was canceled."
+        ? false
+        : undefined,
   },
 });

@@ -8,7 +8,7 @@
  * no firmware, or none with a digest to check it against — saying so (#8,
  * #81, docs/ui/README.md; the issue that last changed these words is named
  * there and in `releases.js` rather than here, because an issue number in the
- * hundreds is three hex digits and `tests/ui/test_look.py`'s scan reads one
+ * hundreds is three hex digits and the colour scan (`tests/ui/paths.py`) reads one
  * in a component as a colour). The ordering, the dates and the mark are the
  * listing module's — a pure function of what the **face** answered and what
  * the station said (`releases.js`) — and this component is handed them and
@@ -67,6 +67,8 @@
  * what the page knows (the organisation's ADR-0002, `dccex-app.ts`).
  */
 
+import { lookTheme } from "@rails49/look";
+import "@shoelace-style/shoelace/dist/components/button/button.js";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import {
@@ -99,7 +101,7 @@ import { releasesStyles } from "./dccex-releases.styles.js";
 const HEADING = "releases";
 
 export class DccexReleases extends LitElement {
-  static override readonly styles = releasesStyles;
+  static override readonly styles = [lookTheme, releasesStyles];
 
   static override readonly properties = {
     carried: { attribute: false },
@@ -207,14 +209,12 @@ export class DccexReleases extends LitElement {
                 ${release.title === ""
                   ? nothing
                   : html`<p class="title">${release.title}</p>`}
-                ${this.asked === release.tag
-                  ? this.#warning(release.tag)
-                  : nothing}
               </li>
             `,
           )}
         </ol>
       </details>
+      ${this.#warning()}
       ${this.step === null
         ? nothing
         : html`<p class="step" aria-live="polite">${this.step}</p>`}
@@ -275,27 +275,46 @@ export class DccexReleases extends LitElement {
    * The warning is the sequence's words and the second press is what makes the
    * gesture a thing somebody meant: the guard is the person, and a person can
    * only be one if they are told what the gesture does before they are asked
-   * (ADR-0006 d.2).
+   * (ADR-0006 d.2). It is a dialog titled with the tag it would write, so what
+   * is being written is in the sentence about writing it. Closing it is the
+   * no.
    */
-  #warning(tag: string): TemplateResult {
+  #warning(): TemplateResult {
+    const tag = this.asked;
     return html`
-      <div class="warning">
+      <look-dialog
+        class="warning"
+        size="small"
+        label=${tag === null ? "" : `Flash ${tag}`}
+        ?open=${tag !== null}
+        @sl-after-hide=${this.#cancels}
+      >
         <p class="warns" role="alert">${WARNS}</p>
-        <button
+        <sl-button
+          slot="footer"
+          class="cancels"
+          size="small"
+          @click=${this.#cancels}
+          >${CANCELS}</sl-button
+        >
+        <sl-button
+          slot="footer"
           class="confirms"
+          size="small"
+          variant="danger"
           ?disabled=${this.step !== null || this.flashing !== null}
           @click=${() => {
-            void this.#flashes(tag);
+            if (tag !== null) {
+              void this.#flashes(tag);
+            }
           }}
+          >${CONFIRMS}</sl-button
         >
-          ${CONFIRMS}
-        </button>
-        <button class="cancels" @click=${this.#cancels}>${CANCELS}</button>
-      </div>
+      </look-dialog>
     `;
   }
 
-  /** A release chosen: the warning opens under it and nothing else happens.
+  /** A release chosen: the warning opens about it and nothing else happens.
    *  What became of the last flash goes, because it was about another
    *  gesture. */
   #chosen(tag: string): void {

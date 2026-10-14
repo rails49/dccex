@@ -22,8 +22,7 @@ mirror's page all cite it that way and none of them says an owner in words
 **What is read.** Every tree a reader of this repository reads: the two pages
 at the root, the package under `src/`, every page of `docs/`, the page's own
 modules and the stylesheets beside them under `ui/src/`, the suites that mount
-its components under `ui/test/`, the page beside the look rules' copy, every
-check under `tests/` and the node runners among them, and what the box is built
+its components under `ui/test/`, every check under `tests/` and the node runners among them, and what the box is built
 and served from under `deploy/`. The same trees the module beside this one
 reads, so this number owes a reader an owner in the same places whichever check
 is asking (#150).
@@ -31,7 +30,7 @@ is asking (#150).
 Each widening before the last came of bare citations sitting where nothing was
 looking: three in the newest code in the repository while this read `src/`
 alone (#86), and six across `docs/` and `tests/` while it read those two trees
-(#117, #123). The last came of none. `ui/test/`, `ui/look/` and `deploy/` cite
+(#117, #123). The last came of none. `ui/test/` and `deploy/` cite
 this number nowhere, and what #150 found bare in them was the other half of the
 rule (#151) — but a reader does not know which check is looking where, and two
 checks of the same prose over two different reaches is a gap nobody can hold in
@@ -42,10 +41,7 @@ beside `PROSE` with its reason. Both carry bare citations and neither is
 edited to end them: an ADR is a record of what was decided at the time, and
 the bare citation here is what the scan is run over.
 
-`ui/look/tokens.css` is not read either, and is not globbed rather than
-excluded: it is `rails49/.github`'s file, copied verbatim and pinned to the
-commit it was taken at, so the prose in it is that repository's to qualify
-(`ui/look/README.md`). The compose files, `scripts/` and `ui`'s own
+The compose files, `scripts/` and `ui`'s own
 configuration are the next widening, written out at the same place in the
 module beside this one.
 """
@@ -72,15 +68,11 @@ ADRS = ROOT / "docs" / "adr"
 #: the glob: the two pages at the root, the package's prose and the provenance
 #: note beside it, the pages under `docs/`, the page's modules with the
 #: stylesheets beside them and any note left among them, the suites that mount
-#: its components, the page beside the look rules' copy, the checks under
+#: its components, the checks under
 #: `tests/` with the node runners among them, and what the box is built and
 #: served from. The root is read flat — everything below it worth reading is a
 #: tree of its own here, and the rest is what a build, an environment or a
 #: package manager left there.
-#:
-#: `ui/look/` is read for its README alone. `tokens.css` beside it is another
-#: repository's file, copied verbatim and pinned to a commit so that diffing
-#: the two is a diff of the same thing.
 #:
 #: The same set as `tests/test_adr_numbers_resolve.py`, written out here too
 #: rather than imported from there: a reach taken from the module beside this
@@ -92,7 +84,6 @@ PROSE = {
     ROOT / "docs": ("**/*.md",),
     ROOT / "ui" / "src": ("**/*.ts", "**/*.js", "**/*.css", "**/*.md"),
     ROOT / "ui" / "test": ("**/*.ts",),
-    ROOT / "ui" / "look": ("*.md",),
     ROOT / "tests": ("**/*.py", "**/*.mjs"),
     ROOT / "deploy": ("*Dockerfile", "*.conf"),
 }
@@ -310,17 +301,6 @@ def test_a_bare_citation_under_the_pages_own_suites_is_caught() -> None:
     loose = cited(planted(ROOT / "ui" / "test" / "monitor.test.ts"))
     assert len(loose) == 1, f"the planted citation was not caught: {loose}"
     assert loose[0].endswith("its own app's face (ADR-0002")
-
-
-def test_a_bare_citation_beside_the_look_rules_copy_is_caught() -> None:
-    """A plant in `ui/look/`, on the page that says where the copy came from.
-
-    The copy itself is not globbed, for the reason written beside `PROSE`. The
-    page beside it is this repository's own prose, and the organisation's
-    decisions it cites are the look rules' rather than this number (#150).
-    """
-    loose = cited(planted(ROOT / "ui" / "look" / "README.md"))
-    assert len(loose) == 1, f"the planted citation was not caught: {loose}"
 
 
 def test_a_bare_citation_in_what_the_box_runs_is_caught() -> None:

@@ -4,9 +4,8 @@ import { css } from "lit";
  * The monitor: the station's conversation, newest at the bottom.
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
- * theme tokens and it follows the system's light or dark setting (LOOK.md,
- * `theme.ts`). The chrome's six colours are `look.css`'s and none of them
- * belongs on a pane.
+ * theme tokens and it follows the system's light or dark setting (`look.css`).
+ * The chrome's colours are look's and none of them belongs on a pane.
  *
  * A **gloss** is beside the line and never instead of it: the bytes stay
  * monospaced and dark and the sentence is smaller, quieter and in the page's
@@ -68,7 +67,7 @@ export const monitorStyles = css`
   }
 
   /* The colour goes to the icon in the button, which takes currentColor, and
-     the font size is what the icon is a multiple of (dccex-icon.styles.ts).
+     the font size is what the icon is a multiple of.
      Neither sets a size of its own: that is the bare button rule's, and a
      min-height here would win and take the two below a thumb. */
   .controls button {

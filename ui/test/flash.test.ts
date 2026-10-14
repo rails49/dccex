@@ -6,7 +6,7 @@
  * through it (`tests/ui/test_flash.py`); what is asserted here is the gesture
  * an operator makes and the sentences they read while the station is away.
  * That is the one of the five #1 named that no source-text check ever reached:
- * a press, a warning that opens under the release it is about, a second press,
+ * a press, a warning that opens about the release it names, a second press,
  * and three steps in the order they are drawn (#126).
  *
  * **And the bar is read off the page the same way.** How far a flash has got is
@@ -118,24 +118,30 @@ async function settled(drawn: DccexReleases): Promise<void> {
   await drawn.updateComplete;
 }
 
-test("choosing a release opens the warning under that release", async () => {
+/** Whether the warning is open. */
+function warned(drawn: DccexReleases): boolean {
+  return part(drawn, ".warning").hasAttribute("open");
+}
+
+test("choosing a release opens the warning, titled with its tag", async () => {
   const [drawn] = await flashing();
-  expect(all(drawn, ".warning")).toStrictEqual([]);
+  expect(warned(drawn)).toBe(false);
   press(drawn, ".chooses");
   await drawn.updateComplete;
-  const opened = part(drawn, ".release");
-  expect(opened.querySelector(".tag")?.textContent).toBe(CHOSEN);
-  expect(opened.querySelector(".warns")?.textContent).toBe(WARNS);
-  expect(opened.querySelector(".warns")?.getAttribute("role")).toBe("alert");
+  expect(warned(drawn)).toBe(true);
+  expect(part(drawn, ".warning").getAttribute("label")).toBe(`Flash ${CHOSEN}`);
+  expect(reads(drawn, ".warns")).toBe(WARNS);
+  expect(part(drawn, ".warns").getAttribute("role")).toBe("alert");
 });
 
-test("the warning is read before the press that agrees to it", async () => {
+test("the warning is read before the presses that answer it", async () => {
   const [drawn] = await flashing();
   press(drawn, ".chooses");
   await drawn.updateComplete;
-  const warning = part(drawn, ".warning");
-  const said = [...warning.children].map((drew) => drew.className);
-  expect(said).toStrictEqual(["warns", "confirms", "cancels"]);
+  const said = [...part(drawn, ".warning").children].map((drew) =>
+    drew.classList[0],
+  );
+  expect(said).toStrictEqual(["warns", "cancels", "confirms"]);
 });
 
 test("declining leaves the station untouched and says nothing about it", async () => {
@@ -144,7 +150,7 @@ test("declining leaves the station untouched and says nothing about it", async (
   await drawn.updateComplete;
   press(drawn, ".cancels");
   await settled(drawn);
-  expect(all(drawn, ".warning")).toStrictEqual([]);
+  expect(warned(drawn)).toBe(false);
   expect(all(drawn, ".became")).toStrictEqual([]);
   expect(asked.typed).toStrictEqual([]);
 });

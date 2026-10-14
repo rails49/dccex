@@ -5,8 +5,8 @@ import { css } from "lit";
  * names the railroad, so the view does not.
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
- * theme tokens and it follows the system's light or dark setting (LOOK.md,
- * `theme.ts`). The chrome's six colours stay on the chrome.
+ * theme tokens and it follows the system's light or dark setting (`look.css`).
+ * The chrome's colours stay on the chrome.
  *
  * **The editor is monospace and it takes the height it is given.** A script is
  * Python, where the indentation is the structure: a proportional font hides
@@ -104,7 +104,7 @@ export const scriptStyles = css`
 
   /* The caret follows the theme. CodeMirror's base rules set it from a light
      or a dark flag of their own, and this page has neither: the Shoelace
-     tokens are what follow the system here (theme.ts). */
+     tokens are what follow the system here (look.css). */
   .script.cm-editor .cm-content {
     caret-color: var(--sl-color-neutral-900);
   }

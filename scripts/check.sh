@@ -30,6 +30,13 @@
 # every machine this gate runs on (#101). The workflow runs those too, in a
 # job of its own required on the pull request.
 #
+# **One check does need a node: `look-check`** (ADR-0023). The chrome is
+# `@rails49/look`'s, and its gate fails on app code that styles it: a selector
+# naming a `look-` element, a look token or `--sl-*` property set, or
+# `sl-*::part()`. It is look's own bin, run from `ui/node_modules`, so the
+# `ci` job installs the page's packages before it runs this script. A machine
+# without them is red on this check rather than skipping it.
+#
 # A `broker` marker is the same again, for the translator's suites that run
 # against a real `mosquitto` (#180), and this script does not collect it
 # either. The workflow installs one and runs those in a job of its own.
@@ -132,6 +139,7 @@ check ruff tool ruff check .
 check black tool black --check .
 check pyright tool pyright
 check tests "${PY[@]}" -m pytest -q -m "not docker and not node and not broker"
+check look ui/node_modules/.bin/look-check ui/src ui/index.html
 
 if [ -n "$red" ]; then
   printf 'red:%s\n' "$red"

@@ -19,6 +19,7 @@
  * `face.ts`).
  */
 
+import { lookTheme } from "@rails49/look";
 import { LitElement, html, type TemplateResult } from "lit";
 
 import { JOURNAL_PATH } from "../face.js";
@@ -34,7 +35,7 @@ const PERIOD = "period";
 const FILE = "journal.jsonl";
 
 export class DccexControls extends LitElement {
-  static override readonly styles = controlsStyles;
+  static override readonly styles = [lookTheme, controlsStyles];
 
   static override readonly properties = {
     choices: { attribute: false },

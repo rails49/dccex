@@ -8,8 +8,8 @@
  * own words, so nobody has to read the file to see what the reading was made
  * of (ADR-0022 d.3; the issue these words were written for is named in
  * `docs/ui/README.md` and in `incidents.js` rather than here, because an issue
- * number in the hundreds is three hex digits and `tests/ui/test_look.py`'s
- * scan reads one in a component as a colour). Which lines those are is the
+ * number in the hundreds is three hex digits and the colour scan
+ * (`tests/ui/paths.py`) reads one in a component as a colour). Which lines those are is the
  * reading module's: an incident names them, and the flip a short outlived is
  * one of them.
  *
@@ -32,13 +32,14 @@
  * formatting — the rule the **monitor** draws a line by (`monitor.js`).
  */
 
+import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { type Entry, type Said } from "../incidents.js";
 import { incidentsStyles } from "./dccex-incidents.styles.js";
 
 export class DccexIncidents extends LitElement {
-  static override readonly styles = incidentsStyles;
+  static override readonly styles = [lookTheme, incidentsStyles];
 
   static override readonly properties = {
     entries: { attribute: false },

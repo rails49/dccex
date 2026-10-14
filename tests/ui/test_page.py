@@ -17,7 +17,7 @@ are the one message a client sent (ADR-0010 d.5).
 
 import re
 
-from tests.ui.test_look import UI
+from tests.ui.paths import UI
 from tests.ui.test_stream import code, modules, quoted
 
 #: The page: the chrome, the work pane, and the conversation they are made of.
@@ -418,8 +418,8 @@ def test_the_band_asks_layout_for_power_on_the_bus() -> None:
 
     What the page does about power is one publish on `control`'s broker, and
     the page holds that connection the way it holds the stream — so the row is
-    spelt in `bus.ts` and nowhere else, and the band is handed a way to ask
-    (`tests/ui/test_bus.py`).
+    spelt in `bus.ts` and nowhere else, and a press on `look-power` goes
+    through it (`tests/ui/test_bus.py`).
     """
     for name, module in modules().items():
         written = quoted(module).count(WANTED)
@@ -428,7 +428,9 @@ def test_the_band_asks_layout_for_power_on_the_bus() -> None:
         ), f"{name} spells the wanted row {written} times"
     page = code(APP.read_text())
     assert "this.#bus.wants(power)" in page, "the page asks nobody for power"
-    assert ".wants=${this.#wants}" in page, "the band is handed no way to ask"
+    assert (
+        "this.#wants(e.detail.state)" in page
+    ), "a press on look-power does not go on the bus"
 
 
 def test_the_flash_sequence_is_the_one_caller_that_cuts_power() -> None:

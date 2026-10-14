@@ -26,7 +26,7 @@ import json
 import re
 
 from dccex.sample import TEXT
-from tests.ui.test_look import HEX, UI
+from tests.ui.paths import HEX, UI
 from tests.ui.test_monitor import rule
 from tests.ui.test_stream import code
 
@@ -54,8 +54,6 @@ FACE = UI / "src" / "face.ts"
 #: The views, and the hash the current one is kept in.
 VIEW = UI / "src" / "view.ts"
 
-#: The rail that offers one button per view.
-RAIL = UI / "src" / "ui" / "dccex-rail.ts"
 
 #: What a reader of Python is owed told apart, by the tag the editor gives it.
 COLOURED = ("keyword", "string", "comment", "number", "decorator", "function")
@@ -297,7 +295,7 @@ def test_the_editors_colours_are_the_themes_and_are_in_the_sheet() -> None:
 
     The classes are the editor's and the colours are the sheet's. That is what
     keeps the view's colours in one file and in the file the scan for a written
-    colour already reads (`tests/ui/test_look.py`), and it is why the module
+    colour already reads (`HEX`, `tests/ui/paths.py`), and it is why the module
     that builds the editor asks for no colour at all.
     """
     built = code(EDITOR.read_text())
@@ -380,7 +378,7 @@ def test_a_failed_apply_is_marked_on_the_line_in_the_sheets_ink() -> None:
 def test_the_pane_is_the_work_panes_and_not_the_chromes() -> None:
     """The chrome's values say *this is the same project* across rails49's UIs
     and stay on the chrome; a pane follows the system's theme, which is
-    Shoelace's tokens (LOOK.md).
+    Shoelace's tokens (`look.css`).
 
     The one look value it may ask for is `--rail-button`, and it is a size
     rather than a colour: it is the rules' minimum for a thumb, and this view
@@ -398,4 +396,4 @@ def test_the_script_is_a_view_the_rail_offers() -> None:
     rail (`view.ts`, `tests/ui/test_rail.py`). Which view a hash names is run
     rather than read (`ui/test/view.test.ts`)."""
     assert '"script"' in VIEW.read_text(), "the hash names no script view"
-    assert "script: mdi" in RAIL.read_text(), "the rail draws it with no shape"
+    assert "script: { label:" in VIEW.read_text(), "the rail draws it with no glyph"

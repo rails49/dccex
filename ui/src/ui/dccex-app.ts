@@ -149,6 +149,7 @@
  * layout as on the layout box (ADR-0008 d.6).
  */
 
+import "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
 import { Bus } from "../bus.js";
@@ -183,11 +184,10 @@ import { type Carried } from "../releases.js";
 import { type Applied, type Opened } from "../script.js";
 import { Stream } from "../stream.js";
 import { OPENS, type View, hashed, viewed } from "../view.js";
+import { drawBand, drawRail } from "./chrome.js";
 import { appStyles } from "./dccex-app.styles.js";
-import "./dccex-band.js";
 import "./dccex-journal.js";
 import "./dccex-monitor.js";
-import "./dccex-rail.js";
 import "./dccex-releases.js";
 import "./dccex-script.js";
 import "./dccex-tiles.js";
@@ -415,17 +415,21 @@ export class DccexApp extends LitElement {
 
   override render(): TemplateResult {
     return html`
-      <dccex-band
-        .readings=${this.readings}
-        .layout=${this.layout}
-        .wants=${this.#wants}
-      ></dccex-band>
-      <dccex-rail .view=${this.view} .picks=${this.#picks}></dccex-rail>
-      <div class="work ${this.view}">
-        ${this.view === "monitor" ? this.#monitor() : nothing}
-        ${this.view === "journal" ? this.#journal() : nothing}
-        ${this.#releases()} ${this.#script()}
-      </div>
+      <look-shell
+        @look-view=${(e: CustomEvent<{ name: string }>) => {
+          this.#picks(viewed(e.detail.name));
+        }}
+        @look-power=${(e: CustomEvent<{ state: string }>) => {
+          this.#wants(e.detail.state);
+        }}
+      >
+        ${drawBand(this.readings, this.layout)} ${drawRail(this.view)}
+        <div class="work ${this.view}">
+          ${this.view === "monitor" ? this.#monitor() : nothing}
+          ${this.view === "journal" ? this.#journal() : nothing}
+          ${this.#releases()} ${this.#script()}
+        </div>
+      </look-shell>
     `;
   }
 
