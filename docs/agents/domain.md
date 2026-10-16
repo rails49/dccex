@@ -9,6 +9,10 @@ How the engineering skills should consume this repo's domain documentation when 
 
 If either doesn't exist, proceed without comment. Don't flag the absence and don't suggest creating them upfront. The `/domain-modeling` skill creates them when terms or decisions get resolved.
 
+## The glossary is `CONTEXT.md`
+
+The skills call it `GLOSSARY.md`. Here it is `CONTEXT.md` and keeps that name. Where a skill says to read, write or create `GLOSSARY.md`, use `CONTEXT.md`. Don't create a `GLOSSARY.md`. Add entries in `CONTEXT.md`'s own shape (one `##` per word, refused words under **Not:**), not the skills' `GLOSSARY-FORMAT.md`.
+
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary rejects.

@@ -1,0 +1,31 @@
+Copied by scripts/vendor-skills.sh; do not edit by hand.
+source: https://github.com/mattpocock/skills
+commit: 49dd158d1076134a641b33efb035946536778336
+license: MIT, in MATTPOCOCK.LICENSE
+skill: ask-matt
+skill: diagnosing-bugs
+skill: grill-with-docs
+skill: triage
+skill: improve-codebase-architecture
+skill: setup-matt-pocock-skills
+skill: tdd
+skill: to-spec
+skill: to-tickets
+skill: wayfinder
+skill: implement
+skill: implement-spec
+skill: prototype
+skill: research
+skill: domain-modeling
+skill: codebase-design
+skill: code-review
+skill: pr
+skill: retro
+skill: wizard
+skill: grill-me
+skill: grilling
+skill: handoff
+skill: teach
+skill: to-questionnaire
+skill: wait-what
+skill: writing-for-agents

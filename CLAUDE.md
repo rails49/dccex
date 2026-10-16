@@ -14,6 +14,10 @@ and ADRs.
 
 ## Agent skills
 
+Matt Pocock's skills are copied into `.claude/skills/`, pinned to the commit in
+`.claude/skills/MATTPOCOCK`. Update them with `scripts/vendor-skills.sh`, not by
+hand.
+
 ### Issue tracker
 
 GitHub Issues on rails49/dccex, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
@@ -24,4 +28,4 @@ The five default labels, unchanged: `needs-triage`, `needs-info`, `ready-for-age
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. Where a skill names `GLOSSARY.md`, use `CONTEXT.md`. See `docs/agents/domain.md`.
