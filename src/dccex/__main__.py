@@ -72,9 +72,10 @@ that have nowhere to go.
 
 `DccEx` is handed a `Bus` and nothing else in the package changes: which
 binding it got is this file's business, and a desired value that cannot be
-read is dropped exactly as it was in one process (control#289, BUS.md rule 4)
-— under MQTT whoever published it is another container, and a bug there must
-not take the thing that drives the railroad down with it.
+read is dropped exactly as it was in one process (control#289, `control`'s
+`docs/BUS.md`, rule 4) — under MQTT whoever published it is another
+container, and a bug there must not take the thing that drives the railroad
+down with it.
 """
 
 import asyncio
@@ -108,7 +109,7 @@ CLIENT_PREFIX = "tc49-"
 """What this app calls itself to the broker, in front of its id, so the log
 names a translator rather than a random string and two of them on one railroad
 are two clients. Nothing in the contract reads it: a topic has one writing
-role and no payload says who published (BUS.md, rule 4)."""
+role and no payload says who published (`control`'s `docs/BUS.md`, rule 4)."""
 
 JOURNAL_EXAMPLE = "/var/lib/dccex/journal.jsonl"
 """What a journal's path looks like, for the help. On the box it is a file on

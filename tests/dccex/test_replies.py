@@ -3,7 +3,7 @@ else.
 
 The port carries the whole conversation — this app's replies, and every
 broadcast meant for JMRI, a hand-held throttle or a browser — so most of what
-is read here is somebody else's and reads as nothing at all (#289).
+is read here is somebody else's and reads as nothing at all (control#289).
 """
 
 from dccex import replies

@@ -3,7 +3,7 @@
 Every row of the table in docs/dccex/README.md is here, asserted on the byte
 string and not on a shape, because the byte string is the whole of what this
 app promises the command station. Pure functions, so none of it needs a
-socket, a bus or hardware (#289).
+socket, a bus or hardware (control#289).
 """
 
 from dccex import commands

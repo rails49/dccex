@@ -96,7 +96,8 @@ class Script:
         if row not in ROWS:
             raise ValueError(f"'{row}' is no event: the rows are {', '.join(ROWS)}")
         # The call is a document's and not this package's, so the address is
-        # read and never trusted whatever the signature says (BUS.md, rule 4).
+        # read and never trusted whatever the signature says (`control`'s
+        # `docs/BUS.md`, rule 4).
         given = cast(object, address)
         if given is not None and not isinstance(given, str):
             raise TypeError(f"an address is a string, and {given!r} is not")
