@@ -22,7 +22,8 @@
  * the one place an operator is most likely to trust it.
  *
  * It is the page's own, and it runs the opposite way from the **translator**
- * next door, which turns desired values into these messages (CONTEXT.md).
+ * next door, which turns desired values into these messages
+ * (docs/ui/README.md).
  *
  * It is JavaScript with its types in JSDoc, as every module the gate runs
  * rather than reads is. The gate is Python and cannot run a bundler, and a
@@ -157,9 +158,9 @@ function current(rest) {
  * (`<jG 1233 1233 1233 1233>`). `<JI>` and `<JG>` ask for them.
  *
  * The two are one shape and are read together because they are one **tile**'s
- * reading in two halves: the current, and the limit under it (CONTEXT.md
- * **tile**, issue 170). The letter says which. A `j` line in any other letter
- * is not read.
+ * reading in two halves: the current, and the limit under it
+ * (docs/ui/README.md, issue 170). The letter says which. A `j` line in any
+ * other letter is not read.
  *
  * @param {string} rest what follows the `j`
  * @returns {Reading | null}

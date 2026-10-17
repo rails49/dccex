@@ -167,7 +167,7 @@ def live() -> dict[str, Any]:
 @pytest.mark.node
 def test_the_band_carries_the_build_the_railroad_the_link_and_the_presses() -> None:
     """The band is the **build**, the railroad, the **link** and two presses,
-    and nothing else (CONTEXT.md **band**, ADR-0017, ADR-0020, #239). A reading
+    and nothing else (docs/ui/README.md, ADR-0017, ADR-0020, #239). A reading
     added without a scenario beside it is a reading an operator can be shown
     that nobody ever read (ADR-0009 d.3)."""
     assert sorted(live()["band"]) == [

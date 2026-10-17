@@ -8,16 +8,17 @@
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
- * The work pane shows one **view** and the **rail** picks it (CONTEXT.md,
- * issue 169). There are four: the monitor view, which is the **tile**s and
- * the **monitor** under them — the station's particulars and its conversation
- * as it arrives (#4, #6, #7) — the releases, which is what the station could
- * be written with (#8), the **script**, which is what this railroad wants
- * of the station and is a document in `control`'s store (issue 185,
- * ADR-0015), and the **journal**, which is what the station said about power
- * while nobody was watching (issue 266, ADR-0022). What the page around them proves is the installation the rest of
- * the UI rests on: it is built by node inside the image, served by nginx out
- * of it, and draws in the look rules (docs/ui/README.md, ADR-0008).
+ * The work pane shows one **view** and the **rail** picks it
+ * (docs/ui/README.md, issue 169). There are four: the monitor view, which is
+ * the **tile**s and the **monitor** under them — the station's particulars and
+ * its conversation as it arrives (#4, #6, #7) — the releases, which is what
+ * the station could be written with (#8), the **script**, which is what this
+ * railroad wants of the station and is a document in `control`'s store
+ * (issue 185, ADR-0015), and the **journal**, which is what the station said
+ * about power while nobody was watching (issue 266, ADR-0022). What the page
+ * around them proves is the installation the rest of the UI rests on: it is
+ * built by node inside the image, served by nginx out of it, and draws in the
+ * look rules (docs/ui/README.md, ADR-0008).
  *
  * **Which one that is is kept in the hash** (`view.ts`). The rail's press
  * writes it and this reads it back, so the address bar says which view a page

@@ -184,7 +184,7 @@ def test_a_row_says_the_time_the_district_the_kind_and_the_numbers() -> None:
 def test_the_lines_no_incident_took_are_rows_only_where_they_are_asked_for() -> None:
     """A flip nothing came of and the power going on and off are the railroad
     working, so the list is the incidents until a reader says otherwise
-    (CONTEXT.md, **incident**).
+    (docs/ui/README.md).
 
     A routine row carries the station's own words and none of the numbers:
     there is nothing to count about a flip that cleared.

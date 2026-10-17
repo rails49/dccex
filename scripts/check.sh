@@ -93,11 +93,11 @@ check() {
 words() {
   local missing="" word
   local -a defined=(
-    station mirror translator face build release tag client stream
-    link monitor decoder gloss band rail tile image cutover
+    Station Mirror Translator Face Build Release Tag Client Stream
+    Link Monitor Decoder Gloss Band Rail Tile Image Cutover
   )
   for word in "${defined[@]}"; do
-    grep -q "^## ${word}\$" CONTEXT.md 2>/dev/null || missing="$missing $word"
+    grep -q "^\*\*${word}\*\*:\$" CONTEXT.md 2>/dev/null || missing="$missing $word"
   done
   compgen -G 'docs/adr/0001-*.md' >/dev/null || missing="$missing ADR-0001"
   if [ -n "$missing" ]; then

@@ -2,9 +2,9 @@
  * The **view**s, and the hash the page keeps the current one in.
  *
  * There are four — the **monitor**, the releases, the **script** and the
- * **journal** — and the **rail** picks between them (CONTEXT.md, #166, #169,
- * issue 185, issue 266). The **band** is the same over all of them: what is
- * true of the whole station does not change with what a person is looking
+ * **journal** — and the **rail** picks between them (docs/ui/README.md, #166,
+ * #169, issue 185, issue 266). The **band** is the same over all of them: what
+ * is true of the whole station does not change with what a person is looking
  * at.
  *
  * **The hash is where the view is kept**, so the address bar says which one a

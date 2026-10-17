@@ -1,406 +1,195 @@
-# CONTEXT
+# dccex
 
-The words this repository uses, and the ones it refuses. A word listed under
-**Not** is not a softer way of saying the entry it sits under; it is a word
-that means something else here, or that once meant this and stopped. Use the
-entry.
+The words this repository uses. Words used in more than one rails49 repository
+are in the organisation's
+[CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md). Every
+entry links to the doc that owns it (org
+[ADR-0017](https://github.com/rails49/.github/blob/main/docs/adr/0017-each-fact-has-one-owner-and-an-accepted-adr-does-not-change.md)).
 
-Two apps and a UI live here, and all three are about one piece of hardware at
-the end of one cable. That is what makes the vocabulary worth writing down:
-the same words are spoken next door in `control`, where the subject is a
-railroad, and one of them is spoken about the opposite thing.
+## Language
 
-These are concepts and not modules. `mirror` is what the app is; the class it
-is written as is `Station` and the file is `src/dccex_usb/station.py`, which is
-what `control` called them, because that is where the code was written
-([SOURCE.md](src/SOURCE.md)).
-
-## station
-
+**Station**:
 The command station: the DCC-EX board at the end of the USB cable, the
-firmware running on it, and the `<…>` conversation it holds. It is what
-`dccex-usb` opens, what `dccex` translates for, and what the UI is a page
-about.
+firmware on it, and the `<…>` conversation it holds. `control` uses the bare
+word for a place on a layout and says *command station* for this; here the
+bare word is the hardware
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#command-station-over-usb)).
+_Avoid_: base station, the CS, the controller, the box (the machine the apps
+run on), the device (the file the cable is)
 
-`control`'s glossary makes the opposite reservation — there the bare word is
-spoken for by a place on a layout, and this hardware has to say *command
-station* in full. Nothing here is a railroad, so here the bare word is the
-hardware, and a place on a layout is named in full if it ever comes up.
-
-**Not:** *base station*, *the CS*, *the controller*, *the box* (the box is the
-machine the apps run on), *the device* (the device is the file the cable is).
-
-## mirror
-
+**Mirror**:
 `dccex-usb`: the app that holds the serial device and repeats it on a TCP
-port, so the translator, JMRI and hand-held throttles can all watch the same
-conversation and all type into it. It mirrors — it does not decide, rewrite or
-answer on the station's behalf. Every byte the station sends reaches every
-client; what a client sends reaches the station only as a whole `<…>` message.
+port, so every **client** hears the same conversation and can type into it. It
+does not decide, rewrite or answer for the station
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#what-it-does-with-the-bytes)).
+_Avoid_: proxy, bridge, relay, multiplexer, hub, serial server, daemon
 
-**Not:** *proxy*, *bridge*, *relay*, *multiplexer*, *hub*, *serial server*,
-*daemon*.
-
-## translator
-
+**Translator**:
 `dccex`: the app that turns the layout interface's desired values into the
 station's `<…>` messages and reports what it hears back. It is a client of the
-mirror's port like any other, and the one app here on the bus, as a client of
-`control`'s railroad
-([ADR-0014](docs/adr/0014-the-translator-is-on-the-bus-through-controls-package.md)).
+mirror's port
+([docs/dccex/README.md](docs/dccex/README.md#dcc-ex)).
+_Avoid_: driver, adapter, gateway, bridge, the dccex service
 
-**Not:** *driver*, *adapter*, *gateway*, *bridge*, *the dccex service*.
+**Script**:
+A railroad's Python document in `control`'s store, one per railroad. It holds
+the **handler**s, and it is where this railroad's `<…>` that the bus has no
+word for is written
+([docs/dccex/README.md](docs/dccex/README.md#the-script)).
+_Avoid_: config, plugin, automation (EX-RAIL's word), the startup file (the
+file it replaced)
 
-## script
+**Handler**:
+A function in the **script** that the translator runs when its **event**
+happens
+([docs/dccex/README.md](docs/dccex/README.md#the-script)).
+_Avoid_: hook, rule, callback, listener, trigger
 
-A railroad's Python document in `control`'s store, one per railroad, that the
-translator loads at start and the page edits on a **view** of its own, through
-the mirror's **face** (#185). It holds the **handler**s, and it is where this
-railroad's `<…>` that the bus has no word for is written: which mode a track
-is set to, what current it may draw, what a turnout throwing does to a track
-or a signal
-([ADR-0013](docs/adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md),
-[ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)).
+**Event**:
+What a **handler** is keyed on: a desired value the translator is applying,
+something the station reported, or `start`
+([docs/dccex/README.md](docs/dccex/README.md#what-a-script-is-written-with)).
+_Avoid_: message (one `<…>`), topic, trigger, signal (a lineside device)
 
-**Not:** *config*, *plugin*, *automation* (an automation is EXRAIL's, and runs
-on the station), *the startup file* (the file it replaced).
+**Trip**:
+A district the station cut itself, after an overload or a fault on its driver
+([docs/dccex/README.md](docs/dccex/README.md#the-mapping)).
+_Avoid_: short (one cause of a trip), fault (`control`'s band's word), off (a
+district someone turned off)
 
-## handler
+**Journal**:
+The translator's record of what the station said about power, of the link
+going down and of the station restarting, each line stamped with when it
+arrived
+([docs/dccex/README.md](docs/dccex/README.md#the-journal)).
+_Avoid_: log (what the apps write to stderr), trace (`control`'s recording of
+the bus), history, event log (an **event** is what a handler is keyed on)
 
-A function in the **script**, run by the translator when its **event**
-happens. For a desired value, it runs in place of what the translator would
-have sent, and sends that too only if it asks to. For something the station
-reported, it runs after the fact and replaces nothing.
+**Incident**:
+Something in the **journal** a person should look at, such as a trip, the link
+going down or the station restarting. It is a reading of the journal and not
+something written in it
+([docs/ui/README.md](docs/ui/README.md#what-it-makes-of-the-journal)).
+_Avoid_: error, fault, event, alarm, short (one cause of a trip)
 
-**Not:** *hook*, *rule*, *callback*, *listener*, *trigger*.
-
-## event
-
-What a **handler** is keyed on: a desired value the translator is applying
-(the track's power, a point, a signal, a locomotive's speed or function),
-something the station reported (a turnout thrown, a track's mode), or `start`,
-the translator beginning on a station whose settings it has not set, when it
-connects and when the station restarts
-([ADR-0018](docs/adr/0018-the-stations-setup-runs-at-start.md)). The three are
-different kinds and are never confused: the first can be replaced, the second
-has already happened, and the third replaces nothing.
-
-**Not:** *message* (a message is one `<…>`), *topic*, *trigger*, *signal* (a
-signal is a lineside device).
-
-## trip
-
-A district the station cut itself, after an overload or a fault on its driver.
-The station says so in a diagnostic line and retries on its own; the district
-is tripped until the station says it is normal or on, or until the translator
-turns power off
-([ADR-0016](docs/adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)).
-
-**Not:** *short* (one cause of a trip), *fault* (what control's band calls
-it), *off* (a district someone turned off).
-
-## journal
-
-The translator's record of what the station said about power, and of the
-link going down and the station restarting, each stamped with when it
-arrived. It is kept on the box whether or not anyone is watching, and read
-afterwards, on a **view** of its own. It holds the newest lines and drops
-the oldest as it grows, keeping the last power line about each district.
-Nobody clears it.
-
-**Not:** *log* (the log is what the apps say on stderr), *trace* (`control`'s
-recording of the bus), *history*, *event log* (an **event** is what a handler
-is keyed on).
-
-## incident
-
-Something in the **journal** a person should look at: a trip, a current over
-a district's limit that did not become one, a reversal that did not clear or
-that repeats, the link going down, the station restarting. One short is one
-incident, from the district's first alert or trip until it is normal, off,
-or the link goes down, however many times the station cut it in between.
-
-Being an incident is a reading of the journal and not something written in
-it, so the rule can change and the journal is read again under the new one.
-A reverser flipping a district the way it is meant to, a programming track's
-alert on a decoder's acknowledgement, and the inrush after power on are in
-the journal and are not incidents.
-
-**Not:** *error*, *fault*, *event*, *alarm*, *short* (one cause of a trip).
-
-## face
-
-An app's own interface, served on the UI's origin and behind the same door,
-about that app rather than about a railroad (the organisation's
+**Face**:
+The organisation's word
+([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md),
 [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
-The UI talks to one face and to the bus, and nothing else
-([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md)). A face is private to its app: it is
-not somewhere else to get at the railroad. Its address is a path prefix on the
-page's own origin, which the door strips before the app sees it, and a page
-from anywhere else is refused (ADR-0004). The mirror's face answers what
-releases the source carries — each with the day it was published and whether it
-carries a firmware to write with a digest to check the write against (#12, #8,
-#81) — writes one of them onto the station when a caller names its tag (#13),
-carries the station's own conversation to the page and back (#14, the
-**stream** below), says how far a flash has got while it runs
-([ADR-0012](docs/adr/0012-a-flash-says-how-far-it-has-got.md)), and says how many **client**s are on the mirror's port (#7),
-which was the one reading on the page the **station** could not make about
-itself: the face still answers it and the page no longer draws it (#111). It
-guards nothing while it does: a face is about its app, so whether a railroad
-can spare its command station for two minutes is the operator's question and
-not this app's (ADR-0006).
+The mirror's face is private to this UI; what it answers is in
+[docs/dccex_usb/README.md](docs/dccex_usb/README.md#the-face).
+_Avoid_: API, backend, endpoint, REST, web service
 
-It carries one thing that is a fact about a railroad, and carries rather than
-keeps it: the **script**, which the page edits through the mirror's face
-because a browser on the page's origin cannot reach `control`'s store. The face
-reads one railroad's script, and compiles a text and puts it there; which
-railroad is the page's to name, off the bus, and the face lists none
-([ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)
-d.5 as amended, #185, #238); the store's address is a flag on the app and no
-request can name it.
+**Build**:
+What the station says it is running, and what a **release** is compared
+against: the `G-` field of the banner it sends when it comes up. It is empty
+whenever the station is not answering. Nothing else here is called a build;
+making the UI or an image is *building* it
+([docs/ui/README.md](docs/ui/README.md#the-band)).
+_Avoid_: version, firmware version, the current release
 
-**Not:** *API*, *backend*, *endpoint*, *REST*, *web service*.
+**Release**:
+A published release of our `CommandStation-EX`. It may carry a firmware to
+write, with a digest to check the write against
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#writing-the-firmware)).
+_Avoid_: version, update, download, image (what the apps here run as), the
+firmware (what is on the station, which is its build)
 
-## build
-
-What the station says it is running: the `G-` field of the banner it sends
-when it comes up. It is a fact reported by the hardware, so it is empty
-whenever the station is not answering, and it is the thing a release is
-compared against.
-
-The word is spent on the station. Turning the UI's sources into something
-servable is *building the UI*, as a verb; nothing in this repository is called
-*the build* except the station's.
-
-**Not:** *version*, *firmware version*, *the current release*.
-
-## release
-
-A published firmware in our `CommandStation-EX`, digest and all, that can be
-written onto the station. A release exists whether or not any station is
-running it.
-
-**Not:** *version*, *update*, *download*, *image* (the image is what the
-apps here run as on the box), *the firmware* (the firmware is what is on the
-station, which is its build).
-
-## tag
-
+**Tag**:
 The name a release is chosen by, and the only thing a caller names when it
-asks for one to be written. The mirror is configured with the source; a tag
-picks among what is already published there. Nothing names a URL, and `latest`
-is not a tag.
+asks for one to be written. `latest` is not a tag, and the part of an image's
+name after the colon is a commit, not a tag
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#writing-the-firmware)).
+_Avoid_: version number, label, ref, latest, image tag
 
-Docker calls the part of an image's name after the colon a tag too. Here that
-part is a commit and is not called one (ADR-0005): a box is rolled back by
-naming a commit and a station is written by naming a tag, and the two
-sentences are one `docker` command apart on the same box.
-
-**Not:** *version number*, *label*, *ref*, *latest*, *image tag*.
-
-## client
-
+**Client**:
 Anything connected to the mirror's port: the translator, JMRI, a hand-held
-throttle, the UI's monitor by way of the face. Clients are equal — the mirror
-does not know which of them is which, and does not keep one waiting for
-another.
+throttle, the face carrying the **stream**
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#what-it-does-with-the-bytes)).
+_Avoid_: subscriber, listener, consumer, session
 
-**Not:** *subscriber*, *listener*, *consumer*, *session*.
-
-## stream
-
+**Stream**:
 The station's conversation on the face: every byte the mirror hands a client,
-reaching a page, and what the page types reaching the device. It is **one more
-client of the mirror and not a second mirror** — the same fan-out, the same
-bound on how far behind a client may fall, the same outage — because the face
-joins the mirror's port for it and carries the bytes
-([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
+reaching a page, and what the page types reaching the station. The face is one
+more client of the mirror for it
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#the-monitors-stream)).
+_Avoid_: websocket (the transport it rides), feed, channel, socket (what a
+client of the mirror's port opens), the monitor (the page it is shown on)
 
-It is opened by upgrading a request on the page's own origin, which is what a
-browser can do where dialling 2560 is not, and it is served on the face's port
-beside the face's other requests (ADR-0004 d.3).
+**Link**:
+Whether the station is answering, which is not the same as whether a socket is
+open. The build goes with it
+([docs/dccex/README.md](docs/dccex/README.md#what-it-publishes-back)).
+_Avoid_: connected, online, the connection, up
 
-**Not:** *websocket* (that is the transport it rides, and the word is the
-protocol's rather than a name for what is on it), *feed*, *channel*, *socket*
-(a socket is what a client of the mirror's port opens), *the monitor* (the
-monitor is the page that shows this; the stream is what it is shown).
+**Monitor**:
+The page the **stream** is shown on and typed into. What makes it a monitor is
+that a person reads it: a throttle on 2560 is a **client**, not a monitor
+([docs/ui/README.md](docs/ui/README.md#the-stream)).
+_Avoid_: console, terminal, serial monitor, log (what the apps write to
+stderr), the stream (what a monitor shows), the UI (the whole page)
 
-## link
+**Decoder**:
+The UI's pure function from one line of the station's `<…>` to one reading or
+nothing. The monitor's **gloss**, the **band** and the **tile**s are made of
+its readings
+([docs/ui/README.md](docs/ui/README.md#the-stream)).
+_Avoid_: parser, interpreter, translator (`dccex`), protocol handler, renderer,
+formatter
 
-Whether the station is answering, which is not the same as whether a socket
-is open (`control` ADR-0066). The link is down when the cable is gone, when
-the station is being written to, and when it has stopped talking; the build
-goes with it.
+**Gloss**:
+The plain sentence the monitor shows beside a line the **decoder** knows. A
+line it does not know gets none
+([docs/ui/README.md](docs/ui/README.md#the-stream)).
+_Avoid_: description, explanation, translation, tooltip, annotation, comment,
+label
 
-**Not:** *connected*, *online*, *the connection*, *up*.
+**Band**:
+The top half of the
+[chrome](https://github.com/rails49/.github/blob/main/CONTEXT.md): what runs
+across the top of every rails49 UI and carries what is true of the whole
+system
+([docs/ui/README.md](docs/ui/README.md#the-band)).
+_Avoid_: header, top bar, nav, navbar, toolbar, title bar, status bar
 
-## monitor
+**Rail**:
+The other half of the chrome: what runs down the side of every rails49 UI and
+carries one button per **view**. It is never the steel; what the locomotives
+run on is the track
+([docs/ui/README.md](docs/ui/README.md#the-rail)).
+_Avoid_: sidebar, side nav, nav, navbar, drawer, menu, toolbar, the rails (the
+track's steel), strip (the rail on a short window)
 
-The page the **stream** is shown on and typed into: the station's conversation
-as it arrives, each line stamped with the time it arrived, the ones the
-**decoder** knows carrying a **gloss**, and a box at the foot that sends one
-whole `<…>` message. It is the UI's and not the mirror's — the mirror carries
-the stream and reads nothing on it.
+**View**:
+`control`'s word, owned by its
+[ADR-0038](https://github.com/rails49/control/blob/main/docs/adr/0038-the-ui-is-one-app-with-views-of-one-railroad.md).
+This UI's views are in
+[docs/ui/README.md](docs/ui/README.md#what-is-on-it).
+_Avoid_: page (the whole UI), tab, screen, panel, mode (what a track is set
+to)
 
-The word is the page's rather than the port's. A throttle watching the same
-conversation on 2560 is a **client**, and so is the face carrying this one
-(ADR-0007); what makes this a monitor is that a person is reading it.
+**Editor**:
+Where the **script** view shows a railroad's script and a person changes it
+([docs/ui/README.md](docs/ui/README.md#the-script)).
+_Avoid_: box (the machine the apps run on), textarea, code pane, IDE
 
-**Not:** *console*, *terminal*, *serial monitor*, *log* (the log is what the
-apps say on stderr), *the stream* (the stream is what a monitor is shown),
-*the UI* (the UI is the whole page, and the monitor is the part of it the
-conversation is on).
+**Tile**:
+One track's readings on the **monitor** view, one per track the station names
+([docs/ui/README.md](docs/ui/README.md#the-tiles)).
+_Avoid_: card, widget, panel, badge, stat, metric, gauge
 
-## decoder
+**Image**:
+What the apps here run as on the box, built from this repository's source at
+one commit and named by it: `dccex:<commit>` for the mirror and the
+translator, `dccex-ui:<commit>` for the page
+([docs/dccex_usb/README.md](docs/dccex_usb/README.md#deploying-it-and-going-back)).
+_Avoid_: version, build (the station's), release (firmware), tag (names a
+release), the container (one running of an image), latest
 
-The pure function the page reads the conversation with: one line of the
-station's `<…>` in, one reading out or nothing — the **gloss** the monitor
-draws beside the bytes, and the fact the **band** and the **tile**s are made of
-where the line carries one. No socket, no state and no clock, so what it makes
-of a line is asserted as that line and that reading on a machine with nothing
-plugged in
-([ADR-0009](docs/adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
-
-It is the UI's own, and it runs the opposite way from the **translator**,
-which turns a layout's desired values into `<…>`. Neither of the apps here
-decodes anything: the mirror reads `<` and `>` and no further, and the
-translator's reading is its bus contract rather than a page's.
-
-**Not:** *parser*, *interpreter*, *translator* (the translator is `dccex`),
-*protocol handler*, *renderer*, *formatter*.
-
-## gloss
-
-The plain sentence the monitor shows beside a line the **decoder** knows, so
-that `<H 12 1>` is something a person reads rather than remembers. A line the
-decoder does not know is shown raw and gets none: a guess standing where a
-reading goes is an observation the page did not make (ADR-0009,
-[control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
-
-**Not:** *description*, *explanation*, *translation*, *tooltip*,
-*annotation*, *comment*, *label*.
-
-## band
-
-The chrome across the top of every rails49 UI, carrying what is true of the
-whole system. Here that is the UI's name and the **build** on the left, and on
-the right three readings — which railroad `control` has loaded, the **link**,
-and the railroad's power as `layout`
-reports it — and two presses, both of which ask `layout` for power on the bus
-as `control`'s do: the power toggle, and a STOP that stops every locomotive
-where it stands
-([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md), superseding
-ADR-0011 d.1,
-[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md), the organisation's
-ADR-0014). The railroad's name is a reading and nothing else: nothing on this
-page loads one, which is `control`'s UI next door. The **rail** down the side
-is its counterpart, and both are `@rails49/look`'s elements, drawn from
-`ui/src/ui/chrome.ts`
-([ADR-0023](docs/adr/0023-the-chrome-comes-from-look.md)).
-
-**Not:** *header*, *top bar*, *nav*, *navbar*, *toolbar*, *title bar*,
-*status bar*.
-
-## rail
-
-The chrome down the side of every rails49 UI, carrying what the view in front
-of a person offers. Here that is one button per **view**: the monitor, the
-releases, the **script** and the **journal**. A flash is not one of them: it is a gesture about
-one **release** and is pressed on that release's row, where the tag it names
-is (#9). It is the **band**'s counterpart
-and `@rails49/look`'s in the same way: its colour, the size of a button on it
-and the window height it turns at are look's
-([ADR-0023](docs/adr/0023-the-chrome-comes-from-look.md)). On a short window it
-lies down along the top of the work pane, and a rail lying down is still the
-rail.
-
-It is not the steel. What the locomotives run on is the track, which this file
-speaks of in the plural — whether the rails are hot is the colour of the
-**band**'s power toggle, and a **tile** carries the current on one track — and
-never as *the rail*. So the bare word here is the chrome, the way the bare
-**station** here is the hardware: what is drawn down the side of a page, and
-never anything a train touches.
-
-**Not:** *sidebar*, *side nav*, *nav*, *navbar*, *drawer*, *menu*, *toolbar*,
-*the rails* (the rails are the track's steel, and what they are is hot or
-not), *strip* (the strip is the shape this takes on a short window and not a
-second thing).
-
-## view
-
-What the work pane shows. The **rail** picks one; the **band** is the same
-over every view. There are four: the **monitor**; the releases, where the
-releases are listed and a flash is pressed and followed; the **script**,
-where the loaded railroad's is opened in the **editor** and applied to
-`control`'s store through the **face** (#185, #238); and the **journal**,
-where the record of what the station said about power is read — the counts
-per district and the **incident**s newest first (#266, ADR-0022).
-
-**Not:** *page* (the page is the whole UI), *tab*, *screen*, *panel*, *mode*
-(a mode is what a track is set to).
-
-## editor
-
-Where the **script** view shows a railroad's script and a person changes it.
-It colours the Python and helps with indenting. What is in it reaches the
-store only through Apply, and an Apply the **face** refused with a line marks
-that line until the next edit (ADR-0019).
-
-**Not:** *box* (the box is the machine the apps run on), *textarea*, *code
-pane*, *IDE*.
-
-## tile
-
-One track's readings on the **monitor** view, one per track the station
-names, headed by its letter: whether it has power, what it is set to (MAIN, PROG, DC…), the current it draws and the
-most it may draw. The tiles blank when the **link** goes down, because they
-are the station talking. They press nothing (ADR-0011 d.3).
-
-**Not:** *card*, *widget*, *panel*, *badge*, *stat*, *metric*, *gauge*.
-
-## image
-
-What the apps here run as on the box: built from this repository's source at
-one commit and named by it — `dccex:<commit>`, and the name never moves
-([ADR-0005](docs/adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
-
-There are two, and the second is the page's (#3). The apps do not get one
-each: the mirror and, when it lands, the translator are the same image run
-twice, because they share a lock file and the esptool pin, and a second image
-of them would be a second answer to which esptool this repository was tested
-at. The page shares neither — it is built by node and served by nginx — so
-`dccex-ui:<commit>` is its own, and the single stage that would have held it
-with them is the one carrying both toolchains, which is the second answer
-rather than a way around it (`deploy/ui.Dockerfile`,
-[docs/ui/README.md](docs/ui/README.md)). What divides images here is a
-toolchain and never an app.
-
-Both are named by the same commit, so what a box is running is a commit a
-person can read off it, going back names it once and takes both (ADR-0005
-d.7, as amended), and the deploy that replaced them wrote down which it
-replaced.
-
-**Not:** *version*, *build* (the build is the station's), *release* (a release
-is firmware, published elsewhere), *tag* (a tag names a release), *the
-container* (the container is one running of an image), *latest*.
-
-## cutover
-
-The evening 2560 changes hands: this repository's stack takes the port on the
-layout box. `control`'s own deploy goes before it, and may go days before it:
-that deploy removes `control`'s mirror container and repoints the translator.
-It happens once, it is followed from a page written beforehand
-([docs/cutover.md](docs/cutover.md), #16), and what ends it is a person
-accepting the railroad rather than a command returning.
-
-A **deploy** is the other thing and happens whenever somebody merges: both
-images of this repository replaced by others of its own, nobody watching a
-train, and one step back kept by the deploy's own rule (ADR-0005). Going back
-on a cutover is not that rollback. It puts `control`'s mirror back by
-rebuilding a commit of `control` from before control#567; the image that last
-served 2560 is kept on the box as the faster way.
-
-**Not:** *migration*, *the switch*, *the swap* (the swap is one step of a
-cutover, the container coming off and this one going on), *the window* (the
-window is the evening the cutover is done in), *deploy*, *rollback* (going back
-on a cutover and going back on a deploy name different things).
+**Cutover**:
+When 2560 moved from `control`'s mirror to this repository's stack on the
+layout box
+([docs/cutover.md](docs/cutover.md)).
+_Avoid_: migration, the switch, the swap (one step of a cutover), the window,
+deploy (replacing both images with newer ones, `scripts/deploy.sh`), rollback
+(going back on a deploy, which is not going back on a cutover)

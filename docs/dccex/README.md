@@ -4,7 +4,7 @@ The first translator under `layout`
 ([ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)):
 a thin app, `dccex`, that subscribes to the **device vocabulary** and turns it
 into the DCC-EX command station's own language, and publishes back what the
-station reports.
+station reports. It is the one app in this repository on the bus.
 
 **This page is the only place in the repository where that language is
 written down.** Every other component is oblivious to what powers the layout:

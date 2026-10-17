@@ -331,7 +331,7 @@ def test_the_row_writes_none_of_the_module_s_sentences_out_again() -> None:
 
 def test_the_row_is_the_whole_of_a_view_of_its_own() -> None:
     """One of the two views the **rail** picks between, and the only thing on
-    it (CONTEXT.md **view**, #169).
+    it (docs/ui/README.md, #169).
 
     It sat under the tiles and over the conversation until the rail had
     buttons. What it is compared against — the **build** — is on the band over
