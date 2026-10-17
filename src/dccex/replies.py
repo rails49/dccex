@@ -110,8 +110,8 @@ _DIAGNOSTIC = re.compile(
     rb"(?:(?P<trip>POWER OVERLOAD|FAST OVERLOAD|FAULT PIN detected)"
     rb"|(?P<restore>POWER RESTORE)|(?P<normal>NORMAL)|(?P<alert>ALERT))\b"
 )
-"""The station's words, from `MotorDriver.cpp` at fork tag
-`v5.6.4-rails49.6-ocp-test`. `FAST OVERLOAD` is the cut the Guard makes: on
+"""The station's words, as rails49/CommandStation-EX lists them in
+`docs/commands.md#diagnostics`. `FAST OVERLOAD` is the cut the Guard makes: on
 rails49 every DCC track is guarded while powered, so it is most cuts and it
 comes with no `ALERT` before it (#251). The rails49 fork owns them (ADR-0016
 d.3 as amended, consequences)."""
@@ -382,7 +382,7 @@ def kept(message: bytes) -> Kept | None:
     **mode**. The station prints them in `broadcastPower()` alone, always
     after a `<pN X>` line for each district, so they say nothing the lines
     beside them do not (rails49/CommandStation-EX,
-    `CommandDistributor.cpp:306`, #269).
+    `CommandDistributor::broadcastPower`, #269).
     """
     body = message[1:-1]
     if body.startswith(b"p"):

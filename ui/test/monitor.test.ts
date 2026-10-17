@@ -235,7 +235,7 @@ test("the controls link to the command reference in a new tab", async () => {
   const drawn = await monitor(SAID);
   const link = part(drawn, ".controls .reference") as HTMLAnchorElement;
   expect(link.href).toBe(
-    "https://github.com/rails49/CommandStation-EX/blob/runtime-current-limits/docs/commands.md",
+    "https://github.com/rails49/CommandStation-EX/blob/HEAD/docs/commands.md",
   );
   expect(link.target).toBe("_blank");
   expect(link.rel).toBe("noopener");
