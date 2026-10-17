@@ -11,7 +11,11 @@
 - **Related:** [rails49/look#1](https://github.com/rails49/look/issues/1)
   (one shared chrome for rails49's UIs),
   [rails49/look#14](https://github.com/rails49/look/issues/14) (look v0.3.0,
-  the toggle reason), `control` ADR-0073 (control's chrome comes from look)
+  the toggle reason), `control` ADR-0073 (control's chrome comes from look),
+  [org ADR-0016](https://github.com/rails49/.github/blob/main/docs/adr/0016-the-chrome-comes-from-look.md)
+  (the organisation's decision, accepted 2026-10-17; supersedes org ADR-0005
+  and ADR-0010 and amends ADR-0003, ADR-0007 and ADR-0012, which this page
+  departed from)
 
 ## Context
 
