@@ -192,7 +192,8 @@ One `look-view` per **view**: Monitor `terminal`, Releases `lightning-charge`,
 Script `file-earmark-code` and Journal `journal-text`, each a Bootstrap glyph
 with its word under it (#169, #185, #266, ADR-0023). Choosing one is what a
 person changes the work pane with. Which one is showing is marked by look, and
-on a short window the rail lies along the top of the work pane.
+on a short window the rail lies along the top of the work pane, and is still
+the rail.
 
 **The view is kept in the page's hash** — `#monitor`, `#releases`, `#script`
 and `#journal`, and a hash that names none of them is the monitor, which is
@@ -470,6 +471,7 @@ browser, and a second opinion here about what compiles is the disagreement that
 would put a text in the store the translator cannot load. What the page says of
 its own is one sentence, and only where there was no answer to read
 ([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+The editor marks the refused line until the next edit (ADR-0019).
 
 **Whether the translator loaded it is not on this page.** A load error is a row
 in `control`'s UI and a line in the translator's log, which is where a
@@ -695,6 +697,9 @@ thrown or closed, the current on a track, and a command the station would not
 take — and what it knows grows by adding a reader and a pair of strings
 (ADR-0009 d.5). The component knows no protocol: it asks the pure function and
 draws what comes back.
+The decoder has no socket, no state and no clock, and the band and the tiles
+are made of its readings too. It runs the opposite way from the translator,
+which turns desired values into `<…>`.
 
 **And the page types** (#6). The box at the foot sends one whole `<…>` message
 — buffered until complete and written in one write, so two people on the page

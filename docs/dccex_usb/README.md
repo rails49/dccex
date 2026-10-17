@@ -303,7 +303,7 @@ station knows nothing about who is listening to it, and the app holding the
 port does ([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
 d.4, #7). The page no longer draws it and this face still answers it (#111,
 docs/ui/README.md). A count and not a list — clients are equal here and the
-mirror does not know which of them is which (CONTEXT.md) — read off the fan-out
+mirror does not know which of them is which — read off the fan-out
 at the question rather than kept, so a throttle that has gone is not one a
 caller is answered with. Nobody on the port is `0` and an answer like any
 other: on the box this UI exists for, a page and nothing else is the ordinary
@@ -565,6 +565,7 @@ kilobyte, so a frame that size is already not a command.
 ## Writing the firmware
 
 The station's firmware is built elsewhere, against the station's own source.
+A release exists whether or not any station is running it.
 What this app does is write a **release** onto the box when it is asked for by
 `tag`, and never by a source. It is the only process that can — it holds the
 serial device open, esptool cannot share it, and no container can stop a
@@ -718,6 +719,12 @@ $ docker compose -f compose.yaml -f compose.box.yaml \
 `--no-build` is there for the day the old image has been pruned after all.
 Without it, compose would build the checkout the clone is on and name it after
 the older commit; with it, the command fails and says the image is missing.
+
+The images are divided by toolchain, never by app. The mirror and the
+translator are one image run twice: they share a lock file and the esptool
+pin, and a second image of them would be a second answer to which esptool
+this repository was tested at. The page is built by node and served by nginx,
+so `dccex-ui:<commit>` is its own (`deploy/ui.Dockerfile`).
 
 The stack's `.env` holds that one line, because the commit is the one thing
 that differs between two deploys of this repository, and writing it there is

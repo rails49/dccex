@@ -310,7 +310,7 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
     """Named so the check above cannot pass by looking at nothing.
 
     Every page that leans on a decision made in `control`, over every tree the
-    scan reads: the glossary and the root page; the two READMEs that say what
+    scan reads: the root page; the two READMEs that say what
     the mirror and the page do; the six modules of the package that came across
     with its prose and six of the seven suites that check them; four of the
     translator's modules and two of its suites (#180); the check that
@@ -334,7 +334,6 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
         )
     }
     assert said == {
-        "CONTEXT.md",
         "README.md",
         "deploy/Dockerfile",
         "docs/dccex_usb/README.md",

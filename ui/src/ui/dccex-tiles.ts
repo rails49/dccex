@@ -3,7 +3,7 @@
  *
  * A tile is one track, headed by its letter, and four readings of it — whether
  * it has power, what it is set to, the current it draws and the most it may
- * draw — which is what `readings.js`'s `tiles()` answers (CONTEXT.md **tile**,
+ * draw — which is what `readings.js`'s `tiles()` answers (docs/ui/README.md,
  * issue 170). Every one of them is the station talking, and the reading is the
  * readings module's; this component is handed them and draws them.
  *

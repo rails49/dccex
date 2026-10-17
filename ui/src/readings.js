@@ -505,7 +505,7 @@ function stop(layout) {
 
 /**
  * What the band carries: the **build**, the **link**, and the two presses
- * (ADR-0017, ADR-0020, CONTEXT.md **band**).
+ * (ADR-0017, ADR-0020, docs/ui/README.md).
  *
  * **Two channels meet here and nowhere else.** The build and the link are the
  * station talking, decoded off the **stream** (ADR-0008 d.2); the power and the

@@ -22,7 +22,7 @@
  *
  * **A routine line is a row of the same shape with nothing counted on it.** A
  * flip nothing came of and the power going on and off are the railroad working
- * and are not incidents (CONTEXT.md, **incident**); they are drawn only when a
+ * and are not incidents (docs/ui/README.md); they are drawn only when a
  * reader asks for them, which is the toggle on the controls, and they carry
  * the station's words where an incident carries its kind.
  *

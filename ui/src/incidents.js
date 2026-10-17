@@ -475,7 +475,7 @@ function counts(district, held) {
  * **The routine lines are shown only when they are asked for.** A flip nothing
  * came of, a programming track's alert on an acknowledgement and every `<p…>`
  * are the railroad working, and a list that put them beside the incidents
- * would bury the five lines somebody came to read (CONTEXT.md, **incident**).
+ * would bury the five lines somebody came to read (docs/ui/README.md).
  *
  * @param {readonly Line[]} lines the journal, in the order it was written
  * @param {Period} [period] which of them to read; all of them by default

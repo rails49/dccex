@@ -397,8 +397,8 @@ def test_the_flips_the_third_counted_are_part_of_what_it_says() -> None:
 
 @pytest.mark.node
 def test_a_short_the_station_retried_is_one_incident_with_its_retries() -> None:
-    """However many times the station cut it in between (CONTEXT.md,
-    **incident**). The peak is the highest current printed in it, and the
+    """However many times the station cut it in between
+    (docs/ui/README.md). The peak is the highest current printed in it, and the
     limit beside each is the setting rather than a reading."""
     (one,) = incidents("four retries")
     assert one["kind"] == "trip"
@@ -434,7 +434,7 @@ def test_a_current_over_the_limit_that_came_back_is_a_spike() -> None:
 def test_the_same_two_lines_on_the_programming_track_are_the_track_working() -> None:
     """A decoder acknowledging draws the current the programming track is
     watching for, and an alert there that ended in normal is what the page is
-    told not to call an incident (CONTEXT.md, **incident**)."""
+    told not to call an incident (docs/ui/README.md)."""
     counts = district("an alert on each", "B")
     assert counts["incidents"]["spike"] == 0
     assert sum(counts["incidents"].values()) == 0

@@ -5,7 +5,7 @@
  * The file is what the station said about power and nothing more — the
  * translator decides nothing about a line (ADR-0022 d.2, d.3) — so being an
  * incident is a reading this module makes, and a rule that changes here is run
- * over the whole journal again under itself (CONTEXT.md, **incident**). The
+ * over the whole journal again under itself (docs/ui/README.md). The
  * station prints no flip count and no peak current; what is below counts them
  * out of its words.
  *
@@ -111,7 +111,7 @@ const NORMAL = "NORMAL";
 const ALERT = "ALERT";
 
 /** What a programming track is set to. An alert on one is a decoder
- *  acknowledging, which is the track working (CONTEXT.md, **incident**). */
+ *  acknowledging, which is the track working (docs/ui/README.md). */
 const PROG = "PROG";
 
 /** What the link line says when the station stopped answering. */
@@ -609,7 +609,7 @@ export function read(lines, period = {}) {
     const how = kind(held);
     // The programming track answering a decoder: an alert that ended in
     // normal, nothing cut, on a district the station said was PROG
-    // (CONTEXT.md, **incident**).
+    // (docs/ui/README.md).
     if (how === SPIKE && held.normal && held.mode === PROG) {
       return;
     }

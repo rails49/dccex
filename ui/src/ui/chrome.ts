@@ -13,7 +13,7 @@ import { band, type Layout, type Readings } from "../readings.js";
 import { DRAWN, VIEWS, type View } from "../view.js";
 
 /** The band: the UI's name and the **build**, the railroad `control` has
- *  loaded, the **link**, and track power (CONTEXT.md **band**).
+ *  loaded, the **link**, and track power (docs/ui/README.md).
  *
  *  What it says is `readings.js`'s `band()`. Power is `layout`'s row. The
  *  toggle needs the broker, the station and a word from `layout`, and STOP the

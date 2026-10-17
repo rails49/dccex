@@ -19,6 +19,8 @@ git -C /tmp/control checkout deee7b6f54d0215f4e02c128e60f50322fd0978c
 diff -u /tmp/control/src/tc49/dccex_usb/station.py src/dccex_usb/station.py
 ```
 
+The class names are `control`'s too: the mirror is `Station`, in `station.py`.
+
 ## What came from where
 
 | In `control` at `deee7b6` | Here |

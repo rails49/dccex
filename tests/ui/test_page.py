@@ -299,7 +299,7 @@ def test_the_page_hears_the_hash_change_and_lets_it_go_when_it_goes() -> None:
 
 def test_the_monitor_view_is_drawn_only_while_it_is_showing() -> None:
     """The releases and the script are views of their own and the conversation
-    is the third (CONTEXT.md **view**, #169, #185).
+    is the third (docs/ui/README.md, #169, #185).
 
     Taken away rather than hidden: a monitor left in the document behind
     another view would go on measuring a scroller with no height and go on

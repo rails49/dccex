@@ -2,9 +2,10 @@
  * The monitor: the station's conversation as it arrives, each line stamped
  * with the time it arrived, newest at the bottom.
  *
- * It is the page's and not the mirror's — the mirror carries the **stream** and
- * reads nothing on it (CONTEXT.md) — and what makes it a monitor rather than
- * another client of the port is that a person is reading it (ADR-0007).
+ * It is the page's and not the mirror's — the mirror carries the **stream**
+ * and reads nothing on it (docs/dccex_usb/README.md) — and what makes it a
+ * monitor rather than another client of the port is that a person is reading
+ * it (ADR-0007).
  *
  * **A line the decoder knows carries its gloss** (#5): one plain sentence
  * beside the bytes, drawn quieter and smaller than them, and nothing at all

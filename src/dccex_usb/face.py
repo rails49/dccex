@@ -257,10 +257,10 @@ now."""
 
 CLIENTS_PATH = "/clients"
 """What how many clients are on the mirror's port is asked for at, with the
-door's prefix already off it (ADR-0004). A count and not a list: who is on
-2560 is a name the mirror does not have — clients are equal and it does not
-know which of them is which (CONTEXT.md) — and how many there are is what a
-page has to show."""
+door's prefix already off it (ADR-0004). A count and not a list: who is on 2560
+is a name the mirror does not have — clients are equal and it does not know
+which of them is which (docs/dccex_usb/README.md) — and how many there are is
+what a page has to show."""
 
 CLIENTS = "clients"
 """What the count goes back under."""

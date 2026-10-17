@@ -16,7 +16,8 @@ in.
 **Every byte the station sends rides as binary.** A text frame has to carry
 valid UTF-8 and a serial line promises none: one garbled byte would end the
 stream, where the mirror's contract is that every byte reaches every client
-unchanged (CONTEXT.md). What the page makes of them is the page's business.
+unchanged (docs/dccex_usb/README.md). What the page makes of them is the page's
+business.
 
 **What a browser sends is payload and not a message.** Whole `<…>` messages
 are the mirror's rule and the mirror is what applies it (`framing.py`), so a
