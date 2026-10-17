@@ -260,8 +260,8 @@ def rows(heard: list[tuple[str, Payload]], topic: str) -> list[Payload]:
 
 def wanting(broker: Broker) -> MqttBus:
     """A client publishing the rows `layout` owns. Another process here,
-    which is what the broker makes of the seam #289 states in one: nothing
-    says who published, and nothing here asks (rule 4)."""
+    which is what the broker makes of the seam control#289 states in one:
+    nothing says who published, and nothing here asks (rule 4)."""
     bus = MqttBus(port=broker.port)
     assert bus.wait_connected(), "the writer never reached the broker"
     return bus
@@ -431,7 +431,7 @@ def test_a_desired_value_it_cannot_read_leaves_it_running(
     """A frame claiming to be a desired value is one more thing anyone can
     publish, and on the broker whoever publishes it is another process: a
     translator that raised on one would be taken down from outside
-    (BUS.md, rule 4, #289).
+    (`control`'s `docs/BUS.md`, rule 4, control#289).
 
     Each is dropped whole — not remembered either, so a connect does not
     replay something that sent nothing when it arrived — and the honest value

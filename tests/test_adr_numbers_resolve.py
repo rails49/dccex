@@ -108,8 +108,8 @@ CONTROL = {
     "0042": "the edge terminates TLS and the LAN is the trust boundary",
     "0043": "the layout interface is a core app and hardware hangs under it by address",
     "0050": "broken hardware is reported never worked around",
-    "0051": "track power is cut by the client that was written to cut it",
-    "0062": "a guarantee about a railroad lives in the client that makes it",
+    "0051": "the panel commands track power and the operator is the backstop",
+    "0062": "track power is cut only when nothing is moving and the layout checks",
     "0065": "the app that owns the device flashes it",
     "0066": "the link is the station answering not the socket being open",
 }

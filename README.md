@@ -124,11 +124,10 @@ installation has not been run on stops with a sentence naming
 one ssh, a pull, a clean tree, the image built under the commit, and a line
 appended to the record.
 
-The first time that happens on the layout box it is a **cutover** and not a
-deploy: 2560 is served there today by `control`'s copy of the mirror, and the
-evening the port changes hands is #16, which follows
-[the cutover page](docs/cutover.md) — the order, the abort signal, going back,
-and the checks, written down while the old mirror is still serving.
+The first time that happened on the layout box it was a **cutover** and not
+a deploy, #16, which followed [the cutover page](docs/cutover.md) — the
+order, the abort signal, going back, and the checks. 2560 is served there by
+this repository's mirror.
 
 ## Licence
 

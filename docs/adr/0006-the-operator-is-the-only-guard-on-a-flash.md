@@ -8,9 +8,9 @@
   (the page and the face on one origin),
   [control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
   (the app that owns the device flashes it),
-  [control ADR-0051](https://github.com/rails49/control/blob/main/docs/adr/0051-track-power-is-cut-by-the-client-that-was-written-to-cut-it.md)
+  [control ADR-0051](https://github.com/rails49/control/blob/main/docs/adr/0051-the-panel-commands-track-power-and-the-operator-is-the-backstop.md)
   and
-  [control ADR-0062](https://github.com/rails49/control/blob/main/docs/adr/0062-a-guarantee-about-a-railroad-lives-in-the-client-that-makes-it.md)
+  [control ADR-0062](https://github.com/rails49/control/blob/main/docs/adr/0062-track-power-is-cut-only-when-nothing-is-moving-and-the-layout-checks.md)
   (a guarantee about a railroad lives in the client written to honour it)
 
 ## Context

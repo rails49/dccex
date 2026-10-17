@@ -126,7 +126,8 @@ SCRIPT_ROW = {
 """What a script calls each row this app acts on. The bus carries the
 railroad's power on `wanted/track` and a script is written about `power`: the
 topic is the contract's word and the other is the one a person writes in a
-document (BUS.md, *Device vocabulary*, CONTEXT.md **script**)."""
+document (`control`'s `docs/BUS.md`, *Device vocabulary*, CONTEXT.md
+**script**)."""
 
 WANTED_BY_ROW = {row: topic for topic, row in SCRIPT_ROW.items()}
 
@@ -1270,7 +1271,7 @@ def _value(wanted: Wanted) -> object | None:
 
     The value and not the frame, and read with the library's own readers, so
     a handler compares against the same words the contract carries and never
-    against a key of a payload (BUS.md, rule 4)."""
+    against a key of a payload (`control`'s `docs/BUS.md`, rule 4)."""
     row, payload = wanted.row, wanted.payload
     if row == WANTED_TRACTION:
         return desired_speed(payload)

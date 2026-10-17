@@ -4,8 +4,8 @@ command station.
 The connection is injected, so the test holds the station's end of every
 attempt the app makes and nothing here needs hardware: the gate is green on a
 machine with nothing plugged in, which is the acceptance criterion the rest
-of them sit under (#289). What is asserted is the seam — the bytes that go
-out, and the two rows that come back on the bus.
+of them sit under (control#289). What is asserted is the seam — the bytes
+that go out, and the two rows that come back on the bus.
 
 The suite has no asyncio plugin, so each test is a coroutine handed to
 `asyncio.run`, and what a test waits on is the station's end of the wire: a

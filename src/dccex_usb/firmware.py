@@ -319,10 +319,10 @@ def asset(document: object, name: str = ASSET) -> Asset | None:
     none — and None, too, for a document that is no release, which
     `reads_as_release` is what tells apart.
 
-    Read the way a payload is read (BUS.md, rule 4) and for the same
-    reason one level out: this is a document from a service, and a build that
-    reached into it would be taken down by whatever the service returned the
-    day it returned something else.
+    Read the way a payload is read (`control`'s `docs/BUS.md`, rule 4) and for
+    the same reason one level out: this is a document from a service, and a
+    build that reached into it would be taken down by whatever the service
+    returned the day it returned something else.
     """
     if not isinstance(document, dict):
         return None

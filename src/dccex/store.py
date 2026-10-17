@@ -18,7 +18,7 @@ about them: the text, no script at all (`404`), and a store that did not
 answer this request. Everything that is not a document carrying a text is the
 third — nothing listening, a connection dropped, a reply that is not JSON, a
 `5xx`, a document with no text in it — and a payload is read and never
-trusted, as one off the bus is (BUS.md, rule 4).
+trusted, as one off the bus is (`control`'s `docs/BUS.md`, rule 4).
 
 Standard library only, as the library's own reader is: the whole of it is one
 `GET`.
