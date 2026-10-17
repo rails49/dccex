@@ -31,23 +31,34 @@ def imported(module: Path) -> set[str]:
     return names
 
 
-def test_the_package_imports_nothing_but_the_standard_library_and_itself() -> None:
-    reached: dict[str, set[str]] = {}
-    for module in sorted(PACKAGE.glob("*.py")):
+def reached(package: Path) -> dict[str, set[str]]:
+    """What each module under `package` imports from outside, by its path."""
+    outside_by_module: dict[str, set[str]] = {}
+    for module in sorted(package.rglob("*.py")):
         outside = {
             name
             for name in imported(module)
             if name != OWN and name not in sys.stdlib_module_names
         }
         if outside:
-            reached[module.name] = outside
+            outside_by_module[str(module.relative_to(package))] = outside
+    return outside_by_module
 
-    assert reached == {}, f"the package reaches outside the standard library: {reached}"
+
+def test_the_package_imports_nothing_but_the_standard_library_and_itself() -> None:
+    outside = reached(PACKAGE)
+    assert outside == {}, f"the package reaches outside the standard library: {outside}"
+
+
+def test_a_module_in_a_subpackage_is_read(tmp_path: Path) -> None:
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "module.py").write_text("import tc49\n")
+    assert reached(tmp_path) == {"sub/module.py": {"tc49"}}
 
 
 def test_the_package_is_all_that_is_here() -> None:
     """Named so the check above cannot pass by looking at nothing."""
-    assert {module.name for module in PACKAGE.glob("*.py")} == {
+    assert {str(module.relative_to(PACKAGE)) for module in PACKAGE.rglob("*.py")} == {
         "__init__.py",
         "__main__.py",
         "face.py",
