@@ -60,7 +60,7 @@ PREFIX = "/dccex-usb"
 NAMED = re.compile(r"://|BOX_DOMAIN|localhost|127\.0\.0\.1|\b(?:2560|8080)\b")
 
 #: The one address the page names: the command reference the monitor links to.
-REFERENCE = "https://github.com/rails49/CommandStation-EX/blob/runtime-current-limits/docs/commands.md"
+REFERENCE = "https://github.com/rails49/CommandStation-EX/blob/HEAD/docs/commands.md"
 
 #: Where the face answers the stream on the page's own origin, as the page
 #: builds it. Written out rather than read off the module that spells it, for

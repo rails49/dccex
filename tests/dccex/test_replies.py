@@ -259,8 +259,8 @@ def test_the_journal_keeps_no_power_line_that_names_no_district() -> None:
     """The bare `<p0>`/`<p1>` and the `MAIN`, `PROG` and `JOIN` lines. The
     station prints them in `broadcastPower()` alone, always after a `<pN X>`
     for each district, so they say nothing a line of the journal does not
-    already carry (rails49/CommandStation-EX, `CommandDistributor.cpp:306`,
-    #269)."""
+    already carry (rails49/CommandStation-EX,
+    `CommandDistributor::broadcastPower`, #269)."""
     for other in (b"<p0>", b"<p1>", b"<p1 MAIN>", b"<p0 PROG>", b"<p1 JOIN>"):
         assert replies.kept(other) is None
 

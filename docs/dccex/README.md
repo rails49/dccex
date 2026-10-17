@@ -6,8 +6,11 @@ a thin app, `dccex`, that subscribes to the **device vocabulary** and turns it
 into the DCC-EX command station's own language, and publishes back what the
 station reports. It is the one app in this repository on the bus.
 
-**This page is the only place in the repository where that language is
-written down.** Every other component is oblivious to what powers the layout:
+**This page is the only place in the repository where that language meets
+the bus**: what this app sends and reads for each row of the device
+vocabulary. What a command or a line means is in the rails49 fork's
+[command reference](https://github.com/rails49/CommandStation-EX/blob/HEAD/docs/commands.md).
+Every other component is oblivious to what powers the layout:
 nothing above the layout interface expects DCC-EX, or Lenz, or NCE, or
 anything else — those are one family of devices among many. The `<…>` syntax
 appears on no bus topic, in no other package and in no normative document
@@ -16,10 +19,7 @@ protocol names off the pages that are not about hardware). A different command
 station gets a different translator, or reaches the system through JMRI, and
 nothing else moves.
 
-The facts below are from
-[the DCC-EX research notes](https://github.com/rails49/control/blob/research/dccex/docs/research/dccex.md),
-read against firmware 5.6.3. Getting one of them wrong is a bug in this app
-and nowhere else.
+Getting the mapping below wrong is a bug in this app and nowhere else.
 
 ## What it connects to
 
