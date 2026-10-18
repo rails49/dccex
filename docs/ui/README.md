@@ -123,9 +123,9 @@ work pane is what changes.
 
 ### The band
 
-The UI's name and the **build** on the left; on the right the railroad
-`control` has loaded, the **link** and the two presses (#168, ADR-0017,
-ADR-0020, #239).
+The mark and the UI name `dccex` on the left, both look's (org ADR-0019); on
+the right the railroad `control` has loaded, the **link** with the **build**
+beside it, and the two presses (#168, ADR-0017, ADR-0020, #239, #301).
 
 The build is the `G-` field of the station's banner and is blank while the link
 is down: a build from before a flash reported as the one on the board would be
@@ -147,8 +147,9 @@ has stopped answering is still a railroad `control` has loaded; what takes it
 away is the bus going. The build beside it does go, because that one is the
 station talking.
 
-The link is a `look-dot`, green while the station is answering and red with
-`dcc-ex offline` beside it while it is not. **The link says so when the station stops
+The link is a `look-dot`, green with the build beside it while the station is
+answering and red with `dcc-ex offline` beside it while it is not. A station
+that is answering but has not yet said its build is a green dot alone. **The link says so when the station stops
 answering**, rather than leaving the page looking merely idle, which is the
 difference between a dead station and a quiet one and the reason any of this
 exists. 
@@ -471,7 +472,8 @@ browser, and a second opinion here about what compiles is the disagreement that
 would put a text in the store the translator cannot load. What the page says of
 its own is one sentence, and only where there was no answer to read
 ([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
-The editor marks the refused line until the next edit (ADR-0019).
+The editor marks the refused line until the next edit
+([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)).
 
 **Whether the translator loaded it is not on this page.** A load error is a row
 in `control`'s UI and a line in the translator's log, which is where a
