@@ -349,7 +349,7 @@ export const QUIET = /** @type {Kept} */ ({
  *
  * @typedef {object} Band
  * @property {string} build what the station says it is running, blank while
- *   the link is down
+ *   the link is down, and drawn beside the dot while it is up (#301)
  * @property {string} railroad which railroad `control` has loaded,
  *   `no railroad loaded` where a row says none is, and blank while no row has
  *   arrived since the connection came up

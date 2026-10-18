@@ -12,8 +12,8 @@ import { html, nothing, type TemplateResult } from "lit";
 import { band, type Layout, type Readings } from "../readings.js";
 import { DRAWN, VIEWS, type View } from "../view.js";
 
-/** The band: the UI's name and the **build**, the railroad `control` has
- *  loaded, the **link**, and track power (docs/ui/README.md).
+/** The band: the UI name, the railroad `control` has loaded, the **link**
+ *  with the **build** beside it, and track power (docs/ui/README.md).
  *
  *  What it says is `readings.js`'s `band()`. Power is `layout`'s row. The
  *  toggle needs the broker, the station and a word from `layout`, and STOP the
@@ -25,13 +25,12 @@ export function drawBand(readings: Readings, layout: Layout): TemplateResult {
     layout,
   );
   return html`
-    <look-band>
-      <look-about name="dcc-ex" detail=${build}></look-about>
+    <look-band ui="dccex">
       ${railroad === ""
         ? nothing
         : html`<look-reading>${railroad}</look-reading>`}
       <look-dot state=${answering ? "up" : "down"}
-        >${answering ? nothing : says}</look-dot
+        >${answering ? build : says}</look-dot
       >
       <look-power
         state=${layout.power ?? "off"}

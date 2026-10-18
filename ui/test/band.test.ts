@@ -71,14 +71,21 @@ function asked(into: HTMLElement, which: ".power" | ".stop"): string[] {
   return seen;
 }
 
-test("the name is dcc-ex and the detail is the build", async () => {
-  const about = one(await band(SOON, HOT), "look-about");
-  expect(about.getAttribute("name")).toBe("dcc-ex");
-  expect(about.getAttribute("detail")).toBe("9db6d36");
+test("the UI name is dccex, and nothing else is on the left", async () => {
+  const into = await band(SOON, HOT);
+  expect(one(into, "look-band").getAttribute("ui")).toBe("dccex");
+  expect(into.querySelector("look-about")).toBeNull();
 });
 
-test("a station that is answering is a green dot and no words", async () => {
+test("a station that is answering is a green dot and its build", async () => {
   const dot = one(await band(SOON, HOT), "look-dot");
+  expect(dot.getAttribute("state")).toBe("up");
+  expect(dot.textContent?.trim()).toBe("9db6d36");
+});
+
+test("a station that has not said its build yet is a green dot alone", async () => {
+  const quiet = heard(QUIET, "<p1>", SPOKE);
+  const dot = one(await drawn(drawBand(asOf(quiet, SOON), HOT)), "look-dot");
   expect(dot.getAttribute("state")).toBe("up");
   expect(dot.textContent?.trim()).toBe("");
 });
@@ -87,7 +94,6 @@ test("a station that stopped answering says so, and the build goes", async () =>
   const into = await band(LATER, HOT);
   expect(one(into, "look-dot").getAttribute("state")).toBe("down");
   expect(one(into, "look-dot").textContent?.trim()).toBe("dcc-ex offline");
-  expect(one(into, "look-about").getAttribute("detail")).toBe("");
 });
 
 test("the railroad is a reading, and still named with the station silent", async () => {
