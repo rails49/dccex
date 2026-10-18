@@ -423,6 +423,11 @@ station's answer to a throw is one it faked
 stays empty however many turnouts are thrown. A faked observation is worse
 than silence.
 
+**No `device/refused`.** The station answers a command it rejects with a bare
+`<X>`, and the mirror passes every line to every client, so an `<X>` cannot be
+told apart from one answering another client's command. A refusal this app
+cannot attribute is not published (control `tc49.lib.inventory`).
+
 Everything else on the port is another client's conversation — a slot's speed,
 a turnout the station keeps of its own, a sensor it polls, a fast clock — and
 is passed over unread. Parsing what the mapping does not need is work with
