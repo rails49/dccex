@@ -38,8 +38,8 @@ FORWARD = 1
 REVERSE = 0
 """The station's direction bit: `1` is forward. A speed is signed for
 direction along the track and its magnitude is the fraction of the
-locomotive's maximum (CONTEXT.md, **Traction**), so the sign is read off here
-and never reaches the wire as a number."""
+locomotive's maximum, so the sign is read off here and never reaches the wire
+as a number."""
 
 CLOSED = "closed"
 THROWN = "thrown"
@@ -50,9 +50,8 @@ ASPECTS = {"stop": 0, "caution": 1, "clear": 2}
 """What each aspect this system shows is worth to the head wired to it.
 `stop` is `0` because the extended accessory packet reserves it for stop; the
 other two are this railroad's wiring and nothing above the layout interface
-knows them, an **aspect** being a name rather than an enum (CONTEXT.md). A
-name absent from here is a head this translator cannot show it on, so nothing
-is sent."""
+knows them, an aspect being a name rather than an enum. A name absent from
+here is a head this translator cannot show it on, so nothing is sent."""
 
 LINEAR_MAX = 2044
 """The accessory numbers a basic packet reaches, `1` upward: four
