@@ -43,7 +43,10 @@ both are up.
 keyed by a railroad, and what the row decides is which railroad's script is
 asked for (`DccEx._on_railroad`, control ADR-0060, ADR-0015 d.3).
 
-The startup order is `tc49.lib.startup`'s. The broker first, then `DccEx` on
+The startup order is `control`'s for every app (`src/tc49/lib/startup.py`),
+and the pieces of it this app uses are copied below from 8950c92, which
+declares that module for no other repository (control ADR-0075). The broker
+first, then `DccEx` on
 it, the constructor stating this app's two opening rows — `device/link/<id>:
 down` and a dark `device/track` carrying why. Then **the row that names the
 railroad**, waited for by name because there is one of it, and the script
@@ -78,22 +81,17 @@ container, and a bug there must not take the thing that drives the railroad
 down with it.
 """
 
+import argparse
 import asyncio
 import contextlib
 import signal
 import sys
 import threading
+import time
 from collections.abc import Callable
 
-from tc49.lib.loading import RAILROAD
-from tc49.lib.mqtt import MqttBus, address
-from tc49.lib.startup import (
-    PERIOD_S,
-    RETAINED_S,
-    command_line,
-    connected,
-    retained,
-)
+from tc49.lib.bus import Payload
+from tc49.lib.mqtt import BROKER_EXAMPLE, MqttBus, address
 
 from dccex.journal import Journal
 from dccex.store import Scripts
@@ -101,9 +99,29 @@ from dccex.translator import (
     FIRST_BACKOFF_S,
     ID,
     MAX_BACKOFF_S,
+    RAILROAD,
     SCRIPT_S,
     DccEx,
 )
+
+PERIOD_S = 0.1
+"""Seconds between drains of the bus. This only bounds how long what arrives
+sits in the queue the client's network thread fills before this thread
+delivers it, so it stays small."""
+
+BROKER_S = 5.0
+"""How long one wait for the broker lasts before it is said again. The wait is
+resumed until the connection lands, so this is only how often a person
+watching the container is told."""
+
+RETAINED_S = 1.0
+"""How long the broker is given to hand over a retained row. A bound and not a
+promise: a broker holding none would otherwise be waited for forever."""
+
+TICK_S = 0.01
+"""How often `retained` looks for a row that has landed. Nothing announces
+one: the client's network thread puts it in `last_values` and `drain` delivers
+it later."""
 
 CLIENT_PREFIX = "tc49-"
 """What this app calls itself to the broker, in front of its id, so the log
@@ -129,6 +147,51 @@ def to_stderr(line: str) -> None:
     on the bus rather than here — `device/link` is where a participant that
     cannot reach its hardware reports it (control ADR-0050)."""
     print(f"dccex: {line}", file=sys.stderr, flush=True)
+
+
+def connected(bus: MqttBus, stop: threading.Event, log: Callable[[str], None]) -> bool:
+    """Wait for the broker, saying so, until it is there or the caller has
+    stopped. `False` only where `stop` was set."""
+    while not stop.is_set():
+        if bus.wait_connected(BROKER_S):
+            return True
+        log("waiting for the broker")
+    return False
+
+
+def retained(
+    bus: MqttBus, topic: str, stop: threading.Event, timeout_s: float = RETAINED_S
+) -> None:
+    """Subscribe, and come back once the broker has handed over what it holds
+    on `topic`, once `timeout_s` has passed, or once `stop` is set.
+
+    The row is looked for a tick at a time because nothing wakes a waiter when
+    one lands, and a stop ends the wait between two looks. The value is not
+    read here: the app reads it itself.
+    """
+    bus.subscribe(topic, _nothing)
+    deadline = time.monotonic() + timeout_s
+    while topic not in bus.last_values:
+        left = deadline - time.monotonic()
+        if left <= 0 or stop.wait(min(TICK_S, left)):
+            return
+
+
+def _nothing(topic: str, payload: Payload) -> None:
+    """What a row is subscribed with while it is being waited for."""
+
+
+def command_line(prog: str, description: str) -> argparse.ArgumentParser:
+    """The flag every app is given: where the broker is. What this app adds is
+    added to the parser this returns."""
+    parser = argparse.ArgumentParser(prog=prog, description=description)
+    parser.add_argument(
+        "--broker",
+        required=True,
+        metavar="HOST:PORT",
+        help=f"the broker to run on, e.g. {BROKER_EXAMPLE}",
+    )
+    return parser
 
 
 def serve(
@@ -188,7 +251,7 @@ def _railroad(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     """Wait for the row that names the railroad, and deliver it, before the
     script it decides is asked for.
 
-    Waited for **by name**, which `tc49.lib.startup` can do here where the
+    Waited for **by name**, which `retained` can do here where the
     desired picture below leaves it nothing to name: there is one railroad row
     and this comes back the instant it lands. A broker holding none is a
     railroad nobody has chosen, which is an ordinary state of a box — this app
@@ -203,8 +266,7 @@ def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     """Give the broker its moment to hand over the desired rows it holds, and
     deliver them, before anything opens a link they could go out over.
 
-    The window is waited out **whole**, for the reason `tc49.lib.startup` gives
-    a wait with nothing to name: what is being waited for is a row per address
+    The window is waited out **whole**, because there is nothing to name: what is being waited for is a row per address
     `layout` has written to, and this app holds no list of which. A second on
     the way up, once, against a locomotive commanded ahead of the power it
     needs.
@@ -257,6 +319,13 @@ def main() -> None:
         prog="python -m dccex",
         description="Run the dccex translator against a broker: the device"
         " vocabulary turned into a command station's own language.",
+    )
+    parser.add_argument(
+        "--store",
+        required=True,
+        metavar="URL",
+        help="where the store serves the documents, e.g."
+        " http://127.0.0.1:8765; waited for until it answers",
     )
     parser.add_argument(
         "--station",

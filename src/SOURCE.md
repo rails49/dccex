@@ -187,3 +187,19 @@ are this repository's.
 
 `control` deletes its copy in control#587. From then on a defect in the
 translator is fixed here (ADR-0003).
+
+## What was copied from `tc49` later
+
+control ADR-0075 declares `tc49.lib.bus`, `mqtt`, `clock` and `inventory` for
+another repository, and the translator imports only those (#299). What it
+took from the rest is copied from `control` at `8950c92`:
+
+| In `control` at `8950c92` | Here |
+| --- | --- |
+| `src/tc49/lib/payload.py`: `commanded_power`, `desired_speed`, `desired_position`, `desired_aspect`, `desired_function` | `src/dccex/rows.py` |
+| `src/tc49/lib/startup.py`: `connected`, `retained`, `command_line`, `PERIOD_S`, `RETAINED_S` | `src/dccex/__main__.py` |
+| `src/tc49/lib/loading.py`: `RAILROAD` | `src/dccex/translator.py` |
+
+`command_line` takes `--broker` only; `__main__.py` adds `--store` itself.
+`tests/dccex/test_layout_to_station.py` is deleted. It ran `control`'s
+`tc49.layout` against this app; `tests/dccex/test_main.py` covers this side
