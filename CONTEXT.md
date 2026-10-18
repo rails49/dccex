@@ -145,20 +145,10 @@ _Avoid_: description, explanation, translation, tooltip, annotation, comment,
 label
 
 **Band**:
-The top half of the
-[chrome](https://github.com/rails49/.github/blob/main/CONTEXT.md): what runs
-across the top of every rails49 UI and carries what is true of the whole
-system
-([docs/ui/README.md](docs/ui/README.md#the-band)).
-_Avoid_: header, top bar, nav, navbar, toolbar, title bar, status bar
+The organisation's word ([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md)).
 
 **Rail**:
-The other half of the chrome: what runs down the side of every rails49 UI and
-carries one button per **view**. It is never the steel; what the locomotives
-run on is the track
-([docs/ui/README.md](docs/ui/README.md#the-rail)).
-_Avoid_: sidebar, side nav, nav, navbar, drawer, menu, toolbar, the rails (the
-track's steel), strip (the rail on a short window)
+The organisation's word ([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md)).
 
 **View**:
 `control`'s word, owned by its
