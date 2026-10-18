@@ -1556,19 +1556,18 @@ async def _trip_beside_an_unused_district_leaves_the_supply_on() -> None:
         assert said[-1] == {"power": "on", "reason": "district A tripped"}
 
 
-def test_the_lock_the_station_reports_reads_stopped() -> None:
-    asyncio.run(_lock_the_station_reports_reads_stopped())
+LOCKED = "emergency stop locked at the station"
 
 
-async def _lock_the_station_reports_reads_stopped() -> None:
-    """`stopped` reaches the bus from what the station says and never from
-    having commanded it: a railroad that read back its own command would be
-    an echo and not an observation.
+def test_the_lock_the_station_reports_reads_on_with_a_reason() -> None:
+    asyncio.run(_lock_the_station_reports_reads_on_with_a_reason())
 
-    So a stop this app sends leaves the supply reading `on`, the one-shot
-    holding nothing for a station to report, and the only `stopped` there is
-    is a lock some other throttle set on a station that has one (#463, #464).
-    """
+
+async def _lock_the_station_reports_reads_on_with_a_reason() -> None:
+    """The supply is `on` or `off` (control ADR-0063): an emergency stop
+    leaves the rails live. A stop this app sends leaves nothing for the
+    station to report, and a lock somebody else set is said in the reason
+    (#290)."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port):
@@ -1585,10 +1584,27 @@ async def _lock_the_station_reports_reads_stopped() -> None:
         bus.drain()
         assert [value["power"] for value in tap.values(DEVICE_TRACK)] == ["off", "on"]
 
-        station.says(b"<!PAUSED>")
-        await asyncio.sleep(QUIET_S)
-        bus.drain()
-        assert [value["power"] for value in tap.values(DEVICE_TRACK)][-1] == "stopped"
+        said = await supply(station, bus, tap, b"<!PAUSED>")
+        assert said[-1] == {"power": "on", "reason": LOCKED}
+        said = await supply(station, bus, tap, b"<!RESUMED>")
+        assert said[-1] == {"power": "on"}
+
+
+def test_a_trip_and_a_lock_are_both_named() -> None:
+    asyncio.run(_trip_and_a_lock_are_both_named())
+
+
+async def _trip_and_a_lock_are_both_named() -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        await supply(station, bus, tap, b"<p1 A>", b"<p1 B>", b"<!PAUSED>")
+        said = await supply(station, bus, tap, OVERLOAD_B, b"<p0 B>")
+        assert said[-1] == {
+            "power": "on",
+            "reason": f"district B tripped; {LOCKED}",
+        }
 
 
 def test_a_dropped_link_takes_the_power_reading_with_it() -> None:

@@ -357,9 +357,11 @@ railroad is up, and a station says nothing about a command it does not know.
 this app commanded. `on` where at least one district is powered and not
 tripped; a district that is off, such as one this railroad does not use, says
 nothing about the rest. A district near its limit (`ALERT`) counts as powered
-until `NORMAL`; otherwise its digit decides. `stopped` is the station's own `<!PAUSED>`, over live rails. A
-station that has said nothing reads `off`, which is the direction a state
-topic must fail in
+until `NORMAL`; otherwise its digit decides. The row is `on` or `off` and
+nothing else. A lock the station reports (`<!PAUSED>`) does not change it;
+`reason` names it, `emergency stop locked at the station`, after any tripped
+districts. A station that has said nothing reads `off`, which is the
+direction a state topic must fail in
 ([control#181](https://github.com/rails49/control/issues/181)), and a link
 that goes takes the reading with it: a district that tripped while this app
 was away would otherwise stand as an observation nobody made.

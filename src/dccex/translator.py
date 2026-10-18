@@ -76,7 +76,7 @@ from collections.abc import Awaitable, Callable
 from typing import NamedTuple
 
 from tc49.lib.bus import Bus, Payload
-from tc49.lib.inventory import OFF, ON, STOPPED, device_topic, split_device
+from tc49.lib.inventory import OFF, ON, device_topic, split_device
 
 from dccex import commands, replies, script
 from dccex.journal import Journal, Line
@@ -970,10 +970,7 @@ class DccEx:
         elif isinstance(told, replies.Diagnostic):
             self._diagnosed(told)
         elif isinstance(told, replies.Lock):
-            # A lock this app never sets and never lifts. It is read all the
-            # same, because a station that has one and is put under it by
-            # somebody's hand-held throttle is a railroad no train may move
-            # over, and that is a fact about the supply whoever caused it.
+            # A lock this app never sets and never lifts. `_reason` names it.
             self._paused = told.locked
         elif isinstance(told, replies.Mode):
             self._modes[told.track] = told.mode
@@ -1089,15 +1086,9 @@ class DccEx:
         the direction a state topic must fail in (control#181) — a supply
         that cannot be read is not one a train may move over.
 
-        `stopped` is the station's own report of a lock, which this app does
-        not command and so never reads back from a stop of its own: the
-        one-shot it sends leaves nothing standing to observe, so a `stopped`
-        this app was asked for shows here as `on` the moment the broadcast is
-        out (control#463). What is left is a station that has a lock and has
-        been put under it by another throttle, which is a supply no train may
-        move over whoever caused it. It reaches here only over live rails, an
-        emergency stop being every locomotive told to stand with the track
-        still on.
+        An emergency stop leaves the rails live, so it reads `on` (control
+        ADR-0063). A lock the station reports is said in the reason instead
+        (#290).
         """
         if not self._answered:
             return OFF
@@ -1114,7 +1105,7 @@ class DccEx:
             powered = self._every is True
         if not powered:
             return OFF
-        return STOPPED if self._paused else ON
+        return ON
 
     def _reason(self) -> str | None:
         """Why the supply reads as it does, or None where there is nothing
@@ -1123,15 +1114,19 @@ class DccEx:
         Where this app cannot reach the station it is the link row's own
         words, said again on the supply, so a person reading why the railroad
         is dark needs no second row (control ADR-0059). Otherwise it names the
-        districts the station tripped (ADR-0016 d.5).
+        districts the station tripped (ADR-0016 d.5) and a lock the station
+        reports (#290).
         """
         if self._link is not None and not self._link[0]:
             return self._link[1]
-        if not self._tripped:
-            return None
-        districts = sorted(self._tripped)
-        named = "district" if len(districts) == 1 else "districts"
-        return f"{named} {', '.join(districts)} tripped"
+        parts: list[str] = []
+        if self._tripped:
+            districts = sorted(self._tripped)
+            named = "district" if len(districts) == 1 else "districts"
+            parts.append(f"{named} {', '.join(districts)} tripped")
+        if self._paused:
+            parts.append("emergency stop locked at the station")
+        return "; ".join(parts) or None
 
     def _publish_track(self) -> None:
         """The supply, on a last-value topic and only when the fold moves —

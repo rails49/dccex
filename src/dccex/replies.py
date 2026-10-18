@@ -93,8 +93,8 @@ class Turnout:
 class Lock:
     """Whether the station says its emergency-stop lock is on: `<!PAUSED>`
     and `<!RESUMED>`, which it broadcasts on the lock changing and on being
-    asked. This is the observation `stopped` is published from — never the
-    fact that this app sent the lock command."""
+    asked. It is named in the `device/track` reason and leaves `power` as it
+    is (#290)."""
 
     locked: bool
 
