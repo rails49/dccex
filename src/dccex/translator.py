@@ -77,17 +77,16 @@ from typing import NamedTuple
 
 from tc49.lib.bus import Bus, Payload
 from tc49.lib.inventory import OFF, ON, STOPPED, device_topic, split_device
-from tc49.lib.loading import RAILROAD
-from tc49.lib.payload import (
+
+from dccex import commands, replies, script
+from dccex.journal import Journal, Line
+from dccex.rows import (
     commanded_power,
     desired_aspect,
     desired_function,
     desired_position,
     desired_speed,
 )
-
-from dccex import commands, replies, script
-from dccex.journal import Journal, Line
 from dccex.store import Scripts, Unanswered
 
 _log = logging.getLogger(__name__)
@@ -104,6 +103,8 @@ PORT = 2560
 """The mirror's address where this app is given no other: the service of that
 name beside this one on the box, on the port `dccex-usb` listens on
 (`compose.box.yaml`)."""
+
+RAILROAD = "tc49/layout/state/railroad"
 
 WANTED = "tc49/layout/state/wanted/#"
 

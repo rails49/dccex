@@ -24,12 +24,11 @@ from pathlib import Path
 import pytest
 from tc49.lib.bus import InProcessBus, Payload
 from tc49.lib.clock import Clock
-from tc49.lib.loading import RAILROAD
 
 from dccex import sample
 from dccex.journal import Journal
 from dccex.store import Scripts
-from dccex.translator import DccEx
+from dccex.translator import RAILROAD, DccEx
 from tests.stores import Store
 
 TIMEOUT_S = 5.0
