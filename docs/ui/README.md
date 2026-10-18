@@ -472,7 +472,8 @@ browser, and a second opinion here about what compiles is the disagreement that
 would put a text in the store the translator cannot load. What the page says of
 its own is one sentence, and only where there was no answer to read
 ([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
-The editor marks the refused line until the next edit (ADR-0019).
+The editor marks the refused line until the next edit
+([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)).
 
 **Whether the translator loaded it is not on this page.** A load error is a row
 in `control`'s UI and a line in the translator's log, which is where a
