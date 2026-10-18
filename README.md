@@ -68,12 +68,13 @@ run in a job of their own for the same reason (#101).
 
 ## What the UI talks to
 
-One thing: `dccex-usb`'s own face, on the UI's origin, behind the same door.
-Not the bus and not the store — its subject is the command station rather than
-a railroad. So the page is the same on a box with a command station and no
-layout as it is on the layout box, which is the installation this repository
-exists for
+Two things. `dccex-usb`'s own face, on the UI's origin, behind the same door,
+for everything about the command station
 ([ADR-0008](docs/adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)).
+And the bus: the page asks `layout` for track power, and reads the power state
+and the railroad's name
+([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md),
+[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md)).
 
 Every reading about the station is made of what the station said, decoded on
 the page: the **build** is the `G-` field of the banner and is blank whenever
@@ -84,11 +85,12 @@ What asks an idle station to say any of it is the page, on its own schedule,
 as a throttle would — the mirror gains a face and a page and still originates
 nothing
 ([ADR-0010](docs/adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
-The **band** commands track power: one button, green where any track is on and
-red where every one is off, disabled while the link is down, and the guard is
-the operator
-([ADR-0011](docs/adr/0011-the-band-commands-track-power.md)). It and the flash
-sequence's own step are the only presses that do.
+The **band** has a power toggle and a STOP press, and both publish
+`tc49/layout/power_wanted`. The toggle's guard is `layout` and then the
+operator; `layout` applies a stop whatever the run
+([ADR-0017](docs/adr/0017-the-band-asks-layout-for-power.md),
+[ADR-0020](docs/adr/0020-the-band-has-a-stop-press.md)). The flash sequence's
+own step is the only press that cuts power at the station.
 
 One origin carries both: the page takes the label and the face is the same
 label under a path prefix the door strips, so the monitor's stream is `wss://`

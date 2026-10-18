@@ -26,8 +26,8 @@ station said about power while nobody was watching, read afterwards with the
 counts beside it (#266, ADR-0022). What it says was decided
 in rails49/dccex#1 and the tickets under that spec are each a part of it, as
 [the cutover page](../cutover.md) was written ahead of its evening. What is
-already here besides is the other end: the **mirror**'s **face**, which is the
-one thing the page talks to ([the mirror's page](../dccex_usb/README.md)).
+already here besides is the other end: the **mirror**'s **face**, which is one
+of the two things the page talks to ([the mirror's page](../dccex_usb/README.md)).
 
 ## What it talks to
 
@@ -958,8 +958,8 @@ work-pane component puts look's `lookTheme` first in its styles, and the gate
 runs look's `look-check`, which fails on app code that styles the chrome.
 
 Glyphs are Bootstrap Icons, which Shoelace fetches from `/shoelace` on the
-page's own origin. The build copies them there (`ui/vite.config.ts`) and
-nginx answers a missing one with 404 (`deploy/nginx.conf`).
+page's own origin. Building the page copies them there
+(`ui/vite.config.ts`) and nginx answers a missing one with 404 (`deploy/nginx.conf`).
 
 The work pane takes the system's light or dark setting through `look.css` and
 offers no toggle; the chrome keeps one look in both.
@@ -969,12 +969,12 @@ offers no toggle; the chrome keeps one look in both.
 A multi-stage image, `deploy/ui.Dockerfile`: node to build the sources, nginx
 to serve what came out. The box needs Docker and nothing else — no node
 toolchain on a machine whose job is a command station — and the node that
-builds the page is a container that lasts as long as the build. It installs
+builds the page is a container that lasts only while it builds. It installs
 with **pnpm**, which is what the project builds pages with (#1, #58), at the
 version `ui/package.json` names and from `ui/pnpm-lock.yaml`, frozen: the
 image is the versions this repository was checked at, and a lock file that has
-drifted stops the build. Nothing outside the image installs anything, so that
-build is also the only place the drift is caught. No image is
+drifted stops the image from building. Nothing outside the image installs
+anything, so building it is also the only step that catches the drift. No image is
 published anywhere: the box clones and builds
 ([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
 It is named by the commit it was built from like everything else here, as
@@ -983,7 +983,7 @@ a lock file and an esptool pin with the translator and neither with a page.
 
 **Both bases are pinned by digest, and the tag is kept in front of it.** A tag
 is republished, so `node:22-alpine` and `nginx:alpine` are whatever was pushed
-under those names this morning: two builds of one commit a month apart are two
+under those names this morning: one commit built twice a month apart is two
 different images, and
 [ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)
 d.7's rebuild of an older commit would not reproduce what shipped (#59). Each
@@ -999,17 +999,17 @@ holds the shape rather than the values: neither line may name something that
 can move. The mirror's image is pinned the same way and points here for the
 argument rather than repeating it (`deploy/Dockerfile`, #96).
 
-**And it carries that commit as well as being named by it.** The build takes it
-as an argument and writes it on the image as
+**And it carries that commit as well as being named by it.** Building it takes
+the commit as an argument and writes it on the image as
 `org.opencontainers.image.revision`, so a `docker inspect` on the box says what
 a container was built from even for an image somebody renamed — the name is not
 the only copy of the fact, which is what
 [ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)
 d.4 asks for and what the mirror's image has had since #15. `compose.yaml`
-hands the build the same variable it builds the name from, so the two cannot
-name different commits. A build nobody gave a commit — which is what
-`docker compose up --build` on a clean clone is — carries that label empty: the
-name says `dev`, where it is true, and a revision that reads like a commit
+sets that argument from the same variable it builds the name from, so the two
+cannot name different commits. An image built with no commit — which is
+what `docker compose up --build` on a clean clone makes — carries that label
+empty: the name says `dev`, where it is true, and a revision that reads like a commit
 reference and is none would be worse than none at all (#57).
 
 `compose.yaml` at the root is the compose project: one service, the door route
@@ -1039,7 +1039,7 @@ daemon answers it skips and says so.
 rather than reading it (#53): `docker compose up -d --build` against this
 repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
 page fetched over HTTP on the port `docker compose port web 80` says it got, the
-image name, the commit the project handed the build, and the eight route labels
+image name, the commit the project built it from, and the eight route labels
 read back off the running container — which is where a door reads them from —
 and `docker compose down` with its volumes, its network and the image it built,
 in a `finally`, so a red assertion leaves nothing behind either. It carries the
@@ -1064,17 +1064,16 @@ the layout, and until #127 nothing here had drawn it at one:
 `tests/ui/test_page_at_a_phones_width.py` runs the image this section is
 about, loads it in a Chromium at 320px, at 375px and at 1280px, and holds six
 things there — no horizontal scroll at any width on any view, the band keeping
-its dot and its two thumb-sized presses where the **build** and the link's
-words are dropped, two thumb-sized rail buttons on the screen with the hash
-saying which view a press reached, the command box inside the viewport and a
-line typed into it coming back out of it, a release row with a long **tag**
-wrapping with nothing off the side of it, and the link's words back at a
-desktop width, which is what keeps the narrow claims from passing on a page
-that drew no band. Each view is measured while it is the one showing, and the
-browser reaches the releases the way a person does: it presses the rail
-(#169). There is no face behind the page in that job, so the
-**stream** never opens and the link reads as not answering — the state a page
-with nothing behind it draws, and enough for layout. The one thing stood up is
+its dot, the link's words and its two presses on the screen at every width,
+the rail's four thumb-sized buttons on the screen with the hash saying which
+view a press reached, the command box inside the viewport and a line typed into
+it coming back out of it, a release row with a long **tag** wrapping with
+nothing off the side of it, and the **script** box inside the screen (#185).
+Each view is measured while it is the one showing, and the browser reaches the
+releases the way a person does: it presses the rail (#169). There is no face
+behind the page in that job, so the **stream** never opens and the link reads
+as not answering — the state a page with nothing behind it draws, and enough
+for layout. The one thing stood up is
 the release list, because rows are what the wrap rule is about and that state
 has none: the browser answers that one request, and the rows go in through the
 page's own fetch. It carries the same `docker` marker and the same no-daemon
@@ -1091,8 +1090,9 @@ rule as the two checks above it.
 - **Commanding track power anywhere at all.** The band's power button asks
   `layout` for it on the bus (ADR-0017 d.1), the tiles press nothing (ADR-0011
   d.3), and the one module left that types `<0>` at the station is the flash
-  sequence's own step. No emergency stop is drawn on the chrome yet (#208), and
-  `<!>` is that sequence's step and what the command box can type.
+  sequence's own step. STOP asks `layout` for `stopped` on the bus (ADR-0020
+  d.2). `<!>` at the station is the flash sequence's step and what the command
+  box can type.
 - **Station configuration.** There is none at runtime: the fork sets
   `DISABLE_EEPROM` so the station persists nothing, the translator drives
   points with raw accessory packets so the station holds no definitions, and
@@ -1113,8 +1113,8 @@ Two things the prototype left open and the tickets settle while building:
   It is a row that opens and shuts as of #8 and it opens on its own view as of
   #169, and what would change it is somebody reading a long one on the box;
 - narrow widths are drawn in a browser as of #127, and not all of them are
-  asserted there. What is: no horizontal scroll, the band dropping the build and
-  the link's words and keeping the dot and the power button, the rail's two
+  asserted there. What is: no horizontal scroll, the band keeping the dot, the
+  link's words, the power toggle and STOP, the rail's four
   buttons at a thumb, the command box on screen and typed into, and a release
   row wrapping rather than running off the side. What is not: the tiles onto
   more rows — there is no station behind the page in that job, so there are no

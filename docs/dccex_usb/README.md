@@ -200,8 +200,11 @@ whole railroad.
 
 ## The face
 
-The UI talks to one thing and this is it ([the page](../ui/README.md)): this
-app's own face, on the UI's
+The UI ([the page](../ui/README.md)) talks to this app's own face for
+everything about the station, and to the bus for track power and the
+railroad's name
+([ADR-0017](../adr/0017-the-band-asks-layout-for-power.md),
+[ADR-0020](../adr/0020-the-band-has-a-stop-press.md)). The face is on the UI's
 origin and behind the same door, about the app rather than about a railroad
 ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md),
 [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
@@ -670,19 +673,19 @@ too, so `docker inspect` still answers the question for one somebody renamed.
 is the thing that gets written onto the station, and the two sentences are one
 `docker` command apart on the same box ([CONTEXT.md](../../CONTEXT.md)).
 
-**A build nobody gave a commit claims none.** That is what `docker compose up
---build` on a clean clone is, and the label it writes is empty: `dev` is what
-such a build is *named*, where it is true, and a revision that reads like a
+**An image built with no commit claims none.** That is what `docker compose up
+--build` on a clean clone makes, and the label it writes is empty: `dev` is what
+such an image is *named*, where it is true, and a revision that reads like a
 commit reference and is none would send a reader of `docker inspect` looking
 for a checkout that never existed (ADR-0005 d.4 as amended, #97). The stack
-hands the build the same variable the name is built from, so the two cannot
-name different commits. `tests/deploy/test_mirror_serves.py` is where this is
-held rather than read: it builds the image with nothing passed and asks the
-built artefact what it claims.
+sets the commit argument from the same variable the name is built from, so the
+two cannot name different commits. `tests/deploy/test_mirror_serves.py` is
+where this is held rather than read: it builds the image with nothing passed
+and asks the built artefact what it claims.
 
 **What is under the name does not move either.** Both bases of
 `deploy/Dockerfile` are pinned by digest with the readable tag in front of it,
-so two builds of one commit a month apart are the same image and d.7's rebuild
+so one commit built twice a month apart is the same image and d.7's rebuild
 of an older commit resolves the bases that commit was written against (#96).
 The page's were pinned first and its image is where the argument is written,
 including what the pin costs — a pinned base takes no security update of its

@@ -1,23 +1,23 @@
 # The cutover: 2560 moves to this repository's stack
 
-The command station's port is served on the layout box by `control`'s copy of
+The command station's port was served on the layout box by `control`'s copy of
 the mirror. This repository holds the mirror now, `control`'s copy is deleted
-from its `main` (control#567), and the port changes hands at #16. This page is
-what is followed when it does.
+from its `main` (control#567), and the port changed hands at #16, closed on
+2026-10-11. This page is the procedure that was followed and a record of what
+happened.
 
-**This is a cold changeover, and it stopped being a live one on 2026-09-24.**
-The railroad is not in use while this work is going on, so the box is brought
-down, everything on it is brought up to date, and it is started again. Nothing
-here is timed, nothing has to be finished tonight, and 2560 is allowed to be
-dark for as long as the work takes. An earlier version of this page was
-written for a swap performed while the railroad ran: it had a fifteen-minute
-abort deadline, an order that existed to keep the port held for as short a
-time as possible, and a rollback pasted from a container that was still
-running. None of that is needed, and what replaced it is below.
+**It was a cold changeover, and it stopped being a live one on 2026-09-24.**
+The railroad was not in use while the work went on, so the box was brought
+down, everything on it was brought up to date, and it was started again.
+Nothing was timed, and 2560 was allowed to be dark for as long as the work
+took. An earlier version of this page was written for a swap performed while
+the railroad ran: it had a fifteen-minute abort deadline, an order that existed
+to keep the port held for as short a time as possible, and a rollback pasted
+from a container that was still running. None of that was needed, and what
+replaced it is below.
 
-Read it through first. The order in it is still worth keeping — not because
-the port is precious now, but because a failure is only diagnosable if the
-changes go in one at a time.
+The order was kept anyway — not because the port was precious, but because a
+failure is only diagnosable if the changes go in one at a time.
 
 ## What hands over
 
@@ -25,7 +25,7 @@ changes go in one at a time.
 | --- | --- | --- |
 | 2560 | `control`'s mirror container | this repository's, from `dccex:<commit>` |
 | the translator | `control`'s, pointed at `control`'s mirror | pointed at this stack's, by control#567's repoint |
-| the face | nowhere | nowhere yet: the page's container comes up with the stack, and #40 makes it reachable ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
+| the face | nowhere | the page's container came up with the stack, and #40 made it reachable ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
 
 The stack that runs it is this repository's own — `compose.yaml` with
 `compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the image
@@ -35,102 +35,97 @@ and what the mirror does once it is up is
 
 ## The day before
 
-Everything here is additive and nothing in it is at risk. A step that fails
-here fails with `control`'s mirror still serving 2560, and the answer is
-"tomorrow then".
+Everything here was additive and nothing in it was at risk. A step that
+failed here failed with `control`'s mirror still serving 2560.
 
-**Cold, none of this is a prerequisite.** It was, when the window was minutes
-long and a first build inside it was the difference between a swap and an
-outage. Now it is preparation that makes the evening shorter and duller, which
-is still worth having — a build that fails on the box is better found on a
-morning than on the evening — but an evening that starts with none of it done
-is an evening that does it first.
+**Cold, none of this was a prerequisite.** It was, when the window was minutes
+long and building the image inside it was the difference between a swap and an
+outage. Cold, it was preparation that made the evening shorter.
 
-1. `~/dccex` cloned on the box, and this stack's image built there — build
-   only, nothing started and nothing stopped, so the evening is a deploy and
-   not a first build.
+1. `~/dccex` cloned on the box, and this stack's image built there — nothing
+   started and nothing stopped, so the evening was a deploy and not the
+   first time the image was built.
 2. The delta between the box's `control` checkout and `control`'s `main`, read
-   and reported on #16 — so that what goes onto the box that evening is known
-   before it goes on, and so that a railroad which misbehaves afterwards has a
-   list to read. It no longer has to be a delta of one change: that rule was
+   and reported on #16 — so that what went onto the box that evening was known
+   before it went on, and so that a railroad which misbehaved afterwards had a
+   list to read. It no longer had to be a delta of one change: that rule was
    the live swap's, and what it bought was a short list to bisect in a hurry.
-   Cold, the list can be long, because [the order](#the-order) checks
-   `control` on its own before the port moves.
-3. **The blanks below, filled in from the box.** They are what the rollback
-   needs, they are only on the box, and reading them at midnight is reading
-   them from a machine whose port has just changed hands:
+   Cold, the list could be long, because [the order](#the-order) checked
+   `control` on its own before the port moved.
+3. **The blanks below, filled in from the box.** They were what the rollback
+   needed, they were only on the box, and reading them after the swap would
+   have been reading them from a machine whose port had just changed hands:
 
    ```
    docker ps --no-trunc --filter name=dccex
    docker inspect <the mirror container>
    ```
 
-   Write down, into the block under [Going back](#going-back): the image's
+   Written down, into the block under [Going back](#going-back): the image's
    `RepoDigests` or `Image` digest, the container's `Cmd` and `Entrypoint`, its
-   `Devices`, and what it publishes. `control` deploys by pulling `main` and
+   `Devices`, and what it published. `control` deploys by pulling `main` and
    rebuilding, so its image carries no name that means anything (ADR-0005's
-   context) and the id is the only handle on that box's copy. It is a
-   convenience and not the way back: the way back is a commit of `control`,
+   context) and the id was the only handle on that box's copy. It was a
+   convenience and not the way back: the way back was a commit of `control`,
    which [Going back](#going-back) gives.
-4. `scripts/deaf_client.py` on whatever laptop is in the room. It is in this
+4. `scripts/deaf_client.py` on whatever laptop was in the room. It is in this
    repository and it is not in the gate.
 
-The first two need the box. When this page was written they had not been done:
-the box was not reachable from where it was written, and both went back to the
-person rather than being skipped (#42).
+The first two needed the box. The box was not reachable from where this page
+was first written, and both went back to the person rather than being skipped
+(#42).
 
 **Where those four stand, 2026-09-24** (read over ssh, nothing started and
 nothing stopped):
 
-1. **Not done.** There is no `~/dccex` on the box and so no image built there.
-   What it waited on has landed: the mirror's image, the compose overlay and
-   the deploy are #15's and are in this repository. What is left is the clone,
-   one build on the box, and the deploy record's directory, which does not
-   exist and needs somebody who can write `/var/lib` once:
+1. **Not done.** There was no `~/dccex` on the box and so no image built
+   there. What it waited on had landed: the mirror's image, the compose overlay
+   and the deploy are #15's. What was left was the clone, building the image on
+   the box, and the deploy record's directory, which did not exist and needed
+   somebody who can write `/var/lib` once:
    `sudo install -d -o ttmetro -g ttmetro /var/lib/rails49/deploys`.
 2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and
    `control`'s `main` is 31 commits ahead of it — the store moving to loopback,
    broker-first startup, the store image's uid and table ownership, the stock
    screen, control#567's six, and the repoint. Reported on #16 with the list.
    Under the live plan that was a reason to wait for an evening of `control`'s
-   own; cold it is not, and the order above is what replaced it.
-3. **Done.** The blanks under [Going back](#going-back) are filled, from the
+   own; cold it was not, and the order below is what replaced it.
+3. **Done.** The blanks under [Going back](#going-back) were filled, from the
    container that was serving 2560 at the time.
-4. Still the person's, on the night. `scripts/deaf_client.py` is in this
-   repository.
+4. Left to the person, on the night.
 
 ## The order
 
 **`control`'s deploy first**, and then this stack's. On a live swap the reason
-was the port: `control`'s deploy is what removes the orphaned mirror container,
-by the mechanism control#299 added for this collision, and what applies the
-translator's repoint. Cold, the port is free either way. The reason to keep the
-order is diagnosis: `control`'s delta and this repository's new stack are two
+was the port: `control`'s deploy is what removed the orphaned mirror container,
+by the mechanism control#299 added for this collision, and what applied the
+translator's repoint. Cold, the port was free either way. The reason to keep the
+order was diagnosis: `control`'s delta and this repository's new stack are two
 unrelated bodies of change, and a railroad that misbehaves after both went in
 at once is a railroad with two suspects.
 
 1. **Done on 2026-09-24, days before the evening** (reported on #16).
    `control`'s deploy, on the box, and **the railroad checked before the mirror
-   moves**: the box comes up on `control`'s `main` with `control`'s own mirror
-   gone and this stack not yet there. 2560 is dark at this point and that is
-   expected. What is checked is everything that is not 2560 — the store
+   moved**: the box came up on `control`'s `main` with `control`'s own mirror
+   gone and this stack not yet there. 2560 was dark at this point and that was
+   expected. What was checked was everything that is not 2560 — the store
    answers, the apps stand, the door serves `control`'s UI. That check is what
-   makes the next step's failures this repository's.
+   made the next step's failures this repository's.
 2. **Check the old mirror container is gone and not merely stopped**, below.
    Getting it wrong is invisible until a reboot. Checked on 2026-09-24:
-   `tc49-dccex-usb-1` was *Removed*, and only the translator is left.
+   `tc49-dccex-usb-1` was *Removed*, and only the translator was left.
 3. This stack's deploy: `scripts/deploy.sh`, which brings the project up from
    the clone against `/etc/rails49/box.env` (#15, ADR-0005 d.7). It takes 2560
    and brings the page's container up beside it, and it appends what it replaced to
-   `/var/lib/rails49/deploys/dccex`.
+   `/var/lib/rails49/deploys/dccex`. Run on 2026-09-25.
 4. [The checks](#the-checks), in order, and then the physical acceptance,
-   which is a person and a train and is #16's.
+   which was a person and a train and was #16's.
 
-`control`'s delta is read before the evening and reported on #16 (#42). It does
+`control`'s delta was read before the evening and reported on #16 (#42). It did
 not have to be a delta of one change any more — that rule was a live swap's, and
-its point was that there is no time to bisect with the railroad down. There is
-time now. What is worth keeping from it is step 1 above: deploy `control`,
-check `control`, and only then move the port.
+its point was that there is no time to bisect with the railroad down. What was
+kept from it is step 1 above: deploy `control`, check `control`, and only then
+move the port.
 
 ### Stopped is not removed
 
@@ -148,23 +143,23 @@ it is a cutover that works until the power goes out.
 
 ## The abort signal
 
-**Anyone in the room saying stop.** That is the whole signal, and it is said out
-loud rather than inferred.
+**Anyone in the room saying stop.** That was the whole signal, and it was to
+be said out loud rather than inferred.
 
-A check that does not pass is no longer one: cold, a failing check is something
-to look at, and looking at it costs a dark port that nothing is waiting on.
-Fix forward, or [go back](#going-back) and come at it another evening —
-both are ordinary, and neither is urgent.
+A failing check was not an abort signal. Cold, it was something to look at,
+and looking at it cost a dark port that nothing was waiting on. Fix forward, or
+[go back](#going-back) and come at it another evening — both were ordinary, and
+neither was urgent.
 
-What the signal is still for is the state of the layout when everyone leaves.
-The one thing worth not leaving behind is a box that will surprise somebody:
+What the signal was still for was the state of the layout when everyone left.
+The one thing worth not leaving behind was a box that would surprise somebody:
 half a stack up, a container that was stopped rather than removed, or a port
-held by something nobody remembers starting. Going back is a state the
-railroad runs in — it ran in it this morning.
+held by something nobody remembers starting. Going back was a state the
+railroad had run in until that day.
 
 ## Going back
 
-Going back is putting `control`'s mirror on 2560 again, and it is **not**
+Going back was putting `control`'s mirror on 2560 again. It was **not**
 ADR-0005's rollback. That one names a commit of this repository and is for a
 later deploy of this stack going wrong (ADR-0005 d.7).
 
@@ -182,14 +177,14 @@ git checkout ba611d6            # or any commit before control#567
 docker compose --profile hardware -f deploy/compose.yaml up -d --build
 ```
 
-That is the rollback to reach for. It restores the mirror *and* the translator
+That was the rollback to reach for. It restored the mirror *and* the translator
 pointing at it, from source, with no digest to transcribe and nothing that
 depends on one box's unpushed image surviving a prune. It leaves `control`'s
 checkout on a detached head, which the next deploy corrects by pulling.
 
-The block below is the faster path, and it is worth keeping for the same reason
-a spare key is: it needs no rebuild. It runs the image that was serving 2560 on
-2026-09-24, by the id it has on that box and nowhere else:
+The block below was the faster path: it needed no rebuild. It runs the image
+that was serving 2560 on 2026-09-24, by the id it has on that box and nowhere
+else:
 
 ```
 docker rm -f <this stack's mirror container>          # 2560 goes quiet here
@@ -222,17 +217,17 @@ previous deploy; nothing in this repository repoints it. Since #189 this stack
 runs a translator too, so stop it first, as under
 [The translator alone](#the-translator-alone).
 
-**Nothing is pruned until the cutover is accepted.** No `docker image prune`,
+**Nothing was pruned until the cutover was accepted.** No `docker image prune`,
 no `docker system prune`, nothing removed by hand. Not because a prune would
 destroy the way back — it would not, the checkout above rebuilds it — but for
-two smaller reasons that both land on the one evening it would matter. A prune
+two smaller reasons that both landed on the one evening it would matter. A prune
 turns a five-second rollback into a ten-minute one. And **the rebuild is
 equivalent rather than identical**: `control`'s image is
 `FROM python:3.12-slim` with an unpinned `apt-get install`, so the base and the
 Debian packages resolve at build time even though `uv sync --frozen` pins the
-Python side. The image on the box is the one that was serving the railroad this
-morning; a rebuild is an image that should. On an evening spent deciding
-whether something is broken, that difference is worth keeping on disk. After
+Python side. The image on the box was the one that had been serving the
+railroad; a rebuild is an image that should. On an evening spent deciding
+whether something is broken, that difference was worth keeping on disk. Since
 the acceptance in #16 it is the box's to prune.
 This repository's own images keep one step back by the deploy's rule rather
 than by anybody remembering this line (ADR-0005 d.6).
@@ -257,8 +252,8 @@ stack's published mirror.
 
 ## The checks
 
-In order. The first three are the port doing its job, and they are what the
-acceptance is about.
+Run in order. The first three are the port doing its job, and they were what
+the acceptance was about.
 
 1. **The orphan is gone**, `docker ps -a` as above, and the deploy record says
    what happened: `tail -2 /var/lib/rails49/deploys/dccex`.
@@ -277,9 +272,9 @@ acceptance is about.
 4. **DecoderPro reconnects**, as a third client, and the translator reports the
    link up — which is the repoint having landed, not something this stack can
    report on its own behalf.
-5. **The face is not checked here.** The page's container comes up with the
-   stack, but nothing reaches it until its `A` record and `BOX_UIS` entry
-   exist, and those are #40's. The port is the railroad and the face is a page.
+5. **The face was not checked here.** The page's container came up with the
+   stack, but nothing reached it until its `A` record and `BOX_UIS` entry
+   existed, and those were #40's. The port is the railroad and the face is a page.
 6. **A client that has stopped reading does not hold the app up.** After the
    swap, never before, because it stops and starts this stack's container. The
    container's log is opened first and left open beside the other two, because
@@ -350,14 +345,11 @@ container, on the box.
 
 ## The pointer in `control`
 
-`control`'s box procedures are where somebody looks first on the evening this
-happens, and the mirror is not `control`'s any more. One line there pointing at
-this page is all that is wanted — the procedure is not copied, because a
-procedure that exists twice is a procedure with a stale half.
+`control`'s box procedures were where somebody would look first on the
+evening, and the mirror is not `control`'s any more. One line there pointing at
+this page was all that was wanted; the procedure was not copied.
 
-That edit is in another repository. It is a ticket there and **this repository
-does not wait on it**: a pointer that has not landed costs a person one search,
-and nothing on this page depends on it. To file, verbatim:
+That edit was in another repository, so it was a ticket there, filed verbatim:
 
 ```
 title: the box procedures point at dccex's cutover page for 2560
@@ -382,7 +374,8 @@ Acceptance:
       duplicate.
 ```
 
-Filed as [control#578](https://github.com/rails49/control/issues/578).
+Filed as [control#578](https://github.com/rails49/control/issues/578), closed
+on 2026-09-25.
 
 ## What happened, 2026-09-25
 
@@ -412,7 +405,7 @@ Filed as [control#578](https://github.com/rails49/control/issues/578).
 
 - The evening itself — the deploys above being run, the acceptance, and the
   decision to carry on or go back. That is #16, and this page is what it
-  follows.
+  followed.
 - The stack, the compose files and the deploy: built in #15 —
   `deploy/Dockerfile`, `compose.box.yaml` and `scripts/deploy.sh` — and this
   page names them rather than containing them.
