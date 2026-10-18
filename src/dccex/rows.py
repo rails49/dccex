@@ -5,8 +5,8 @@ Each answers `None` where the row cannot be read. A translator answers
 nothing, so a frame it cannot read is dropped, and one that raised would be
 taken down by whatever published it (`docs/BUS.md`, rule 4).
 
-Copied from `control`'s `src/tc49/lib/payload.py` at 8950c92, which declares
-it for no other repository (control ADR-0075).
+control ADR-0075 declares `tc49.lib.payload` for no other repository, so
+these are copied from `control`'s `src/tc49/lib/payload.py` at 8950c92.
 """
 
 from typing import cast

@@ -197,9 +197,11 @@ took from the rest is copied from `control` at `8950c92`:
 | In `control` at `8950c92` | Here |
 | --- | --- |
 | `src/tc49/lib/payload.py`: `commanded_power`, `desired_speed`, `desired_position`, `desired_aspect`, `desired_function` | `src/dccex/rows.py` |
-| `src/tc49/lib/startup.py`: `connected`, `retained`, `command_line`, `PERIOD_S`, `RETAINED_S` | `src/dccex/__main__.py` |
+| `src/tc49/lib/startup.py`: `connected`, `retained`, `command_line`, `PERIOD_S`, `BROKER_S`, `RETAINED_S`, `TICK_S` | `src/dccex/__main__.py` |
 | `src/tc49/lib/loading.py`: `RAILROAD` | `src/dccex/translator.py` |
 
 `command_line` takes `--broker` only; `__main__.py` adds `--store` itself.
+The docstrings are shortened.
 `tests/dccex/test_layout_to_station.py` is deleted. It ran `control`'s
 `tc49.layout` against this app; `tests/dccex/test_main.py` covers this side
+of `wanted/track`.

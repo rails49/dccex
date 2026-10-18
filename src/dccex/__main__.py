@@ -43,11 +43,10 @@ both are up.
 keyed by a railroad, and what the row decides is which railroad's script is
 asked for (`DccEx._on_railroad`, control ADR-0060, ADR-0015 d.3).
 
-The startup order is `control`'s for every app (`src/tc49/lib/startup.py`),
-and the pieces of it this app uses are copied below from 8950c92, which
-declares that module for no other repository (control ADR-0075). The broker
-first, then `DccEx` on
-it, the constructor stating this app's two opening rows — `device/link/<id>:
+The startup order is `control`'s for every app (`src/tc49/lib/startup.py`).
+control ADR-0075 declares that module for no other repository, so the pieces
+of it this app uses are copied below from `control` at 8950c92. The broker
+first, then `DccEx` on it, the constructor stating this app's two opening rows — `device/link/<id>:
 down` and a dark `device/track` carrying why. Then **the row that names the
 railroad**, waited for by name because there is one of it, and the script
 asked for once on this thread: a store that has not answered leaves this app
@@ -266,8 +265,8 @@ def _retained(bus: MqttBus, stop: threading.Event, timeout_s: float) -> None:
     """Give the broker its moment to hand over the desired rows it holds, and
     deliver them, before anything opens a link they could go out over.
 
-    The window is waited out **whole**, because there is nothing to name: what is being waited for is a row per address
-    `layout` has written to, and this app holds no list of which. A second on
+    The window is waited out **whole**, because there is nothing to name: what
+    is being waited for is a row per address `layout` has written to, and this app holds no list of which. A second on
     the way up, once, against a locomotive commanded ahead of the power it
     needs.
 

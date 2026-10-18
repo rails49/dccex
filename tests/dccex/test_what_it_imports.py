@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 PACKAGE = ROOT / "src" / "dccex"
 TESTS = ROOT / "tests"
 
-TC49 = {"tc49.lib.bus", "tc49.lib.mqtt", "tc49.lib.clock", "tc49.lib.inventory"}
+TC49 = frozenset(
+    {"tc49.lib.bus", "tc49.lib.mqtt", "tc49.lib.clock", "tc49.lib.inventory"}
+)
 
 TESTED_WITH = frozenset({"pytest", "playwright", "dccex_usb"})
 """What the tests import beside the translator: the runner, the browser and
@@ -34,22 +36,22 @@ def imported(module: Path) -> set[str]:
     return names
 
 
-def allowed(name: str, also: frozenset[str] = frozenset()) -> bool:
+def allowed(name: str, extra: frozenset[str] = frozenset()) -> bool:
     top = name.split(".")[0]
     return (
         name in TC49
         or top in {"dccex", "tests"}
-        or top in also
+        or top in extra
         or top in sys.stdlib_module_names
     )
 
 
-def reached(package: Path, also: frozenset[str] = frozenset()) -> dict[str, set[str]]:
+def reached(package: Path, extra: frozenset[str] = frozenset()) -> dict[str, set[str]]:
     """What each module under `package` imports that is not allowed, by its path."""
     return {
         str(module.relative_to(package)): outside
         for module in sorted(package.rglob("*.py"))
-        if (outside := {name for name in imported(module) if not allowed(name, also)})
+        if (outside := {name for name in imported(module) if not allowed(name, extra)})
     }
 
 
