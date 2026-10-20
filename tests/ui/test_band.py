@@ -28,7 +28,7 @@ def test_the_band_works_no_reading_out_of_its_own() -> None:
     the page hands it the facts."""
     drawn = code(CHROME.read_text())
     assert 'from "../readings.js"' in drawn, "the band works a reading out itself"
-    assert "band(\n    readings,\n    layout,\n  )" in drawn
+    assert "band(readings, layout)" in drawn
     assert "drawBand(this.readings, this.layout)" in APP.read_text()
 
 

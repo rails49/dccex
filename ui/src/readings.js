@@ -340,16 +340,13 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * What the band carries: the **build**, the railroad, the **link** and the
- * power button.
+ * What the band carries: the railroad, the **link** and the power button.
  *
  * One value rather than a list of readings, because they are different things
- * — a word the station said, a word `layout` said, a light, and a control —
- * and what they have in common is only the chrome they sit on.
+ * — a word `layout` said, a light, and a control — and what they have in
+ * common is only the chrome they sit on.
  *
  * @typedef {object} Band
- * @property {string} build what the station says it is running, blank while
- *   the link is down, and drawn beside the dot while it is up (#301)
  * @property {string} railroad which railroad `control` has loaded,
  *   `no railroad loaded` where a row says none is, and blank while no row has
  *   arrived since the connection came up
@@ -504,11 +501,12 @@ function stop(layout) {
 }
 
 /**
- * What the band carries: the **build**, the **link**, and the two presses
- * (ADR-0017, ADR-0020, docs/ui/README.md).
+ * What the band carries: the railroad, the **link**, and the two presses
+ * (ADR-0017, ADR-0020, docs/ui/README.md). The **build** is not on it
+ * (ADR-0027).
  *
- * **Two channels meet here and nowhere else.** The build and the link are the
- * station talking, decoded off the **stream** (ADR-0008 d.2); the power and the
+ * **Two channels meet here and nowhere else.** The link is the station
+ * talking, decoded off the **stream** (ADR-0008 d.2); the power and the
  * railroad's name are rows `layout` reports on the bus (`bus.ts`). The power
  * button needs both channels — it is disabled with no station as readily as
  * with no broker — and this is where they are put together, because what a
@@ -518,15 +516,13 @@ function stop(layout) {
  * **The railroad does not go with the link.** It is `layout`'s row rather than
  * the station's, so a station that has stopped answering is still a railroad
  * `control` has loaded; what takes it away is the bus going, which hands this
- * module `UNREACHABLE` (`bus.ts`). The **build** beside it goes with the link,
- * because that one is the station talking.
+ * module `UNREACHABLE` (`bus.ts`).
  *
  * **A railroad nobody has reported is blank and not a sentence** (#246). An
  * outage, and the gap after a reconnect, leave the railroad unreported, and
  * `control` may have one loaded the whole time — so `no railroad loaded` there
- * is the page reporting a state nobody told it (ADR-0009 d.2). Blank, as the
- * build is while the station is not answering, and the power button beside it
- * already reads `no bus`. A row that says none is loaded is the other state
+ * is the page reporting a state nobody told it (ADR-0009 d.2). Blank, and the
+ * power button beside it already reads `no bus`. A row that says none is loaded is the other state
  * and keeps the sentence (#242, `Layout`).
  *
  * **The two presses are not disabled on the same facts.** The power button
@@ -540,9 +536,7 @@ function stop(layout) {
  * down: a station that is not answering is a fault and is owed a sentence, and
  * one that is answering is owed a glance (issue 168). The words are there in
  * either state all the same, because the band is what a reader who cannot see
- * the dot is given them by. The **build** goes with
- * the link, blanked by `asOf`, because a build from before a flash reported as
- * the one on the board would be this page saying what it cannot see.
+ * the dot is given them by.
  *
  * @param {Readings} readings
  * @param {Layout} layout
@@ -550,7 +544,6 @@ function stop(layout) {
  */
 export function band(readings, layout) {
   return {
-    build: readings.build ?? BLANK,
     railroad:
       layout.railroad === undefined ? BLANK : (layout.railroad ?? NO_RAILROAD),
     answering: readings.answering,
@@ -599,8 +592,7 @@ function says(letter, hot) {
  *
  * **The whole row goes when the link goes down**, because `asOf` has taken the
  * tracks away: the tiles are the station talking and the station is not
- * talking (ADR-0008 d.3). The **link** and the **build** are the **band**'s and
- * are not tiles — the band carries both at every width one of them is drawn at
+ * talking (ADR-0008 d.3). The **link** is the **band**'s and is not a tile
  * (issue 168, issue 170).
  *
  * @param {Readings} readings

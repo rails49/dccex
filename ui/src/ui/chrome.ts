@@ -13,24 +13,22 @@ import { band, type Layout, type Readings } from "../readings.js";
 import { DRAWN, VIEWS, type View } from "../view.js";
 
 /** The band: the UI name, the railroad `control` has loaded, the **link**
- *  with the **build** beside it, and track power (docs/ui/README.md).
+ *  and track power (docs/ui/README.md). The **build** is the releases view's
+ *  and not the band's (ADR-0027).
  *
  *  What it says is `readings.js`'s `band()`. Power is `layout`'s row. The
  *  toggle needs the broker, the station and a word from `layout`, and STOP the
  *  broker alone, so a silent station holds only the toggle (ADR-0017 d.3,
  *  ADR-0020 d.3). Each held press says why in its tooltip. */
 export function drawBand(readings: Readings, layout: Layout): TemplateResult {
-  const { build, railroad, answering, says, power, stop } = band(
-    readings,
-    layout,
-  );
+  const { railroad, answering, says, power, stop } = band(readings, layout);
   return html`
     <look-band ui="dccex">
       ${railroad === ""
         ? nothing
         : html`<look-reading>${railroad}</look-reading>`}
       <look-dot state=${answering ? "up" : "down"}
-        >${answering ? build : says}</look-dot
+        >${answering ? nothing : says}</look-dot
       >
       <look-power
         state=${layout.power ?? "off"}
