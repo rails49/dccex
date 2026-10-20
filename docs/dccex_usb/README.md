@@ -745,10 +745,12 @@ new commit before the `up` — `--env-file .env` is how compose is told which on
 — so an `up` that fails is a file naming a commit that was never brought up. It
 is put back: the previous commit, or removed where a first deploy onto a box had
 none, so that what the next deploy reads for its `went` is true (#83). Nothing
-is appended to the record, which is right — nothing was replaced. The failure is
-loud: the deploy exits non-zero and says which commit the box was left on. The
-containers are not rolled back, and going back on a deploy that did happen is
-the command above rather than something a failure does on its own.
+is appended to the record. The `up` may have recreated some containers before
+it failed (#313), so the box may not be on the commit `.env` names. The failure
+is loud: the deploy exits non-zero, says what it put `.env` back to, prints the
+`docker compose ... ps -a` that shows which containers run what, and points to
+the rollback in the script's header. The containers are not rolled back; going
+back is the command above rather than something a failure does on its own.
 
 All of this is code here now. `deploy/Dockerfile` is the image; `compose.yaml`
 and `compose.box.yaml` are the project, the second being the box's half — the

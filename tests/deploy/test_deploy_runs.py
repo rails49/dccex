@@ -314,7 +314,7 @@ def test_a_failed_up_on_a_box_that_had_no_env_leaves_none(tmp_path: Path) -> Non
 
 
 def test_a_failed_up_appends_nothing_to_the_record(tmp_path: Path) -> None:
-    """Which is right: nothing was replaced (ADR-0005 d.5)."""
+    """The record is not appended to (ADR-0005 d.5)."""
     box = deployed(
         tmp_path,
         env=f"DCCEX_COMMIT={RUNNING}\n",
@@ -325,8 +325,8 @@ def test_a_failed_up_appends_nothing_to_the_record(tmp_path: Path) -> None:
 
 
 def test_a_failed_up_exits_non_zero_and_says_what_it_put_back(tmp_path: Path) -> None:
-    """The failure stays loud, and whoever ran it is told which commit the box
-    is on — underneath compose's own output, which is where the reason is."""
+    """The failure stays loud, and whoever ran it is told what `.env` was put
+    back to — underneath compose's own output, which is where the reason is."""
     box = deployed(
         tmp_path,
         env=f"DCCEX_COMMIT={RUNNING}\n",
@@ -336,6 +336,49 @@ def test_a_failed_up_exits_non_zero_and_says_what_it_put_back(tmp_path: Path) ->
     assert DAEMON in box.ran.stderr
     assert f"Put .env back to dccex:{RUNNING}" in box.ran.stderr
     assert box.commit not in box.ran.stdout
+
+
+def test_a_failed_up_does_not_say_the_box_is_on_the_old_commit(
+    tmp_path: Path,
+) -> None:
+    """An `up` can fail after it has recreated some containers (#313), so the
+    box may not be on what `.env` was put back to."""
+    box = deployed(
+        tmp_path,
+        env=f"DCCEX_COMMIT={RUNNING}\n",
+        comes_up=False,
+    )
+    assert "what this box is on" not in box.ran.stderr
+    assert "nothing was replaced" not in box.ran.stderr
+
+
+def test_a_failed_up_says_how_to_see_which_containers_were_recreated(
+    tmp_path: Path,
+) -> None:
+    """The `ps -a` line is the deploy's own compose call with `ps -a` for the
+    subcommand."""
+    box = deployed(
+        tmp_path,
+        env=f"DCCEX_COMMIT={RUNNING}\n",
+        comes_up=False,
+    )
+    files = "-f compose.yaml -f compose.box.yaml"
+    assert files in box.called
+    envs = box.called.split(files, 1)[1].split(" up ", 1)[0].strip()
+    assert f"docker compose {files} {envs} ps -a" in box.ran.stderr
+
+
+def test_a_failed_up_points_to_the_rollback_in_the_script_header(
+    tmp_path: Path,
+) -> None:
+    """The rollback is written once, in the header (ADR-0005 d.7)."""
+    box = deployed(
+        tmp_path,
+        env=f"DCCEX_COMMIT={RUNNING}\n",
+        comes_up=False,
+    )
+    assert "scripts/deploy.sh" in box.ran.stderr
+    assert "--no-build" not in box.ran.stderr
 
 
 def test_a_failed_up_says_it_removed_the_env_where_there_was_none(
