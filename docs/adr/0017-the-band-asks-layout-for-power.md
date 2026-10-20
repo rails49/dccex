@@ -1,6 +1,7 @@
 # ADR-0017 — the band asks `layout` for power
 
-- **Status:** accepted, 2026-10-08; d.2 amended by [ADR-0023](0023-the-chrome-comes-from-look.md)
+- **Status:** accepted, 2026-10-08; d.2 amended by [ADR-0023](0023-the-chrome-comes-from-look.md);
+  d.1, d.2 and d.3 superseded by [ADR-0026](0026-the-bands-power-control-is-controls.md)
 - **Ticket:** #205, #206, #208
 - **Supersedes:** [ADR-0011](0011-the-band-commands-track-power.md) d.1, d.2
   and d.4
