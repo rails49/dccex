@@ -354,35 +354,27 @@ async def _frame_that_cannot_be_read_is_dropped() -> None:
         await station.heard_nothing_more()
 
 
-# -- the stop, and clearing it -------------------------------------------
+# -- the stop, and a lock -----------------------------------------------
 
 
-def test_a_stop_is_one_message_and_an_on_after_it_is_another() -> None:
-    asyncio.run(_stop_is_one_message_and_an_on_after_it_is_another())
+def test_a_stop_asked_for_on_the_bus_sends_nothing() -> None:
+    asyncio.run(_stop_asked_for_on_the_bus_sends_nothing())
 
 
-async def _stop_is_one_message_and_an_on_after_it_is_another() -> None:
-    """The one-shot holds nothing, so there is nothing to undo: the stop is
-    the broadcast alone and the `on` behind it is the track-on alone. No
-    zeros and no release — every locomotive is already standing at its slot's
-    stop, and what moves one again is the next thing that commands it (#463).
-    """
+async def _stop_asked_for_on_the_bus_sends_nothing() -> None:
+    """`wanted/track` carries `on` or `off`, and an emergency stop reaches
+    this app as `off` (control ADR-0078 d.5). `stopped` is outside that set
+    and sends nothing."""
     bus, _ = bus_and_tap()
     port = Port()
     async with running(bus, port):
         station = await port.opened()
         wanted(bus, TRACTION, "3", {"addr": "3", "speed": 0.5})
-        wanted(bus, TRACTION, "7", {"addr": "7", "speed": -0.25})
         bus.drain()
-        assert await station.heard(2) == [b"<t 3 63 1>", b"<t 7 32 0>"]
+        assert await station.heard(1) == [b"<t 3 63 1>"]
 
         wanted(bus, TRACK, "", {"power": "stopped"})
         bus.drain()
-        assert await station.heard(1) == [b"<!>"]
-
-        wanted(bus, TRACK, "", {"power": "on"})
-        bus.drain()
-        assert await station.heard(1) == [b"<1>"]
         await station.heard_nothing_more()
 
 
@@ -507,11 +499,11 @@ async def _every_on_runs_the_power_handler() -> None:
         await station.heard_nothing_more()
 
 
-def test_the_power_handler_runs_on_the_off_and_on_the_stop_as_well() -> None:
-    asyncio.run(_power_handler_runs_on_the_off_and_on_the_stop_as_well())
+def test_the_power_handler_runs_on_the_off_as_well() -> None:
+    asyncio.run(_power_handler_runs_on_the_off_as_well())
 
 
-async def _power_handler_runs_on_the_off_and_on_the_stop_as_well() -> None:
+async def _power_handler_runs_on_the_off_as_well() -> None:
     """The event is the desired value being applied, whichever word it
     carries; there is no transition kept here. A handler that wants only the
     ON reads `t.desired("power")` and says so itself."""
@@ -522,10 +514,7 @@ async def _power_handler_runs_on_the_off_and_on_the_stop_as_well() -> None:
         wanted(bus, TRACK, "", {"power": "off"})
         bus.drain()
         assert await station.heard(3) == [b"<0>"] + SENT
-
-        wanted(bus, TRACK, "", {"power": "stopped"})
-        bus.drain()
-        assert await station.heard(3) == [b"<!>"] + SENT
+        await station.heard_nothing_more()
 
 
 def test_a_handler_replaces_the_command_it_stands_in_for() -> None:
@@ -1015,7 +1004,7 @@ async def _with_no_script_loaded_power_on_is_refused(
 ) -> None:
     """Track modes and current limits are the script's, so a railroad whose
     script this app has not got is one whose rails may not be made live. The
-    OFF, the stop and the speeds are carried out — each of them is a thing a
+    OFF and the speeds are carried out — each of them is a thing a
     railroad is only made safer by (ADR-0015 d.4)."""
     bus, _ = bus_and_tap()
     port = Port()
@@ -1027,10 +1016,9 @@ async def _with_no_script_loaded_power_on_is_refused(
             await station.heard_nothing_more()
 
             wanted(bus, TRACTION, "3", {"addr": "3", "speed": 0.5})
-            wanted(bus, TRACK, "", {"power": "stopped"})
             wanted(bus, TRACK, "", {"power": "off"})
             bus.drain()
-            assert await station.heard(3) == [b"<t 3 63 1>", b"<!>", b"<0>"]
+            assert await station.heard(2) == [b"<t 3 63 1>", b"<0>"]
     assert "power ON refused" in caplog.text
 
 
@@ -1602,21 +1590,13 @@ def test_the_lock_the_station_reports_reads_on_with_a_reason() -> None:
 
 async def _lock_the_station_reports_reads_on_with_a_reason() -> None:
     """The supply is `on` or `off` (control ADR-0063): an emergency stop
-    leaves the rails live. A stop this app sends leaves nothing for the
-    station to report, and a lock somebody else set is said in the reason
-    (#290)."""
+    leaves the rails live. A lock somebody set at the station is said in the
+    reason (#290)."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port):
         station = await port.opened()
         station.says(b"<p1>")
-        await asyncio.sleep(QUIET_S)
-        bus.drain()
-        assert [value["power"] for value in tap.values(DEVICE_TRACK)] == ["off", "on"]
-
-        wanted(bus, TRACK, "", {"power": "stopped"})
-        bus.drain()
-        assert await station.heard(1) == [b"<!>"]
         await asyncio.sleep(QUIET_S)
         bus.drain()
         assert [value["power"] for value in tap.values(DEVICE_TRACK)] == ["off", "on"]

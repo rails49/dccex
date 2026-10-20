@@ -89,13 +89,6 @@ def test_the_track_takes_the_word_the_whole_railroad_shares() -> None:
     assert commands.track("off") == b"<0>"
 
 
-def test_a_stop_is_the_one_shot() -> None:
-    """Every decoder told to stand over live rails, and nothing held
-    afterwards: any throttle on the shared port may drive away from it, which
-    is the operator's call and not this app's (#463)."""
-    assert commands.track("stopped") == b"<!>"
-
-
 def test_a_poll_asks_for_the_status_and_for_the_stash() -> None:
     """The two questions a poll is made of, and both only ask. A poll runs
     for as long as the link, so anything in it a station acts on rather than

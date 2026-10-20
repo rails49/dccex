@@ -11,16 +11,16 @@ these are copied from `control`'s `src/tc49/lib/payload.py` at 8950c92.
 
 from typing import cast
 
-from tc49.lib.inventory import OFF, ON, STOPPED
+from tc49.lib.inventory import OFF, ON
 
 
 def commanded_power(payload: object) -> str | None:
-    """The power a `wanted/track` value asks the railroad for: one of `on`,
-    `stopped` and `off`, or None where it asks for none."""
+    """The power a `wanted/track` value asks the railroad for: `on` or
+    `off`, or None where it asks for none (control ADR-0078 d.5)."""
     if not isinstance(payload, dict):
         return None
     wanted = cast(dict[str, object], payload).get("power")
-    if not isinstance(wanted, str) or wanted not in (ON, STOPPED, OFF):
+    if not isinstance(wanted, str) or wanted not in (ON, OFF):
         return None
     return wanted
 

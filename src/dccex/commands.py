@@ -26,7 +26,7 @@ has a vocabulary for setting either; the two that ask are the station's own
 questions and name no mode and no number (ADR-0013, `script.py`).
 """
 
-from tc49.lib.inventory import OFF, ON, STOPPED
+from tc49.lib.inventory import OFF, ON
 
 STEPS = 126
 """What a speed's magnitude is scaled to. The station takes `0..126` and
@@ -194,22 +194,9 @@ def track(power: str) -> bytes:
     a hardware fact that does not reach the bus: there is one railroad-wide
     desired power and a translator maps it onto however many districts its
     hardware drives (`control`'s `docs/BUS.md`, *Device vocabulary*).
-
-    `stopped` is the **one-shot** emergency stop: every decoder told to stand
-    with the track still live, and nothing afterwards. Any throttle on the
-    shared port may drive away from it, this app's own included, and that is
-    the intended reading rather than a defect in it — who may move a train is
-    the operator's to decide, and the operator is the one holding the layout
-    (control#463).
-
-    A station's emergency-stop *lock* would make `stopped` a state rather than
-    an act, and is not asked for here (control ADR-0043, control ADR-0063,
-    control#464, [docs/dccex/README.md](../../docs/dccex/README.md)).
     """
     if power == ON:
         return b"<1>"
-    if power == STOPPED:
-        return b"<!>"
     assert power == OFF, power
     return b"<0>"
 
