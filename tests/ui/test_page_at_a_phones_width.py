@@ -24,7 +24,7 @@ address it loads is `http://127.0.0.1/` and no port has to be agreed between
 them. The gate is untouched by all of it, which is the criterion #127 ends on.
 
 **There is no face behind the page here**, and no broker either, so the stream
-never opens, the link reads as not answering, the build is blank and the band's
+never opens, the link reads as not answering and the band's
 railroad slot is blank with it — the "nothing said" state, and enough for
 layout. The one exception is the release list: rows are what the wrap rule is
 about, and a page with none of them cannot be asked whether they wrap, so the

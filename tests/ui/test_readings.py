@@ -65,7 +65,7 @@ def drawn(**scenario: Any) -> dict[str, Any]:
 
 
 def band(**scenario: Any) -> dict[str, Any]:
-    """What the band carries: the **build**, the **link** and the two
+    """What the band carries: the railroad, the **link** and the two
     presses."""
     carried: dict[str, Any] = drawn(**scenario)["band"]
     return carried
@@ -165,14 +165,13 @@ def live() -> dict[str, Any]:
 
 
 @pytest.mark.node
-def test_the_band_carries_the_build_the_railroad_the_link_and_the_presses() -> None:
-    """The band is the **build**, the railroad, the **link** and two presses,
-    and nothing else (docs/ui/README.md, ADR-0017, ADR-0020, #239). A reading
+def test_the_band_carries_the_railroad_the_link_and_the_presses() -> None:
+    """The band is the railroad, the **link** and two presses, and nothing else
+    (docs/ui/README.md, ADR-0017, ADR-0020, #239, ADR-0027). A reading
     added without a scenario beside it is a reading an operator can be shown
     that nobody ever read (ADR-0009 d.3)."""
     assert sorted(live()["band"]) == [
         "answering",
-        "build",
         "power",
         "railroad",
         "says",
@@ -181,7 +180,7 @@ def test_the_band_carries_the_build_the_railroad_the_link_and_the_presses() -> N
 
 
 @pytest.mark.node
-def test_the_band_reads_the_build_the_link_and_the_power_off_both_channels() -> None:
+def test_the_band_reads_the_link_and_the_power_off_both_channels() -> None:
     """The whole of it, off a station that is answering and a `layout` that
     reports the rails hot.
 
@@ -190,7 +189,6 @@ def test_the_band_reads_the_build_the_link_and_the_power_off_both_channels() -> 
     The button is titled for what a press will do, which is ask for power off.
     """
     assert band(said=list(TALKING), now=NOW, layout=HOT) == {
-        "build": "9db6d10",
         "railroad": YARD,
         "answering": True,
         "says": "answering",
@@ -230,9 +228,9 @@ def test_a_band_whose_railroad_is_unreported_names_nothing() -> None:
     gap after a reconnect and a page that has not reached the broker at all
     (#246).
 
-    Blank, as the **build** is while the station is not answering: `control`
-    may have a railroad loaded the whole time, and `no railroad loaded` here
-    would be the page reporting a state nobody told it (ADR-0009 d.2). The band
+    Blank: `control` may have a railroad loaded the whole time, and `no
+    railroad loaded` here would be the page reporting a state nobody told it
+    (ADR-0009 d.2). The band
     is where the two are told apart, and what tells them apart is whether a row
     arrived (#242, `readings.js`'s `Layout`).
     """
@@ -244,11 +242,9 @@ def test_a_band_whose_railroad_is_unreported_names_nothing() -> None:
 def test_the_railroad_does_not_go_with_the_link() -> None:
     """It is `layout`'s row and not the station's, so a station that has
     stopped answering is still a railroad `control` has loaded (ADR-0017,
-    #239). The **build** beside it goes, because that one is the station
-    talking (ADR-0008 d.3)."""
+    #239)."""
     gone = band(said=list(TALKING), now=NOW + silent_ms(), layout=HOT)
     assert gone["railroad"] == YARD
-    assert gone["build"] == ""
 
 
 @pytest.mark.node
@@ -414,8 +410,8 @@ def test_there_is_a_tile_per_track_in_letter_order() -> None:
     """One per track the station names, in letter order (CONTEXT.md **tile**).
     D is set to NONE and has a tile all the same.
 
-    The **link** and the **build** are not among them: the **band** carries
-    both.
+    The **link** is not among them: the **band** carries it. Nor is the
+    **build**: the releases view carries it.
     """
     assert [tile["track"] for tile in live()["tiles"]] == ["A", "B", "C", "D"]
 
@@ -529,7 +525,6 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     **link** is the station answering rather than a socket being open
     (ADR-0008, control ADR-0066)."""
     assert band(now=NOW) == {
-        "build": "",
         "railroad": "",
         "answering": False,
         "says": "dcc-ex offline",
@@ -594,7 +589,6 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
     }
 
     assert band(**gone) == {
-        "build": "",
         "railroad": YARD,
         "answering": False,
         "says": "dcc-ex offline",
@@ -624,8 +618,8 @@ def test_the_build_blanks_with_the_link_and_fills_again_by_itself() -> None:
     flashing = [(BANNER, NOW)]
     back = [*flashing, (BANNER.replace("9db6d10", "0ff1ce5"), NOW + 90_000)]
 
-    assert band(said=flashing, now=NOW + 60_000)["build"] == ""
-    assert band(said=back, now=NOW + 90_010)["build"] == "0ff1ce5"
+    assert drawn(said=flashing, now=NOW + 60_000)["readings"]["build"] is None
+    assert drawn(said=back, now=NOW + 90_010)["readings"]["build"] == "0ff1ce5"
 
 
 @pytest.mark.node
