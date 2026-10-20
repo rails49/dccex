@@ -5,7 +5,7 @@ The cases are `control`'s for the same functions at 8950c92
 (`tests/lib/test_payload.py`), where they were taken from.
 """
 
-from tc49.lib.inventory import OFF, ON, STOPPED
+from tc49.lib.inventory import OFF, ON
 
 from dccex.rows import (
     commanded_power,
@@ -18,7 +18,6 @@ from dccex.rows import (
 
 def test_a_power_value_reads_as_the_value_it_asks_for() -> None:
     assert commanded_power({"power": "on"}) == ON
-    assert commanded_power({"power": "stopped"}) == STOPPED
     assert commanded_power({"power": "off"}) == OFF
 
 
@@ -30,6 +29,7 @@ def test_a_power_value_that_cannot_be_read_reads_as_none() -> None:
         {"power": None},
         {"power": 1},  # not a string
         {"power": "ON"},  # a value outside the closed set
+        {"power": "stopped"},  # an emergency stop is `off` (control ADR-0078)
     ]
     for payload in refused:
         assert commanded_power(payload) is None, payload

@@ -39,12 +39,9 @@ ADR-0015).
 **A new script text ends the process** rather than being loaded in place
 (`following`, ADR-0015 d.3).
 
-Two rules are not a row of the mapping table. **The stop is the one-shot, and
-no row of this app's holds it** — each translator implements `stopped` as well
-as its own hardware allows and never by removing power (`commands.track`,
-control ADR-0063 d.3). **A trip is read from the station's diagnostics**,
-which the mirror passes to every client; the poll restates every district's
-power (`_diagnosed`, `commands.STATUS`, ADR-0016).
+One rule is not a row of the mapping table. **A trip is read from the
+station's diagnostics**, which the mirror passes to every client; the poll
+restates every district's power (`_diagnosed`, `commands.STATUS`, ADR-0016).
 
 **A clean exit stands the railroad down**: zero to every locomotive this app
 has commanded, then the track off. Whoever constructs this app calls it before
