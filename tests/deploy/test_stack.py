@@ -16,8 +16,8 @@ It needs no daemon either, so it is in the gate beside this. What
 
 The claims are the ones a box would otherwise discover: that the project is
 pinned by name, that the shared network is joined rather than created, that a
-missing box declaration stops the stack by name, that the device mapping
-`control` deleted is recreated on both sides, that 2560 is on the LAN and the
+missing box declaration stops the stack by name, that the mirror starts
+without the station, that 2560 is on the LAN and the
 face's port is on nothing, that the door is handed the page and the face on
 one host with the face's prefix stripped and 2560 routed by nobody, that the
 band's broker is on that host too and a page from another origin is refused
@@ -120,10 +120,12 @@ ORIGIN = "https://github.com/rails49/dccex.git"
 #: and not the number.
 BY_ID = "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
 
-#: What the device is called inside the container. It is the app's own default
-#: argument and what this repository's prose has always said, and it was the
-#: container side of `control`'s `devices:` entry before that.
+#: What the device is called inside the container when nothing names it: the
+#: image's own default argument. The box names the `by-id` path instead.
 INSIDE = "/dev/dccex"
+
+#: Where the host's `/dev` is mounted in the mirror, read-only (ADR-0025).
+HOST_DEV = "/host/dev"
 
 #: The volume the **journal** is kept on, and where both containers mount it.
 #: Named rather than a path on the box: nothing on the box has to be made for
@@ -268,13 +270,14 @@ def test_the_deploy_refuses_a_box_with_no_declaration_before_it_pulls() -> None:
     assert f"BOX_ENV={DECLARATION}" in said
 
 
-def test_the_device_mapping_control_deleted_is_recreated_on_both_sides() -> None:
-    """There is no udev rule in any repository and there never was one:
-    `/dev/dccex` was the container side of `control`'s entry, and this is the
-    entry."""
-    assert entries(services(BOX)["mirror"], "devices") == [
-        f"${{DCCEX_STATION_DEVICE:-{BY_ID}}}:{INSIDE}"
-    ]
+def test_the_mirror_starts_without_the_station() -> None:
+    """A `devices:` entry fails the start when the station is unplugged, and
+    the container stays `Created` (#312). The station is a cgroup rule for the
+    ttyUSB major and the host's `/dev` mounted read-only (ADR-0025)."""
+    mirror = services(BOX)["mirror"]
+    assert entries(mirror, "devices") == []
+    assert entries(mirror, "device_cgroup_rules") == ["c 188:* rmw"]
+    assert f"/dev:{HOST_DEV}:ro" in entries(mirror, "volumes")
 
 
 def test_the_mirror_publishes_2560_and_the_face_is_published_by_nothing() -> None:
@@ -291,7 +294,9 @@ def test_the_mirror_runs_the_device_and_the_port_the_mapping_names() -> None:
     """The flags compose passes, against the names above rather than against
     themselves: a stack that mapped the device to one name and opened another
     would come up and mirror nothing."""
-    assert f'"--device", "{INSIDE}", "--port", "2560"' in services(BOX)["mirror"]
+    mirror = services(BOX)["mirror"]
+    assert f'"--device", "/host${{DCCEX_STATION_DEVICE:-{BY_ID}}}"' in mirror
+    assert '"--port", "2560"' in mirror
 
 
 def test_the_mirror_is_given_the_store_the_page_edits_a_script_in() -> None:
@@ -353,7 +358,10 @@ def test_both_apps_mount_the_journals_volume_where_the_other_does() -> None:
     path and on nothing else. The mirror's mount is read-only.
     """
     assert entries(services(BOX)["translator"], "volumes") == [JOURNAL_MOUNT]
-    assert entries(services(BOX)["mirror"], "volumes") == [f"{JOURNAL_MOUNT}:ro"]
+    assert entries(services(BOX)["mirror"], "volumes") == [
+        f"{JOURNAL_MOUNT}:ro",
+        f"/dev:{HOST_DEV}:ro",
+    ]
     assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)["translator"]
 
 
