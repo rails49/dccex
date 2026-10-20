@@ -14,7 +14,7 @@ the rail picks it (#169): the monitor view, which is the **tile**s and the
 stamped with the time it arrived, newest at the bottom (#4), and a box at the
 foot that types a whole `<…>` message back (#6) — the **release**s, the
 railroad's **script**, or the **journal**. The band
-carries the **build**, the **link** and the power button and the tiles carry the
+carries the **link** and the power button and the tiles carry the
 particulars — all of them made of what the station said and kept live by the
 page's own polling, except the power, which is a row `layout` reports on the
 bus (#7, #168, #205). The releases are listed newest first with the one
@@ -124,12 +124,9 @@ work pane is what changes.
 ### The band
 
 The mark and the UI name `dccex` on the left, both look's (org ADR-0019); on
-the right the railroad `control` has loaded, the **link** with the **build**
-beside it, and the two presses (#168, ADR-0017, ADR-0020, #239, #301).
-
-The build is the `G-` field of the station's banner and is blank while the link
-is down: a build from before a flash reported as the one on the board would be
-the page saying what it cannot see (ADR-0008 d.3).
+the right the railroad `control` has loaded, the **link**, and the two presses
+(#168, ADR-0017, ADR-0020, #239). The **build** is not on the band; the
+releases view shows it (#316, ADR-0027).
 
 **The band names the railroad `control` has loaded** (org ADR-0014, #239). It
 is the `name` off `tc49/layout/state/railroad` — the row the **translator**
@@ -144,13 +141,11 @@ the chrome.
 
 It does not go with the link. The name is `layout` talking, so a station that
 has stopped answering is still a railroad `control` has loaded; what takes it
-away is the bus going. The build beside it does go, because that one is the
-station talking.
+away is the bus going.
 
-The link is a `look-dot`, green with the build beside it while the station is
-answering and red with `dcc-ex offline` beside it while it is not. A station
-that is answering but has not yet said its build is a green dot alone. **The link says so when the station stops
-answering**, rather than leaving the page looking merely idle, which is the
+The link is a `look-dot`, green and alone while the station is answering and
+red with `dcc-ex offline` beside it while it is not. **The link says so when
+the station stops answering**, rather than leaving the page looking merely idle, which is the
 difference between a dead station and a quiet one and the reason any of this
 exists. 
 
@@ -182,8 +177,8 @@ page: the per-track readings in the monitor view show state and press nothing
 (ADR-0011 d.3). The flash sequence cuts power as its own step, at the station,
 and asks the operator first.
 
-How the band fits a narrow screen is look's. It no longer drops the build, the
-railroad and the link's words below 560px and 400px (#208, ADR-0023).
+How the band fits a narrow screen is look's. It no longer drops the railroad
+and the link's words below 560px and 400px (#208, ADR-0023).
 `tests/ui/test_page_at_a_phones_width.py` loads the built page at 320px, 375px
 and a desktop width and reads back the dot, the toggle and STOP on the screen.
 
@@ -243,9 +238,9 @@ The whole row goes when the link goes down, which is correct rather than a gap:
 a tile is one track and a station that is not talking is not saying it has any
 (ADR-0008 d.3). The row keeps its height while it is empty, so the monitor does
 not move under the reader's thumb at the moment the station goes away. The
-**link** and the **build** are the band's and are not tiles: it carries both at
-every width either is drawn at, and a tile repeating one of them would be a
-second answer to a reading the chrome already gives.
+**link** is the band's and is not a tile: the band carries it at every width,
+and a tile repeating it would be a second answer to a reading the chrome
+already gives. The **build** is the releases view's (ADR-0027).
 
 On a narrow window the tiles wrap onto more rows rather than running off the
 side, and each may shrink below the share it asks for.
