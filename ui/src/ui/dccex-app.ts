@@ -68,14 +68,15 @@
  *
  * **And the bus is held here, for the band's two presses** (ADR-0017,
  * ADR-0026). They ask `layout` for power rather than typing at the station,
- * because `layout` drains the railroad before an OFF and runs the **script**'s
- * power handler (`control` ADR-0062, `control` ADR-0078) — so the page is a
- * client of `control`'s broker as well as of the mirror's face, which is the
- * second of the three things a UI may talk to (the organisation's ADR-0002). One connection, held here for the same reason the
- * stream is: a pane that opened one of its own would be a second client of
- * that broker for one page (`bus.ts`). What it says is handed down to the band
- * beside the station's readings, and both presses are dead on the same rule
- * (ADR-0026 d.4).
+ * because `layout` drains the railroad on `draining` and zeroes every speed
+ * before it cuts on `off` (`control` ADR-0078), and the translator runs the
+ * **script**'s power handler — so the page is a client of `control`'s broker
+ * as well as of the mirror's face, which is the second of the three things a
+ * UI may talk to (the organisation's ADR-0002). One connection, held here for
+ * the same reason the stream is: a pane that opened one of its own would be a
+ * second client of that broker for one page (`bus.ts`). What it says is
+ * handed down to the band beside the station's readings, and both presses are
+ * dead on the same rule (ADR-0026 d.4).
  *
  * **The script's counterparties are the page's too** (issue 185). One
  * railroad's script and a script applied are both asked of the **face**, which
@@ -292,14 +293,15 @@ export class DccexApp extends LitElement {
   readings: Readings = asOf(QUIET, 0);
 
   /** What the bus says about the railroad's power: whether the page has the
-   *  broker, and what `layout` last reported (ADR-0017 d.2).
+   *  broker, and what `layout` last reported (ADR-0026 d.3).
    *
    *  A page that has not reached the broker has not reached it — that is the
-   *  reading, and it is what disables the band's button rather than a hedge
-   *  (`bus.ts`). The name on it is the railroad the **script** view edits as
-   *  well as the one the band says (issue 238), and it carries the railroad
-   *  being unreported apart from `control` having loaded none, because the two
-   *  are different things to a pane holding somebody's edits (issue 242). */
+   *  reading, and it is what disables both presses on the band rather than a
+   *  hedge (`bus.ts`). The name on it is the railroad the **script** view
+   *  edits as well as the one the band says (issue 238), and it carries the
+   *  railroad being unreported apart from `control` having loaded none,
+   *  because the two are different things to a pane holding somebody's edits
+   *  (issue 242). */
   layout: Layout = UNREACHABLE;
 
   /** What the face said the configured source carries, or `null` where it has
@@ -359,7 +361,7 @@ export class DccexApp extends LitElement {
   );
 
   /** The bus, and the one thing it hands up: what `layout` says about the
-   *  railroad's power, every time that changes (ADR-0017 d.2). */
+   *  railroad's power, every time that changes (ADR-0026 d.3). */
   readonly #bus = new Bus((layout: Layout) => {
     this.layout = layout;
   });
@@ -528,8 +530,7 @@ export class DccexApp extends LitElement {
     return sent;
   };
 
-  /** Ask `layout` for power, which is a row on the bus (ADR-0017 d.1,
-   * ADR-0026 d.2).
+  /** Ask `layout` for power, which is a row on the bus (ADR-0026 d.2).
    *
    * What both presses on the band ask through, and the whole of what the page
    * does about power: look's press word, mapped by `asked` to `draining` or

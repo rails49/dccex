@@ -111,7 +111,7 @@ export const UNREACHABLE = /** @type {Layout} */ ({
 /**
  * What `layout` reports the power as, off one payload on its state row.
  *
- * **A payload this page cannot read reads as `off`** (ADR-0017 d.2, #205).
+ * **A payload this page cannot read reads as `off`** (ADR-0026 d.3, #205).
  * That is the one reading here that is not what was said, and it is the safe
  * one: the button then offers the press that turns power on, which is a press
  * `layout` checks for itself, where a button drawn green over a payload nobody
@@ -468,12 +468,12 @@ function live(layout) {
 /**
  * What the power button reads, is titled, and asks `layout` for.
  *
- * **It is `layout`'s row and not the station's** (ADR-0017 d.1, superseding
- * ADR-0011 d.1). `layout` refuses an OFF while a run is going and zeroes every
- * locomotive's speed before a cut, and the translator runs the **script**'s
- * power handler (`control` ADR-0062): a press that sent `<1>` or `<0>` through
- * the **face** skipped all of it. So the colour is the row `layout` reports
- * and the press is a row the page writes, and the station's own `<p…>` is a
+ * **It is `layout`'s row and not the station's** (ADR-0026 d.2). `layout`
+ * drains the railroad on `draining` and zeroes every locomotive's speed before
+ * it cuts on `off` (`control` ADR-0078), and the translator runs the
+ * **script**'s power handler: a press that sent `<1>` or `<0>` through the
+ * **face** skipped all of it. So the colour is the row `layout` reports and
+ * the press is a row the page writes, and the station's own `<p…>` is a
  * track's reading on a **tile** rather than this.
  *
  * It asks for what look's toggle fires, through `asked`: `draining` from `on`

@@ -73,10 +73,11 @@ organisation's ADR-0002. The page asks for it when a reader opens the journal
 view and when they press its reload, and never on a schedule.
 
 **The bus carries two rows up and one down** (ADR-0017, ADR-0026, org
-ADR-0014, #205, #208, #239). The band asks `layout` for power
-rather than typing `<1>` or `<0>` at the station, because `layout` refuses an OFF while a run is going,
-zeroes every locomotive's speed before a cut and runs the **script**'s power
-handler (control ADR-0062) — none of which a message through the face reaches.
+ADR-0014, #205, #208, #239). The band asks `layout` for power rather than
+typing `<1>` or `<0>` at the station, because `layout` drains the railroad and
+zeroes every locomotive's speed before a cut (control ADR-0078), and the
+translator runs the **script**'s power handler — none of which a message
+through the face reaches.
 So the page publishes `tc49/layout/power_wanted` and subscribes to
 `tc49/layout/state/power`. It subscribes to `tc49/layout/state/railroad` as
 well, which is the railroad the band names and the row the **translator**
@@ -145,16 +146,16 @@ away is the bus going.
 
 The link is a `look-dot`, green and alone while the station is answering and
 red with `dcc-ex offline` beside it while it is not. **The link says so when
-the station stops answering**, rather than leaving the page looking merely idle, which is the
-difference between a dead station and a quiet one and the reason any of this
-exists. 
+the station stops answering**, rather than leaving the page looking idle,
+which is the difference between a dead station and a quiet one and the reason
+any of this exists. 
 
 **The band asks `layout` for power** (ADR-0017, superseding ADR-0011 d.1, d.2
 and d.4). The button used to send `<0>` or `<1>` through the face, which
-skipped `layout` and the **translator**: `layout` is what refuses an OFF while
-a run is going and zeroes every locomotive's speed before a cut (control
-ADR-0062), and the translator is what runs the **script**'s power handler. So track
-power is `look-power`, a reading and a control at once, and both of them are
+skipped `layout` and the **translator**: `layout` is what drains the railroad
+and zeroes every locomotive's speed before a cut (control ADR-0078), and the
+translator is what runs the **script**'s power handler. So track power is
+`look-power`, a reading and a control at once, and both of them are
 `layout`'s — its `state` is `tc49/layout/state/power`, and a press publishes
 `tc49/layout/power_wanted`. The page asks for what `control`'s band asks for
 (ADR-0026, `control` ADR-0078). look's toggle fires `off` while it reads `on`,
@@ -233,7 +234,7 @@ station is running. A reading the station has not given reads blank, not `0 mA`.
 
 The tiles press nothing (ADR-0011 d.3). The **band**'s power button is the one
 control on the page that asks for the railroad's power, and it asks `layout`
-(ADR-0017 d.1).
+(ADR-0026 d.2).
 
 The whole row goes when the link goes down, which is correct rather than a gap:
 a tile is one track and a station that is not talking is not saying it has any
@@ -1084,7 +1085,7 @@ rule as the two checks above it.
   what this railroad wants of *this* station, and the app whose face this page
   talks to is the one that can reach the store it lives in (ADR-0015 d.5).
 - **Commanding track power anywhere at all.** The band's power button asks
-  `layout` for it on the bus (ADR-0017 d.1), the tiles press nothing (ADR-0011
+  `layout` for it on the bus (ADR-0026 d.2), the tiles press nothing (ADR-0011
   d.3), and the one module left that types `<0>` at the station is the flash
   sequence's own step. STOP asks `layout` for `off` on the bus (ADR-0026
   d.2). `<!>` at the station is the flash sequence's step and what the command
