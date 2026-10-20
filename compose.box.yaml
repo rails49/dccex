@@ -121,18 +121,15 @@ services:
     # because the port beside it does.
     ports:
       - "2560:2560"
-    # The device, which is a mapping this project has to carry because there
-    # is no udev rule anywhere: `/dev/dccex` was the container-side name of
-    # `control`'s own `devices:` entry and went out with it. The host side is
-    # the `by-id` path, behind a variable so a box that moves it overrides one
-    # line; the container side keeps the name the app's default argument and
-    # this repository's prose already say.
-    devices:
-      - "${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}:/dev/dccex"
-    # What the image's own `CMD` already is, written out because a stack that
-    # does not say which device on which port is a stack somebody has to read
-    # a Dockerfile to understand — and the store and the journal, which the
-    # `CMD` has no defaults for.
+    # The station, by cgroup rule and the host's `/dev` mounted read-only at
+    # `/host/dev`, not by `devices:` (ADR-0025). 188 is the ttyUSB major. The
+    # container starts with the station unplugged and opens it when it
+    # appears, under whichever `ttyUSBn` it comes up as.
+    device_cgroup_rules:
+      - "c 188:* rmw"
+    # The device and the port, which differ from the image's own `CMD` in the
+    # device only — and the store and the journal, which the `CMD` has no
+    # defaults for.
     #
     # The store is `control`'s, on the installation's network under its
     # service name as the broker is, and it is the same variable the
@@ -151,8 +148,13 @@ services:
     # (ADR-0022 d.4). One path named twice in this file and nowhere else. Left
     # out, the face answers that route with a sentence, which a clean clone with no translator
     # beside this app gets.
+    #
+    # The device is the `by-id` path under `/host/dev`. Its links are
+    # relative, so they resolve there. The variable is the host path, so a
+    # box that moves it overrides one line.
     command:
-      ["--device", "/dev/dccex", "--port", "2560",
+      ["--device", "/host${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}",
+       "--port", "2560",
        "--store", "${DCCEX_STORE_URL:-http://store:8765}",
        "--journal", "/var/lib/dccex/journal.jsonl"]
     # Long enough for a flash to be waited out. `firmware.py` gives esptool
@@ -207,9 +209,10 @@ services:
     # The **journal**, which the translator beside this writes and trims and
     # this app's face serves to the page as it is (ADR-0022 d.4). The same
     # named volume mounted at the same path in both containers, read-only
-    # here.
+    # here. And the host's `/dev`, for the station (ADR-0025).
     volumes:
       - journal:/var/lib/dccex:ro
+      - /dev:/host/dev:ro
 
   # The translator: `layout`'s desired rows to the station's commands, and the
   # station's replies to the track and link rows (ADR-0014). Same image as the
