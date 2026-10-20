@@ -218,8 +218,8 @@ const LIMITS = "<JG>";
  *
  * The status request, which is what a throttle asks with and what an operator
  * types most: the station answers it with the power state and its banner, and
- * those are the band's power button, each track's power and the **build**
- * (ADR-0008 d.2, d.3, ADR-0011 d.1). `<=>` asks what each track is set to. The answer to
+ * those are each track's power and the **build** (ADR-0008 d.2, d.3). `<=>`
+ * asks what each track is set to. The answer to
  * `<s>` is eight lines and every client on the port receives it, so it is not
  * asked every second.
  *
