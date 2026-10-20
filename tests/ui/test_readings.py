@@ -89,6 +89,12 @@ def reported(*payload: str) -> list[str]:
     return read
 
 
+def asked(*pressed: str) -> list[str | None]:
+    """What `layout` is asked for, for each of look's press words in turn."""
+    wanted: list[str | None] = drawn(pressed=list(pressed))["asked"]
+    return wanted
+
+
 def named(*payload: str) -> list[str | None]:
     """What `layout`'s railroad row reads as, for each of `payload` in turn."""
     read: list[str | None] = drawn(loaded=list(payload))["named"]
@@ -106,8 +112,17 @@ def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
 
 
 #: What the STOP press is titled while it can be pressed: what a press does
-#: rather than the state it leaves the railroad in (ADR-0020 d.3).
-STOPS = "stop every locomotive where it stands"
+#: rather than the state it leaves the railroad in.
+STOPS = "cut the power at once"
+
+#: What the toggle is titled while it would drain the railroad.
+DRAINS = "power off once every train is at rest"
+
+#: Why neither press can be pressed (ADR-0026 d.4).
+WAITING = "Waiting for the station"
+
+#: What a dead press reads, is titled and asks for.
+DEAD = {"reads": None, "title": WAITING, "wants": None}
 
 BANNER = "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>"
 
@@ -141,12 +156,13 @@ YARD = "crossover-yard"
 NO_RAILROAD = "no railroad loaded"
 
 #: What the bus says: the broker, with each of the three rows `layout`
-#: publishes on its power state row, and with none of them arrived yet. A
+#: publishes on its power state row (ADR-0026 d.3), and with none of them
+#: arrived yet. A
 #: scenario that says nothing about the bus is a page that has not reached the
 #: broker, which is what one has until it answers (`bus.ts`).
 HOT = {"connected": True, "power": "on", "railroad": YARD}
 COLD = {"connected": True, "power": "off", "railroad": YARD}
-HALTED = {"connected": True, "power": "stopped", "railroad": YARD}
+DRAINING = {"connected": True, "power": "draining", "railroad": YARD}
 UNSAID = {"connected": True, "power": None, "railroad": None}
 
 #: The broker with the railroad unreported: no railroad row has arrived since
@@ -167,7 +183,7 @@ def live() -> dict[str, Any]:
 @pytest.mark.node
 def test_the_band_carries_the_railroad_the_link_and_the_presses() -> None:
     """The band is the railroad, the **link** and two presses, and nothing else
-    (docs/ui/README.md, ADR-0017, ADR-0020, #239, ADR-0027). A reading
+    (docs/ui/README.md, ADR-0017, ADR-0026, #239, ADR-0027). A reading
     added without a scenario beside it is a reading an operator can be shown
     that nobody ever read (ADR-0009 d.3)."""
     assert sorted(live()["band"]) == [
@@ -186,14 +202,15 @@ def test_the_band_reads_the_link_and_the_power_off_both_channels() -> None:
 
     The words are what a reader who cannot see the dot is given, and the band
     draws them beside it only while the link is down (`ui/test/band.test.ts`).
-    The button is titled for what a press will do, which is ask for power off.
+    The button is titled for what a press will do, which is drain the
+    railroad (ADR-0026 d.2).
     """
     assert band(said=list(TALKING), now=NOW, layout=HOT) == {
         "railroad": YARD,
         "answering": True,
         "says": "answering",
-        "power": {"reads": "on", "title": "power off", "wants": "off"},
-        "stop": {"title": STOPS, "wants": "stopped"},
+        "power": {"reads": "on", "title": DRAINS, "wants": "draining"},
+        "stop": {"title": STOPS, "wants": "off"},
     }
 
 
@@ -259,61 +276,49 @@ def test_the_power_button_asks_for_on_where_layout_reports_it_off() -> None:
 
 
 @pytest.mark.node
-def test_a_railroad_layout_reports_as_stopped_is_red_and_asks_for_on() -> None:
-    """`stopped` is the state a STOP leaves a railroad in, and `layout` holds
-    it until an `on` (ADR-0017 d.2, ADR-0020). So the button is the way out of
-    it: red, and a press asks for power on."""
-    assert power(said=list(TALKING), now=NOW, layout=HALTED) == {
-        "reads": "stopped",
+def test_a_railroad_layout_reports_as_draining_asks_for_on() -> None:
+    """A drain is ended by an `on` (ADR-0026 d.2). The chip reads `draining`,
+    which look draws."""
+    assert power(said=list(TALKING), now=NOW, layout=DRAINING) == {
+        "reads": "draining",
         "title": "power on",
         "wants": "on",
     }
 
 
 @pytest.mark.node
-def test_the_stop_press_asks_layout_to_stop_every_locomotive() -> None:
-    """The press ADR-0020 adds: it asks `layout` for `stopped`, and it is
-    titled for what it does rather than for the state it leaves behind (d.2,
-    d.3).
-
-    `layout` applies a `stopped` whatever the run is doing and holds it until
-    an `on`, which is why this is the one ask on the band with no state behind
-    it (`control` ADR-0062).
-    """
-    assert stop(said=list(TALKING), now=NOW, layout=HOT) == {
-        "title": STOPS,
-        "wants": "stopped",
-    }
+def test_a_press_asks_layout_for_what_controls_band_asks_for() -> None:
+    """look's toggle `off` drains, its `on` asks for `on`, and the stop sign's
+    `stopped` asks for `off` (ADR-0026 d.2). A word look does not fire asks for
+    nothing."""
+    assert asked("off", "on", "stopped", "draining", "") == [
+        "draining",
+        "on",
+        "off",
+        None,
+        None,
+    ]
 
 
 @pytest.mark.node
-def test_the_stop_press_reads_the_same_whatever_layout_reports() -> None:
-    """It does not change with the state (ADR-0020 d.4). A press while the
-    railroad is already `stopped` asks again — what a second ask costs is
-    nothing, and a press that went dead over a state would be a stop refused
-    by the page."""
-    for layout in (HOT, COLD, HALTED, UNSAID):
+def test_the_stop_press_asks_layout_for_off_whatever_layout_reports() -> None:
+    """STOP cuts the power at once in every state (ADR-0026 d.2, `control`
+    ADR-0078). Nothing asks for `stopped`."""
+    for layout in (HOT, COLD, DRAINING):
         assert stop(said=list(TALKING), now=NOW, layout=layout) == {
             "title": STOPS,
-            "wants": "stopped",
+            "wants": "off",
         }
 
 
 @pytest.mark.node
-def test_the_stop_press_is_disabled_on_the_broker_and_nothing_else() -> None:
-    """The bus is the only thing a stop needs (ADR-0020 d.3).
-
-    The power button's other two reasons are not this press's: `layout` holds a
-    `stopped` and applies it when the station answers, so a station that is
-    silent and a `layout` that has reported nothing are both railroads a stop
-    reaches. The broker is the one absence that makes the ask reach nothing.
-    """
-    assert stop(said=list(TALKING), now=NOW) == {"title": "no bus", "wants": None}
-    assert stop(said=list(TALKING), now=NOW + silent_ms(), layout=UNSAID) == {
-        "title": STOPS,
-        "wants": "stopped",
-    }
-    assert stop(now=NOW, layout=HOT) == {"title": STOPS, "wants": "stopped"}
+def test_both_presses_are_live_with_the_station_silent() -> None:
+    """A silent station holds neither press once `layout` has reported
+    (ADR-0026 d.4)."""
+    gone = {"said": list(TALKING), "now": NOW + silent_ms(), "layout": HOT}
+    assert power(**gone) == {"reads": "on", "title": DRAINS, "wants": "draining"}
+    assert stop(**gone) == {"title": STOPS, "wants": "off"}
+    assert stop(now=NOW, layout=COLD) == {"title": STOPS, "wants": "off"}
 
 
 @pytest.mark.node
@@ -333,20 +338,19 @@ def test_the_button_is_layouts_row_and_never_the_stations_power_line() -> None:
 
 @pytest.mark.node
 def test_the_power_row_reads_what_layout_reported() -> None:
-    """The three `layout` publishes on its state row (ADR-0017 d.2,
-    `control`'s `docs/BUS.md`). `stopped` is one of them and is the reading the
-    band draws in red."""
-    assert reported('{"power": "on"}', '{"power": "off"}', '{"power": "stopped"}') == [
+    """The three `layout` publishes on its state row (ADR-0026 d.3, `control`
+    ADR-0078)."""
+    assert reported('{"power": "on"}', '{"power": "draining"}', '{"power": "off"}') == [
         "on",
+        "draining",
         "off",
-        "stopped",
     ]
 
 
 @pytest.mark.node
 def test_a_power_row_the_page_cannot_read_reads_as_off() -> None:
     """A row that is not JSON, a document with no power in it, and a word this
-    page does not know (ADR-0017 d.2).
+    page does not know, `stopped` included (ADR-0017 d.2, ADR-0026 d.3).
 
     `off` and not blank: it is the one reading in this module that is not what
     was said, and it is the safe one, because the press it offers is the one
@@ -364,6 +368,7 @@ def test_a_power_row_the_page_cannot_read_reads_as_off() -> None:
         '{"power": null}',
         '{"power": "ON"}',
         '{"power": "unknown"}',
+        '{"power": "stopped"}',
         "on",
     )
     assert reported(*unreadable) == ["off"] * len(unreadable)
@@ -528,8 +533,8 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
         "railroad": "",
         "answering": False,
         "says": "dcc-ex offline",
-        "power": {"reads": None, "title": "no bus", "wants": None},
-        "stop": {"title": "no bus", "wants": None},
+        "power": DEAD,
+        "stop": {"title": WAITING, "wants": None},
     }
     assert tiles(now=NOW) == {}
 
@@ -546,31 +551,17 @@ def test_a_link_that_is_down_says_so_in_words() -> None:
 
 
 @pytest.mark.node
-def test_the_power_button_presses_nothing_without_all_three_of_them() -> None:
-    """The broker, a station that is answering, and a word from `layout`
-    (ADR-0017 d.3).
-
-    Each is a different absence and the title says which, in that order: a
-    press with no broker reaches nothing, a press with no station is a railroad
-    `layout` cannot apply it to, and a railroad whose power nobody has reported
-    has no state to offer the other of. None of the three draws a chip — what
-    nothing has confirmed is not a colour to draw (ADR-0009 d.2).
-    """
-    assert power(said=list(TALKING), now=NOW) == {
-        "reads": None,
-        "title": "no bus",
-        "wants": None,
-    }
-    assert power(said=list(TALKING), now=NOW + silent_ms(), layout=HOT) == {
-        "reads": None,
-        "title": "no station",
-        "wants": None,
-    }
-    assert power(said=list(TALKING), now=NOW, layout=UNSAID) == {
-        "reads": None,
-        "title": "no layout",
-        "wants": None,
-    }
+def test_both_presses_are_dead_without_the_broker_or_a_word_from_layout() -> None:
+    """One rule and one reason for both presses (ADR-0026 d.4). Neither draws
+    a chip — what nothing has confirmed is not a colour to draw (ADR-0009
+    d.2)."""
+    for scenario in (
+        {"said": list(TALKING), "now": NOW},
+        {"said": list(TALKING), "now": NOW, "layout": UNSAID},
+        {"said": list(TALKING), "now": NOW + silent_ms(), "layout": UNSAID},
+    ):
+        assert power(**scenario) == DEAD
+        assert stop(**scenario) == {"title": WAITING, "wants": None}
 
 
 @pytest.mark.node
@@ -592,8 +583,8 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
         "railroad": YARD,
         "answering": False,
         "says": "dcc-ex offline",
-        "power": {"reads": None, "title": "no station", "wants": None},
-        "stop": {"title": STOPS, "wants": "stopped"},
+        "power": {"reads": "on", "title": DRAINS, "wants": "draining"},
+        "stop": {"title": STOPS, "wants": "off"},
     }
     assert tiles(**gone) == {}
 
@@ -674,6 +665,6 @@ def test_the_same_facts_read_the_same_whatever_was_asked_before() -> None:
     scenarios: tuple[dict[str, Any], ...] = (
         {"said": list(TALKING), "now": NOW, "layout": HOT},
         {"now": NOW},
-        {"said": [("<p0 A>", NOW)], "now": NOW, "layout": HALTED},
+        {"said": [("<p0 A>", NOW)], "now": NOW, "layout": DRAINING},
     )
     assert run(scenarios) == tuple(reversed(run(tuple(reversed(scenarios)))))

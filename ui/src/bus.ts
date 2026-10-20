@@ -173,14 +173,14 @@ export class Bus {
     client?.end(true);
   }
 
-  /** Ask `layout` for power: `on`, `off` or `stopped` (ADR-0017 d.1, ADR-0020
-   * d.2).
+  /** Ask `layout` for power: `on`, `draining` or `off` (ADR-0017 d.1,
+   * ADR-0026 d.2, `control` ADR-0078).
    *
    * The whole of what the page does about power, for both presses on the band:
    * the power button asks for the first two and STOP for the third. What
-   * becomes of the ask is `layout`'s — it refuses an OFF while a run is going and zeroes every
-   * locomotive before a cut (`control` ADR-0062) — and what the page shows is
-   * the state row that follows, or nothing where none does (ADR-0017 d.4).
+   * becomes of the ask is `layout`'s (`control` ADR-0062), and what the page
+   * shows is the state row that follows, or nothing where none does (ADR-0017
+   * d.4).
    *
    * Not retained, at QoS 0: it is a request and not a state, and a retained
    * one would be answered again by every `layout` that started afterwards.

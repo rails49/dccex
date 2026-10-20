@@ -19,16 +19,17 @@ import {
   RAILROAD_STATE,
   RECONNECT_MS,
 } from "../src/bus.js";
-import { UNREACHABLE, type Layout } from "../src/readings.js";
+import { UNREACHABLE, asked, type Layout } from "../src/readings.js";
 import { type Dialled, dialled, forgotten } from "./support/broker.js";
 
 beforeEach(forgotten);
 
 /** A row `layout` publishes, one a press asks for, and one this page cannot
  *  read. The three words are the same bytes either way, which is why the rows
- *  below stand for both (ADR-0017 d.1, d.2, ADR-0020 d.2). */
+ *  below stand for both (ADR-0017 d.1, ADR-0026 d.2, d.3). */
 const HOT = '{"power":"on"}';
 const COLD = '{"power":"off"}';
+const DRAINING = '{"power":"draining"}';
 const HALTED = '{"power":"stopped"}';
 const NONSENSE = "{";
 
@@ -119,8 +120,15 @@ test("what layout reports on the power row is what the page reads", () => {
   expect(latest(reported)).toEqual(carries("on"));
   broker.says(POWER_STATE, COLD);
   expect(latest(reported)).toEqual(carries("off"));
+  broker.says(POWER_STATE, DRAINING);
+  expect(latest(reported)).toEqual(carries("draining"));
+});
+
+test("a stopped row reads as off", () => {
+  const { broker, reported } = opened();
+  broker.connects();
   broker.says(POWER_STATE, HALTED);
-  expect(latest(reported)).toEqual(carries("stopped"));
+  expect(latest(reported)).toEqual(carries("off"));
 });
 
 test("a payload the page cannot read reads as off", () => {
@@ -177,13 +185,35 @@ test("a press publishes what it asks for, at QoS 0 and not retained", () => {
   ]);
 });
 
-test("a STOP press publishes stopped, at QoS 0 and not retained", () => {
+test("a STOP press publishes off, at QoS 0 and not retained", () => {
   const { bus, broker } = opened();
   broker.connects();
-  bus.wants("stopped");
+  const stop = asked("stopped");
+  expect(stop).toBe("off");
+  bus.wants(stop ?? "");
   expect(broker.published).toEqual([
-    { topic: POWER_WANTED, payload: HALTED, qos: 0, retain: false },
+    { topic: POWER_WANTED, payload: COLD, qos: 0, retain: false },
   ]);
+});
+
+test("no press publishes stopped", () => {
+  const { bus, broker } = opened();
+  broker.connects();
+  for (const pressed of ["on", "off", "stopped"]) {
+    const wanted = asked(pressed);
+    if (wanted !== null) {
+      bus.wants(wanted);
+    }
+  }
+  expect(broker.published.map((said) => said.payload)).toEqual([
+    HOT,
+    DRAINING,
+    COLD,
+  ]);
+  const stopped = broker.published.filter((said) =>
+    said.payload.includes("stopped"),
+  );
+  expect(stopped).toEqual([]);
 });
 
 test("an ask layout drops changes no reading", () => {

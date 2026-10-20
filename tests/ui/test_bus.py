@@ -119,8 +119,8 @@ def test_a_press_publishes_the_wanted_row_at_qos_0_and_not_retained() -> None:
     a press is one ask — the colour the button wears is the state row that
     follows, or nothing where `layout` dropped the ask (ADR-0017 d.4).
 
-    One publish for both presses, too: STOP asks for `stopped` on this same
-    row (ADR-0020 d.2), and what each of the three words puts on the broker is
+    One publish for both presses, too: STOP asks for `off` on this same row
+    (ADR-0026 d.2), and what each of the three words puts on the broker is
     driven rather than read (`ui/test/bus.test.ts`).
     """
     source = code(BUS.read_text())
