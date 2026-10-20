@@ -53,12 +53,15 @@ export const SILENT_MS = 5000;
 const BLANK = "";
 
 /** What `layout` reports the railroad's power as, and what a press asks it for
- *  (ADR-0017 d.1, d.2, `control`'s `docs/BUS.md`). All three are asked for
- *  here: `on` and `off` by the power button, and `stopped` by the STOP press
- *  (ADR-0020 d.2). The power button is the way out of `stopped`. */
+ *  (ADR-0026 d.2, d.3, `control` ADR-0078). The toggle asks for `draining`
+ *  from `on` and for `on` otherwise; STOP asks for `off`. */
 const ON = "on";
+const DRAINING = "draining";
 const OFF = "off";
-const STOPPED = "stopped";
+
+/** look's press words, as `look-power` fires them: the toggle's `on` and
+ *  `off`, and the stop sign's `stopped` (ADR-0023). */
+const PRESSED_STOP = "stopped";
 
 /**
  * What `layout` says about the railroad's power, as the page reads it off the
@@ -86,8 +89,8 @@ const STOPPED = "stopped";
  *
  * @typedef {object} Layout
  * @property {boolean} connected whether the page has the broker
- * @property {string | null} power what `layout` last reported — `on`, `off` or
- *   `stopped` — and `null` until it has reported
+ * @property {string | null} power what `layout` last reported — `on`,
+ *   `draining` or `off` — and `null` until it has reported
  * @property {string | null | undefined} railroad which railroad `control` has
  *   loaded: the name, `null` where a row says none is, and `undefined` where
  *   none has been reported since the connection came up
@@ -113,11 +116,12 @@ export const UNREACHABLE = /** @type {Layout} */ ({
  * one: the button then offers the press that turns power on, which is a press
  * `layout` checks for itself, where a button drawn green over a payload nobody
  * could read would tell an operator the rails are hot on no evidence. Anything
- * but `on` or `stopped` is one of these — a row that is not JSON, a document
- * with no `power` in it, a word this page does not know.
+ * but `on` or `draining` is one of these — a row that is not JSON, a document
+ * with no `power` in it, a word this page does not know, `stopped` included
+ * (ADR-0026 d.3).
  *
  * @param {string} payload the row as it arrived
- * @returns {string} `on`, `off` or `stopped`
+ * @returns {string} `on`, `draining` or `off`
  */
 export function reported(payload) {
   /** @type {unknown} */
@@ -131,7 +135,7 @@ export function reported(payload) {
     typeof said === "object" && said !== null
       ? /** @type {{ power?: unknown }} */ (said).power
       : undefined;
-  return power === ON || power === STOPPED ? power : OFF;
+  return power === ON || power === DRAINING ? power : OFF;
 }
 
 /**
@@ -163,25 +167,20 @@ export function named(payload) {
   return typeof name === "string" && name !== "" ? name : null;
 }
 
-/** Why the power button cannot be pressed, in the order it is asked: no
- *  broker, no station answering, and no word from `layout` yet (ADR-0017 d.3,
- *  #205). The first that is true is what the button is titled, because a
- *  reader who cannot press it is owed the nearest reason rather than the last
- *  one. */
-const NO_BUS = "no bus";
-const NO_STATION = "no station";
-const NO_LAYOUT = "no layout";
+/** Why neither press can be pressed: no broker, or no word from `layout`
+ *  yet. One reason for both (ADR-0026 d.4). */
+const WAITING = "Waiting for the station";
 
 /** What the power button says while it can be pressed, which is what a press
  *  will do rather than the state it is in — as the monitor's pause is named,
  *  so that a reader on a busy railroad is never working out which state they
  *  are in. */
-const CUTTING = "power off";
+const DRAINS = "power off once every train is at rest";
 const HEATING = "power on";
 
 /** What the STOP press says while it can be pressed, which is what a press
- *  does rather than the state it leaves the railroad in (ADR-0020 d.3). */
-const STOPS = "stop every locomotive where it stands";
+ *  does rather than the state it leaves the railroad in. */
+const STOPS = "cut the power at once";
 
 /** What the link reads in words. The dot is the reading for a reader looking at
  *  it and these are the same reading for one who is not, so the band hands them
@@ -308,16 +307,16 @@ export const QUIET = /** @type {Kept} */ ({
 
 /**
  * What the band's power button reads, is titled, and asks `layout` for
- * (ADR-0017 d.1, d.2, d.3).
+ * (ADR-0026 d.2, d.3, d.4).
  *
  * `reads` is the chip it wears and is `null` for every moment it presses
  * nothing: a chip drawn over a reading nobody can act on is a control round a
- * reading, and the three reasons it cannot be pressed are reasons the reading
- * is not one to draw either.
+ * reading, and the reason it cannot be pressed is a reason the reading is not
+ * one to draw either.
  *
  * @typedef {object} Power
  * @property {string | null} reads what `layout` reports the power as — `on`,
- *   `off` or `stopped` — and `null` where the button presses nothing
+ *   `draining` or `off` — and `null` where the button presses nothing
  * @property {string} title what the button is titled: why it cannot be
  *   pressed, or what a press will do
  * @property {string | null} wants what a press asks `layout` for, and `null`
@@ -325,18 +324,18 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * What the band's STOP press is titled and asks `layout` for (ADR-0020).
+ * What the band's STOP press is titled and asks `layout` for (ADR-0026 d.2,
+ * d.4).
  *
  * No `reads`: it wears one chip in every state and draws no reading of the
- * railroad at all (d.4). What it asks for is the same word every time, and it
- * is here rather than in the component for the reason the power button's ask
- * is — the band works out no reading of its own.
+ * railroad at all (ADR-0020 d.4). What it asks for is the same word every
+ * time, and it is here rather than in the component for the reason the power
+ * button's ask is — the band works out no reading of its own.
  *
  * @typedef {object} Stop
  * @property {string} title what the press is titled: what it does, or why it
  *   cannot be pressed
- * @property {string | null} wants `stopped`, and `null` where it presses
- *   nothing
+ * @property {string | null} wants `off`, and `null` where it presses nothing
  */
 
 /**
@@ -435,83 +434,90 @@ export function asOf(kept, now) {
 }
 
 /**
+ * What `layout` is asked for, off the word look's `look-power` fires (ADR-0026
+ * d.2). `control`'s `asked()` in `ui/src/model/commands.ts` is the same map.
+ *
+ * The toggle's `off` drains, its `on` asks for `on` and ends a drain, and the
+ * stop sign's `stopped` cuts the power at once. A word look does not fire asks
+ * for nothing.
+ *
+ * @param {string} pressed what `look-power` fired
+ * @returns {string | null} what `tc49/layout/power_wanted` carries, or `null`
+ */
+export function asked(pressed) {
+  return pressed === OFF
+    ? DRAINING
+    : pressed === ON
+      ? ON
+      : pressed === PRESSED_STOP
+        ? OFF
+        : null;
+}
+
+/**
+ * Whether the band's presses can be pressed: the broker, and a word from
+ * `layout` (ADR-0026 d.4). `control`'s `supply()` is the same rule.
+ *
+ * @param {Layout} layout
+ * @returns {boolean}
+ */
+function live(layout) {
+  return layout.connected && layout.power !== null;
+}
+
+/**
  * What the power button reads, is titled, and asks `layout` for.
  *
- * **It is `layout`'s row and not the station's** (ADR-0017 d.1, d.2,
- * superseding ADR-0011 d.1). `layout` refuses an OFF while a run is going and
- * zeroes every locomotive's speed before a cut, and the translator runs the
- * **script**'s power handler (`control` ADR-0062): a press that sent `<1>` or
- * `<0>` through the **face** skipped all of it. So the colour is the row
- * `layout` reports and the press is a row the page writes, and the station's
- * own `<p…>` is a track's reading on a **tile** rather than this.
+ * **It is `layout`'s row and not the station's** (ADR-0017 d.1, superseding
+ * ADR-0011 d.1). `layout` refuses an OFF while a run is going and zeroes every
+ * locomotive's speed before a cut, and the translator runs the **script**'s
+ * power handler (`control` ADR-0062): a press that sent `<1>` or `<0>` through
+ * the **face** skipped all of it. So the colour is the row `layout` reports
+ * and the press is a row the page writes, and the station's own `<p…>` is a
+ * track's reading on a **tile** rather than this.
  *
- * **It presses nothing without all three of them** (ADR-0017 d.3, #205): the
- * broker, a station that is answering, and a word from `layout`. Each is a
- * different absence and the title says which — a press with no broker reaches
- * nothing, a press with no station is a railroad `layout` cannot apply it to,
- * and a railroad whose power nobody has reported has no state to offer the
- * other of (ADR-0009 d.2).
+ * It asks for what look's toggle fires, through `asked`: `draining` from `on`
+ * and `on` otherwise (ADR-0026 d.2). It is dead on the same rule as STOP.
  *
- * @param {Readings} readings
  * @param {Layout} layout
  * @returns {Power}
  */
-function power(readings, layout) {
-  const title = !layout.connected
-    ? NO_BUS
-    : !readings.answering
-      ? NO_STATION
-      : layout.power === null
-        ? NO_LAYOUT
-        : layout.power === ON
-          ? CUTTING
-          : HEATING;
-  const presses =
-    layout.connected && readings.answering && layout.power !== null;
+function power(layout) {
+  if (!live(layout)) {
+    return { reads: null, title: WAITING, wants: null };
+  }
+  const hot = layout.power === ON;
   return {
-    reads: presses ? layout.power : null,
-    title,
-    wants: presses ? (layout.power === ON ? OFF : ON) : null,
+    reads: layout.power,
+    title: hot ? DRAINS : HEATING,
+    wants: asked(hot ? OFF : ON),
   };
 }
 
 /**
- * What the band's STOP press is titled and asks `layout` for.
- *
- * **One ask, whatever the railroad is doing** (ADR-0020 d.2, d.4). `layout`
- * applies a `stopped` whatever the run is doing and holds it until an `on`
- * (`control` ADR-0062), so there is no state this press is wrong in: a press
- * while the railroad is already stopped asks again, which costs nothing, and a
- * press that went dead over a state would be a stop this page refused.
- *
- * **The broker is the only thing it needs** (ADR-0020 d.3). The power button's
- * other two reasons are not this press's — a station that is silent and a
- * `layout` that has reported nothing are both railroads a stop reaches, because
- * `layout` holds the ask and applies it when the station answers. With no
- * broker the ask reaches nothing, and that is the one title it carries instead.
+ * What the band's STOP press is titled and asks `layout` for: `off`, whatever
+ * the railroad is doing (ADR-0026 d.2), and dead on the same rule as the
+ * toggle (d.4).
  *
  * @param {Layout} layout
  * @returns {Stop}
  */
 function stop(layout) {
-  return {
-    title: layout.connected ? STOPS : NO_BUS,
-    wants: layout.connected ? STOPPED : null,
-  };
+  return live(layout)
+    ? { title: STOPS, wants: asked(PRESSED_STOP) }
+    : { title: WAITING, wants: null };
 }
 
 /**
  * What the band carries: the railroad, the **link**, and the two presses
- * (ADR-0017, ADR-0020, docs/ui/README.md). The **build** is not on it
+ * (ADR-0017, ADR-0026, docs/ui/README.md). The **build** is not on it
  * (ADR-0027).
  *
  * **Two channels meet here and nowhere else.** The link is the station
  * talking, decoded off the **stream** (ADR-0008 d.2); the power and the
- * railroad's name are rows `layout` reports on the bus (`bus.ts`). The power
- * button needs both channels — it is disabled with no station as readily as
- * with no broker — and this is where they are put together, because what a
- * band carries is one value and the component that draws it works out no
- * reading of its own.
+ * railroad's name are rows `layout` reports on the bus (`bus.ts`). This is
+ * where they are put together, because what a band carries is one value and
+ * the component that draws it works out no reading of its own.
  *
  * **The railroad does not go with the link.** It is `layout`'s row rather than
  * the station's, so a station that has stopped answering is still a railroad
@@ -522,15 +528,12 @@ function stop(layout) {
  * outage, and the gap after a reconnect, leave the railroad unreported, and
  * `control` may have one loaded the whole time — so `no railroad loaded` there
  * is the page reporting a state nobody told it (ADR-0009 d.2). Blank, and the
- * power button beside it already reads `no bus`. A row that says none is loaded is the other state
- * and keeps the sentence (#242, `Layout`).
+ * presses beside it are already dead. A row that says none is loaded is the
+ * other state and keeps the sentence (#242, `Layout`).
  *
- * **The two presses are not disabled on the same facts.** The power button
- * offers a state the other of, so it needs the station and a word from
- * `layout`; the STOP asks for one word on a railroad `layout` will hold it for,
- * so it needs the broker alone (ADR-0017 d.3, ADR-0020 d.3). Two presses on one
- * chrome with one rule between them would make a stop wait on a station it does
- * not need.
+ * **Both presses are dead on one rule** (ADR-0026 d.4): while the bus is
+ * unreachable or `layout` has not reported the power. A silent station does
+ * not hold either.
  *
  * The link is a light rather than words, with the words beside it while it is
  * down: a station that is not answering is a fault and is owed a sentence, and
@@ -548,7 +551,7 @@ export function band(readings, layout) {
       layout.railroad === undefined ? BLANK : (layout.railroad ?? NO_RAILROAD),
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
-    power: power(readings, layout),
+    power: power(layout),
     stop: stop(layout),
   };
 }

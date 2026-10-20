@@ -16,12 +16,11 @@ import { DRAWN, VIEWS, type View } from "../view.js";
  *  and track power (docs/ui/README.md). The **build** is the releases view's
  *  and not the band's (ADR-0027).
  *
- *  What it says is `readings.js`'s `band()`. Power is `layout`'s row. The
- *  toggle needs the broker, the station and a word from `layout`, and STOP the
- *  broker alone, so a silent station holds only the toggle (ADR-0017 d.3,
- *  ADR-0020 d.3). Each held press says why in its tooltip. */
+ *  What it says is `readings.js`'s `band()`. Power is `layout`'s row. Both
+ *  presses are dead on one rule, so one `reason` holds both and is their
+ *  tooltip (ADR-0026 d.4). */
 export function drawBand(readings: Readings, layout: Layout): TemplateResult {
-  const { railroad, answering, says, power, stop } = band(readings, layout);
+  const { railroad, answering, says, stop } = band(readings, layout);
   return html`
     <look-band ui="dccex">
       ${railroad === ""
@@ -33,7 +32,6 @@ export function drawBand(readings: Readings, layout: Layout): TemplateResult {
       <look-power
         state=${layout.power ?? "off"}
         reason=${stop.wants === null ? stop.title : ""}
-        toggle-reason=${power.wants === null ? power.title : ""}
       ></look-power>
     </look-band>
   `;

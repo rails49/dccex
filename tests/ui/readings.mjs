@@ -21,8 +21,9 @@
 // them — the band's readings and the tiles', each as what it is called and
 // what it reads — and what a payload on each of `layout`'s two rows reads as,
 // for a scenario that carries one: the power row's through `reported`
-// (ADR-0017 d.2) and the railroad row's through `named` (the organisation's
-// ADR-0014, #239).
+// (ADR-0026 d.3) and the railroad row's through `named` (the organisation's
+// ADR-0014, #239). And what each of look's press words asks `layout` for,
+// through `asked` (ADR-0026 d.2).
 //
 // That is the assertion `control`'s band test makes: hand it
 // the facts a page would hand it and read what it draws. What this cannot do
@@ -38,6 +39,7 @@ import {
   QUIET,
   UNREACHABLE,
   asOf,
+  asked,
   band,
   heard,
   named,
@@ -59,6 +61,7 @@ const drawn = (scenario) => {
     tiles: tiles(readings),
     reported: (scenario.payload ?? []).map(reported),
     named: (scenario.loaded ?? []).map(named),
+    asked: (scenario.pressed ?? []).map(asked),
   };
 };
 

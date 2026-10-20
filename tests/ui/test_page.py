@@ -429,7 +429,7 @@ def test_the_band_asks_layout_for_power_on_the_bus() -> None:
     page = code(APP.read_text())
     assert "this.#bus.wants(power)" in page, "the page asks nobody for power"
     assert (
-        "this.#wants(e.detail.state)" in page
+        "this.#wants(asked(e.detail.state))" in page
     ), "a press on look-power does not go on the bus"
 
 

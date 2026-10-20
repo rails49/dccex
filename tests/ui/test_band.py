@@ -33,12 +33,12 @@ def test_the_band_works_no_reading_out_of_its_own() -> None:
 
 
 def test_the_presses_on_the_band_are_looks_power_and_ask_layout() -> None:
-    """One `look-power` and nothing else to press (ADR-0017 d.1, ADR-0020 d.2,
+    """One `look-power` and nothing else to press (ADR-0017 d.1, ADR-0026 d.2,
     ADR-0011 d.3).
 
-    What a press asks for is look's: the toggle asks for `off` when on and `on`
-    otherwise, and the stop sign for `stopped`. The page puts that on the bus,
-    as `tc49/layout/power_wanted`, and types nothing at the station. A band
+    look fires `off` or `on` from the toggle and `stopped` from the stop sign.
+    The page maps that word through `asked` and puts the result on the bus, as
+    `tc49/layout/power_wanted`, and types nothing at the station. A band
     that opened a connection of its own would be a second client of
     `control`'s broker for one page (`bus.ts`).
     """
@@ -50,21 +50,16 @@ def test_the_presses_on_the_band_are_looks_power_and_ask_layout() -> None:
         assert literal not in drawn, f"the band writes {literal} out itself"
     page = code(APP.read_text())
     assert "@look-power=" in page, "nothing listens for a press"
-    assert "this.#wants(e.detail.state)" in page, "a press does not go on the bus"
+    assert "this.#wants(asked(e.detail.state))" in page, "a press is not mapped"
     assert "this.#bus.wants(power)" in page
 
 
-def test_the_toggle_and_stop_are_held_on_their_own_facts() -> None:
-    """The toggle needs the broker, the station and a word from `layout`
-    (ADR-0017 d.3); STOP needs the broker and nothing else (ADR-0020 d.3).
-
-    So the band holds both with look's `reason` where STOP's ask is `null`,
-    and only the toggle with `toggle-reason` where the toggle's is. One reason
-    for both would make a stop wait on a station `layout` holds it for.
-    """
+def test_the_toggle_and_stop_are_held_on_one_rule() -> None:
+    """Both presses are dead on one rule with one reason (ADR-0026 d.4), so
+    the band holds both with look's `reason` and never the toggle alone."""
     drawn = code(CHROME.read_text())
     assert 'reason=${stop.wants === null ? stop.title : ""}' in drawn
-    assert 'toggle-reason=${power.wants === null ? power.title : ""}' in drawn
+    assert "toggle-reason=" not in drawn
 
 
 def test_the_band_asks_for_no_confirmation() -> None:

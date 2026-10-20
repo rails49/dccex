@@ -6,7 +6,7 @@
  * The words are the readings module's and are run through it
  * (`tests/ui/test_readings.py`). The elements are look's (ADR-0023). What is
  * asserted here is what this page puts in them, and that each of the two
- * presses asks for what it says it will.
+ * presses asks `layout` for what ADR-0026 d.2 says, through `asked`.
  */
 
 import { type LookPower } from "@rails49/look";
@@ -16,6 +16,7 @@ import {
   QUIET,
   UNREACHABLE,
   asOf,
+  asked as wanted,
   heard,
   type Kept,
   type Layout,
@@ -42,7 +43,7 @@ const YARD = "crossover-yard";
 
 const HOT: Layout = { connected: true, power: "on", railroad: YARD };
 const COLD: Layout = { connected: true, power: "off", railroad: YARD };
-const HALTED: Layout = { connected: true, power: "stopped", railroad: YARD };
+const DRAINING: Layout = { connected: true, power: "draining", railroad: YARD };
 const UNSAID: Layout = { connected: true, power: null, railroad: null };
 const UNREPORTED: Layout = { connected: true, power: null, railroad: undefined };
 
@@ -62,11 +63,17 @@ function one<T extends Element>(into: HTMLElement, selector: string): T {
   return found;
 }
 
-/** What pressing the toggle or the stop sign asked for. */
-function asked(into: HTMLElement, which: ".power" | ".stop"): string[] {
+/** What pressing the toggle or the stop sign asks `layout` for, as the page
+ *  maps look's press word (`dccex-app.ts`). */
+function asked(
+  into: HTMLElement,
+  which: ".power" | ".stop",
+): (string | null)[] {
   const power = one<LookPower>(into, "look-power");
-  const seen: string[] = [];
-  power.addEventListener("look-power", (e) => seen.push(e.detail.state));
+  const seen: (string | null)[] = [];
+  power.addEventListener("look-power", (e) =>
+    seen.push(wanted(e.detail.state)),
+  );
   (power.renderRoot.querySelector(which) as HTMLElement).click();
   return seen;
 }
@@ -108,49 +115,45 @@ test("an unreported railroad, or no broker, draws no reading", async () => {
 test("power is the state layout reports", async () => {
   for (const [layout, state] of [
     [HOT, "on"],
+    [DRAINING, "draining"],
     [COLD, "off"],
-    [HALTED, "stopped"],
   ] as const) {
     const power = one(await band(SOON, layout), "look-power");
     expect(power.getAttribute("state")).toBe(state);
   }
 });
 
-test("the toggle asks for off when on and for on otherwise", async () => {
-  expect(asked(await band(SOON, HOT), ".power")).toEqual(["off"]);
+test("the toggle drains when on and asks for on otherwise", async () => {
+  expect(asked(await band(SOON, HOT), ".power")).toEqual(["draining"]);
   expect(asked(await band(SOON, COLD), ".power")).toEqual(["on"]);
-  expect(asked(await band(SOON, HALTED), ".power")).toEqual(["on"]);
+  expect(asked(await band(SOON, DRAINING), ".power")).toEqual(["on"]);
 });
 
-test("STOP asks for stopped whatever layout reports", async () => {
-  for (const layout of [HOT, COLD, HALTED, UNSAID]) {
-    expect(asked(await band(SOON, layout), ".stop")).toEqual(["stopped"]);
+test("STOP asks for off whatever layout reports", async () => {
+  for (const layout of [HOT, COLD, DRAINING]) {
+    expect(asked(await band(SOON, layout), ".stop")).toEqual(["off"]);
   }
 });
 
-test("without the station or a word from layout, only the toggle is held", async () => {
-  for (const [now, layout, why] of [
-    [LATER, HOT, "no station"],
-    [SOON, UNSAID, "no layout"],
+test("without the broker or a word from layout, both presses wait", async () => {
+  for (const [now, layout] of [
+    [SOON, UNREACHABLE],
+    [SOON, UNSAID],
+    [LATER, UNSAID],
   ] as const) {
     const into = await band(now, layout);
     const power = one(into, "look-power");
-    expect(power.getAttribute("reason")).toBe("");
-    expect(power.getAttribute("toggle-reason")).toBe(why);
+    expect(power.getAttribute("reason")).toBe("Waiting for the station");
     expect(asked(into, ".power")).toEqual([]);
-    expect(asked(into, ".stop")).toEqual(["stopped"]);
+    expect(asked(into, ".stop")).toEqual([]);
   }
 });
 
-test("without the broker, both presses are held", async () => {
-  const into = await band(SOON);
-  expect(one(into, "look-power").getAttribute("reason")).toBe("no bus");
-  expect(asked(into, ".power")).toEqual([]);
-  expect(asked(into, ".stop")).toEqual([]);
-});
-
-test("a live press is held by nothing", async () => {
-  const power = one(await band(SOON, HOT), "look-power");
-  expect(power.getAttribute("reason")).toBe("");
-  expect(power.getAttribute("toggle-reason")).toBe("");
+test("both presses are live once layout has reported, station or not", async () => {
+  for (const now of [SOON, LATER]) {
+    const into = await band(now, HOT);
+    expect(one(into, "look-power").getAttribute("reason")).toBe("");
+    expect(asked(into, ".power")).toEqual(["draining"]);
+    expect(asked(into, ".stop")).toEqual(["off"]);
+  }
 });
