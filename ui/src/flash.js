@@ -62,9 +62,10 @@
 export const STOPS = "<!>";
 
 /** What cuts track power. It is a step of this sequence rather than a control
- *  of its own: the one control that commands power is the **band**'s button,
- *  which sends this same message where any track is on (ADR-0011 d.1), and
- *  what a flash cuts is cut because a release is about to be written. */
+ *  of its own, and the one press on the page that sends `<0>` to the station.
+ *  The **band** sends no `<0>`: it asks `layout` for power on
+ *  `tc49/layout/power_wanted` (ADR-0026 d.2, superseding ADR-0017 d.1).
+ *  What a flash cuts is cut because a release is about to be written. */
 export const CUTS = "<0>";
 
 /** What an operator is told before they are asked, and the whole reason the
