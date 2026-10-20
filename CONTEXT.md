@@ -85,7 +85,7 @@ What the station says it is running, and what a **release** is compared
 against: the `G-` field of the banner it sends when it comes up. It is empty
 whenever the station is not answering. Nothing else here is called a build;
 making the UI or an image is *building* it
-([docs/ui/README.md](docs/ui/README.md#the-band)).
+([docs/ui/README.md](docs/ui/README.md#the-releases)).
 _Avoid_: version, firmware version, the current release
 
 **Release**:
