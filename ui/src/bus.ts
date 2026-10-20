@@ -4,11 +4,12 @@
  *
  * **The band asks `layout` for power** (ADR-0017). A press used to send `<1>`
  * or `<0>` through the **face**, which skipped `layout` and the **translator**
- * — and `layout` is what refuses an OFF while a run is going, zeroes every
- * locomotive's speed before a cut, and runs the **script**'s power handler. So
- * the page publishes `tc49/layout/power_wanted`, a row a browser may write
- * (the organisation's ADR-0002), and reads `tc49/layout/state/power` back.
- * Nothing about power goes up the stream any more.
+ * — and `layout` is what drains the railroad and zeroes every locomotive's
+ * speed before a cut (`control` ADR-0078). The translator runs the
+ * **script**'s power handler. So the page publishes
+ * `tc49/layout/power_wanted`, a row a browser may write (the organisation's
+ * ADR-0002), and reads `tc49/layout/state/power` back. Nothing about power
+ * goes up the stream any more.
  *
  * **The band also names the railroad `control` has loaded** (the
  * organisation's ADR-0014, #239). That is `tc49/layout/state/railroad`, the
@@ -50,14 +51,14 @@ import { UNREACHABLE, named, reported, type Layout } from "./readings.js";
 export const MQTT_PATH = "/mqtt";
 
 /** One of the two rows the page subscribes to: what `layout` says the
- *  railroad's power is (ADR-0017 d.2). */
+ *  railroad's power is (ADR-0026 d.3). */
 export const POWER_STATE = "tc49/layout/state/power";
 
 /** The other: which railroad `control` has loaded, which the band names (the
  *  organisation's ADR-0014, #239). */
 export const RAILROAD_STATE = "tc49/layout/state/railroad";
 
-/** The row a press writes: what the band asks `layout` for (ADR-0017 d.1). */
+/** The row a press writes: what the band asks `layout` for (ADR-0026 d.2). */
 export const POWER_WANTED = "tc49/layout/power_wanted";
 
 /** How long the client waits before dialling the broker again.
@@ -79,11 +80,11 @@ export const RECONNECT_MS = 2000;
  *
  * **A connection that goes takes both rows with it.** What `layout` reported
  * before an outage is not a reading after one, the same way the **build** is
- * not a reading once the station has stopped talking (ADR-0008 d.3): the
- * button is disabled on `no bus` either way, the band reads `no railroad
- * loaded`, and a reconnect is handed the state rows again rather than trusting
- * what this page remembered of them. Both are retained, so a reconnect is
- * handed them without asking.
+ * not a reading once the station has stopped talking (ADR-0008 d.3): both
+ * presses are dead with `Waiting for the station` either way (ADR-0026 d.4),
+ * the band reads `no railroad loaded`, and a reconnect is handed the state
+ * rows again rather than trusting what this page remembered of them. Both are
+ * retained, so a reconnect is handed them without asking.
  *
  * **What goes with it is unreported and not none loaded** (#242). The railroad
  * row is the one of the two a pane acts on rather than draws, and `control`
@@ -173,8 +174,8 @@ export class Bus {
     client?.end(true);
   }
 
-  /** Ask `layout` for power: `on`, `draining` or `off` (ADR-0017 d.1,
-   * ADR-0026 d.2, `control` ADR-0078).
+  /** Ask `layout` for power: `on`, `draining` or `off` (ADR-0026 d.2,
+   * `control` ADR-0078).
    *
    * The whole of what the page does about power, for both presses on the band:
    * the power button asks for the first two and STOP for the third. What
