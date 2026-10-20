@@ -169,6 +169,7 @@ async def running(
     no_script: bool = False,
     now: Callable[[], float] = time.monotonic,
     journal: Journal | None = None,
+    scripts: Scripts | None = None,
 ) -> AsyncGenerator[DccEx]:
     """The app, constructed on the bus and keeping its link, until the test
     is done with it.
@@ -178,13 +179,15 @@ async def running(
     empty text is a railroad whose store has no script for it — an empty
     script, and every desired value sending what this app sends with none.
     `no_script` is the other state, a railroad whose script this app has not
-    got at all, which is the one where power ON is refused (d.4).
+    got at all, which is the one where power ON is refused (d.4). `scripts`
+    is a store the test asks with `app.asks()`.
     """
     app = DccEx(
         bus,
         connect=port.connect,
         now=now,
         journal=journal,
+        scripts=scripts,
         poll_s=poll_s,
         first_backoff_s=backoff_s,
         max_backoff_s=backoff_s * 4,
@@ -810,6 +813,40 @@ async def _empty_stash_runs_start_and_the_replay_again() -> None:
         await station.heard(5)
 
         station.says(EMPTY)
+        assert await station.heard(6) == [
+            MARK,
+            b"<= D MAIN>",
+            *ASKS,
+            b"<a 3 3 1>",
+            b"<= D MAIN_INV>",
+        ]
+        await station.heard_nothing_more()
+
+
+def test_a_first_script_after_the_connect_runs_start_and_the_replay(
+    store: Store,
+) -> None:
+    asyncio.run(_first_script_after_the_connect_runs_start_and_the_replay(store))
+
+
+async def _first_script_after_the_connect_runs_start_and_the_replay(
+    store: Store,
+) -> None:
+    """`layout` can name the railroad after this app has connected, as on a
+    box whose apps come up in any order. The script loaded then runs what a
+    connect runs, the mark first (ADR-0024)."""
+    store.holds("bench", SETS_UP + "\n\n" + REVERSER)
+    store.opens()
+    bus, _ = bus_and_tap()
+    wanted(bus, POINT, "12", {"addr": "12", "position": "thrown"})
+    port = Port()
+    scripts = Scripts(store.url, timeout_s=1.0)
+    async with running(bus, port, no_script=True, scripts=scripts) as app:
+        station = await port.opened()
+        assert await station.heard(1) == [b"<a 3 3 1>"]
+
+        named(bus, "bench")
+        assert app.asks() is False
         assert await station.heard(6) == [
             MARK,
             b"<= D MAIN>",
