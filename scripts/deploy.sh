@@ -162,23 +162,29 @@ printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
 # project's name. Nothing is pruned: the image this replaces stays, and it is
 # the one step back ADR-0005 d.6 keeps.
 #
-# A failure here is a deploy that did not happen rather than one that half did:
-# .env goes back to what it said, nothing is appended to the record — nothing
-# was replaced — and the box is left on the commit it was already running. The
-# containers are not rolled back, which is ADR-0005 d.7 and a person's command.
+# A failure here puts .env back to what it said and appends nothing to the
+# record. The \`up\` may have recreated some containers before it failed
+# (#313), so the box may not be on the commit .env names. The message gives
+# the \`ps -a\` that shows which, and points to the rollback in this script's
+# header. The containers are not rolled back, which is ADR-0005 d.7 and a
+# person's command.
 if ! docker compose -f compose.yaml -f compose.box.yaml \
   --env-file "\$box_env" --env-file .env \
   up -d --build --remove-orphans
 then
   if [ "\$had" = yes ]; then printf '%s\n' "\$kept" > .env; else rm -f .env; fi
   echo >&2
-  echo "docker compose up failed, and dccex:\$commit is not running." >&2
+  echo "docker compose up failed, and dccex:\$commit did not come up." >&2
   if [ "\$had" = yes ]; then
-    echo "Put .env back to \$went, which is what this box is on." >&2
+    echo "Put .env back to \$went." >&2
   else
     echo "Removed .env again: there was none before this run." >&2
   fi
-  echo "Nothing was appended to \$record, because nothing was replaced." >&2
+  echo "The up may have recreated some containers. To see which:" >&2
+  echo "  cd \$stack" >&2
+  echo "  docker compose -f compose.yaml -f compose.box.yaml --env-file \$box_env --env-file .env ps -a" >&2
+  echo "To go back, see the rollback in the header of scripts/deploy.sh (ADR-0005 d.7)." >&2
+  echo "Nothing was appended to \$record." >&2
   exit 1
 fi
 
