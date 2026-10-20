@@ -72,7 +72,7 @@ no face, and a page may talk to its own app's face and no other, which is the
 organisation's ADR-0002. The page asks for it when a reader opens the journal
 view and when they press its reload, and never on a schedule.
 
-**The bus carries two rows up and one down** (ADR-0017, ADR-0020, org
+**The bus carries two rows up and one down** (ADR-0017, ADR-0026, org
 ADR-0014, #205, #208, #239). The band asks `layout` for power
 rather than typing `<1>` or `<0>` at the station, because `layout` refuses an OFF while a run is going,
 zeroes every locomotive's speed before a cut and runs the **script**'s power
@@ -85,7 +85,7 @@ loads a **script** off, and to nothing else: what a railroad is *doing* is
 which the box's door routes to `control`'s service and refuses from any other
 origin (`compose.box.yaml`); the page names no host and no port, as it names
 none for the face. The STOP is on the same row the power button writes and
-asks for `stopped`, which `layout` holds until an `on` (ADR-0020 d.2). On a box
+asks for `off` (ADR-0026 d.2). On a box
 with no `control` beside it neither row arrives: both presses are disabled and
 the band names no railroad, which is the same page with its controls turned off
 rather than a second page.
@@ -125,7 +125,7 @@ work pane is what changes.
 
 The mark and the UI name `dccex` on the left, both look's (org ADR-0019); on
 the right the railroad `control` has loaded, the **link**, and the two presses
-(#168, ADR-0017, ADR-0020, #239). The **build** is not on the band; the
+(#168, ADR-0017, ADR-0026, #239). The **build** is not on the band; the
 releases view shows it (#316, ADR-0027).
 
 **The band names the railroad `control` has loaded** (org ADR-0014, #239). It
@@ -156,21 +156,22 @@ a run is going and zeroes every locomotive's speed before a cut (control
 ADR-0062), and the translator is what runs the **script**'s power handler. So track
 power is `look-power`, a reading and a control at once, and both of them are
 `layout`'s — its `state` is `tc49/layout/state/power`, and a press publishes
-`tc49/layout/power_wanted`. The toggle asks for `off` while it reads `on` and
-for `on` otherwise, so it is the way out of every state including `stopped`.
-The stop sign right of it asks for `stopped` (ADR-0020).
+`tc49/layout/power_wanted`. The page asks for what `control`'s band asks for
+(ADR-0026, `control` ADR-0078). look's toggle fires `off` while it reads `on`,
+and the page asks for `draining`; it fires `on` otherwise, and the page asks
+for `on`, which also ends a drain. The stop sign right of it fires `stopped`,
+and the page asks for `off`, which `layout` applies at once. `asked()` in
+`readings.js` is the map. Nothing on this page asks for `stopped`.
 
-`on` is green, `off` is dimmed and `stopped` is red; the colours are look's
-(ADR-0023). An OFF that `layout` drops shows nothing: no state row follows it,
-so the toggle stays as it was (ADR-0017 d.4).
+`state/power` reads as `on` or `draining` where it says so, and as `off`
+otherwise. `on` is green, `draining` pulses green and `off` is dimmed; the
+colours are look's (ADR-0023). An ask that `layout` drops shows nothing: no
+state row follows it, so the toggle stays as it was (ADR-0017 d.4).
 
-The toggle is held while the bus is unreachable, the link is down, or no state
-row has arrived (ADR-0017 d.3); STOP only while the bus is unreachable (ADR-0020
-d.3), because `layout` holds a stop for a silent station. A held press is
-dimmed and its tooltip says which absence it is: `no bus`, `no station`, `no
-layout`. On look's element that is `reason` for both and `toggle-reason` for
-the toggle alone. The page asks for no confirmation: the guard is `layout` and
-then the operator (ADR-0006).
+Both presses are held while the bus is unreachable or no state row has arrived,
+with the one tooltip `Waiting for the station` (ADR-0026 d.4). A silent station
+holds neither. On look's element that is `reason`. The page asks for no
+confirmation: the guard is `layout` and then the operator (ADR-0006).
 
 These are the only controls on the chrome and the only power controls on the
 page: the per-track readings in the monitor view show state and press nothing
@@ -1085,7 +1086,7 @@ rule as the two checks above it.
 - **Commanding track power anywhere at all.** The band's power button asks
   `layout` for it on the bus (ADR-0017 d.1), the tiles press nothing (ADR-0011
   d.3), and the one module left that types `<0>` at the station is the flash
-  sequence's own step. STOP asks `layout` for `stopped` on the bus (ADR-0020
+  sequence's own step. STOP asks `layout` for `off` on the bus (ADR-0026
   d.2). `<!>` at the station is the flash sequence's step and what the command
   box can type.
 - **Station configuration.** There is none at runtime: the fork sets
