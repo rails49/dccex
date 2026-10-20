@@ -274,7 +274,6 @@ the comparison is the text and never the name.
 | `wanted/signal/<addr>` `aspect` | `<A addr aspect>`, the extended accessory packet the head's wiring expects |
 | `wanted/track` `on` | `<1>`, which reaches every track the station has |
 | `wanted/track` `off` | `<0>` |
-| `wanted/track` `stopped` | `<!>`, the one-shot emergency stop |
 | `wanted/function/<addr>/<n>` `value` | `<F addr n 0\|1>`, the boolean as the bit — every value the row carries is one the station can be told |
 | `alive_confirmed` | `<G 3>`, once each time it is published while the link is up |
 
@@ -312,24 +311,12 @@ state this hardware has no packet for, and nothing is sent.
 
 Two rules are not a row of the table.
 
-**The stop is `<!>` and holds nothing.** It broadcasts an emergency stop to
-every decoder with the track still live, and changes nothing afterwards, so
-any throttle on the port can drive away from it. That is deliberate: who may
-move a train is the operator's decision, and the operator is the one holding
-the layout. It also means `state/power` never reads `stopped` from a stop this
-app sent — there is nothing left for the station to report — so the row goes
-back to `on` as soon as the broadcast is out.
-
-The station has an emergency-stop **lock** in later firmware, `<!P>` until
-`<!R>` with `<!Q>` to ask, which would make `stopped` a state rather than an
-act. It is not used: it is a firmware-branch command of one product, so a
-`stopped` that meant "under a lock" would put a station's private vocabulary
-inside a bus word every railroad shares
-([control#464](https://github.com/rails49/control/issues/464)). Below the
-version that has the lock, the `!` opcode takes no suffix, so `<!P>`, `<!R>`
-and `<!Q>` are all read as `<!>` and none of them says so. That is what made a
-`<!Q>` in the poll an emergency stop once a second, and every train move a few
-centimetres and stand
+**No lock is asked for.** The station has an emergency-stop lock in later
+firmware, `<!P>` until `<!R>` with `<!Q>` to ask, and this app sends none of
+them. Below the version that has the lock, the `!` opcode takes no suffix, so
+`<!P>`, `<!R>` and `<!Q>` are all read as `<!>` and none of them says so. That
+is what made a `<!Q>` in the poll an emergency stop once a second, and every
+train move a few centimetres and stand
 ([control#463](https://github.com/rails49/control/issues/463)).
 
 **A trip is read from the station's diagnostics.** The station cuts a
@@ -645,8 +632,8 @@ arrive that nobody sent means something on this port is commanding the station
 rather than asking it.
 
 Send `<t 3 0 1>` to stop it again. `<!>` stops every locomotive at once and any
-throttle may drive away from it afterwards, which is what `stopped` means here;
-sending it is safe and leaves nothing to clear.
+throttle may drive away from it afterwards; sending it is safe and leaves
+nothing to clear.
 
 **Reset the station** with the translator connected and watch the same
 port. Within a second — one poll — the translator reads `<jM 32000 0>` and
