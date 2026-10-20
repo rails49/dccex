@@ -210,8 +210,10 @@ turns D back on where the station last reported it on, rather than relying on
 what `start` or an earlier handler left. A restart forgets the station's
 reports, so a replay after one leaves D off (ADR-0018 d.3).
 
-**`start` runs before the replay**, on a connect and on `<jM 32000 0>`, so a
-point handler that sets a district's mode runs after `start` set them all
+**`start` runs before the replay**, on a connect, on `<jM 32000 0>`, and when
+a first script loads with the link up
+([ADR-0024](../adr/0024-a-script-that-arrives-after-the-connect-runs-start.md)),
+so a point handler that sets a district's mode runs after `start` set them all
 (ADR-0018 d.3). `<JM 32000 1>` goes out before `start` itself, so a station
 that restarts in the middle of those lines is one the next poll still reads as
 restarted ([ADR-0021](../adr/0021-a-restart-is-a-stash-the-boot-has-cleared.md) d.2).

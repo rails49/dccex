@@ -739,6 +739,10 @@ class DccEx:
         has changed reported as the end of this process, and anything else
         nothing at all.
 
+        A first script that loads with the link already up runs `start` and
+        the replay, as a connect does: `layout` can name the railroad after
+        this app has connected (ADR-0024).
+
         A railroad change that gives the same text, or no script both times,
         changes nothing — the comparison is the text and never the name
         (ADR-0015 d.3).
@@ -755,6 +759,8 @@ class DccEx:
                 self._publish_track()
             return False
         self.load(text)
+        if text is not None and self._script is not None and self._writer is not None:
+            self._started()
         return False
 
     def _without(self, why: str) -> None:
