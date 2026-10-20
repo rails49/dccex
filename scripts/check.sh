@@ -33,9 +33,10 @@
 # **One check does need a node: `look-check`** (ADR-0023). The chrome is
 # `@rails49/look`'s, and its gate fails on app code that styles it: a selector
 # naming a `look-` element, a look token or `--sl-*` property set, or
-# `sl-*::part()`. It is look's own bin, run from `ui/node_modules`, so the
-# `ci` job installs the page's packages before it runs this script. A machine
-# without them is red on this check rather than skipping it.
+# `sl-*::part()`. It is look's own bin, run from `ui/node_modules`. A tree
+# without them, such as a fresh worktree, gets them from the lock file first,
+# the way `uv run` builds the `.venv`. A tree where that install fails is red
+# on this check rather than skipping it.
 #
 # A `broker` marker is the same again, for the translator's suites that run
 # against a real `mosquitto` (#180), and this script does not collect it
@@ -128,6 +129,13 @@ source_recorded() {
   echo "rails49/control at deee7b6 and d317615"
 }
 
+look() {
+  if [ ! -x ui/node_modules/.bin/look-check ]; then
+    (cd ui && pnpm install --frozen-lockfile --store-dir ../.pnpm-store) || return 1
+  fi
+  ui/node_modules/.bin/look-check ui/src ui/index.html
+}
+
 # ruff, black and pyright are `control`'s, over the same `src` and `tests`
 # and configured in `pyproject.toml` exactly as they are there. The code came
 # across written for them, and `__main__.py` — the one file here that is not a
@@ -139,7 +147,7 @@ check ruff tool ruff check .
 check black tool black --check .
 check pyright tool pyright
 check tests "${PY[@]}" -m pytest -q -m "not docker and not node and not broker"
-check look ui/node_modules/.bin/look-check ui/src ui/index.html
+check look look
 
 if [ -n "$red" ]; then
   printf 'red:%s\n' "$red"
