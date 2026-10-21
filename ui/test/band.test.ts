@@ -41,11 +41,21 @@ const TALKED: Kept = heard(QUIET, BANNER, SPOKE);
 /** The railroad `control` has loaded, as its railroad row names it (#239). */
 const YARD = "crossover-yard";
 
-const HOT: Layout = { connected: true, power: "on", railroad: YARD };
-const COLD: Layout = { connected: true, power: "off", railroad: YARD };
-const DRAINING: Layout = { connected: true, power: "draining", railroad: YARD };
-const UNSAID: Layout = { connected: true, power: null, railroad: null };
-const UNREPORTED: Layout = { connected: true, power: null, railroad: undefined };
+const HOT: Layout = { connected: true, power: "on", railroad: YARD, built: true };
+const COLD: Layout = { connected: true, power: "off", railroad: YARD, built: true };
+const DRAINING: Layout = {
+  connected: true,
+  power: "draining",
+  railroad: YARD,
+  built: true,
+};
+const UNSAID: Layout = { connected: true, power: null, railroad: null, built: true };
+const UNREPORTED: Layout = {
+  connected: true,
+  power: null,
+  railroad: undefined,
+  built: true,
+};
 
 /** A band drawn from what the page knew at `now` and what the bus said. */
 async function band(
@@ -99,6 +109,13 @@ test("a station that stopped answering says so", async () => {
 test("the railroad is a reading, and still named with the station silent", async () => {
   expect(one(await band(SOON, HOT), "look-reading").textContent).toBe(YARD);
   expect(one(await band(LATER, HOT), "look-reading").textContent).toBe(YARD);
+});
+
+test("a railroad that is not built is named, with a muted not built after it", async () => {
+  const reading = one(await band(SOON, { ...HOT, built: false }), "look-reading");
+  expect(reading.textContent).toBe(`${YARD} not built`);
+  expect(reading.querySelector(".unbuilt")?.textContent).toBe("not built");
+  expect(one(await band(SOON, HOT), "look-reading").querySelector(".unbuilt")).toBeNull();
 });
 
 test("a railroad layout says none is loaded says so", async () => {

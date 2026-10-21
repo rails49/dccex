@@ -1076,6 +1076,28 @@ def test_the_railroad_the_bus_names_is_the_script_that_is_asked_for(
     assert store.asked == ["bench"]
 
 
+def test_a_railroad_that_is_not_built_still_has_its_script_asked_for(
+    store: Store,
+) -> None:
+    """`built: false` changes nothing here: the name is the script asked for,
+    at start and on a later row (ADR-0028 d.1)."""
+    store.holds("bench", LIMITS)
+    store.holds("yard", LIMITS)
+    store.opens()
+    bus, _ = bus_and_tap()
+    app = asking(bus, store)
+    bus.publish(RAILROAD, {"name": "bench", "built": False})
+    bus.drain()
+    assert app.asks() is False
+    assert app.railroad == "bench"
+
+    bus.publish(RAILROAD, {"name": "yard", "built": False})
+    bus.drain()
+    assert app.asks() is False
+    assert app.railroad == "yard"
+    assert store.asked == ["bench", "yard"]
+
+
 def test_a_script_that_does_not_load_says_so_again_when_the_store_is_back(
     store: Store,
 ) -> None:

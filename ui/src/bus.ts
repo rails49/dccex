@@ -33,7 +33,7 @@
  * `ws://` and nothing here names a host or a port (`framing.js`).
  *
  * **Nothing here reads a payload.** What one means is `readings.js`'s
- * `reported` and `named`, each a pure function of the bytes and run rather
+ * `reported`, `named` and `built`, each a pure function of the bytes and run rather
  * than read (`tests/ui/test_readings.py`). This module is the connection:
  * where it is, what is subscribed to, and what is published — none of which a
  * gate without a broker can exercise, so the checks that drive it mount it
@@ -43,7 +43,13 @@
 import mqtt, { type MqttClient } from "mqtt";
 
 import { socketAt } from "./framing.js";
-import { UNREACHABLE, named, reported, type Layout } from "./readings.js";
+import {
+  UNREACHABLE,
+  built,
+  named,
+  reported,
+  type Layout,
+} from "./readings.js";
 
 /** Where the broker answers on this page's own origin, and the whole of what
  *  it claims there — the door strips it before the broker sees a request, as
@@ -129,6 +135,7 @@ export class Bus {
         connected: true,
         power: this.#layout.power,
         railroad: this.#layout.railroad,
+        built: this.#layout.built,
       });
     });
     // The connection going is the whole signal, as it is for the stream: an
@@ -149,6 +156,7 @@ export class Bus {
           connected: true,
           power: reported(said),
           railroad: this.#layout.railroad,
+          built: this.#layout.built,
         });
       }
       // The rows arrive in whatever order `layout` sent them and neither is
@@ -159,6 +167,7 @@ export class Bus {
           connected: true,
           power: this.#layout.power,
           railroad: named(said),
+          built: built(said),
         });
       }
     });

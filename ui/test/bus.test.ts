@@ -38,6 +38,9 @@ const NONSENSE = "{";
 const LOADED = '{"name":"crossover-yard"}';
 const NONE = '{"name":""}';
 
+/** A railroad row for a railroad that is not built (ADR-0028). */
+const UNBUILT = '{"name":"crossover-yard","built":false}';
+
 /** The railroad the first of those names. */
 const YARD = "crossover-yard";
 
@@ -63,8 +66,9 @@ function opened(): { bus: Bus; broker: Dialled; reported: Layout[] } {
 function carries(
   power: string | null,
   railroad: string | null | undefined = undefined,
+  built = true,
 ): Layout {
-  return { connected: true, power, railroad };
+  return { connected: true, power, railroad, built };
 }
 
 /** The latest reading the bus handed up. */
@@ -101,6 +105,17 @@ test("what layout names on the railroad row is what the page reads", () => {
   expect(latest(reported)).toEqual(carries(null, YARD));
   broker.says(RAILROAD_STATE, NONE);
   expect(latest(reported)).toEqual(carries(null, null));
+});
+
+test("a railroad row that says not built is read as such, and the power row keeps it", () => {
+  const { broker, reported } = opened();
+  broker.connects();
+  broker.says(RAILROAD_STATE, UNBUILT);
+  expect(latest(reported)).toEqual(carries(null, YARD, false));
+  broker.says(POWER_STATE, HOT);
+  expect(latest(reported)).toEqual(carries("on", YARD, false));
+  broker.says(RAILROAD_STATE, LOADED);
+  expect(latest(reported)).toEqual(carries("on", YARD));
 });
 
 test("the two rows are read beside each other and neither clears the other", () => {

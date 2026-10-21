@@ -101,6 +101,13 @@ def named(*payload: str) -> list[str | None]:
     return read
 
 
+def built(*payload: str) -> list[bool]:
+    """Whether `layout`'s railroad row says the railroad is built, for each
+    of `payload` in turn."""
+    read: list[bool] = drawn(loaded=list(payload))["built"]
+    return read
+
+
 def tiles(**scenario: Any) -> dict[str, dict[str, Any]]:
     """One **tile** per track, by the letter of each.
 
@@ -160,10 +167,10 @@ NO_RAILROAD = "no railroad loaded"
 #: arrived yet. A
 #: scenario that says nothing about the bus is a page that has not reached the
 #: broker, which is what one has until it answers (`bus.ts`).
-HOT = {"connected": True, "power": "on", "railroad": YARD}
-COLD = {"connected": True, "power": "off", "railroad": YARD}
-DRAINING = {"connected": True, "power": "draining", "railroad": YARD}
-UNSAID = {"connected": True, "power": None, "railroad": None}
+HOT = {"connected": True, "power": "on", "railroad": YARD, "built": True}
+COLD = {"connected": True, "power": "off", "railroad": YARD, "built": True}
+DRAINING = {"connected": True, "power": "draining", "railroad": YARD, "built": True}
+UNSAID = {"connected": True, "power": None, "railroad": None, "built": True}
 
 #: The broker with the railroad unreported: no railroad row has arrived since
 #: the connection came up, which is the gap after a reconnect (#242). The key
@@ -192,6 +199,7 @@ def test_the_band_carries_the_railroad_the_link_and_the_presses() -> None:
         "railroad",
         "says",
         "stop",
+        "unbuilt",
     ]
 
 
@@ -207,6 +215,7 @@ def test_the_band_reads_the_link_and_the_power_off_both_channels() -> None:
     """
     assert band(said=list(TALKING), now=NOW, layout=HOT) == {
         "railroad": YARD,
+        "unbuilt": "",
         "answering": True,
         "says": "answering",
         "power": {"reads": "on", "title": DRAINS, "wants": "draining"},
@@ -253,6 +262,44 @@ def test_a_band_whose_railroad_is_unreported_names_nothing() -> None:
     """
     assert band(said=list(TALKING), now=NOW, layout=UNREPORTED)["railroad"] == ""
     assert band(said=list(TALKING), now=NOW)["railroad"] == ""
+
+
+@pytest.mark.node
+def test_a_railroad_that_is_not_built_says_so_after_its_name() -> None:
+    """`built: false` on the railroad row: the name, and `not built` beside it
+    (ADR-0028 d.2). A built railroad is the name alone."""
+    unbuilt = {**HOT, "built": False}
+    drawn_unbuilt = band(said=list(TALKING), now=NOW, layout=unbuilt)
+    assert (drawn_unbuilt["railroad"], drawn_unbuilt["unbuilt"]) == (YARD, "not built")
+    drawn_built = band(said=list(TALKING), now=NOW, layout=HOT)
+    assert (drawn_built["railroad"], drawn_built["unbuilt"]) == (YARD, "")
+
+
+@pytest.mark.node
+def test_no_railroad_loaded_carries_no_marker() -> None:
+    """`{"name": "", "built": false}` is no railroad loaded, and there is no
+    name for `not built` to follow."""
+    assert named('{"name": "", "built": false}') == [None]
+    unloaded = {**UNSAID, "built": False}
+    drawn_unloaded = band(said=list(TALKING), now=NOW, layout=unloaded)
+    assert (drawn_unloaded["railroad"], drawn_unloaded["unbuilt"]) == (
+        NO_RAILROAD,
+        "",
+    )
+
+
+@pytest.mark.node
+def test_the_presses_are_the_same_on_a_railroad_that_is_not_built() -> None:
+    """ON and OFF stay live on `built: false`, on the same rule as on a built
+    railroad (ADR-0028 d.3). Whether `layout` accepts ON is `layout`'s."""
+    for layout in (HOT, COLD, DRAINING, UNSAID):
+        unbuilt = {**layout, "built": False}
+        assert power(said=list(TALKING), now=NOW, layout=unbuilt) == power(
+            said=list(TALKING), now=NOW, layout=layout
+        )
+        assert stop(said=list(TALKING), now=NOW, layout=unbuilt) == stop(
+            said=list(TALKING), now=NOW, layout=layout
+        )
 
 
 @pytest.mark.node
@@ -411,6 +458,20 @@ def test_a_railroad_row_with_no_name_on_it_is_no_railroad() -> None:
 
 
 @pytest.mark.node
+def test_the_railroad_row_says_whether_the_railroad_is_built() -> None:
+    """`built` on `tc49/layout/state/railroad` (control ADR-0085 d.4). Only
+    `false` reads as not built: an absent `built`, or one that is not a
+    boolean, reads as built."""
+    assert built(
+        '{"name": "Y", "built": false}',
+        '{"name": "Y"}',
+        '{"name": "Y", "built": true}',
+        '{"name": "Y", "built": "no"}',
+        "x",
+    ) == [False, True, True, True, True]
+
+
+@pytest.mark.node
 def test_there_is_a_tile_per_track_in_letter_order() -> None:
     """One per track the station names, in letter order (CONTEXT.md **tile**).
     D is set to NONE and has a tile all the same.
@@ -531,6 +592,7 @@ def test_a_station_that_says_nothing_is_a_link_that_is_down() -> None:
     (ADR-0008, control ADR-0066)."""
     assert band(now=NOW) == {
         "railroad": "",
+        "unbuilt": "",
         "answering": False,
         "says": "dcc-ex offline",
         "power": DEAD,
@@ -581,6 +643,7 @@ def test_a_station_that_stops_answering_takes_the_band_and_the_tiles() -> None:
 
     assert band(**gone) == {
         "railroad": YARD,
+        "unbuilt": "",
         "answering": False,
         "says": "dcc-ex offline",
         "power": {"reads": "on", "title": DRAINS, "wants": "draining"},

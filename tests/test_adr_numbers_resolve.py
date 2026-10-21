@@ -112,6 +112,7 @@ CONTROL = {
     "0062": "track power is cut only when nothing is moving and the layout checks",
     "0065": "the app that owns the device flashes it",
     "0066": "the link is the station answering not the socket being open",
+    "0085": "the editor saves when it is left and a railroad can be named without being built",
 }
 
 #: Where `control`'s records are, at the address every link in this repository

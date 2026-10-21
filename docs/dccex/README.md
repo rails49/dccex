@@ -88,6 +88,9 @@ one per railroad, at `GET /scripts/<railroad>`, answering
 that is comes off the retained `tc49/layout/state/railroad` and never off a
 flag: the station this app holds is the same station whichever railroad is
 loaded on it, and the script is the one thing about it that is the railroad's.
+The row's `built` changes nothing here: on `built: false` this app runs the
+named railroad's script as on `built: true`
+([ADR-0028](../adr/0028-a-railroad-that-is-not-built-still-runs-its-script.md)).
 
 The script is where this railroad's `<…>` that the bus has no word for is
 written — which mode each track is set to, what current each may draw, what a
