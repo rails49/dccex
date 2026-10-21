@@ -17,7 +17,7 @@
 drawing is invalid, and that an app reading the row builds nothing and keeps
 what it holds.
 
-The translator builds nothing from the drawing. What it takes from the row is
+The translator reads nothing from the drawing. What it takes from the row is
 which railroad's script to run, and the script is a document in the store
 (ADR-0015), not derived from the drawing. The station is the same station
 whichever railroad is named.
@@ -35,8 +35,10 @@ on `built: true`, at start and on a later row.
 the same rule as on a built railroad (ADR-0026 d.4). dccex does not refuse ON.
 Whether `layout` accepts it is control's.
 
-These depart from control ADR-0085 d.4's "builds nothing and keeps what it
-holds" for the translator.
+These depart from control ADR-0085 d.4, which says an app that reads the row
+"builds nothing and keeps what it holds". dccex acts on the newly named
+railroad instead: the translator runs its script, the band names it, and ON
+stays available.
 
 ## Consequences
 

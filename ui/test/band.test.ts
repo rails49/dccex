@@ -42,14 +42,9 @@ const TALKED: Kept = heard(QUIET, BANNER, SPOKE);
 const YARD = "crossover-yard";
 
 const HOT: Layout = { connected: true, power: "on", railroad: YARD, built: true };
-const COLD: Layout = { connected: true, power: "off", railroad: YARD, built: true };
-const DRAINING: Layout = {
-  connected: true,
-  power: "draining",
-  railroad: YARD,
-  built: true,
-};
-const UNSAID: Layout = { connected: true, power: null, railroad: null, built: true };
+const COLD: Layout = { ...HOT, power: "off" };
+const DRAINING: Layout = { ...HOT, power: "draining" };
+const UNSAID: Layout = { ...HOT, power: null, railroad: null };
 const UNREPORTED: Layout = {
   connected: true,
   power: null,

@@ -588,7 +588,8 @@ export function band(readings, layout) {
   return {
     railroad:
       layout.railroad === undefined ? BLANK : (layout.railroad ?? NO_RAILROAD),
-    unbuilt: typeof layout.railroad === "string" && !layout.built ? NOT_BUILT : BLANK,
+    unbuilt:
+      typeof layout.railroad === "string" && !layout.built ? NOT_BUILT : BLANK,
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
     power: power(layout),

@@ -33,11 +33,12 @@
  * `ws://` and nothing here names a host or a port (`framing.js`).
  *
  * **Nothing here reads a payload.** What one means is `readings.js`'s
- * `reported`, `named` and `built`, each a pure function of the bytes and run rather
- * than read (`tests/ui/test_readings.py`). This module is the connection:
- * where it is, what is subscribed to, and what is published — none of which a
- * gate without a broker can exercise, so the checks that drive it mount it
- * against a broker with nothing behind it (`ui/test/support/broker.ts`).
+ * `reported`, `named` and `built`, each a pure function of the bytes and run
+ * rather than read (`tests/ui/test_readings.py`). This module is the
+ * connection: where it is, what is subscribed to, and what is published —
+ * none of which a gate without a broker can exercise, so the checks that drive
+ * it mount it against a broker with nothing behind it
+ * (`ui/test/support/broker.ts`).
  */
 
 import mqtt, { type MqttClient } from "mqtt";
