@@ -414,7 +414,7 @@ def test_two_identical_lines_in_the_same_millisecond_are_two_rows() -> None:
     below.
     """
     keying = MONITOR.read_text()
-    keying = keying[keying.index("repeat(") : keying.index("const read = gloss(")]
+    keying = keying[keying.index("repeat(") : keying.index("const read =")]
     assert "said.at" not in keying, "the key is made of when the line arrived"
     assert "said.line" not in keying, "the key is made of what the line says"
 

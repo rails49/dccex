@@ -94,6 +94,16 @@ CASES: dict[str, str] = {
     "<= D MAIN I>": "track D is MAIN_INV",
     "<= E BOOST A>": "track E is BOOST_AUTO",
     "<= E BOOST I>": "track E is BOOST_INV",
+    "<= D MAIN A I>": "track D is MAIN_AUTO_INV",
+    "<= E BOOST A I>": "track E is BOOST_AUTO_INV",
+    "<p1 JOIN>": "the PROG track is joined to MAIN",
+    "<l 3 0 154 1>": "loco 3 forward at step 25, F0 on",
+    "<l 3 0 0 0>": "loco 3 reverse, stopped",
+    "<l 3 0 129 0>": "loco 3 forward, emergency stop",
+    "<l 3 0 154 17>": "loco 3 forward at step 25, F0 F4 on",
+    "<l 3 0 128 -2147483648>": "loco 3 forward, stopped, F31 on",
+    "<l 3 1 191 0>": "loco 3 forward at step 62",
+    "<l 3 -1 128 0>": "loco 3 has no slot",
 }
 
 #: The lines that carry a fact as well as a sentence, and the fact they carry.
@@ -114,6 +124,9 @@ FACTS: dict[str, dict[str, object]] = {
     "<= D MAIN I>": {"track": "D", "mode": "MAIN_INV"},
     "<= E BOOST A>": {"track": "E", "mode": "BOOST_AUTO"},
     "<= E BOOST I>": {"track": "E", "mode": "BOOST_INV"},
+    "<= D MAIN A I>": {"track": "D", "mode": "MAIN_AUTO_INV"},
+    "<= E BOOST A I>": {"track": "E", "mode": "BOOST_AUTO_INV"},
+    "<p1 JOIN>": {"hot": True},
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
@@ -142,7 +155,12 @@ SILENT: tuple[str, ...] = (
     "<c CurrentMAIN 123 C Amps 0 0 4000 1000>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR>",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10",
-    "<l 3 0 128 0>",
+    "<= C MAIN A X>",
+    "<= C MAIN I A>",
+    "<l 3>",
+    "<l 3 0 154>",
+    "<l x 0 154 1>",
+    "<l 3 0 256 0>",
     "<Q 12>",
     "<* Power overload *>",
     "<>",

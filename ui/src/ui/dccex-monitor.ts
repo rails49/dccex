@@ -9,7 +9,7 @@
  *
  * **A line the decoder knows carries its gloss** (#5): one plain sentence
  * beside the bytes, drawn quieter and smaller than them, and nothing at all
- * beside a line it does not know. The reading is the decoder's — a pure
+ * beside a line it does not know. A line this page sent carries none (#327). The reading is the decoder's — a pure
  * function this component asks and holds no part of (ADR-0009 d.1) — and the
  * drawing is this component's.
  *
@@ -316,7 +316,7 @@ export class DccexMonitor extends LitElement {
                 if ("note" in said) {
                   return html`<div class="note">${said.note}</div>`;
                 }
-                const read = gloss(said.line);
+                const read = said.sent ? null : gloss(said.line);
                 return html`
                   <div
                     class=${said.sent ? "line sent" : "line"}
