@@ -562,7 +562,8 @@ type into at the foot.
   standing where a reading goes is an observation nobody made
   ([ADR-0009](../adr/0009-the-decoder-is-a-pure-function-and-an-unknown-line-gets-no-gloss.md)).
 - The lines this page sent are marked differently from the lines the station
-  said, so an operator can tell their own traffic from the railroad's.
+  said, so an operator can tell their own traffic from the railroad's. They
+  carry no gloss.
 - It follows the newest line while the view is at the bottom and stays put once
   it has been scrolled up, so reading back does not fight the stream — including
   across a trim, where the lines it is measured from are the ones that go. It
@@ -690,10 +691,9 @@ handed what they do the way it is handed its lines and its sending.
 **And what the page understood is beside it** (#5). A line the **decoder**
 recognises whole carries one plain sentence, drawn quieter and smaller than the
 bytes and in the page's own face rather than the monospace the station's words
-are in; a line it does not recognise carries nothing at all. Five letters are
-known so far — the banner the station comes up with, track power, a turnout
-thrown or closed, the current on a track, and a command the station would not
-take — and what it knows grows by adding a reader and a pair of strings
+are in; a line it does not recognise carries nothing at all, and neither does
+a line this page sent (#327). What it knows is listed in `READS` in
+`ui/src/decoder.js`, and it grows by adding a reader and a pair of strings
 (ADR-0009 d.5). The component knows no protocol: it asks the pure function and
 draws what comes back.
 The decoder has no socket, no state and no clock, and the band and the tiles

@@ -66,6 +66,9 @@ const CLOSE = ">";
  * row and no railroad to hang one on, and what the station last said about
  * power is the whole of what it knows (ADR-0008).
  *
+ * `<p1 JOIN>` says the PROG track carries MAIN. The station sends it while
+ * joined whether or not the tracks are on, so its sentence is not about power.
+ *
  * @param {string} rest what follows the `p`
  * @returns {Reading | null}
  */
@@ -77,14 +80,13 @@ function power(rest) {
   const hot = said[1] === "1";
   const state = hot ? "on" : "off";
   const track = /^[A-H]$/.test(said[2] ?? "") ? { track: said[2] } : {};
-  return {
-    say:
-      said[2] === undefined
-        ? `track power is ${state}`
-        : `${said[2]} track power is ${state}`,
-    hot,
-    ...track,
-  };
+  let say = `track power is ${state}`;
+  if (said[2] === "JOIN" && hot) {
+    say = "the PROG track is joined to MAIN";
+  } else if (said[2] !== undefined) {
+    say = `${said[2]} track power is ${state}`;
+  }
+  return { say, hot, ...track };
 }
 
 /**
@@ -183,9 +185,9 @@ function measured(rest) {
 }
 
 /** The modifier letters the station puts after MAIN or BOOST, and the word
- *  the `<=` command takes for each.
+ *  the `<=` command takes for them.
  *  @type {Record<string, string>} */
-const MODIFIERS = { A: "AUTO", I: "INV" };
+const MODIFIERS = { A: "AUTO", I: "INV", "A I": "AUTO_INV" };
 
 /**
  * What a track is set to: `<= A MAIN>`. `<=>` asks for every track.
@@ -193,16 +195,16 @@ const MODIFIERS = { A: "AUTO", I: "INV" };
  * A DC track carries its cab after the mode (`<= C DC 3>`); the mode is what
  * is read, and the cab is left on the line.
  *
- * MAIN and BOOST may carry a modifier: `A` for auto-reverse, `I` for inverted
- * (`<= C MAIN A>`). The mode is read as the word the `<=` command takes for it,
- * `MAIN_AUTO` or `MAIN_INV`. The station names AUTO alone where both are set.
+ * MAIN and BOOST may carry modifiers: `A` for auto-reverse, `I` for inverted,
+ * `A I` for both (`<= C MAIN A>`). The mode is read as the word the `<=`
+ * command takes for it: `MAIN_AUTO`, `MAIN_INV` or `MAIN_AUTO_INV`.
  *
  * @param {string} rest what follows the `=`
  * @returns {Reading | null}
  */
 function mode(rest) {
   const said =
-    /^([A-H]) (?:(MAIN|BOOST) ([AI])|([A-Z]+)(?: \d+)?)$/.exec(rest);
+    /^([A-H]) (?:(MAIN|BOOST) (A I|A|I)|([A-Z]+)(?: \d+)?)$/.exec(rest);
   if (said === null) {
     return null;
   }
@@ -212,6 +214,49 @@ function mode(rest) {
     track: said[1],
     mode: named,
   };
+}
+
+/**
+ * A loco's speed, direction and functions: `<l 3 0 154 1>`.
+ *
+ * The second field is the slot, `-1` where the cab has none. In the speed
+ * byte, bit 7 is the direction, 1 forward; the low 7 bits are 0 for stop, 1
+ * for emergency stop and n for step n-1. Bit n of the last field is Fn, and
+ * the field is negative when F31 is on.
+ *
+ * @param {string} rest what follows the `l`
+ * @returns {Reading | null}
+ */
+function loco(rest) {
+  const said = /^(\d+) (-1|\d+) (\d+) (-?\d+)$/.exec(rest);
+  if (said === null) {
+    return null;
+  }
+  const cab = said[1];
+  if (said[2] === "-1") {
+    return { say: `loco ${cab} has no slot` };
+  }
+  const speed = Number(said[3]);
+  if (speed > 255) {
+    return null;
+  }
+  const way = speed & 0x80 ? "forward" : "reverse";
+  const step = speed & 0x7f;
+  let say = `loco ${cab} ${way} at step ${step - 1}`;
+  if (step === 0) {
+    say = `loco ${cab} ${way}, stopped`;
+  } else if (step === 1) {
+    say = `loco ${cab} ${way}, emergency stop`;
+  }
+  const functions = Number(said[4]) >>> 0;
+  /** @type {string[]} */
+  const on = [];
+  for (let n = 0; n < 32; n++) {
+    if ((functions >>> n) & 1) {
+      on.push(`F${n}`);
+    }
+  }
+  return { say: on.length === 0 ? say : `${say}, ${on.join(" ")} on` };
 }
 
 /**
@@ -236,6 +281,7 @@ const READS = {
   c: current,
   j: measured,
   "=": mode,
+  l: loco,
   X: rejected,
 };
 

@@ -97,6 +97,12 @@ test("a line this page sent is marked where the station's lines are not", async 
   expect(rows[1]?.querySelector(".mark")?.textContent).not.toBe("");
 });
 
+test("a line this page sent carries no gloss", async () => {
+  const drawn = await monitor([{ line: "<= A MAIN>", at: AT, sent: true, key: 1 }]);
+  expect(gloss("<= A MAIN>")).not.toBeNull();
+  expect(part(drawn, ".line").querySelector(".gloss")).toBeNull();
+});
+
 test("a conversation nothing has been said in says so", async () => {
   const drawn = await monitor([]);
   expect(all(drawn, ".line")).toStrictEqual([]);
