@@ -87,6 +87,10 @@ const PRESSED_STOP = "stopped";
  * that says none is loaded leaves nothing to edit, and an outage leaves the
  * editor where it is (`dccex-script.ts`).
  *
+ * `built` is whether that railroad is built, off the same row, read by
+ * `built`. `false` puts `not built` after the name on the band and changes
+ * nothing else on the page (ADR-0028).
+ *
  * @typedef {object} Layout
  * @property {boolean} connected whether the page has the broker
  * @property {string | null} power what `layout` last reported — `on`,
@@ -94,6 +98,8 @@ const PRESSED_STOP = "stopped";
  * @property {string | null | undefined} railroad which railroad `control` has
  *   loaded: the name, `null` where a row says none is, and `undefined` where
  *   none has been reported since the connection came up
+ * @property {boolean} built whether the railroad row says it is built, and
+ *   `true` until one has
  */
 
 /** A page that has not reached the broker: no connection, and nothing
@@ -106,6 +112,7 @@ export const UNREACHABLE = /** @type {Layout} */ ({
   connected: false,
   power: null,
   railroad: undefined,
+  built: true,
 });
 
 /**
@@ -167,6 +174,29 @@ export function named(payload) {
   return typeof name === "string" && name !== "" ? name : null;
 }
 
+/**
+ * Whether the railroad on the railroad row is built (control ADR-0085 d.4).
+ * Only `built: false` reads as not built. An absent `built`, one that is not
+ * a boolean, and a payload that is not JSON read as built.
+ *
+ * @param {string} payload the row as it arrived
+ * @returns {boolean}
+ */
+export function built(payload) {
+  /** @type {unknown} */
+  let said;
+  try {
+    said = JSON.parse(payload);
+  } catch {
+    return true;
+  }
+  return !(
+    typeof said === "object" &&
+    said !== null &&
+    /** @type {{ built?: unknown }} */ (said).built === false
+  );
+}
+
 /** Why neither press can be pressed: no broker, or no word from `layout`
  *  yet. One reason for both (ADR-0026 d.4). */
 const WAITING = "Waiting for the station";
@@ -197,6 +227,10 @@ const OFFLINE = "dcc-ex offline";
  *  It is not what an unreported railroad reads as. Nothing has said which
  *  railroad `control` has there, so the slot is blank (#246). */
 const NO_RAILROAD = "no railroad loaded";
+
+/** What the band says after the name of a railroad the row says is not built
+ *  (ADR-0028 d.2). */
+const NOT_BUILT = "not built";
 
 /**
  * How many current readings the shown one is the mean of: two seconds' worth
@@ -349,6 +383,8 @@ export const QUIET = /** @type {Kept} */ ({
  * @property {string} railroad which railroad `control` has loaded,
  *   `no railroad loaded` where a row says none is, and blank while no row has
  *   arrived since the connection came up
+ * @property {string} unbuilt `not built` after a named railroad the row says
+ *   is not built, and blank otherwise
  * @property {boolean} answering whether the station is answering — the link,
  *   which is the dot's colour
  * @property {string} says what the link reads in words, which is what a reader
@@ -531,6 +567,9 @@ function stop(layout) {
  * presses beside it are already dead. A row that says none is loaded is the
  * other state and keeps the sentence (#242, `Layout`).
  *
+ * **A railroad that is not built is named, with `not built` after it**
+ * (ADR-0028 d.2). The marker follows a name and nothing else.
+ *
  * **Both presses are dead on one rule** (ADR-0026 d.4): while the bus is
  * unreachable or `layout` has not reported the power. A silent station does
  * not hold either.
@@ -549,6 +588,8 @@ export function band(readings, layout) {
   return {
     railroad:
       layout.railroad === undefined ? BLANK : (layout.railroad ?? NO_RAILROAD),
+    unbuilt:
+      typeof layout.railroad === "string" && !layout.built ? NOT_BUILT : BLANK,
     answering: readings.answering,
     says: readings.answering ? ANSWERING : OFFLINE,
     power: power(layout),

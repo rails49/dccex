@@ -9,6 +9,11 @@ export const appStyles = css`
     display: block;
   }
 
+  /* "not built" after the railroad's name on the band (ADR-0028 d.2). */
+  .unbuilt {
+    color: var(--sl-color-neutral-500);
+  }
+
   /* Where everything the page is about goes: one view, which the rail picks
      (issue 169). The rows are the monitor view's, which is the one with two
      things in it — the tiles across the top, and the monitor under them

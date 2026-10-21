@@ -140,6 +140,12 @@ nobody reported (#246). A reading and not a control: nothing on this page loads
 a railroad, so it presses nothing and the two presses stay the only controls on
 the chrome.
 
+The row's `built` is `false` for a railroad whose drawing is invalid (control
+ADR-0085 d.4). The band then shows the name followed by `not built` in a muted
+style. An absent `built`, or one that is not a boolean, reads as built. The
+presses and the script view are the same either way
+([ADR-0028](../adr/0028-a-railroad-that-is-not-built-still-runs-its-script.md)).
+
 It does not go with the link. The name is `layout` talking, so a station that
 has stopped answering is still a railroad `control` has loaded; what takes it
 away is the bus going.

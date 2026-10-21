@@ -81,7 +81,8 @@ def test_the_band_names_the_railroad_and_presses_nothing_with_it() -> None:
     a box that has loaded none are the readings module's.
     """
     drawn = code(CHROME.read_text())
-    assert "<look-reading>${railroad}</look-reading>" in drawn
-    assert (
-        "no railroad loaded" not in drawn
-    ), "the band writes out what it says about a railroad nobody loaded"
+    assert drawn.count("<look-reading") == 1
+    assert ">${railroad}${unbuilt" in drawn
+    assert '<span class="unbuilt">${unbuilt}</span>' in drawn
+    for written in ("no railroad loaded", "not built"):
+        assert written not in drawn, f"the band writes out {written} itself"

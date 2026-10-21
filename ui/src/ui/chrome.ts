@@ -20,12 +20,16 @@ import { DRAWN, VIEWS, type View } from "../view.js";
  *  presses are dead on one rule, so one `reason` holds both and is their
  *  tooltip (ADR-0026 d.4). */
 export function drawBand(readings: Readings, layout: Layout): TemplateResult {
-  const { railroad, answering, says, stop } = band(readings, layout);
+  const { railroad, unbuilt, answering, says, stop } = band(readings, layout);
   return html`
     <look-band ui="dccex">
       ${railroad === ""
         ? nothing
-        : html`<look-reading>${railroad}</look-reading>`}
+        : html`<look-reading
+            >${railroad}${unbuilt === ""
+              ? nothing
+              : html` <span class="unbuilt">${unbuilt}</span>`}</look-reading
+          >`}
       <look-dot state=${answering ? "up" : "down"}
         >${answering ? nothing : says}</look-dot
       >
