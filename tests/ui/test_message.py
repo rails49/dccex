@@ -5,14 +5,14 @@ pure function of the text in the box (`ui/src/message.js`) — no socket, no
 state, no clock and no DOM — so every spelling an operator may use is held
 here as two strings, on a machine with nothing plugged in.
 
-**The function is run rather than read**, for the reason `tests/ui/test_decoder.py`
-gives and with more at stake: these bytes go down the cable to a command
-station, and a rule about what goes down a cable asserted against the source
-that would produce it is not asserted. So the pairs go through the real
-function under `node`, by way of `tests/ui/message.mjs`, and what that asks of
-the machine is a node and nothing else. The `node` marker is what asks it: the
-gate does not collect these and the workflow runs them, where a node that is
-not there is red rather than skipped (`scripts/check.sh`, #101).
+**The function is run rather than read**, for the reason
+`tests/ui/test_decoder.py` gives and with more at stake: these bytes go down the
+cable to a command station, and a rule about what goes down a cable asserted
+against the source that would produce it is not asserted. So the pairs go
+through the real function under `node`, by way of `tests/ui/message.mjs`, and
+what that asks of the machine is a node and nothing else. The `node` marker is
+what asks it: the gate does not collect these and the workflow runs them, where
+a node that is not there is red rather than skipped (`scripts/check.sh`, #101).
 
 It is why this and the decoder are written as JavaScript with their types in
 JSDoc: they are two of the nine run under a bare node, because they are what

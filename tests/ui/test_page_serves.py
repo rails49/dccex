@@ -148,7 +148,8 @@ class Serving:
 
 @pytest.fixture(scope="module")
 def serving() -> Iterator[Serving]:
-    """The image built, run, and answering: the image, and the port to ask it on.
+    """The image built, run, and answering: the image, and the port to ask it
+    on.
 
     One build and one container for the whole module. The build is the
     expensive part of this check and it is the same artefact every assertion

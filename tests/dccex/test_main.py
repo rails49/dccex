@@ -1,12 +1,12 @@
 """The translator as its own process: what it takes for it to come up alone.
 
-Against a real broker and a real listener on real sockets, because that is
-what is under test — an app started against nothing, in whatever order the
-machine brings the two up (control ADR-0059, decision 5). The station is reached by
+Against a real broker and a real listener on real sockets, because that is what
+is under test — an app started against nothing, in whatever order the machine
+brings the two up (control ADR-0059, decision 5). The station is reached by
 **address** here rather than by the injected connection `test_translator.py`
-drives: an address is what `--station` gives and opening it is what this
-command line has to get right. Nothing needs hardware, which is the rule the
-whole gate sits under.
+drives: an address is what `--station` gives and opening it is what this command
+line has to get right. Nothing needs hardware, which is the rule the whole gate
+sits under.
 
 The store is a fake of `control`'s routes on loopback (`tests/stores.py`) and
 the railroad is named on the broker by a client standing in for `layout`,
@@ -296,8 +296,8 @@ def test_its_link_row_is_keyed_by_the_id_it_was_started_with(
 ) -> None:
     """`--id` is the whole of what a second translator on one railroad needs:
     the row is keyed by it, so the second's `up` does not erase the first's
-    `down` (control ADR-0059, decision 7). A value and not a contract — it appears in
-    no drawing and no list of ours."""
+    `down` (control ADR-0059, decision 7). A value and not a contract — it
+    appears in no drawing and no list of ours."""
     named = App(broker, station, id="north-yard")
     witness, heard = watching(broker)
     try:
@@ -376,9 +376,9 @@ def test_it_comes_up_against_a_station_that_is_not_there_yet(
 def test_it_comes_up_against_a_broker_that_is_not_there_yet(
     broker: Broker, station: Station, app: App
 ) -> None:
-    """The other order nothing forbids. The two opening rows are publishes,
-    and a publish made to a broker that is not there is dropped rather than
-    queued (control ADR-0050), so the app waits for the broker before it is built at
+    """The other order nothing forbids. The two opening rows are publishes, and
+    a publish made to a broker that is not there is dropped rather than queued
+    (control ADR-0050), so the app waits for the broker before it is built at
     all — and the station is not touched meanwhile."""
     broker.stop()
     station.opens()

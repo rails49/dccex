@@ -9,10 +9,10 @@ see (`ui/test/mounted.ts`, `tests/ui/test_band.py`). The narrow-width rules
 were therefore written and never rendered, which is what #1's Further Notes
 recorded as "narrow widths were not verified" and what this is (#127).
 
-So: a real Chromium, against the built page image, at two phone widths and at
-a desktop one. It is the same artefact `tests/ui/test_page_serves.py` builds —
-the image the box will serve — which is the other half of why this is the
-`docker` job's and not a job of its own: #1 asks that one check run the thing in the
+So: a real Chromium, against the built page image, at two phone widths and at a
+desktop one. It is the same artefact `tests/ui/test_page_serves.py` builds — the
+image the box will serve — which is the other half of why this is the `docker`
+job's and not a job of its own: #1 asks that one check run the thing in the
 image it will run in, and a layout check that drove `vite dev` would be
 asserting a page nobody ships.
 

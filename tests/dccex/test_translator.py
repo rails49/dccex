@@ -143,7 +143,8 @@ class Port:
 
 
 class Tap:
-    """Everything published, in delivery order: the trace, as a test reads it."""
+    """Everything published, in delivery order: the trace, as a test reads
+    it."""
 
     def __init__(self, bus: InProcessBus) -> None:
         self.seen: list[tuple[str, Payload]] = []
@@ -286,9 +287,9 @@ def test_every_point_address_is_acted_on() -> None:
 
 
 async def _every_point_address_is_acted_on() -> None:
-    """An address names no system (control ADR-0059): it is the string the drawing
-    carries and the hardware answers to, so `5` is a turnout this station
-    throws and there is no level in front of it to look at."""
+    """An address names no system (control ADR-0059): it is the string the
+    drawing carries and the hardware answers to, so `5` is a turnout this
+    station throws and there is no level in front of it to look at."""
     bus, _ = bus_and_tap()
     wanted(bus, POINT, "5", {"addr": "5", "position": "thrown"})
     wanted(bus, SIGNAL, "40", {"addr": "40", "aspect": "clear"})
@@ -1249,10 +1250,10 @@ def test_the_link_is_down_before_anything_is_connected() -> None:
 
 
 def test_the_link_row_is_keyed_by_the_id_the_app_is_started_with() -> None:
-    """The id is whatever the publisher calls itself and appears in no
-    drawing and no list of ours, so two of these on one railroad each keep
-    their own row and neither erases the other (control ADR-0059). The package's name
-    is the default and a value, not a contract."""
+    """The id is whatever the publisher calls itself and appears in no drawing
+    and no list of ours, so two of these on one railroad each keep their own row
+    and neither erases the other (control ADR-0059). The package's name is the
+    default and a value, not a contract."""
     bus, tap = bus_and_tap()
     DccEx(bus, id="shed")
     bus.drain()

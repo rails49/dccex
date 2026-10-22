@@ -19,13 +19,13 @@ owner beside the number gives them. The glossary, the root `README.md` and the
 mirror's page all cite it that way and none of them says an owner in words
 (#123).
 
-**What is read.** Every tree a reader of this repository reads: the two pages
-at the root, the package under `src/`, every page of `docs/`, the page's own
+**What is read.** Every tree a reader of this repository reads: the two pages at
+the root, the package under `src/`, every page of `docs/`, the page's own
 modules and the stylesheets beside them under `ui/src/`, the suites that mount
-its components under `ui/test/`, every check under `tests/` and the node runners among them, and what the box is built
-and served from under `deploy/`. The same trees the module beside this one
-reads, so this number owes a reader an owner in the same places whichever check
-is asking (#150).
+its components under `ui/test/`, every check under `tests/` and the node runners
+among them, and what the box is built and served from under `deploy/`. The same
+trees the module beside this one reads, so this number owes a reader an owner in
+the same places whichever check is asking (#150).
 
 Each widening before the last came of bare citations sitting where nothing was
 looking: three in the newest code in the repository while this read `src/`
@@ -136,7 +136,8 @@ STRUCK = "(ADR-0002)"
 
 
 def prose() -> list[Path]:
-    """Every page of the repository the scan reads, minus the two it does not."""
+    """Every page of the repository the scan reads, minus the two it does
+    not."""
     return sorted(
         page
         for tree, kinds in PROSE.items()

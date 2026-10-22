@@ -26,10 +26,10 @@ raises, and a message this app does not recognise is not an error: it is the
 ordinary case, most of the traffic on the port being somebody else's.
 
 `dccex-usb` frames the same `<…>` delimiters and this is not shared with it.
-Apps import `tc49.lib` and themselves, never each other (control ADR-0013), and the
-delimiters are the hardware's rather than a contract of ours — `dccex-usb`
-mirrors a device and holds its own copy for the same reason it imports
-nothing else of ours.
+Apps import `tc49.lib` and themselves, never each other (control ADR-0013), and
+the delimiters are the hardware's rather than a contract of ours — `dccex-usb`
+mirrors a device and holds its own copy for the same reason it imports nothing
+else of ours.
 """
 
 import re
