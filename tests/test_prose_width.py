@@ -149,3 +149,23 @@ def test_a_code_line_or_a_lone_url_in_a_comment_passes(
 def test_a_file_outside_the_scopes_is_not_read(tmp_path: Path, name: str) -> None:
     said = width(tmp_path, {name: f"// {WORDS}\n"})
     assert said.returncode == 0, said.stdout
+
+
+def test_a_tracked_file_deleted_from_the_tree_is_skipped(tmp_path: Path) -> None:
+    for name in ("README.md", "docs/gone.md"):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"  {WORDS}\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    (tmp_path / "docs" / "gone.md").unlink()
+    said = subprocess.run(
+        [sys.executable, str(SCRIPT)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert said.stderr == ""
+    assert said.returncode == 1
+    assert said.stdout == "README.md:1: 81\n"

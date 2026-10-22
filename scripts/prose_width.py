@@ -16,10 +16,12 @@ link alone.
 
     python3 scripts/prose_width.py [path ...]
 
-With no paths it reads what `git ls-files` lists. It prints `file:line:
-columns` for each line it flags and exits 1 if there is one.
+With no paths it reads what `git ls-files` lists and the working tree still
+holds. It prints `file:line: columns` for each line it flags and exits 1 if
+there is one.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -100,11 +102,11 @@ def flagged(path: str, text: str) -> Iterator[tuple[int, int]]:
 
 
 def tracked() -> list[str]:
-    """The paths `git ls-files` lists."""
+    """The paths `git ls-files` lists that exist in the working tree."""
     listed = subprocess.run(
         ["git", "ls-files", "-z"], capture_output=True, check=True, text=True
     )
-    return [path for path in listed.stdout.split("\0") if path]
+    return [path for path in listed.stdout.split("\0") if os.path.exists(path)]
 
 
 def main(paths: Iterable[str]) -> int:
