@@ -148,14 +148,14 @@ class Diagnostic:
     kind: str
 
 
-_MODIFIERS = {b"A": "AUTO", b"I": "INV"}
+_MODIFIERS = {b"A": "AUTO", b"I": "INV", b"A I": "AUTO_INV"}
 """The letters the station puts after MAIN or BOOST, and the word the `<=`
-command takes for each. The station names AUTO alone where both are set."""
+command takes for them. A reversed auto-reverse track is `A I`."""
 
-_MODE = re.compile(rb"= ([A-H]) (?:(MAIN|BOOST) ([AI])|([A-Z]+)(?: \d+)?)$")
+_MODE = re.compile(rb"= ([A-H]) (?:(MAIN|BOOST) (A I|A|I)|([A-Z]+)(?: \d+)?)$")
 """What a track is set to, as the station answers `<=>`: `<= A MAIN>`. A DC
 track carries its cab after the mode (`<= C DC 3>`) and the cab is left on the
-line; MAIN and BOOST carry a modifier where they have one (`<= C MAIN A>`).
+line; MAIN and BOOST carry modifiers where they have them (`<= C MAIN A I>`).
 The page reads the same line the same way (`ui/src/decoder.js`), and neither
 reads the other's copy — the `<…>` syntax is the hardware's."""
 

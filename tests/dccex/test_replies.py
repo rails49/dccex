@@ -206,8 +206,11 @@ def test_what_a_track_is_set_to_reads_as_the_mode() -> None:
 
 def test_a_modifier_reads_as_the_word_the_command_takes_for_it() -> None:
     """MAIN and BOOST carry `A` for auto-reverse and `I` for inverted, and
-    the station names AUTO alone where both are set."""
+    a reversed auto-reverse track carries both."""
     assert replies.reply(b"<= C MAIN A>") == replies.Mode(track="C", mode="MAIN_AUTO")
+    assert replies.reply(b"<= C MAIN A I>") == replies.Mode(
+        track="C", mode="MAIN_AUTO_INV"
+    )
     assert replies.reply(b"<= D MAIN I>") == replies.Mode(track="D", mode="MAIN_INV")
     assert replies.reply(b"<= E BOOST A>") == replies.Mode(track="E", mode="BOOST_AUTO")
     assert replies.reply(b"<= E BOOST I>") == replies.Mode(track="E", mode="BOOST_INV")
