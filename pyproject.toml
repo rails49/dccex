@@ -50,6 +50,18 @@ markers = [
 [tool.ruff]
 src = ["src", "tests"]
 
+[tool.ruff.lint]
+# Comments and docstrings wrap at 80; code lines stay with black (#335).
+extend-select = ["W505"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 80
+
+[tool.ruff.lint.per-file-ignores]
+# The copy `src/SOURCE.md` names, kept diffable against control's commit.
+"src/dccex_usb/**" = ["W505"]
+"tests/dccex_usb/**" = ["W505"]
+
 [tool.black]
 target-version = ["py312"]
 
