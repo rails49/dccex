@@ -33,6 +33,12 @@ ROW_FUNCTION = "function"
 
 REPORTED_POWER = "reported_power"
 REPORTED_POINT = "reported_point"
+REPORTED_DISTRICT = "reported_district"
+REPORTED_MESSAGE = "reported_message"
+
+DISTRICT = "district"
+"""The row `t.reported` reads a district's record by. Not a desired value:
+nothing on the bus wants a district (ADR-0029 d.2)."""
 
 DESIRED_ROWS = (ROW_POWER, ROW_POINT, ROW_SIGNAL, ROW_TRACTION, ROW_FUNCTION)
 """The desired values a handler may be keyed on, in the script's own words. A
@@ -43,10 +49,12 @@ handler on one of these runs **in place of** the translator's command for it
 script is about is the railroad's power and the row's name on the bus is the
 translator's business (`translator.SCRIPT_ROW`)."""
 
-REPORTED_ROWS = (REPORTED_POWER, REPORTED_POINT)
+REPORTED_ROWS = (REPORTED_POWER, REPORTED_POINT, REPORTED_DISTRICT, REPORTED_MESSAGE)
 """What the station reported, which a handler runs after the fact of and
-replaces nothing. Power and turnouts are the two; others are added when a
-script needs one (ADR-0013 d.3)."""
+replaces nothing. Power, turnouts and a district's record fire on a change;
+`reported_message` fires on every message the station sends, so a need these
+do not cover is a script reading the station's words (ADR-0013 d.3 as amended
+by ADR-0029 d.3)."""
 
 START = "start"
 """The station as the translator has not set it: on a connect, after the station

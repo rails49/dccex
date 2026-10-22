@@ -741,6 +741,171 @@ async def _reports_a_script_reads_go_with_the_link() -> None:
         assert await second.heard(1) == [b"<A 9 2>"]
 
 
+# -- what a script hears and posts (ADR-0029) ----------------------------
+
+
+class Texts(InProcessBus):
+    """An in-process bus that keeps every widget text posted, in order."""
+
+    def __init__(self) -> None:
+        super().__init__(Clock())
+        self.posted: list[tuple[str, str]] = []
+
+    def publish_text(self, topic: str, text: str) -> None:
+        self.posted.append((topic, text))
+        super().publish_text(topic, text)
+
+    def on(self, name: str) -> list[str]:
+        """The texts posted for the widget `name`."""
+        return [text for topic, text in self.posted if topic == f"{WIDGET}/{name}"]
+
+
+WIDGET = "tc49/ui/state/text"
+
+SHOWS = """\
+@on("reported_district")
+def show(t):
+    d = t.reported("district", t.address)
+    t.text(f"track-{t.address}", f"{d.state} {d.mode} {d.limit}")
+"""
+
+STATES = """\
+@on("reported_district")
+def show(t):
+    t.text(f"track-{t.address}", t.reported("district", t.address).state)
+"""
+
+HEARS = """\
+@on("reported_message")
+def heard(t):
+    t.send("<A 9 2>")
+    if t.message.startswith("<jI"):
+        t.text("current", t.message)
+"""
+
+ELSEWHERE = """\
+@on("reported_power")
+def elsewhere(t):
+    t.text("track/A", "on")
+"""
+
+
+async def hears(station: Station, *said: bytes) -> None:
+    """The station says `said`, and the app has read it."""
+    station.says(*said)
+    await asyncio.sleep(QUIET_S)
+
+
+def test_a_districts_record_is_posted_as_each_part_arrives() -> None:
+    asyncio.run(_districts_record_is_posted_as_each_part_arrives())
+
+
+async def _districts_record_is_posted_as_each_part_arrives() -> None:
+    """Power, mode and limit come on lines of their own, and the record
+    changes with each. A reversed auto-reverse district reads
+    `MAIN_AUTO_INV`. A text that repeats the last one is not posted
+    (ADR-0029 d.1, d.2)."""
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=SHOWS):
+        station = await port.opened()
+        await hears(station, b"<p1 A>", b"<p1 A>")
+        assert bus.on("track-A") == ["on None None"]
+
+        await hears(station, b"<= A MAIN A I>", b"<jG 2000 250>", b"<p1 A>")
+        assert bus.on("track-A") == [
+            "on None None",
+            "on MAIN_AUTO_INV None",
+            "on MAIN_AUTO_INV 2000",
+        ]
+        assert bus.on("track-B") == ["None None 250"]
+
+
+def test_a_trip_and_an_alert_are_a_districts_state() -> None:
+    asyncio.run(_trip_and_an_alert_are_a_districts_state())
+
+
+async def _trip_and_an_alert_are_a_districts_state() -> None:
+    """The district is near its limit until it trips, and tripped until the
+    station says it is normal (ADR-0016 d.3, d.4)."""
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=STATES):
+        station = await port.opened()
+        await hears(station, b"<p1 B>", ALERT_B, b"<p0 B>", OVERLOAD_B, b"<p0 B>")
+        await hears(station, NORMAL_B, b"<p1 B>")
+        assert bus.on("track-B") == ["on", "alert", "tripped", "off", "on"]
+
+
+def test_a_district_reads_unknown_while_the_link_is_gone() -> None:
+    asyncio.run(_district_reads_unknown_while_the_link_is_gone())
+
+
+async def _district_reads_unknown_while_the_link_is_gone() -> None:
+    """A widget's text is retained, so the link going says the district is
+    not read rather than leaving the last reading up (ADR-0029 d.2)."""
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=STATES):
+        first = await port.opened()
+        await hears(first, b"<p1 A>")
+        first.hangs_up()
+        second = await port.opened(2)
+        await hears(second, b"<p1 A>")
+        assert bus.on("track-A") == ["on", "unknown", "on"]
+
+
+def test_standing_down_says_every_district_is_unknown() -> None:
+    asyncio.run(_standing_down_says_every_district_is_unknown())
+
+
+async def _standing_down_says_every_district_is_unknown() -> None:
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=STATES) as app:
+        station = await port.opened()
+        await hears(station, b"<p1 A>", b"<p0 B>")
+        await app.shutdown()
+        assert bus.on("track-A") == ["on", "unknown"]
+        assert bus.on("track-B") == ["off", "unknown"]
+
+
+def test_every_message_the_station_sends_is_an_event() -> None:
+    asyncio.run(_every_message_the_station_sends_is_an_event())
+
+
+async def _every_message_the_station_sends_is_an_event() -> None:
+    """Not only a change: two identical poll answers fire twice, and a line
+    no row reads reaches the script verbatim (ADR-0029 d.3)."""
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=HEARS):
+        station = await port.opened()
+        station.says(b"<p1>", b"<p1>", b"<jI 120 0>")
+        assert await station.heard(3) == [b"<A 9 2>"] * 3
+        await asyncio.sleep(QUIET_S)
+        assert bus.on("current") == ["<jI 120 0>"]
+
+
+def test_a_widget_name_that_reaches_another_topic_raises(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_widget_name_that_reaches_another_topic_raises(caplog))
+
+
+async def _widget_name_that_reaches_another_topic_raises(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    bus = Texts()
+    port = Port()
+    with caplog.at_level(logging.ERROR):
+        async with running(bus, port, text=ELSEWHERE):
+            station = await port.opened()
+            await hears(station, b"<p1>")
+    assert bus.posted == []
+    assert "no widget name" in caplog.text
+
+
 # -- the station as this app has not set it (ADR-0018, ADR-0021) ---------
 
 SETS_UP = """\
@@ -989,6 +1154,28 @@ async def _sample_reverses_the_district_behind_point_12() -> None:
             b"<= D MAIN_AUTO>",
         ]
         await station.heard_nothing_more()
+
+
+def test_the_sample_shows_each_district_on_its_widget() -> None:
+    asyncio.run(_sample_shows_each_district_on_its_widget())
+
+
+async def _sample_shows_each_district_on_its_widget() -> None:
+    """Green on, amber near its limit, bold red tripped, plain off, and
+    `inverted` behind a reversed district (ADR-0029)."""
+    bus = Texts()
+    port = Port()
+    async with running(bus, port, text=sample.TEXT):
+        station = await port.opened(asks=False)
+        await station.heard(8 + 2)
+        await hears(station, b"<p1 A>", b"<p0 B>", b"<= D MAIN A I>", b"<p1 D>")
+        await hears(station, OVERLOAD_B, b"<* TRACK A ALERT  2900mA *>")
+        await hears(station, b"<p1 C>")
+        await station.heard_nothing_more()
+        assert bus.on("track-A") == ["\x1b[32mA on\x1b[0m", "\x1b[33mA alert\x1b[0m"]
+        assert bus.on("track-B") == ["B off", "\x1b[1;31mB tripped\x1b[0m"]
+        assert bus.on("track-D") == ["D ? inverted", "\x1b[32mD on inverted\x1b[0m"]
+        assert bus.on("track-C") == ["\x1b[32mC on\x1b[0m"]
 
 
 # -- a railroad with no script this app could load ------------------------
