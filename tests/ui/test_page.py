@@ -37,13 +37,13 @@ COMMANDS = ("<0>", "<1>", "<!>")
 #: exception docs/ui/README.md already names, and it is one module wide.
 #:
 #: It was two until #205. The readings carried `<0>` and `<1>` for the band's
-#: power button, and the band asks `layout` for power now (ADR-0017 d.1), so
+#: power button, and the band asks `layout` for power now (ADR-0026 d.2), so
 #: nothing on the page types power at the station any more.
 SEQUENCE = "flash.js"
 
 #: The row the band asks `layout` for power on, and the module that holds it.
-#: The page is a client of `control`'s broker for this one row (ADR-0017 d.1,
-#: d.5).
+#: The page is a client of `control`'s broker for this one row (ADR-0017 d.5,
+#: ADR-0026 d.2).
 WANTED = "tc49/layout/power_wanted"
 BUS = "bus.ts"
 
@@ -393,7 +393,7 @@ def test_the_link_can_go_down_with_nothing_arriving() -> None:
 
 
 def test_one_module_commands_track_power_and_the_rest_of_the_page_does_not() -> None:
-    """The flash sequence, and nothing else (ADR-0017 d.1, ADR-0006 d.2).
+    """The flash sequence, and nothing else (ADR-0026 d.2, ADR-0006 d.2).
 
     The band used to type `<0>` or `<1>` at the station through the **face**,
     which skipped `layout` and the translator — and `layout` is what refuses an
@@ -414,7 +414,7 @@ def test_one_module_commands_track_power_and_the_rest_of_the_page_does_not() -> 
 
 
 def test_the_band_asks_layout_for_power_on_the_bus() -> None:
-    """The row, in the one module that is the connection (ADR-0017 d.1).
+    """The row, in the one module that is the connection (ADR-0026 d.2).
 
     What the page does about power is one publish on `control`'s broker, and
     the page holds that connection the way it holds the stream — so the row is
@@ -442,7 +442,7 @@ def test_the_flash_sequence_is_the_one_caller_that_cuts_power() -> None:
 
     **And nothing turns power back on.** A page that put the rails back after
     a flash would be commanding power with nothing having checked what is on
-    the layout — the thing this page does not do (ADR-0008 d.5). What happens
+    the layout — the thing this page does not do (ADR-0026 d.2). What happens
     after a station comes back is the operator's.
     """
     sent = [literal for literal in quoted(modules()[SEQUENCE]) if literal in COMMANDS]

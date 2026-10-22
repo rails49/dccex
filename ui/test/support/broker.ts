@@ -11,8 +11,8 @@
  * **It is the page's counterparty and not a broker.** Nothing here speaks
  * MQTT, keeps a session or honours a QoS: what a check asserts is what the page
  * asked for, which is where a wrong topic, a retained row or a second
- * connection shows (ADR-0017 d.1, d.5). `control`'s page is a client of the
- * same broker and its checks hold it the same way.
+ * connection shows (ADR-0017 d.5, ADR-0026 d.2). `control`'s page is a client
+ * of the same broker and its checks hold it the same way.
  */
 
 /** One `publish` the page made, as it made it. */

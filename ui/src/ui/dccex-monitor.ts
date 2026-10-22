@@ -18,7 +18,7 @@
  * differently from what the station said, so a reader can tell their own
  * traffic from the railroad's. Everything the station understands is typed
  * here, `<0>` included — that is what a raw monitor is, and none of it is a
- * named control on the page (ADR-0008 d.5). What is sent for what was typed is
+ * named control on the page (ADR-0026 d.2). What is sent for what was typed is
  * `message.js`'s, writing it is the stream's, and holding the conversation is
  * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
