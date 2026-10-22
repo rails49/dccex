@@ -28,9 +28,10 @@
  * back while they read (#125).
  *
  * It is JavaScript with its types in JSDoc, as every module the gate runs
- * rather than reads is (listed in `tests/ui/test_decoder.py`). They were read for as long as there was no node to run them with, and a stamp an
- * hour out leaves a source saying every right word (#78, #101). `tsc` checks
- * this file as strictly as it checks the rest (`ui/tsconfig.json`).
+ * rather than reads is (listed in `tests/ui/test_decoder.py`). They were read
+ * for as long as there was no node to run them with, and a stamp an hour out
+ * leaves a source saying every right word (#78, #101). `tsc` checks this file
+ * as strictly as it checks the rest (`ui/tsconfig.json`).
  */
 
 /** How close to the bottom still counts as being at it, in CSS pixels. A
@@ -112,8 +113,8 @@ const MEASURED = new Set(["jI", "jG"]);
  * subject last said the same thing tells a reader nothing new, so the monitor
  * shows one of these only when it changed. Every other line is always shown.
  *
- * The measured currents (`<jI …>`) and limits (`<jG …>`) are never shown: the
- * current moves on nearly every poll, and the tiles are where it is read.
+ * The measured currents (`<jI …>`) and limits (`<jG …>`) are never shown:
+ * the current moves on nearly every poll, and the tiles are where it is read.
  *
  * @param {string} line a whole `<…>` message
  * @returns {string | null}
@@ -161,9 +162,9 @@ export function quieted(last, said) {
  * What is behind a pause: the lines that arrived while the monitor was
  * holding, and how many were dropped off the front to make room for them.
  *
- * The lines are whatever the page keeps a conversation as — this module counts
- * them and never reads one, so what a line is stays the page's business and
- * the queue is a queue of anything.
+ * The lines are whatever the page keeps a conversation as — this module
+ * counts them and never reads one, so what a line is stays the page's business
+ * and the queue is a queue of anything.
  *
  * @template T
  * @typedef {object} Behind

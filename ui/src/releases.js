@@ -40,14 +40,15 @@
  * list is drawn.
  *
  * A pure function of what the face said and of what the station said, so the
- * whole of it — the order, the dates, the mark — is asserted on a machine with
- * nothing plugged in and no network in reach (`tests/ui/test_releases.py`). It
- * is one of the modules of the page written as JavaScript with its types in
- * JSDoc — they are named in `tests/ui/test_decoder.py`'s docstring, which is
- * where they are counted so that a header need not (#110) — for the reason the
- * rest are: the gate is Python with a bare node in it, and a list an operator
- * reads asserted against the source that would produce it is not asserted.
- * `tsc` checks it as it checks the rest (`ui/tsconfig.json`).
+ * whole of it — the order, the dates, the mark — is asserted on a machine
+ * with nothing plugged in and no network in reach
+ * (`tests/ui/test_releases.py`). It is one of the modules of the page written
+ * as JavaScript with its types in JSDoc — they are named in
+ * `tests/ui/test_decoder.py`'s docstring, which is where they are counted so
+ * that a header need not (#110) — for the reason the rest are: the gate is
+ * Python with a bare node in it, and a list an operator reads asserted against
+ * the source that would produce it is not asserted. `tsc` checks it as it
+ * checks the rest (`ui/tsconfig.json`).
  */
 
 /**
@@ -138,10 +139,10 @@ const FLASHABLE = "flashable";
  * `null` where it is not a list of releases at all.
  *
  * **This is `face.py`'s `carried()` at the other end of the wire.** Both read
- * the same shape and the duplication stays: the app reads a release API and
- * the page reads a network response, and each reads defensively because
- * neither is holding the other's memory. What must not differ is the rule, so
- * this is written as that one is — the same two names in the same order — and
+ * the same shape and the duplication stays: the app reads a release API and the
+ * page reads a network response, and each reads defensively because neither is
+ * holding the other's memory. What must not differ is the rule, so this is
+ * written as that one is — the same two names in the same order — and
  * whoever changes either should find the other.
  *
  * The rule is the line #66 was filed to draw. A source that lists nothing
@@ -161,11 +162,11 @@ const FLASHABLE = "flashable";
  * date, and no `flashable` reads as nothing to write, which is the direction
  * that does not send an operator at a tag the mirror would refuse.
  *
- * It is here rather than beside the `fetch` that gets the document because
- * this is the part with nothing of a browser in it, and a bare node can run
- * it: what the page makes of a release document is asserted by running it on
- * one rather than by reading the module that would (`tests/ui/test_releases.py`,
- * ADR-0009 d.3). What is left in `face.ts` is the asking.
+ * It is here rather than beside the `fetch` that gets the document because this
+ * is the part with nothing of a browser in it, and a bare node can run it: what
+ * the page makes of a release document is asserted by running it on one rather
+ * than by reading the module that would (`tests/ui/test_releases.py`, ADR-0009
+ * d.3). What is left in `face.ts` is the asking.
  *
  * **What it is handed is not called `document`.** A `releases` document is
  * what arrives, and the prose above says so, but that word is a browser's

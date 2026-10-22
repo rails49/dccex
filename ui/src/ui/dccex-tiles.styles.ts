@@ -14,10 +14,11 @@ import { css } from "lit";
  * (issue 170).
  *
  * **The row keeps its height when it is empty.** The tiles go together when the
- * link goes down — a tile is one track and the station is not saying it has any
- * — and a row that collapsed as it happened would move the monitor under the
- * reader's thumb at the moment the station went away. Each reading's line holds
- * its height the same way, so what changes is the reading and never the layout.
+ * link goes down — a tile is one track and the station is not saying it has
+ * any — and a row that collapsed as it happened would move the monitor under
+ * the reader's thumb at the moment the station went away. Each reading's line
+ * holds its height the same way, so what changes is the reading and never the
+ * layout.
  */
 export const tilesStyles = css`
   :host {

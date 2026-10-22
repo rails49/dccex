@@ -659,7 +659,8 @@ test("the control that applies says what it does", async () => {
   expect(drawn.renderRoot.querySelector(".warning")).toBeNull();
 });
 
-/* -- the rules, run ---------------------------------------------------------- */
+/* -- the rules, run
+ * ---------------------------------------------------------- */
 
 test("the sample a railroad with no script opens on registers no handler", () => {
   for (const line of commented(SAMPLE).split("\n")) {

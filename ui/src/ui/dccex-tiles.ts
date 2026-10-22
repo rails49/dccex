@@ -1,11 +1,12 @@
 /**
  * The tiles: one per track, in a row at the top of the monitor view.
  *
- * A tile is one track, headed by its letter, and four readings of it — whether
- * it has power, what it is set to, the current it draws and the most it may
- * draw — which is what `readings.js`'s `tiles()` answers (docs/ui/README.md,
- * issue 170). Every one of them is the station talking, and the reading is the
- * readings module's; this component is handed them and draws them.
+ * A tile is one track, headed by its letter, and four readings of it —
+ * whether it has power, what it is set to, the current it draws and the most it
+ * may draw — which is what `readings.js`'s `tiles()` answers
+ * (docs/ui/README.md, issue 170). Every one of them is the station talking, and
+ * the reading is the readings module's; this component is handed them and draws
+ * them.
  *
  * **The power is a symbol and the rest are words.** Green where the track has
  * power, dark grey where it has not, light grey where the station has said

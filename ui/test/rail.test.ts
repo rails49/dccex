@@ -3,9 +3,9 @@
  * view in front of the person.
  *
  * What a choice does with the answer is the page's — it writes the hash and
- * the page reads it back (`ui/src/view.ts`, `tests/ui/test_page.py`) — so what
- * is asserted here is that the rail offers every view, names and draws each
- * one, marks the one being shown and hands the choice on.
+ * the page reads it back (`ui/src/view.ts`, `tests/ui/test_page.py`) — so
+ * what is asserted here is that the rail offers every view, names and draws
+ * each one, marks the one being shown and hands the choice on.
  */
 
 import { expect, test } from "vitest";

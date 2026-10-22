@@ -14,7 +14,8 @@ import { JOURNAL_PATH } from "../src/face.js";
 import { DccexControls } from "../src/ui/dccex-controls.js";
 import { all, mounted, part, press, reads } from "./mounted.js";
 
-/** The periods one journal offers: the three spans, and the two builds in it. */
+/** The periods one journal offers: the three spans, and the two builds in
+ * it. */
 const CHOICES = [
   "all",
   "last day",

@@ -19,8 +19,8 @@ import { css } from "lit";
  *
  * **The controls are sized for a thumb.** `--rail-button` is the look rules'
  * minimum for one and it is a size rather than a colour — the chrome's six
- * colours stay on the chrome — so it is the value a control meant to be pressed
- * on a phone held at the layout asks for, as the command box's send is
+ * colours stay on the chrome — so it is the value a control meant to be
+ * pressed on a phone held at the layout asks for, as the command box's send is
  * (`dccex-monitor.styles.ts`).
  *
  * **The bar is the work pane's too.** It is `accent-color` over Shoelace's

@@ -62,9 +62,9 @@ const CLOSE = ">";
  * about — `<p1 MAIN>`.
  *
  * It is what the **band**'s power button is coloured by: whether the rails are
- * hot. A line about one named track says it of the rails all the same — this page has no track
- * row and no railroad to hang one on, and what the station last said about
- * power is the whole of what it knows (ADR-0008).
+ * hot. A line about one named track says it of the rails all the same — this
+ * page has no track row and no railroad to hang one on, and what the station
+ * last said about power is the whole of what it knows (ADR-0008).
  *
  * `<p1 JOIN>` says the PROG track carries MAIN. The station sends it while
  * joined whether or not the tracks are on, so its sentence is not about power.
@@ -273,7 +273,8 @@ function rejected(rest) {
 }
 
 /** What the decoder knows, by the letter the station opens the message with.
- *  Growing it is adding a reader here and a pair to the suite (ADR-0009 d.5). */
+ *  Growing it is adding a reader here and a pair to the suite (ADR-0009
+ *  d.5). */
 const READS = {
   p: power,
   H: turnout,

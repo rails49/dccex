@@ -14,16 +14,16 @@
  * them would follow.
  *
  * **Every address here carries nothing on it but a railroad.** What the page
- * asks about the station — what **release**s the configured source carries, and
- * how far a flash in flight has got — are questions about the app rather than
- * questions with parameters, and the one thing it asks *for* there names a
+ * asks about the station — what **release**s the configured source carries,
+ * and how far a flash in flight has got — are questions about the app rather
+ * than questions with parameters, and the one thing it asks *for* there names a
  * **tag** and nothing else: where releases are read from is that app's own
  * configuration, and a page that could name it would be a page deciding what
  * the command station is offered to run (control ADR-0042, `firmware.py`). The
  * railroad whose **script** is being edited is the exception and is a level of
  * the address, because it is what is being edited rather than where to edit it
- * — the store is the mirror's configuration in exactly the way the release API
- * is (ADR-0015 d.5, `face.py`).
+ * — the store is the mirror's configuration in exactly the way the release
+ * API is (ADR-0015 d.5, `face.py`).
  *
  * **The journal is the one thing here the page does not ask about the
  * mirror.** It is the **translator**'s record of what the station said about
@@ -249,9 +249,10 @@ export const JOURNAL_PATH = `${FACE}/journal`;
  * **It is read as bytes and counted as bytes.** The size on the view is the
  * file's size, which is the length of what came back rather than a header the
  * door may have changed; the lines come off the same bytes, so the two cannot
- * disagree. What is made of them — the lines, a half-written last one dropped,
- * the incidents and the counts — is `incidents.js`'s and `journal.js`'s, which
- * is the seam the releases are split on (`tests/ui/test_incidents.py`).
+ * disagree. What is made of them — the lines, a half-written last one
+ * dropped, the incidents and the counts — is `incidents.js`'s and
+ * `journal.js`'s, which is the seam the releases are split on
+ * (`tests/ui/test_incidents.py`).
  */
 export async function journal(): Promise<Served | null> {
   try {
@@ -337,9 +338,9 @@ export async function script(railroad: string): Promise<Opened> {
  * **The compiling is the face's and so is the storing** (ADR-0015 d.5). A text
  * that does not compile comes back refused with the line and the message, which
  * is what the page shows: the mirror says what it turned an Apply down for, and
- * a page that wrote its own sentence over that would be guessing at an answer it
- * was given (control ADR-0050). What this page says instead is `UNANSWERED`, and
- * only where there was no answer to read.
+ * a page that wrote its own sentence over that would be guessing at an answer
+ * it was given (control ADR-0050). What this page says instead is `UNANSWERED`,
+ * and only where there was no answer to read.
  *
  * It answers rather than raising, as the three above do: a rejection left loose
  * would be a sequence that stopped with nothing said.
