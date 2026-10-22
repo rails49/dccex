@@ -39,7 +39,7 @@ behalf and moves bytes between it and the browser. The rules stay where they
 are and there is exactly one of each. What it costs is one hop on the loopback
 interface inside the container, and a client the mirror cannot tell from JMRI
 — which is not a cost, because the mirror has never told its clients apart
-(CONTEXT.md, **client**).
+(GLOSSARY.md, **client**).
 
 ## Decision
 

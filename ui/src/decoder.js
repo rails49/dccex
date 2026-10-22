@@ -113,7 +113,7 @@ function turnout(rest) {
  * `<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>`.
  *
  * The `G-` field is the **build** — what the station says it is running, and
- * the fact a **release** is compared against (CONTEXT.md, ADR-0008 d.3). A
+ * the fact a **release** is compared against (GLOSSARY.md, ADR-0008 d.3). A
  * banner without one is not glossed: the page would be saying a station came
  * up without saying as what, and the build is the half of this line that is
  * worth a sentence.

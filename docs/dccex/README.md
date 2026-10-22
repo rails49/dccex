@@ -456,7 +456,7 @@ millisecond — the station cuts a district and retries it inside one second, so
 a stamp to the second would put a trip and its retry at the same moment — and
 `railroad` and `build`, so that a file read a week later needs nothing beside
 it. The build is empty whenever the station is not answering, which is what
-the word means (CONTEXT.md, **build**).
+the word means (GLOSSARY.md, **build**).
 
 A line about something the station said carries `said`: the whole message
 verbatim, `<` and `>` included. Where it names a district it carries

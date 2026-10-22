@@ -124,7 +124,7 @@ SCRIPT_ROW = {
 """What a script calls each row this app acts on. The bus carries the
 railroad's power on `wanted/track` and a script is written about `power`: the
 topic is the contract's word and the other is the one a person writes in a
-document (`control`'s `docs/BUS.md`, *Device vocabulary*, CONTEXT.md
+document (`control`'s `docs/BUS.md`, *Device vocabulary*, GLOSSARY.md
 **script**)."""
 
 WANTED_BY_ROW = {row: topic for topic, row in SCRIPT_ROW.items()}
@@ -1057,7 +1057,7 @@ class DccEx:
         self._reported.clear()
         # What a track is set to, what it may draw and what the station says
         # it is running are the station's too: the build is empty whenever it
-        # is not answering (CONTEXT.md, **build**), and a connect asks the
+        # is not answering (GLOSSARY.md, **build**), and a connect asks the
         # other two again.
         self._modes.clear()
         self._limits = {}

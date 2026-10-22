@@ -24,6 +24,6 @@ The five default labels, unchanged: `needs-triage`, `needs-info`, `ready-for-age
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
-What each kind of doc holds: org [ADR-0017](https://github.com/rails49/.github/blob/main/docs/adr/0017-each-fact-has-one-owner-and-an-accepted-adr-does-not-change.md).
+What each kind of doc holds: org [ADR-0021](https://github.com/rails49/.github/blob/main/docs/adr/0021-each-fact-has-one-owner-and-the-glossary-is-glossary-md.md).

@@ -1104,7 +1104,7 @@ rule as the two checks above it.
 - **Automations.** EX-RAIL is not compiled into this fork's firmware, so
   nothing runs on the station itself. The railroad's **script** is not one of
   these and is not on the station: it is Python the translator runs on the box,
-  and an automation is EX-RAIL's word for the other thing (CONTEXT.md).
+  and an automation is EX-RAIL's word for the other thing (GLOSSARY.md).
 - **Authentication.** The LAN is the trust boundary, as everywhere else
   (control ADR-0042).
 

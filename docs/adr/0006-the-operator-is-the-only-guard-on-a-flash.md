@@ -25,7 +25,7 @@ ticket that makes it possible to ask for from a page.
 holds a cable and repeats it; it is not on the bus, it has no store, and a
 command station is not a fact about a railroad (ADR-0001). The face is private
 to this app and is not somewhere else to get at the layout
-([CONTEXT.md](../../CONTEXT.md), **face**). The run state and the track row
+([GLOSSARY.md](../../GLOSSARY.md), **face**). The run state and the track row
 exist, in `control`, and there is no path from here to either that ADR-0001 did
 not deliberately cut.
 

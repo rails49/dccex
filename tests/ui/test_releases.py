@@ -223,7 +223,7 @@ def test_a_build_the_source_does_not_carry_marks_nothing() -> None:
 @pytest.mark.node
 def test_a_release_there_is_nothing_to_write_from_is_distinguishable() -> None:
     """A release exists whether or not anything can be written from it
-    (CONTEXT.md), and a row that looked like the others would send an operator
+    (GLOSSARY.md), and a row that looked like the others would send an operator
     to a tag the mirror would refuse (#8, `face.py`).
 
     The sentence says nothing about a firmware, because `flashable` stopped

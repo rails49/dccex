@@ -32,7 +32,7 @@ scheme invented during a cutover gives the cutover a second failure mode, and
 the first one is the cutover itself.
 
 The words are already spoken for, which is most of what this decides.
-[CONTEXT.md](../../CONTEXT.md) spends **tag** on a firmware release: the name
+[GLOSSARY.md](../../GLOSSARY.md) spends **tag** on a firmware release: the name
 a caller picks a release by when it asks for one to be written onto the
 command station. Docker calls the name after the colon a tag as well. Two
 things called a tag in one sentence about a box is how somebody rolls a
@@ -52,7 +52,7 @@ share the esptool pin that `firmware.py` is written against, and a second
 image would be a second answer to which esptool the repository was tested at.
 
 **d.3** The word for the name is the **commit**. `tag` is a release's here and
-stays a release's, whatever Docker calls the field — [CONTEXT.md](../../CONTEXT.md)
+stays a release's, whatever Docker calls the field — [GLOSSARY.md](../../GLOSSARY.md)
 gains **image** and says both. A rollback names a commit; a flash names a tag;
 neither sentence can be read as the other.
 

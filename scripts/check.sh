@@ -88,7 +88,7 @@ check() {
 # All eighteen of them. The list held eight for as long as there were eight,
 # and the ten that arrived with the page were never added, so deleting `##
 # client` left the gate green while #7 leaned on the word (#91). It is written
-# out rather than read off `CONTEXT.md`'s headings, because a check that took
+# out rather than read off `GLOSSARY.md`'s headings, because a check that took
 # its list from the file it is checking would pass on whatever that file said —
 # the same reason `ROUTE` is written out in `tests/ui/test_compose_serves.py`.
 words() {
@@ -98,7 +98,7 @@ words() {
     Link Monitor Decoder Gloss Band Rail Tile Image Cutover
   )
   for word in "${defined[@]}"; do
-    grep -q "^\*\*${word}\*\*:\$" CONTEXT.md 2>/dev/null || missing="$missing $word"
+    grep -q "^\*\*${word}\*\*:\$" GLOSSARY.md 2>/dev/null || missing="$missing $word"
   done
   compgen -G 'docs/adr/0001-*.md' >/dev/null || missing="$missing ADR-0001"
   if [ -n "$missing" ]; then

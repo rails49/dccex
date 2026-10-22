@@ -184,7 +184,7 @@ class Counting:
 
 def asking(tag: str = TAG) -> bytes:
     """A flash asked for, as the page's body says it: a tag and nothing else,
-    because a tag is the only thing a caller names (CONTEXT.md)."""
+    because a tag is the only thing a caller names (GLOSSARY.md)."""
     return json.dumps({"tag": tag}).encode()
 
 
@@ -394,7 +394,7 @@ def test_a_source_that_carries_no_releases_yet_is_an_empty_answer() -> None:
 
 def test_a_path_the_face_does_not_answer_is_a_refusal() -> None:
     """A face is private to its app and is not somewhere else to get at the
-    railroad (CONTEXT.md): what it does not answer, it says it does not."""
+    railroad (GLOSSARY.md): what it does not answer, it says it does not."""
     source = Source()
 
     answered = asyncio.run(face(source).answer("GET", "/layout", b""))

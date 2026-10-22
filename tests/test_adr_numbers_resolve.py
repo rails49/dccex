@@ -8,7 +8,7 @@ that is not there, and a reader who goes looking for it is told nothing. The
 day this repository reaches 0042 the same citation names the wrong decision
 instead of none, which is worse.
 
-The rule is the one `CONTEXT.md` already keeps in most places: **a bare ADR
+The rule is the one `GLOSSARY.md` already keeps in most places: **a bare ADR
 number is this repository's**, and anything else names where it was decided —
 `control` ADR-0066, or the organisation's ADR-0002 with its link. This module
 holds the two halves of it. A bare number resolves to a file in `docs/adr/`,
@@ -44,7 +44,7 @@ The same trees the module beside this one reads, so a number owes a reader an
 owner in the same places whichever half of the rule is asking (#150).
 
 Each widening came of bare citations sitting where nothing was looking. #128
-found the ones under `CONTEXT.md`, `src/` and `docs/`, which is what this
+found the ones under `GLOSSARY.md`, `src/` and `docs/`, which is what this
 module was written for; thirty-six more sat under `ui/`, `tests/` and
 `deploy/` for as long as it read those three alone, one of them in the image
 the box runs (#150, #151).
@@ -101,7 +101,7 @@ NOT_READ = (ADRS, SELF)
 #: `control`'s decisions as this repository cites them, and what each one
 #: decided. Written out rather than read off the links that carry them, for
 #: the reason `scripts/check.sh` writes its words out rather than reading them
-#: off `CONTEXT.md`: a list taken from the files being checked passes on
+#: off `GLOSSARY.md`: a list taken from the files being checked passes on
 #: whatever those files happen to say. The links hold it to `control`'s own
 #: titles below.
 CONTROL = {
@@ -323,7 +323,7 @@ def test_the_prose_cites_controls_decisions_at_all() -> None:
 
     Written out rather than counted, so that a tree falling out of `PROSE` is
     red here as well as quiet above. Eighteen of these are pages only #150
-    brought into reach; before it the set was the nine under `CONTEXT.md`,
+    brought into reach; before it the set was the nine under `GLOSSARY.md`,
     `src/` and `docs/`.
     """
     said = {

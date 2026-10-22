@@ -3,7 +3,7 @@
  *
  * A script is a railroad's Python document in `control`'s store, one per
  * railroad, holding the **handler**s the translator runs for this railroad's
- * station (CONTEXT.md, ADR-0013, ADR-0015). The page is where it is written:
+ * station (GLOSSARY.md, ADR-0013, ADR-0015). The page is where it is written:
  * the loaded railroad's script opens in the editor, and Apply sends it to the
  * **face**, which compiles it and puts it to the store (ADR-0015 d.5 as
  * amended, the organisation's ADR-0014).

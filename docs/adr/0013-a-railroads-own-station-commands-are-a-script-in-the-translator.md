@@ -24,7 +24,7 @@ Three places could hold the rest:
   throws from JMRI or a throttle. A change is a flash, and per-track current
   limits at power-on are not all expressible.
 
-The mirror is not a candidate: it does not decide or rewrite (CONTEXT.md).
+The mirror is not a candidate: it does not decide or rewrite (GLOSSARY.md).
 
 ## Decision
 

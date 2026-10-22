@@ -59,7 +59,7 @@ const WEEK_MS = 7 * DAY_MS;
 
 /** What the station's own row and the station's own incidents are headed with:
  *  the link going down and the station restarting are about no district
- *  (CONTEXT.md, **station**). */
+ *  (GLOSSARY.md, **station**). */
 export const STATION = "station";
 
 /** The columns of the table, in order. The kinds are the reading module's, so
@@ -320,7 +320,7 @@ export function parsed(served) {
  * Newest first because the last one in the file is what the station is running
  * now, and a reader asking what happened under a build is usually asking about
  * that one. The empty build is not one of them: it is the station not
- * answering rather than something it was running (CONTEXT.md, **build**).
+ * answering rather than something it was running (GLOSSARY.md, **build**).
  *
  * @param {readonly Line[]} lines the journal, in the order it was written
  * @returns {string[]}

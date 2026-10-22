@@ -13,7 +13,7 @@ Two were followed by trips: C and D at 2026-10-20T08:57:54Z, `MAIN_AUTO`, a
 run of `FAST OVERLOAD … FAULT PIN`. That is a fault, and an inrush rule would
 not have matched it.
 
-The line in the old `CONTEXT.md` (#267) was written before the journal
+The line in the old `GLOSSARY.md` (#267) was written before the journal
 existed. #292 removed it. `ui/src/journal.js` never had the rule.
 
 Being an incident is a reading of the journal (ADR-0022 d.3). A rule added

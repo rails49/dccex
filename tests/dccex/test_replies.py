@@ -267,7 +267,7 @@ def test_the_journal_keeps_no_power_line_that_names_no_district() -> None:
 
 def test_the_journal_keeps_nothing_else_on_the_port() -> None:
     """The rest is another client's conversation, and the journal is what the
-    station said about power (CONTEXT.md, **journal**)."""
+    station said about power (GLOSSARY.md, **journal**)."""
     for other in (
         b"<* Calling EXRAIL *>",
         b"<* License GPLv3 fsf.org (c) dcc-ex.com *>",

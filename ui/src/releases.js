@@ -103,7 +103,7 @@ export const ON_STATION = "on the station now";
 
 /** What is said of a release there is nothing to write from: no firmware, or
  *  none with a digest to check it against. A release exists whether or not
- *  anything can be written from it (CONTEXT.md), and a row that looked like
+ *  anything can be written from it (GLOSSARY.md), and a row that looked like
  *  the others would send an operator to a **tag** the mirror would refuse
  *  (`face.py`).
  *

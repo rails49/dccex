@@ -13,7 +13,7 @@
 # `org.opencontainers.image.revision` as well, so `docker inspect` still
 # answers the question for one somebody renamed (d.4). **A tag is not what
 # this is called**: a tag names a firmware release, which is the thing that
-# gets written onto the command station (CONTEXT.md).
+# gets written onto the command station (GLOSSARY.md).
 #
 # Two stages, so that what ships is the interpreter and the packages and not
 # the tool that resolved them. The build context is the repository root, as

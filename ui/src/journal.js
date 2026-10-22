@@ -56,7 +56,7 @@ export const REPEATS = 3;
 export const REPEATED_MS = 1000;
 
 /** An incident with a trip in it: a district the station cut itself
- *  (CONTEXT.md, **trip**). */
+ *  (GLOSSARY.md, **trip**). */
 const TRIP = "trip";
 
 /** A current over the district's limit that did not become a trip. */
@@ -73,7 +73,7 @@ const REPEATED = "repeated reversal";
 const SLOW = "slow reversal";
 
 /** The link going down: the station stopped answering, and every district's
- *  readings went with it (CONTEXT.md, **link**). */
+ *  readings went with it (GLOSSARY.md, **link**). */
 const LINK = "link";
 
 /** The station restarting under a railroad that was running (ADR-0021). */
@@ -127,7 +127,7 @@ const HOUR_MS = 3600000;
  *
  * `mode` and `limit` are `null` where the station had said nothing yet, which
  * is an ordinary state of the first second of a link; `build` is empty
- * whenever the station is not answering (CONTEXT.md, **build**).
+ * whenever the station is not answering (GLOSSARY.md, **build**).
  *
  * @typedef {object} Line
  * @property {string} at when the line arrived, ISO 8601
