@@ -5,7 +5,8 @@
 - **Related:** [control
   ADR-0087](https://github.com/rails49/control/blob/main/docs/adr/0087-a-widget-is-on-the-drawing-and-control-carries-its-payload-without-reading-it.md)
   (a widget is on the drawing, and control carries its payload without
-  reading it), [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
+  reading it),
+  [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
   d.3 and d.4, which this amends,
   [ADR-0016](0016-a-trip-is-read-from-the-stations-diagnostics.md) (a trip is
   read from the station's diagnostics)
