@@ -145,10 +145,12 @@ _Avoid_: description, explanation, translation, tooltip, annotation, comment,
 label
 
 **Band**:
-The organisation's word ([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
+The organisation's word
+([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
 
 **Rail**:
-The organisation's word ([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
+The organisation's word
+([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
 
 **View**:
 `control`'s word, owned by its

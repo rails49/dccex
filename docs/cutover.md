@@ -28,8 +28,9 @@ failure is only diagnosable if the changes go in one at a time.
 | the face | nowhere | the page's container came up with the stack, and #40 made it reachable ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
 
 The stack that runs it is this repository's own — `compose.yaml` with
-`compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the image
-is named by the commit it was built from ([ADR-0005](adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
+`compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the
+image is named by the commit it was built from
+([ADR-0005](adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
 and what the mirror does once it is up is
 [the mirror's page](dccex_usb/README.md).
 
@@ -84,8 +85,8 @@ nothing stopped):
    the box, and the deploy record's directory, which did not exist and needed
    somebody who can write `/var/lib` once:
    `sudo install -d -o ttmetro -g ttmetro /var/lib/rails49/deploys`.
-2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and
-   `control`'s `main` is 31 commits ahead of it — the store moving to loopback,
+2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and `control`'s
+   `main` is 31 commits ahead of it — the store moving to loopback,
    broker-first startup, the store image's uid and table ownership, the stock
    screen, control#567's six, and the repoint. Reported on #16 with the list.
    Under the live plan that was a reason to wait for an evening of `control`'s
@@ -116,16 +117,16 @@ at once is a railroad with two suspects.
    `tc49-dccex-usb-1` was *Removed*, and only the translator was left.
 3. This stack's deploy: `scripts/deploy.sh`, which brings the project up from
    the clone against `/etc/rails49/box.env` (#15, ADR-0005 d.7). It takes 2560
-   and brings the page's container up beside it, and it appends what it replaced to
-   `/var/lib/rails49/deploys/dccex`. Run on 2026-09-25.
+   and brings the page's container up beside it, and it appends what it replaced
+   to `/var/lib/rails49/deploys/dccex`. Run on 2026-09-25.
 4. [The checks](#the-checks), in order, and then the physical acceptance,
    which was a person and a train and was #16's.
 
 `control`'s delta was read before the evening and reported on #16 (#42). It did
-not have to be a delta of one change any more — that rule was a live swap's, and
-its point was that there is no time to bisect with the railroad down. What was
-kept from it is step 1 above: deploy `control`, check `control`, and only then
-move the port.
+not have to be a delta of one change any more — that rule was a live swap's,
+and its point was that there is no time to bisect with the railroad down. What
+was kept from it is step 1 above: deploy `control`, check `control`, and only
+then move the port.
 
 ### Stopped is not removed
 
@@ -146,10 +147,10 @@ it is a cutover that works until the power goes out.
 **Anyone in the room saying stop.** That was the whole signal, and it was to
 be said out loud rather than inferred.
 
-A failing check was not an abort signal. Cold, it was something to look at,
-and looking at it cost a dark port that nothing was waiting on. Fix forward, or
-[go back](#going-back) and come at it another evening — both were ordinary, and
-neither was urgent.
+A failing check was not an abort signal. Cold, it was something to look at, and
+looking at it cost a dark port that nothing was waiting on. Fix forward, or
+[go back](#going-back) and come at it another evening — both were ordinary,
+and neither was urgent.
 
 What the signal was still for was the state of the layout when everyone left.
 The one thing worth not leaving behind was a box that would surprise somebody:
@@ -219,18 +220,17 @@ runs a translator too, so stop it first, as under
 
 **Nothing was pruned until the cutover was accepted.** No `docker image prune`,
 no `docker system prune`, nothing removed by hand. Not because a prune would
-destroy the way back — it would not, the checkout above rebuilds it — but for
-two smaller reasons that both landed on the one evening it would matter. A prune
-turns a five-second rollback into a ten-minute one. And **the rebuild is
-equivalent rather than identical**: `control`'s image is
-`FROM python:3.12-slim` with an unpinned `apt-get install`, so the base and the
-Debian packages resolve at build time even though `uv sync --frozen` pins the
-Python side. The image on the box was the one that had been serving the
-railroad; a rebuild is an image that should. On an evening spent deciding
-whether something is broken, that difference was worth keeping on disk. Since
-the acceptance in #16 it is the box's to prune.
-This repository's own images keep one step back by the deploy's rule rather
-than by anybody remembering this line (ADR-0005 d.6).
+destroy the way back — it would not, the checkout above rebuilds it — but
+for two smaller reasons that both landed on the one evening it would matter. A
+prune turns a five-second rollback into a ten-minute one. And **the rebuild is
+equivalent rather than identical**: `control`'s image is `FROM python:3.12-slim`
+with an unpinned `apt-get install`, so the base and the Debian packages resolve
+at build time even though `uv sync --frozen` pins the Python side. The image on
+the box was the one that had been serving the railroad; a rebuild is an image
+that should. On an evening spent deciding whether something is broken, that
+difference was worth keeping on disk. Since the acceptance in #16 it is the
+box's to prune. This repository's own images keep one step back by the deploy's
+rule rather than by anybody remembering this line (ADR-0005 d.6).
 
 ### The translator alone
 
@@ -274,7 +274,8 @@ the acceptance was about.
    report on its own behalf.
 5. **The face was not checked here.** The page's container came up with the
    stack, but nothing reached it until its `A` record and `BOX_UIS` entry
-   existed, and those were #40's. The port is the railroad and the face is a page.
+   existed, and those were #40's. The port is the railroad and the face is a
+   page.
 6. **A client that has stopped reading does not hold the app up.** After the
    swap, never before, because it stops and starts this stack's container. The
    container's log is opened first and left open beside the other two, because
@@ -333,9 +334,9 @@ the acceptance was about.
    ```
 
    After that line there is no deaf client left to hold the shutdown up, and a
-   `docker stop` comes back inside the bound for a reason that has nothing to
-   do with what this check is here to prove. Restart `scripts/deaf_client.py` and do the step
-   again from the top.
+   `docker stop` comes back inside the bound for a reason that has nothing to do
+   with what this check is here to prove. Restart `scripts/deaf_client.py` and
+   do the step again from the top.
 
 The deaf client says nothing when the mirror goes, and that is expected: the
 close is behind bytes it is not taking, so it never arrives. It says nothing

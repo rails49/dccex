@@ -6,18 +6,18 @@ a thin app, `dccex`, that subscribes to the **device vocabulary** and turns it
 into the DCC-EX command station's own language, and publishes back what the
 station reports. It is the one app in this repository on the bus.
 
-**This page is the only place in the repository where that language meets
-the bus**: what this app sends and reads for each row of the device
-vocabulary. What a command or a line means is in the rails49 fork's
-[command reference](https://github.com/rails49/CommandStation-EX/blob/HEAD/docs/commands.md).
-Every other component is oblivious to what powers the layout:
-nothing above the layout interface expects DCC-EX, or Lenz, or NCE, or
-anything else — those are one family of devices among many. The `<…>` syntax
-appears on no bus topic, in no other package and in no normative document
-([BUS.md](https://github.com/rails49/control/blob/main/docs/BUS.md#device-vocabulary) is the contract, and a test keeps
-protocol names off the pages that are not about hardware). A different command
-station gets a different translator, or reaches the system through JMRI, and
-nothing else moves.
+**This page is the only place in the repository where that language meets the
+bus**: what this app sends and reads for each row of the device vocabulary. What
+a command or a line means is in the rails49 fork's [command
+reference](https://github.com/rails49/CommandStation-EX/blob/HEAD/docs/commands.md).
+Every other component is oblivious to what powers the layout: nothing above the
+layout interface expects DCC-EX, or Lenz, or NCE, or anything else — those are
+one family of devices among many. The `<…>` syntax appears on no bus topic, in
+no other package and in no normative document
+([BUS.md](https://github.com/rails49/control/blob/main/docs/BUS.md#device-vocabulary)
+is the contract, and a test keeps protocol names off the pages that are not
+about hardware). A different command station gets a different translator, or
+reaches the system through JMRI, and nothing else moves.
 
 Getting the mapping below wrong is a bug in this app and nowhere else.
 
@@ -185,13 +185,12 @@ spellings are the station's. `<JG district mA>` is in the rails49 firmware
 
 `on(row, address=None)` registers a handler. The rows are `start` for the
 station as this app has not set it, `power`, `point`, `signal`, `traction` and
-`function` for the desired values, and `reported_power` and `reported_point`
-for what the station said. The address
-is the string the bus carries and the hardware answers to; left out, the
-handler runs for **every** address of its row, which is the only form `start`
-and `power` have. Two of these stack on one function, which is how one signal is set from
-two turnouts. A row that is no event, or an address that is not a string, is
-a script that does not load.
+`function` for the desired values, and `reported_power` and `reported_point` for
+what the station said. The address is the string the bus carries and the
+hardware answers to; left out, the handler runs for **every** address of its
+row, which is the only form `start` and `power` have. Two of these stack on one
+function, which is how one signal is set from two turnouts. A row that is no
+event, or an address that is not a string, is a script that does not load.
 
 The handler is handed one argument, the event, and may do four things with
 it:
@@ -213,13 +212,14 @@ turns D back on where the station last reported it on, rather than relying on
 what `start` or an earlier handler left. A restart forgets the station's
 reports, so a replay after one leaves D off (ADR-0018 d.3).
 
-**`start` runs before the replay**, on a connect, on `<jM 32000 0>`, and when
-a first script loads with the link up
+**`start` runs before the replay**, on a connect, on `<jM 32000 0>`, and when a
+first script loads with the link up
 ([ADR-0024](../adr/0024-a-script-that-arrives-after-the-connect-runs-start.md)),
 so a point handler that sets a district's mode runs after `start` set them all
-(ADR-0018 d.3). `<JM 32000 1>` goes out before `start` itself, so a station
-that restarts in the middle of those lines is one the next poll still reads as
-restarted ([ADR-0021](../adr/0021-a-restart-is-a-stash-the-boot-has-cleared.md) d.2).
+(ADR-0018 d.3). `<JM 32000 1>` goes out before `start` itself, so a station that
+restarts in the middle of those lines is one the next poll still reads as
+restarted ([ADR-0021](../adr/0021-a-restart-is-a-stash-the-boot-has-cleared.md)
+d.2).
 
 **The power handler runs on every value of the row** — `on`, `off` and the
 stop — and on every ON rather than only on a change from off (d.7). There is
@@ -308,8 +308,8 @@ which the extended accessory packet reserves for stop, and `caution` and
 here is wired for and sends nothing.
 
 **A function is a switch.** The station's `<F>` takes `0` or `1`, so the two
-values a model may leave unstated are the two that reach the wire; a value
-from a longer list — the `low` and `high` of a three-position vacuum — names a
+values a model may leave unstated are the two that reach the wire; a value from
+a longer list — the `low` and `high` of a three-position vacuum — names a
 state this hardware has no packet for, and nothing is sent.
 
 Two rules are not a row of the table.
@@ -322,17 +322,17 @@ is what made a `<!Q>` in the poll an emergency stop once a second, and every
 train move a few centimetres and stand
 ([control#463](https://github.com/rails49/control/issues/463)).
 
-**A trip is read from the station's diagnostics.** The station cuts a
-district and prints `<* TRACK B FAST OVERLOAD … *>`, `<* TRACK B POWER
-OVERLOAD … *>` or `<* TRACK B FAULT PIN detected … *>` to USB, and the mirror
-passes every USB line to every client. The first is the Guard's cut, and on
-rails49 it is most of them: every DCC track is guarded while powered, and that
-line comes with no `ALERT` before it (#251). The district is tripped until
-`<* TRACK B NORMAL … *>` or `<p1 B>`, which the station prints only for a
-district that is on; a commanded OFF and a lost link end every trip. Against
-the station's own TCP port no such line
-arrives ([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md)
-d.3 as amended).
+**A trip is read from the station's diagnostics.** The station cuts a district
+and prints `<* TRACK B FAST OVERLOAD … *>`, `<* TRACK B POWER OVERLOAD … *>`
+or `<* TRACK B FAULT PIN detected … *>` to USB, and the mirror passes every
+USB line to every client. The first is the Guard's cut, and on rails49 it is
+most of them: every DCC track is guarded while powered, and that line comes with
+no `ALERT` before it (#251). The district is tripped until `<* TRACK B NORMAL
+… *>` or `<p1 B>`, which the station prints only for a district that is on; a
+commanded OFF and a lost link end every trip. Against the station's own TCP port
+no such line arrives
+([ADR-0016](../adr/0016-a-trip-is-read-from-the-stations-diagnostics.md) d.3 as
+amended).
 
 **The station is polled with `<s>` and `<JM 32000>` and nothing else**, and
 the answers are what the link is measured by. Once a second `<s>` makes the
@@ -411,9 +411,9 @@ reads nothing out of being the station answering as much as one it does.
 
 **No `device/point`.** This railroad's turnouts have no feedback and the
 station's answer to a throw is one it faked
-([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)), so the row
-stays empty however many turnouts are thrown. A faked observation is worse
-than silence.
+([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)),
+so the row stays empty however many turnouts are thrown. A faked observation is
+worse than silence.
 
 **No `device/refused`.** The station answers a command it rejects with a bare
 `<X>`, and the mirror passes every line to every client, so an `<X>` cannot be
@@ -584,15 +584,14 @@ startup, and the power is the one that is not (ADR-0013 d.6).
 **No dependency is added**: the whole of it is `asyncio` streams and
 `urllib`, and the image builds with `uv sync --frozen`.
 
-**asyncio owns this app's process.** `_send` writes to an
-`asyncio.StreamWriter` from inside a bus subscriber, so whichever thread drains
-the bus is the thread that writes to the station: with the loop owning the
-process every subscriber already runs on the loop thread and that write is
-where it belongs. Under `python -m dccex` the drain is a coroutine beside
-`run()`, and the MQTT client's network thread only appends to the queue that
-drain empties. Putting this app on a daemon thread under a synchronous owner
-would mean marshalling with `call_soon_threadsafe` — a cross-thread write where
-none exists today.
+**asyncio owns this app's process.** `_send` writes to an `asyncio.StreamWriter`
+from inside a bus subscriber, so whichever thread drains the bus is the thread
+that writes to the station: with the loop owning the process every subscriber
+already runs on the loop thread and that write is where it belongs. Under
+`python -m dccex` the drain is a coroutine beside `run()`, and the MQTT client's
+network thread only appends to the queue that drain empties. Putting this app on
+a daemon thread under a synchronous owner would mean marshalling with
+`call_soon_threadsafe` — a cross-thread write where none exists today.
 
 A signal is what ends the process, and the railroad is stood down on the way
 out: the same `shutdown()` whoever constructed the app calls, before the link
@@ -624,13 +623,13 @@ answering through the mirror, which is what `device/link: up` is made of; the
 station saying what the locomotive is now doing, speed byte 191 being the
 forward bit over step 63.
 
-**Then wait, and watch the locomotive.** It should still be running ten
-seconds later, and no further `<l 3 …>` should appear on the port. This is the
-step that matters and the one the suite cannot take: every check above passes
-against a station that is quietly stopping the train a second later, which is
-exactly what a `<!Q>` in the poll did
-([control#463](https://github.com/rails49/control/issues/463)). A speed byte
-of 129 — the direction bit over step 1 — is the emergency stop, and seeing one
+**Then wait, and watch the locomotive.** It should still be running ten seconds
+later, and no further `<l 3 …>` should appear on the port. This is the step
+that matters and the one the suite cannot take: every check above passes against
+a station that is quietly stopping the train a second later, which is exactly
+what a `<!Q>` in the poll did
+([control#463](https://github.com/rails49/control/issues/463)). A speed byte of
+129 — the direction bit over step 1 — is the emergency stop, and seeing one
 arrive that nobody sent means something on this port is commanding the station
 rather than asking it.
 
@@ -638,11 +637,11 @@ Send `<t 3 0 1>` to stop it again. `<!>` stops every locomotive at once and any
 throttle may drive away from it afterwards; sending it is safe and leaves
 nothing to clear.
 
-**Reset the station** with the translator connected and watch the same
-port. Within a second — one poll — the translator reads `<jM 32000 0>` and
-sends `<JM 32000 1>`, then the script's `start` lines — the sample's four
-`<= …>` and four `<JG …>` — and then the replay. `<=` with no arguments lists
-the modes the station now has (ADR-0018, ADR-0021).
+**Reset the station** with the translator connected and watch the same port.
+Within a second — one poll — the translator reads `<jM 32000 0>` and sends
+`<JM 32000 1>`, then the script's `start` lines — the sample's four `<= …>`
+and four `<JG …>` — and then the replay. `<=` with no arguments lists the
+modes the station now has (ADR-0018, ADR-0021).
 
 The version in the banner is worth reading. The difference between the
 mapping here and whatever build the station runs is silent: an unknown command
