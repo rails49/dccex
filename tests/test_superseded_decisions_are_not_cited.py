@@ -12,10 +12,10 @@ repository where the status says the whole record is. A bare citation of a
 record only part of which is superseded is not red, and neither is a decision
 that was amended.
 
-**What passes.** A citation in a sentence that says "supersed", which is how
-a page names the decision that replaced it (`ui/src/flash.js`). A citation the
-modules beside this one resolve to another owner: `control`'s, or the
-organisation's, whose record numbered 0002 is not this repository's.
+**What passes.** A citation in a sentence that says "supersed", in any case,
+which is how a page names the decision that replaced it (`ui/src/flash.js`). A
+citation the modules beside this one resolve to another owner: `control`'s, or
+the organisation's, whose record numbered 0002 is not this repository's.
 
 **What is read.** The trees `tests/test_adr_numbers_resolve.py` reads, by its
 `prose()`, minus this module and `tests/test_citations_resolve.py`, whose
@@ -141,7 +141,7 @@ def stale(text: str, held: dict[str, set[int] | str] | None = None) -> list[str]
         else:
             hit = gone[number] == WHOLE
         where = sentence(text, said.start(), said.end())
-        if hit and "supersed" not in where:
+        if hit and "supersed" not in where.lower():
             found.append(" ".join(where.split()))
     return found
 
@@ -248,6 +248,15 @@ def test_a_sentence_that_says_superseding_passes() -> None:
     assert stale(f"superseding this repository's {TWO}). The commit") == []
 
 
+def test_a_sentence_that_says_supersed_in_any_case_passes() -> None:
+    for written in (
+        "Superseded by ADR-0026, ADR-0017 d.1 no longer holds.",
+        "SUPERSEDED BY ADR-0026: ADR-0017 d.1.",
+    ):
+        assert stale(written) == [], written
+    assert len(stale("ADR-0017 d.1 no longer holds.")) == 1
+
+
 def test_an_amended_or_standing_decision_passes() -> None:
     for written in (
         "red on the page is a stop or a fault (ADR-0017 d.6).",
@@ -266,5 +275,6 @@ def test_the_records_and_this_module_are_not_read() -> None:
     assert NUMBER_0002 not in pages
     assert stale(NUMBER_0002.read_text()), f"nothing stale left in {NUMBER_0002.name}"
     superseding = ADRS / "0026-the-bands-power-control-is-controls.md"
-    assert stale(superseding.read_text().replace("supersed", "")), superseding.name
+    unsaid = re.sub("supersed", "", superseding.read_text(), flags=re.IGNORECASE)
+    assert stale(unsaid), superseding.name
     assert stale(SELF.read_text()), "nothing stale left in this module"
