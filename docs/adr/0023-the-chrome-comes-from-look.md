@@ -2,20 +2,20 @@
 
 - **Status:** accepted, 2026-10-14
 - **Ticket:** #281
-- **Amends:** [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
-  (red on the chrome),
-  [ADR-0011](0011-the-band-commands-track-power.md) (the band's one control),
-  [ADR-0017](0017-the-band-asks-layout-for-power.md) d.2 (what the power
-  button wears), [ADR-0020](0020-the-band-has-a-stop-press.md) d.1 (what STOP
-  looks like)
-- **Related:** [rails49/look#1](https://github.com/rails49/look/issues/1)
-  (one shared chrome for rails49's UIs),
-  [rails49/look#14](https://github.com/rails49/look/issues/14) (look v0.3.0,
-  the toggle reason), `control` ADR-0073 (control's chrome comes from look),
-  [org ADR-0016](https://github.com/rails49/.github/blob/main/docs/adr/0016-the-chrome-comes-from-look.md)
-  (the organisation's decision, accepted 2026-10-17; supersedes org ADR-0005
-  and ADR-0010 and amends ADR-0003, ADR-0007 and ADR-0012, which this page
-  departed from)
+- **Amends:**
+  [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
+  (red on the chrome), [ADR-0011](0011-the-band-commands-track-power.md) (the
+  band's one control), [ADR-0017](0017-the-band-asks-layout-for-power.md) d.2
+  (what the power button wears), [ADR-0020](0020-the-band-has-a-stop-press.md)
+  d.1 (what STOP looks like)
+- **Related:** [rails49/look#1](https://github.com/rails49/look/issues/1) (one
+  shared chrome for rails49's UIs),
+  [rails49/look#14](https://github.com/rails49/look/issues/14) (look v0.3.0, the
+  toggle reason), `control` ADR-0073 (control's chrome comes from look), [org
+  ADR-0016](https://github.com/rails49/.github/blob/main/docs/adr/0016-the-chrome-comes-from-look.md)
+  (the organisation's decision, accepted 2026-10-17; supersedes org ADR-0005 and
+  ADR-0010 and amends ADR-0003, ADR-0007 and ADR-0012, which this page departed
+  from)
 
 ## Context
 

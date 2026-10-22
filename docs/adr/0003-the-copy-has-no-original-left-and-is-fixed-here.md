@@ -2,8 +2,9 @@
 
 - **Status:** accepted, 2026-09-22
 - **Ticket:** rails49/dccex#23, #24, #26
-- **Supersedes:** [ADR-0002](0002-a-defect-in-copied-code-is-fixed-where-it-came-from.md)
-  (a defect in copied code is fixed where it came from)
+- **Supersedes:**
+  [ADR-0002](0002-a-defect-in-copied-code-is-fixed-where-it-came-from.md) (a
+  defect in copied code is fixed where it came from)
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (d.6,
   the copy and what it promises), [SOURCE.md](../../src/SOURCE.md) (the commit
   it was taken at)
@@ -18,9 +19,9 @@ every defect — was paid to keep two live files in step.
 
 rails49/control#567 merged on 2026-09-22 and deleted `src/tc49/dccex_usb` and
 `tests/dccex_usb/`. There is no second copy. The defects ADR-0002 was written
-for — #23, #24, #26 — are in this repository's file and nowhere else, and the
-route it laid out has no destination: there is nothing upstream to fix, and a
-re-copy would be a copy of what is already here.
+for — #23, #24, #26 — are in this repository's file and nowhere else, and
+the route it laid out has no destination: there is nothing upstream to fix, and
+a re-copy would be a copy of what is already here.
 
 ## Decision
 

@@ -3,7 +3,9 @@
 - **Status:** accepted, 2026-09-30; d.1, d.2 and d.4 superseded by
   [ADR-0017](0017-the-band-asks-layout-for-power.md); the button is look's
   toggle, [ADR-0023](0023-the-chrome-comes-from-look.md)
-- **Supersedes:** [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md) d.5
+- **Supersedes:**
+  [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
+  d.5
 - **Related:** [ADR-0006](0006-the-operator-is-the-only-guard-on-a-flash.md)
   (the operator is the only guard on a flash)
 
@@ -34,6 +36,7 @@ no confirmation.
 
 ## Consequences
 
-- The band is two readings and one control. GLOSSARY.md's **band** entry says so.
+- The band is two readings and one control. GLOSSARY.md's **band** entry says
+  so.
 - A press is a line on the stream like any other client's, and the station's
   `<p…>` answer is what turns the button's colour.

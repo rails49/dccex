@@ -1,11 +1,13 @@
 # ADR-0018 — the station's setup runs at `start`
 
-- **Status:** accepted, 2026-10-08; d.2, d.3 and d.6 amended 2026-10-08 (#207); d.2 amended again 2026-10-08; d.2 superseded by
+- **Status:** accepted, 2026-10-08; d.2, d.3 and d.6 amended 2026-10-08 (#207);
+  d.2 amended again 2026-10-08; d.2 superseded by
   [ADR-0021](0021-a-restart-is-a-stash-the-boot-has-cleared.md)
 - **Ticket:** #207
-- **Amends:** [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
-  d.6 (a station restart replays like a connect) and d.9 (the setup is a
-  `start` handler, not a power handler)
+- **Amends:**
+  [ADR-0013](0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)
+  d.6 (a station restart replays like a connect) and d.9 (the setup is a `start`
+  handler, not a power handler)
 - **Related:** ADR-0016 (the firmware's wording is part of the contract),
   ADR-0017 (the band asks `layout` for power)
 

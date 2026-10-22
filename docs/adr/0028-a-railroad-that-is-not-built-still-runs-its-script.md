@@ -2,7 +2,8 @@
 
 - **Status:** accepted, 2026-10-21
 - **Ticket:** #329
-- **Related:** [control ADR-0085](https://github.com/rails49/control/blob/main/docs/adr/0085-the-editor-saves-when-it-is-left-and-a-railroad-can-be-named-without-being-built.md)
+- **Related:** [control
+  ADR-0085](https://github.com/rails49/control/blob/main/docs/adr/0085-the-editor-saves-when-it-is-left-and-a-railroad-can-be-named-without-being-built.md)
   d.4 (a railroad can be named without being built),
   [ADR-0015](0015-the-script-is-a-railroads-document-in-the-store.md) (the
   script is a railroad's document in the store),

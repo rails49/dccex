@@ -1,15 +1,17 @@
 # ADR-0017 — the band asks `layout` for power
 
-- **Status:** accepted, 2026-10-08; d.2 amended by [ADR-0023](0023-the-chrome-comes-from-look.md);
-  d.1, d.2 and d.3 superseded by [ADR-0026](0026-the-bands-power-control-is-controls.md)
+- **Status:** accepted, 2026-10-08; d.2 amended by
+  [ADR-0023](0023-the-chrome-comes-from-look.md); d.1, d.2 and d.3 superseded by
+  [ADR-0026](0026-the-bands-power-control-is-controls.md)
 - **Ticket:** #205, #206, #208
 - **Supersedes:** [ADR-0011](0011-the-band-commands-track-power.md) d.1, d.2
   and d.4
-- **Related:** [org ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
-  (a UI talks to the bus, the store and its own app's face), ADR-0004 (the
-  face reaches a browser through the door), ADR-0018 (the station's setup
-  runs at `start`), the organisation's ADR-0014 (rails49/.github#30),
-  `control` ADR-0051, ADR-0054 and ADR-0062
+- **Related:** [org
+  ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
+  (a UI talks to the bus, the store and its own app's face), ADR-0004 (the face
+  reaches a browser through the door), ADR-0018 (the station's setup runs at
+  `start`), the organisation's ADR-0014 (rails49/.github#30), `control`
+  ADR-0051, ADR-0054 and ADR-0062
 
 ## Context
 

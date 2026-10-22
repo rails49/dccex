@@ -1,8 +1,9 @@
 # ADR-0008 — the page talks to the face and reads the build off the banner
 
-- **Status:** accepted, 2026-09-23; d.5 superseded by [ADR-0011](0011-the-band-commands-track-power.md);
-  red on the chrome amended by [ADR-0023](0023-the-chrome-comes-from-look.md);
-  the build on the band (amendment of 2026-09-30) superseded by
+- **Status:** accepted, 2026-09-23; d.5 superseded by
+  [ADR-0011](0011-the-band-commands-track-power.md); red on the chrome amended
+  by [ADR-0023](0023-the-chrome-comes-from-look.md); the build on the band
+  (amendment of 2026-09-30) superseded by
   [ADR-0027](0027-the-band-drops-the-build.md)
 - **Ticket:** rails49/dccex#1
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (the
@@ -10,12 +11,12 @@
   [ADR-0004](0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
   (the page and the face on one origin),
   [ADR-0007](0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)
-  (the stream the readings are made of),
-  [org ADR-0001](https://github.com/rails49/.github/blob/main/docs/adr/0001-a-ui-of-its-own-is-about-something-other-than-the-loaded-railroad.md)
-  (a UI of its own is about something other than the loaded railroad),
-  [org ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
-  (what a UI may talk to),
-  [control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
+  (the stream the readings are made of), [org
+  ADR-0001](https://github.com/rails49/.github/blob/main/docs/adr/0001-a-ui-of-its-own-is-about-something-other-than-the-loaded-railroad.md)
+  (a UI of its own is about something other than the loaded railroad), [org
+  ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
+  (what a UI may talk to), [control
+  ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
   (the link is the station answering, not the socket being open)
 
 ## Context
@@ -39,13 +40,13 @@ written for is a page nobody can use to tell a dead station from a quiet one —
 which is user story 1 and the reason any of this exists.
 
 There is a third source, and it has been under the cable the whole time. The
-station says all of it. Power and current come back on `<p…>` and `<c …>`; the
-**link** is whether it is answering at all, which is what `control` ADR-0066
+station says all of it. Power and current come back on `<p…>` and `<c …>`;
+the **link** is whether it is answering at all, which is what `control` ADR-0066
 already says the link is; and the **build** is the `G-` field of the banner it
-sends when it comes up. `control` publishes an optional `build` on
-`device/link` today only because the translator had already read it off that
-banner and had a bus to put it on — and org ADR-0002's deletions take that
-field away, so the bus is about to stop being a source for it at all.
+sends when it comes up. `control` publishes an optional `build` on `device/link`
+today only because the translator had already read it off that banner and had a
+bus to put it on — and org ADR-0002's deletions take that field away, so the
+bus is about to stop being a source for it at all.
 
 The remaining tile is the one the station cannot say: how many **clients** are
 on the mirror's port. That is a fact about the mirror, which is what a face is
@@ -64,8 +65,8 @@ on a railroad being loaded, because nothing on the page asks.
 
 **d.2** Every reading about the station is made of what the station said, off
 the **stream** (ADR-0007). The link, whether the rails are hot, the current on
-the track, when the station last spoke, and the **build** — all of them are the
-conversation, decoded on the page. There is no second channel and nothing is
+the track, when the station last spoke, and the **build** — all of them are
+the conversation, decoded on the page. There is no second channel and nothing is
 inferred on one: the stream carries the bytes and no protocol of our own.
 
 **d.3** The **build** is the `G-` field of the banner and nothing else. It is

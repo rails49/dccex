@@ -3,10 +3,11 @@
 - **Status:** accepted, 2026-10-20
 - **Amends:** [ADR-0018](0018-the-stations-setup-runs-at-start.md) d.1 (when
   `start` runs)
-- **Related:** [ADR-0015](0015-the-script-is-a-railroads-document-in-the-store.md)
-  d.3 (a changed text ends the process), d.4 (no store, no handlers),
-  [ADR-0021](0021-a-restart-is-a-stash-the-boot-has-cleared.md) (a restart is
-  a stash the boot has cleared)
+- **Related:**
+  [ADR-0015](0015-the-script-is-a-railroads-document-in-the-store.md) d.3 (a
+  changed text ends the process), d.4 (no store, no handlers),
+  [ADR-0021](0021-a-restart-is-a-stash-the-boot-has-cleared.md) (a restart is a
+  stash the boot has cleared)
 
 ## Context
 

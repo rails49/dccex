@@ -2,7 +2,8 @@
 
 - **Status:** accepted, 2026-10-20
 - **Ticket:** #316
-- **Supersedes:** [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)'s
+- **Supersedes:**
+  [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)'s
   amendment of 2026-09-30, where it puts the build on the band
 - **Related:** [ADR-0023](0023-the-chrome-comes-from-look.md) (the chrome
   comes from look)
