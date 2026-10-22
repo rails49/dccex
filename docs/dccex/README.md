@@ -173,19 +173,46 @@ def wx310_crossing(t):
         t.send("<= D MAIN_AUTO>")
 
 
-@on("reported_district")
-def show_district(t):
-    # show each district on the text widget track-<district>:
-    #      green on, amber near its limit, bold red tripped
-    d = t.reported("district", t.address)
+CURRENT = {}  # mA per district, from the station's <jI ...>
+ASKED = [False]  # whether the next <jI ...> is the answer to our <JI>
+
+
+def show(t, district):
+    # show a district on the text widget track-<district>:
+    #      green on, amber near its limit, bold red tripped,
+    #      and the current while it is powered
+    d = t.reported("district", district)
+    if d is None:
+        return
     state = "?" if d.state in (None, "unknown") else d.state
-    shown = f"{t.address} {state}"
+    shown = f"{district} {state}"
+    if d.state in ("on", "alert") and district in CURRENT:
+        shown += f" {CURRENT[district]} mA"
     if d.mode and d.mode.endswith("_INV"):
         shown += " inverted"
     colour = {"on": "32", "alert": "33", "tripped": "1;31"}.get(d.state)
     if colour:
         shown = f"{chr(27)}[{colour}m{shown}{chr(27)}[0m"
-    t.text(f"track-{t.address}", shown)
+    t.text(f"track-{district}", shown)
+
+
+@on("reported_district")
+def show_district(t):
+    show(t, t.address)
+
+
+@on("reported_message")
+def currents(t):
+    if t.message.startswith("<jM 32000"):
+        # the answer to the translator's poll, once a second
+        t.send("<JI>")
+        ASKED[0] = True
+    elif t.message.startswith("<jI ") and ASKED[0]:
+        # the dccex page asks <JI> too; take one answer a second
+        ASKED[0] = False
+        for district, ma in zip("ABCDEFGH", t.message[4:-1].split()):
+            CURRENT[district] = int(ma)
+            show(t, district)
 
 
 # @on("point", "20")
@@ -244,7 +271,9 @@ go on showing a reading nobody can take.
 
 **`reported_message` fires on every message**, the poll's answers included,
 about seven a second on this railroad (d.3). A need the other rows do not
-cover is a script reading the station's own words.
+cover is a script reading the station's own words. The sample reads each
+district's current this way: it sends `<JI>` on each answer to the poll's
+`<JM 32000>` and reads the first `<jI …>` after it (#345).
 
 **A handler must return quickly** (d.4). It runs on this app's loop, which
 also sends the `<G 3>` the station needs every 3 s to keep the power on.

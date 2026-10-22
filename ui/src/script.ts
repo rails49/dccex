@@ -97,19 +97,46 @@ def wx310_crossing(t):
         t.send("<= D MAIN_AUTO>")
 
 
-@on("reported_district")
-def show_district(t):
-    # show each district on the text widget track-<district>:
-    #      green on, amber near its limit, bold red tripped
-    d = t.reported("district", t.address)
+CURRENT = {}  # mA per district, from the station's <jI ...>
+ASKED = [False]  # whether the next <jI ...> is the answer to our <JI>
+
+
+def show(t, district):
+    # show a district on the text widget track-<district>:
+    #      green on, amber near its limit, bold red tripped,
+    #      and the current while it is powered
+    d = t.reported("district", district)
+    if d is None:
+        return
     state = "?" if d.state in (None, "unknown") else d.state
-    shown = f"{t.address} {state}"
+    shown = f"{district} {state}"
+    if d.state in ("on", "alert") and district in CURRENT:
+        shown += f" {CURRENT[district]} mA"
     if d.mode and d.mode.endswith("_INV"):
         shown += " inverted"
     colour = {"on": "32", "alert": "33", "tripped": "1;31"}.get(d.state)
     if colour:
         shown = f"{chr(27)}[{colour}m{shown}{chr(27)}[0m"
-    t.text(f"track-{t.address}", shown)
+    t.text(f"track-{district}", shown)
+
+
+@on("reported_district")
+def show_district(t):
+    show(t, t.address)
+
+
+@on("reported_message")
+def currents(t):
+    if t.message.startswith("<jM 32000"):
+        # the answer to the translator's poll, once a second
+        t.send("<JI>")
+        ASKED[0] = True
+    elif t.message.startswith("<jI ") and ASKED[0]:
+        # the dccex page asks <JI> too; take one answer a second
+        ASKED[0] = False
+        for district, ma in zip("ABCDEFGH", t.message[4:-1].split()):
+            CURRENT[district] = int(ma)
+            show(t, district)
 
 
 # @on("point", "20")

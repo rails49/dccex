@@ -1080,7 +1080,12 @@ async def _restart_forgets_what_the_station_reported() -> None:
         await station.heard_nothing_more()
 
         station.says(EMPTY)
-        assert await station.heard(1 + 8 + 2 + 2) == [MARK] + SAMPLE_START + ASKS + [
+        # The sample asks for the currents on every stash answer.
+        assert await station.heard(1 + 1 + 8 + 2 + 2) == [
+            b"<JI>",
+            MARK,
+            *SAMPLE_START,
+            *ASKS,
             b"<a 3 3 0>",
             b"<= D MAIN_AUTO>",
         ]
@@ -1161,8 +1166,9 @@ def test_the_sample_shows_each_district_on_its_widget() -> None:
 
 
 async def _sample_shows_each_district_on_its_widget() -> None:
-    """Green on, amber near its limit, bold red tripped, plain off, and
-    `inverted` behind a reversed district (ADR-0029)."""
+    """Green on, amber near its limit, bold red tripped, plain off,
+    `inverted` behind a reversed district, and the current while powered
+    (ADR-0029, #345)."""
     bus = Texts()
     port = Port()
     async with running(bus, port, text=sample.TEXT):
@@ -1176,6 +1182,14 @@ async def _sample_shows_each_district_on_its_widget() -> None:
         assert bus.on("track-B") == ["B off", "\x1b[1;31mB tripped\x1b[0m"]
         assert bus.on("track-D") == ["D ? inverted", "\x1b[32mD on inverted\x1b[0m"]
         assert bus.on("track-C") == ["\x1b[32mC on\x1b[0m"]
+
+        # One `<jI …>` a second, the first after the sample's own `<JI>`.
+        station.says(HELD)
+        assert await station.heard(1) == [b"<JI>"]
+        await hears(station, b"<jI 112 0 37 0>", b"<jI 130 0 40 0>")
+        assert bus.on("track-A")[-1] == "\x1b[33mA alert 112 mA\x1b[0m"
+        assert bus.on("track-B")[-1] == "\x1b[1;31mB tripped\x1b[0m"
+        assert bus.on("track-C")[-1] == "\x1b[32mC on 37 mA\x1b[0m"
 
 
 # -- a railroad with no script this app could load ------------------------
