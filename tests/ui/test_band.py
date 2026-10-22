@@ -24,7 +24,7 @@ APP = UI / "src" / "ui" / "dccex-app.ts"
 
 def test_the_band_works_no_reading_out_of_its_own() -> None:
     """The reading is the readings module's, a pure function of what the
-    station said and what `layout` reported (ADR-0008 d.2, ADR-0017 d.2), and
+    station said and what `layout` reported (ADR-0008 d.2, ADR-0026 d.3), and
     the page hands it the facts."""
     drawn = code(CHROME.read_text())
     assert 'from "../readings.js"' in drawn, "the band works a reading out itself"
@@ -33,7 +33,7 @@ def test_the_band_works_no_reading_out_of_its_own() -> None:
 
 
 def test_the_presses_on_the_band_are_looks_power_and_ask_layout() -> None:
-    """One `look-power` and nothing else to press (ADR-0017 d.1, ADR-0026 d.2,
+    """One `look-power` and nothing else to press (ADR-0026 d.2,
     ADR-0011 d.3).
 
     look fires `off` or `on` from the toggle and `stopped` from the stop sign.

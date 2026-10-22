@@ -313,8 +313,8 @@ def test_the_railroad_does_not_go_with_the_link() -> None:
 
 @pytest.mark.node
 def test_the_power_button_asks_for_on_where_layout_reports_it_off() -> None:
-    """An outlined chip, and a press asks `layout` for `on` (ADR-0017 d.1,
-    d.2)."""
+    """An outlined chip, and a press asks `layout` for `on` (ADR-0026 d.2,
+    d.3)."""
     assert power(said=list(TALKING), now=NOW, layout=COLD) == {
         "reads": "off",
         "title": "power on",
@@ -397,7 +397,7 @@ def test_the_power_row_reads_what_layout_reported() -> None:
 @pytest.mark.node
 def test_a_power_row_the_page_cannot_read_reads_as_off() -> None:
     """A row that is not JSON, a document with no power in it, and a word this
-    page does not know, `stopped` included (ADR-0017 d.2, ADR-0026 d.3).
+    page does not know, `stopped` included (ADR-0026 d.3).
 
     `off` and not blank: it is the one reading in this module that is not what
     was said, and it is the safe one, because the press it offers is the one

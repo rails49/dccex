@@ -878,8 +878,8 @@ def test_the_boot_line_changes_nothing() -> None:
 async def _boot_line_changes_nothing() -> None:
     """The boot line is no longer read (ADR-0021 d.6). The virtual LCD's
     text, row and port are part of no documented interface, and the station
-    on the box printed a form that ADR-0018 d.2 did not name. It runs no
-    `start` and no replay, and it forgets nothing."""
+    on the box printed a form that the superseded ADR-0018 d.2 did not name.
+    It runs no `start` and no replay, and it forgets nothing."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port, text=WATCHES):

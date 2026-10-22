@@ -94,7 +94,7 @@ def test_the_page_holds_one_connection_to_the_broker() -> None:
 
 
 def test_the_page_subscribes_to_the_two_rows_the_band_reads() -> None:
-    """Two rows: the one the button reads (ADR-0017 d.2) and the one that names
+    """Two rows: the one the button reads (ADR-0026 d.3) and the one that names
     the railroad `control` has loaded (the organisation's ADR-0014, #239).
 
     What a railroad is *doing* is still `control`'s UI next door; what this
@@ -111,8 +111,8 @@ def test_the_page_subscribes_to_the_two_rows_the_band_reads() -> None:
 
 
 def test_a_press_publishes_the_wanted_row_at_qos_0_and_not_retained() -> None:
-    """The row a browser may write, as `control`'s band writes it (ADR-0017
-    d.1, `control`'s `docs/BUS.md`).
+    """The row a browser may write, as `control`'s band writes it (ADR-0026
+    d.2, `control`'s `docs/BUS.md`).
 
     Not retained: it is a request and not a state, and a retained one would be
     answered again by every `layout` that started afterwards. One publish, so

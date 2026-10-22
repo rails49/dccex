@@ -26,7 +26,7 @@ beforeEach(forgotten);
 
 /** A row `layout` publishes, one a press asks for, and one this page cannot
  *  read. The three words are the same bytes either way, which is why the rows
- *  below stand for both (ADR-0017 d.1, ADR-0026 d.2, d.3). */
+ *  below stand for both (ADR-0026 d.2, d.3). */
 const HOT = '{"power":"on"}';
 const COLD = '{"power":"off"}';
 const DRAINING = '{"power":"draining"}';
