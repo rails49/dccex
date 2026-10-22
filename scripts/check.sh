@@ -145,6 +145,9 @@ check words words
 check source source_recorded
 check ruff tool ruff check .
 check black tool black --check .
+# Prose wraps at 80: TS/JS comment lines and Markdown here, Python comments
+# and docstrings in the ruff step above (#335).
+check width "${PY[@]}" scripts/prose_width.py
 check pyright tool pyright
 check tests "${PY[@]}" -m pytest -q -m "not docker and not node and not broker"
 check look look
