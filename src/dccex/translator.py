@@ -146,9 +146,9 @@ DOWN = "down"
 POLL_S = 1.0
 """How often the station is asked what it is doing, which bounds how long a
 district switched by another throttle reads as it was and how long a fresh
-connection reads as `down`. A second is far inside what a person recovering from either would
-notice, and the two questions are two short lines on a port that carries the
-whole railroad's traffic."""
+connection reads as `down`. A second is far inside what a person recovering from
+either would notice, and the two questions are two short lines on a port that
+carries the whole railroad's traffic."""
 
 MISSED_POLLS = 10
 """How many polls may go unanswered before the link is lowered, counted off
@@ -467,11 +467,11 @@ class DccEx:
         device topic states them; the payload repeats the address so a trace
         line reads on its own, and a repetition is not a second authority.
 
-        A value that cannot be turned into a message is not remembered
-        either: it is dropped whole, so a connect does not replay something
-        that sent nothing when it arrived. Dropped silently and to the trace,
-        the frame being on it by virtue of having been published — this app
-        answers nothing, so a refusal would have nowhere to go (control ADR-0034).
+        A value that cannot be turned into a message is not remembered either:
+        it is dropped whole, so a connect does not replay something that sent
+        nothing when it arrived. Dropped silently and to the trace, the frame
+        being on it by virtue of having been published — this app answers
+        nothing, so a refusal would have nowhere to go (control ADR-0034).
         """
         split = split_device(topic)
         if split is None:
@@ -493,12 +493,12 @@ class DccEx:
         recognises its own addresses and everything else is somebody's or
         nobody's, and an address nobody answers to does no harm.
 
-        An address names no system (control ADR-0059), so a point or signal address
-        is **every** one this app hears: it is the string the drawing carries
-        and the hardware answers to, and an address this station has no packet
-        for falls away where the packet is built, not here. Traction is one
-        level and a function two — the decoder and the function number — which
-        is the shape of the row rather than anyone's claim on it.
+        An address names no system (control ADR-0059), so a point or signal
+        address is **every** one this app hears: it is the string the drawing
+        carries and the hardware answers to, and an address this station has no
+        packet for falls away where the packet is built, not here. Traction is
+        one level and a function two — the decoder and the function number —
+        which is the shape of the row rather than anyone's claim on it.
         """
         levels = address.split("/")
         if row == WANTED_TRACK:
@@ -907,11 +907,11 @@ class DccEx:
         that ten questions went unanswered is the only thing that catches a
         wedged station (control ADR-0066).
 
-        What goes is everything the station told us, the same `_forget` a
-        link that closed runs: a reading nobody can take is not the last one
-        taken. The session itself stays — this is an observation being published,
-        not the transport being torn down — so an answer arriving afterwards
-        raises the link by the one path that raises it, a message read.
+        What goes is everything the station told us, the same `_forget` a link
+        that closed runs: a reading nobody can take is not the last one taken.
+        The session itself stays — this is an observation being published, not
+        the transport being torn down — so an answer arriving afterwards raises
+        the link by the one path that raises it, a message read.
 
         A station that has not answered *yet* is left alone: that link is
         already `down` and already says why.
@@ -1082,12 +1082,12 @@ class DccEx:
         """The power this app can say it sees, folded from what the station
         has reported.
 
-        `on` where at least one district is powered and not tripped. A
-        district is tripped from the station's trip line until its `NORMAL`
-        or a `1`, powered while near its limit, and otherwise what its digit
-        says (ADR-0016 d.3-d.5). A station that has said nothing reads `off` too, which is
-        the direction a state topic must fail in (control#181) — a supply
-        that cannot be read is not one a train may move over.
+        `on` where at least one district is powered and not tripped. A district
+        is tripped from the station's trip line until its `NORMAL` or a `1`,
+        powered while near its limit, and otherwise what its digit says
+        (ADR-0016 d.3-d.5). A station that has said nothing reads `off` too,
+        which is the direction a state topic must fail in (control#181) — a
+        supply that cannot be read is not one a train may move over.
 
         An emergency stop leaves the rails live, so it reads `on` (control
         ADR-0063). A lock the station reports is said in the reason instead

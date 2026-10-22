@@ -78,12 +78,12 @@ ROOT = SELF.parent.parent
 ADRS = ROOT / "docs" / "adr"
 
 #: What this scan reads, tree by tree and with the depth in the glob: the two
-#: pages at the root, the package's prose and the provenance note beside it,
-#: the pages under `docs/`, the page's modules and the stylesheets beside them,
-#: the suites that mount its components, the checks under `tests/` with the node runners among them, and what the box
-#: is built and served from. The root is read flat — everything below it worth
-#: reading is a tree of its own here, and the rest is what a build, an
-#: environment or a package manager left there.
+#: pages at the root, the package's prose and the provenance note beside it, the
+#: pages under `docs/`, the page's modules and the stylesheets beside them, the
+#: suites that mount its components, the checks under `tests/` with the node
+#: runners among them, and what the box is built and served from. The root is
+#: read flat — everything below it worth reading is a tree of its own here, and
+#: the rest is what a build, an environment or a package manager left there.
 PROSE = {
     ROOT: ("*.md",),
     ROOT / "src": ("**/*.py", "**/*.md"),
@@ -119,13 +119,13 @@ CONTROL = {
 #: reaches them at.
 CONTROL_ADRS = "https://github.com/rails49/control/blob/main/docs/adr/"
 
-#: Whose the decision is, written before the number. `control` is named with
-#: the backticks a repository gets in prose or without them, as the pages that
-#: cite it do both, and in the possessive where the sentence wants one; the
+#: Whose the decision is, written before the number. `control` is named with the
+#: backticks a repository gets in prose or without them, as the pages that cite
+#: it do both, and in the possessive where the sentence wants one; the
 #: organisation's and this repository's are the two phrases the module beside
 #: this one settled on, and `org` is the short form of the organisation's the
-#: pages also write (#149). The owner is capitalised where it opens a sentence and
-#: reaches the number across a line break as readily as not — prose wraps
+#: pages also write (#149). The owner is capitalised where it opens a sentence
+#: and reaches the number across a line break as readily as not — prose wraps
 #: where the width runs out. A wrapped line of a comment block opens with
 #: whatever the block is drawn with, which is `#` in a module and `*` on the
 #: page, so the owner is still beside the number.
@@ -223,7 +223,8 @@ OURS_LINKED = re.compile(
 
 
 def ambiguous(text: str) -> list[str]:
-    """Every bare citation of a number the same page cites as the organisation's.
+    """Every bare citation of a number the same page cites as the
+    organisation's.
 
     Both repositories number from 0001, so on such a page a reader cannot tell
     which one a bare number means (#159). Number 0002 is left to

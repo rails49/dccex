@@ -5,15 +5,15 @@ come up against, or `tests/apps.py`, which is one container's worth of app:
 what a number is wanted for is the same in both and in the suites that serve
 a store on a thread.
 
-Every one of those is told its number before anything binds it. A store's
-URL is handed to an app that goes looking for it first, which is the order
-those suites exist to hold (control ADR-0059, decision 5), and mosquitto reads its
-port out of a config file written before the process starts. So a number
-picked by binding `:0` and closing the socket is a number nobody holds, and
-the kernel is free to hand the same one to the next outbound connection —
-it draws them from that same ephemeral range. That is what reddened `ci` on
-a change touching no Python the suite runs (#560): an MQTT client
-reconnecting in a loop took the port a store was about to be started on.
+Every one of those is told its number before anything binds it. A store's URL is
+handed to an app that goes looking for it first, which is the order those suites
+exist to hold (control ADR-0059, decision 5), and mosquitto reads its port out
+of a config file written before the process starts. So a number picked by
+binding `:0` and closing the socket is a number nobody holds, and the kernel is
+free to hand the same one to the next outbound connection — it draws them from
+that same ephemeral range. That is what reddened `ci` on a change touching no
+Python the suite runs (#560): an MQTT client reconnecting in a loop took the
+port a store was about to be started on.
 
 So the numbers come from below that range, where no outbound socket is given
 one, and from a cursor that offers each of them once, so no two fixtures are

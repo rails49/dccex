@@ -47,7 +47,8 @@ def allowed(name: str, extra: frozenset[str] = frozenset()) -> bool:
 
 
 def reached(package: Path, extra: frozenset[str] = frozenset()) -> dict[str, set[str]]:
-    """What each module under `package` imports that is not allowed, by its path."""
+    """What each module under `package` imports that is not allowed, by its
+    path."""
     return {
         str(module.relative_to(package)): outside
         for module in sorted(package.rglob("*.py"))

@@ -137,13 +137,12 @@ def traction(addr: str, speed: float) -> bytes:
 def function(addr: str, number: str, value: bool) -> bytes:
     """A locomotive's function: `<F addr n 0|1>`.
 
-    The station's function is a **switch** and so is the row that reaches it:
-    a function is one bit here as it was everywhere else it was checked
-    (control ADR-0063). So every value the row can carry is one this station can be
-    told, and this is **never `None`** for the reason `traction` is not —
-    there is nothing left to refuse. What people mean by a range is decoder
-    configuration, which is a different capability and no packet of this
-    shape.
+    The station's function is a **switch** and so is the row that reaches it: a
+    function is one bit here as it was everywhere else it was checked (control
+    ADR-0063). So every value the row can carry is one this station can be told,
+    and this is **never `None`** for the reason `traction` is not — there is
+    nothing left to refuse. What people mean by a range is decoder
+    configuration, which is a different capability and no packet of this shape.
     """
     return f"<F {addr} {number} {int(value)}>".encode()
 
@@ -152,12 +151,11 @@ def point(addr: str, position: str) -> bytes | None:
     """A turnout's position, as a **stateless** accessory packet:
     `<a addr sub act>`.
 
-    Stateless is the point of it. The station also keeps turnouts of its own
-    and answers a throw with a position it has faked, and this app wants
-    neither: `align` carries the points its transit needs every time, so a
-    translator throws what it is told and holds no table (control ADR-0031,
-    control ADR-0043), and a faked reply is what `device/point` is never published
-    from.
+    Stateless is the point of it. The station also keeps turnouts of its own and
+    answers a throw with a position it has faked, and this app wants neither:
+    `align` carries the points its transit needs every time, so a translator
+    throws what it is told and holds no table (control ADR-0031, control
+    ADR-0043), and a faked reply is what `device/point` is never published from.
 
     The address the drawing types is the accessory number a throttle shows,
     `1` upward; the packet wants a decoder address and a sub-address, so the

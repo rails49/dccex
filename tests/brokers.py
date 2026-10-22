@@ -1,8 +1,8 @@
 """A real `mosquitto`, for the suites that test against a broker.
 
 Here rather than in `tests/harness.py`, which is the in-process assembly and
-nothing else: what these build is a second process on a port of its own, and
-the apps that come up alone against one (control ADR-0059, decision 5) each want the
+nothing else: what these build is a second process on a port of its own, and the
+apps that come up alone against one (control ADR-0059, decision 5) each want the
 same fixture.
 
 Where no `mosquitto` is installed the suites that take `broker` skip, so a

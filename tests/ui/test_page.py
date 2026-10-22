@@ -100,9 +100,9 @@ def test_the_most_each_track_may_draw_is_asked_on_the_link_and_not_the_poll() ->
 
     A limit is compiled into the **build** and does not move while the station
     is running, so asking four times a second would spend every client's line on
-    an answer that is the same all evening. A station running a different one has
-    come up again, which is the link coming up again — so it is asked where the
-    link is worked out, and a station written and restarted is asked afresh.
+    an answer that is the same all evening. A station running a different one
+    has come up again, which is the link coming up again — so it is asked where
+    the link is worked out, and a station written and restarted is asked afresh.
     """
     page = APP.read_text()
     asking = page[page.index("#ask(): void {") : page.index("#now(): void {")]

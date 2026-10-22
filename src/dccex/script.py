@@ -49,10 +49,10 @@ replaces nothing. Power and turnouts are the two; others are added when a
 script needs one (ADR-0013 d.3)."""
 
 START = "start"
-"""The station as the translator has not set it: on a connect, after the
-station restarts, and when a first script loads with the link up. A handler on it sets what the station loses on a restart,
-which mode each track is in and what current it may draw, and replaces
-nothing (ADR-0018, ADR-0024)."""
+"""The station as the translator has not set it: on a connect, after the station
+restarts, and when a first script loads with the link up. A handler on it sets
+what the station loses on a restart, which mode each track is in and what
+current it may draw, and replaces nothing (ADR-0018, ADR-0024)."""
 
 ROWS = (START,) + DESIRED_ROWS + REPORTED_ROWS
 

@@ -105,7 +105,8 @@ def test_a_runner_is_started_in_one_place() -> None:
 
 @pytest.mark.node
 def test_every_ask_is_answered_in_the_order_it_was_asked(tmp_path: Path) -> None:
-    """And a promise is waited for, which is what one of the real runners answers.
+    """And a promise is waited for, which is what one of the real runners
+    answers.
 
     The sequence a flash runs is asynchronous (`tests/ui/flash.mjs`), so the
     prelude cannot hand back what `map` gives it: the asks go through one after
