@@ -88,11 +88,10 @@ const CHARACTERS = new TextDecoder("latin1");
  *
  * **Nothing is held to be sent when one does.** A message an operator typed
  * while the stream was down is a command to a command station, and sending it
- * seconds later, when the page has moved on, is worse than not sending it
- * (#6): `send` returns `null` and the box at the foot says so. What is asked
- * again is asked again by whoever wanted it — the page's poll is stateless and
- * safe to repeat, and it is the page that repeats it (`dccex-app.ts`,
- * ADR-0010 d.1).
+ * seconds later, when the page has moved on, is worse than not sending it (#6):
+ * `send` returns `null` and the box at the foot says so. What is asked again is
+ * asked again by whoever wanted it — the page's poll is stateless and safe to
+ * repeat, and it is the page that repeats it (`dccex-app.ts`, ADR-0010 d.1).
  */
 export class Stream {
   readonly #said: (said: Said[]) => void;

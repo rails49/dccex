@@ -21,8 +21,8 @@ import { css } from "lit";
  * same weight wins — which is what the `.cm-` selectors are written to.
  *
  * **The dangerous press is drawn as one**, and the warning above it in the
- * theme's warning ink — the same pair the flash is drawn with, because this is
- * the other gesture on this page that stops a railroad (ADR-0006,
+ * theme's warning ink — the same pair the flash is drawn with, because this
+ * is the other gesture on this page that stops a railroad (ADR-0006,
  * `dccex-releases.styles.ts`). The look rules' `--stop` is the chrome's and
  * means a fault or a stop there.
  *

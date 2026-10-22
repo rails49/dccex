@@ -22,8 +22,8 @@
  * to a conversation is the rules', run under a bare node
  * (`tests/ui/test_monitor.py`); this is a person's finger on the control.
  *
- * How loud the gloss is beside the bytes is the stylesheet's and stays there —
- * happy-dom does no layout and has no cascade to ask.
+ * How loud the gloss is beside the bytes is the stylesheet's and stays there
+ * — happy-dom does no layout and has no cascade to ask.
  */
 
 import { expect, test } from "vitest";

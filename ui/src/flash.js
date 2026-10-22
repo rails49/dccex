@@ -30,9 +30,9 @@
  * esptool's output as it runs and answers the stage and the percentage on a
  * route of its own, so the page asks twice a second while a flash is in flight
  * and draws a bar over what it is told (ADR-0012, `face.py`). What that answer
- * means — the stages, and the one stage anything counts — is at the foot of this
- * module, beside the words: it is the same flash and the same person reading
- * about it, and the asking is `face.ts`'s as the rest of the asking is.
+ * means — the stages, and the one stage anything counts — is at the foot of
+ * this module, beside the words: it is the same flash and the same person
+ * reading about it, and the asking is `face.ts`'s as the rest of the asking is.
  *
  * **Success is not replied to; it is observed.** What comes back from the face
  * says the write was asked for and finished, and what is on the station is
@@ -44,11 +44,11 @@
  * module.
  *
  * It reaches nothing itself. What sends a message up the **stream**, what asks
- * the face to write and what shows a step are handed in, so the whole
- * sequence — what goes down the cable, in what order, and what is said at each
- * step — is run on a machine with no command station, no browser and no
- * network in reach (`tests/ui/test_flash.py`). It is one of the modules of the
- * page written as JavaScript with its types in JSDoc — they are named in
+ * the face to write and what shows a step are handed in, so the whole sequence
+ * — what goes down the cable, in what order, and what is said at each step
+ * — is run on a machine with no command station, no browser and no network in
+ * reach (`tests/ui/test_flash.py`). It is one of the modules of the page
+ * written as JavaScript with its types in JSDoc — they are named in
  * `tests/ui/test_decoder.py`'s docstring, which is where they are counted so
  * that a header need not (#110) — for the reason the rest are: the gate is
  * Python with a bare node in it, and a rule about what goes down a cable to a
@@ -375,13 +375,14 @@ export function instead(tag, build) {
  * refusal is what the face or the sequence said and is what the operator reads,
  * whatever the station is running: nothing was written, so the build on the
  * board is not about this gesture. A write that finished is waited on until the
- * station says which build it is running — the link goes down with the write and
- * the build goes with the link (ADR-0008 d.3) — and then the build either is the
- * tag or is not, which is the whole of what says a flash landed (ADR-0006 d.3).
+ * station says which build it is running — the link goes down with the write
+ * and the build goes with the link (ADR-0008 d.3) — and then the build either
+ * is the tag or is not, which is the whole of what says a flash landed
+ * (ADR-0006 d.3).
  *
  * **It is a reading of this moment and not a record.** A station that goes away
- * again after it came back leaves the page waiting for it once more, the way the
- * **build** on the band and the mark in the list go with the **link**
+ * again after it came back leaves the page waiting for it once more, the way
+ * the **build** on the band and the mark in the list go with the **link**
  * (ADR-0008 d.3): what the page can see is what it says, and a sentence held
  * over from a minute ago would be one about a station nobody is looking at.
  *

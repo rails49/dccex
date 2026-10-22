@@ -78,13 +78,13 @@ const PRESSED_STOP = "stopped";
  * organisation's ADR-0014, #239).
  *
  * **It has three answers and not two** (#242). The name is the railroad
- * `control` has loaded. `null` is a railroad row that says none is, which is
- * an ordinary state of a box (control #727). `undefined` is unreported: no
+ * `control` has loaded. `null` is a railroad row that says none is, which is an
+ * ordinary state of a box (control #727). `undefined` is unreported: no
  * railroad row has arrived since the connection came up, which is the whole of
  * an outage and the gap between a reconnect and the retained row landing. The
- * three are three readings on the band — the name, `no railroad loaded`, and a
- * blank slot (#246) — and the **script** view acts on them differently: a row
- * that says none is loaded leaves nothing to edit, and an outage leaves the
+ * three are three readings on the band — the name, `no railroad loaded`, and
+ * a blank slot (#246) — and the **script** view acts on them differently: a
+ * row that says none is loaded leaves nothing to edit, and an outage leaves the
  * editor where it is (`dccex-script.ts`).
  *
  * `built` is whether that railroad is built, off the same row, read by
@@ -151,9 +151,9 @@ export function reported(payload) {
  * The `name` field, which is the field the **translator** reads the same row
  * for (the organisation's ADR-0014, `src/dccex/translator.py`). `""` is a box
  * that has loaded no railroad, which is an ordinary state of one (control
- * #727), and it reads as `null` — as does a payload that is not JSON, one with
- * no `name` in it, and a `name` that is not a string. What the band says in
- * that state is `band()`'s sentence rather than a word invented here: a
+ * #727), and it reads as `null` — as does a payload that is not JSON, one
+ * with no `name` in it, and a `name` that is not a string. What the band says
+ * in that state is `band()`'s sentence rather than a word invented here: a
  * reading nobody took is an absence (ADR-0009 d.2).
  *
  * @param {string} payload the row as it arrived
@@ -214,8 +214,8 @@ const STOPS = "cut the power at once";
 
 /** What the link reads in words. The dot is the reading for a reader looking at
  *  it and these are the same reading for one who is not, so the band hands them
- *  to a reader either way; it draws them beside the dot while the station is not
- *  answering, because a fault is owed a sentence (issue 168, #138). */
+ *  to a reader either way; it draws them beside the dot while the station is
+ *  not answering, because a fault is owed a sentence (issue 168, #138). */
 const ANSWERING = "answering";
 const OFFLINE = "dcc-ex offline";
 
@@ -451,12 +451,12 @@ export function heard(kept, line, at) {
 /**
  * The readings as they stand at `now`.
  *
- * **They all blank together when the link goes down**, and that is the
- * correct reading rather than a gap: the build and the tracks are the station
- * talking, and the station is not talking (ADR-0008 d.3). The build in particular is never held over — a build from before a
- * flash reported as the one on the board would be this page saying what it
- * cannot see — and it fills again by itself when the station comes back and
- * says which one it is running.
+ * **They all blank together when the link goes down**, and that is the correct
+ * reading rather than a gap: the build and the tracks are the station talking,
+ * and the station is not talking (ADR-0008 d.3). The build in particular is
+ * never held over — a build from before a flash reported as the one on the
+ * board would be this page saying what it cannot see — and it fills again by
+ * itself when the station comes back and says which one it is running.
  *
  * @param {Kept} kept what the page has been told
  * @param {number} now the page's clock, in milliseconds
@@ -562,9 +562,9 @@ function stop(layout) {
  *
  * **A railroad nobody has reported is blank and not a sentence** (#246). An
  * outage, and the gap after a reconnect, leave the railroad unreported, and
- * `control` may have one loaded the whole time — so `no railroad loaded` there
- * is the page reporting a state nobody told it (ADR-0009 d.2). Blank, and the
- * presses beside it are already dead. A row that says none is loaded is the
+ * `control` may have one loaded the whole time — so `no railroad loaded`
+ * there is the page reporting a state nobody told it (ADR-0009 d.2). Blank, and
+ * the presses beside it are already dead. A row that says none is loaded is the
  * other state and keeps the sentence (#242, `Layout`).
  *
  * **A railroad that is not built is named, with `not built` after it**

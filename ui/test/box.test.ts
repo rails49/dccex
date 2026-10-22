@@ -1,6 +1,7 @@
 /**
  * The box at the foot of the monitor, mounted: what it remembers of what was
- * sent, and how ↑, ↓, a tap on a sent line and an on-screen keyboard reach it.
+ * sent, and how ↑, ↓, a tap on a sent line and an on-screen keyboard reach
+ * it.
  */
 
 import { afterEach, beforeEach, expect, test } from "vitest";

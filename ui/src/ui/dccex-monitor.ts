@@ -9,9 +9,9 @@
  *
  * **A line the decoder knows carries its gloss** (#5): one plain sentence
  * beside the bytes, drawn quieter and smaller than them, and nothing at all
- * beside a line it does not know. A line this page sent carries none (#327). The reading is the decoder's — a pure
- * function this component asks and holds no part of (ADR-0009 d.1) — and the
- * drawing is this component's.
+ * beside a line it does not know. A line this page sent carries none (#327).
+ * The reading is the decoder's — a pure function this component asks and
+ * holds no part of (ADR-0009 d.1) — and the drawing is this component's.
  *
  * **And there is a box at the foot** (#6). What is typed in it goes up the
  * stream as one whole `<…>` message and is shown in the lines above, marked
@@ -22,10 +22,10 @@
  * `message.js`'s, writing it is the stream's, and holding the conversation is
  * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
- * **The box remembers what was sent.** ↑ and ↓, as keys or as the two buttons
- * beside the send, step through the last commands as a shell does, and what
- * was being typed comes back past the newest one. Tapping a sent line puts it
- * in the box. The history is what `sends` handed back, not the page's polls,
+ * **The box remembers what was sent.** ↑ and ↓, as keys or as the two
+ * buttons beside the send, step through the last commands as a shell does, and
+ * what was being typed comes back past the newest one. Tapping a sent line puts
+ * it in the box. The history is what `sends` handed back, not the page's polls,
  * and it is kept in `localStorage` for this device.
  *
  * **The lines are handed to it and the sending is handed to it**, because what
@@ -35,10 +35,10 @@
  *
  * **Every row is keyed** (#74). The page keeps the last two thousand lines and
  * drops the oldest, so at capacity every arriving line shifts the whole
- * conversation up by one — and an unkeyed list, which Lit matches by position,
- * re-commits every binding on all two thousand rows for it. Keyed, the shift
- * moves the rows it already drew. The key is assigned where the conversation
- * is kept, which is the rules' (`Line`, `monitor.js`).
+ * conversation up by one — and an unkeyed list, which Lit matches by
+ * position, re-commits every binding on all two thousand rows for it. Keyed,
+ * the shift moves the rows it already drew. The key is assigned where the
+ * conversation is kept, which is the rules' (`Line`, `monitor.js`).
  *
  * **And one row is the page's own note.** A resume that dropped lines
  * puts one in where the gap is, saying how many went; it is drawn as the page
@@ -47,29 +47,29 @@
  * rules' and this draws it, as the count beside the controls is.
  *
  * **And it can be paused and cleared** (stories 12 and 13). The two controls
- * are drawn as icons — a pause that becomes a play while the view is held, and
- * the lines going — each carrying its word as a tooltip and as a label, so the
- * word is there for a reader who is not reading the shape (issue 167). What
- * they do is the page's, handed down the way the sending is: **pause** holds
- * the view, so that nothing on screen is trimmed
- * while a reader reads it — which is what scrolling up cannot do, since at
- * capacity the oldest lines go on being dropped — and what arrives behind it
- * is queued out of sight with a count on the monitor, the cap it is dropped
- * past said rather than hidden. **Clear** empties the conversation and any
- * queue and nothing else. Neither stops the stream, the polling or the tiles:
- * they are the view and not the conversation, and a line typed at the box
- * while the view is held goes up the stream and waits behind the pause with
- * the rest. The queue and the counting are `monitor.js`'s, run rather than
- * read; the drawing is this component's.
+ * are drawn as icons — a pause that becomes a play while the view is held,
+ * and the lines going — each carrying its word as a tooltip and as a label,
+ * so the word is there for a reader who is not reading the shape (issue 167).
+ * What they do is the page's, handed down the way the sending is: **pause**
+ * holds the view, so that nothing on screen is trimmed while a reader reads it
+ * — which is what scrolling up cannot do, since at capacity the oldest lines
+ * go on being dropped — and what arrives behind it is queued out of sight
+ * with a count on the monitor, the cap it is dropped past said rather than
+ * hidden. **Clear** empties the conversation and any queue and nothing else.
+ * Neither stops the stream, the polling or the tiles: they are the view and not
+ * the conversation, and a line typed at the box while the view is held goes up
+ * the stream and waits behind the pause with the rest. The queue and the
+ * counting are `monitor.js`'s, run rather than read; the drawing is this
+ * component's.
  *
  * **And a burst of arrivals is one drawing of it** (#74). Lit batches what
  * changes within a task, and the frames a busy line arrives in are each their
- * own task, so a station talking steadily is one update per frame it sends.
- * The monitor waits for the frame the browser is going to paint instead: what
- * arrived in between is drawn once, which is as often as anybody can read it.
- * A page nobody is looking at — another tab, a window behind one — is painting
- * nothing, so it draws nothing until it is looked at again, and what it draws
- * then is the conversation as it stands.
+ * own task, so a station talking steadily is one update per frame it sends. The
+ * monitor waits for the frame the browser is going to paint instead: what
+ * arrived in between is drawn once, which is as often as anybody can read it. A
+ * page nobody is looking at — another tab, a window behind one — is
+ * painting nothing, so it draws nothing until it is looked at again, and what
+ * it draws then is the conversation as it stands.
  *
  * **The view follows the newest line while the reader is at the bottom and
  * stays where it is once they have scrolled up**, so reading back does not
@@ -82,17 +82,17 @@
  * that just got shorter, and what they were reading comes up under them by the
  * height of whatever went. So the place held across an update is a row and
  * where in the view that row sat, and the view is put back to wherever that row
- * has got to. Browsers have scroll anchoring that may do this and may not — it
- * is best-effort and off in cases of its own — and the one thing the monitor
- * promises a reader who has scrolled up (#4) does not rest on it.
+ * has got to. Browsers have scroll anchoring that may do this and may not —
+ * it is best-effort and off in cases of its own — and the one thing the
+ * monitor promises a reader who has scrolled up (#4) does not rest on it.
  *
- * **What it works out without drawing is run rather than read** (#78).
- * Whether the reader is at the bottom, the time a line arrived and what waits
- * behind a pause are `monitor.js`'s, which is JavaScript so that a bare node
- * can put the pairs that matter through them. What is left here needs a
- * browser — the rows, the box at the foot, the controls, the rectangles a held
- * row is measured with — and a gate with no browser in it can read that and
- * cannot scroll it.
+ * **What it works out without drawing is run rather than read** (#78). Whether
+ * the reader is at the bottom, the time a line arrived and what waits behind a
+ * pause are `monitor.js`'s, which is JavaScript so that a bare node can put the
+ * pairs that matter through them. What is left here needs a browser — the
+ * rows, the box at the foot, the controls, the rectangles a held row is
+ * measured with — and a gate with no browser in it can read that and cannot
+ * scroll it.
  */
 
 import { lookTheme } from "@rails49/look";
@@ -114,8 +114,8 @@ import { monitorStyles } from "./dccex-monitor.styles.js";
 
 /** What marks a line this page sent, in the column the station's lines leave
  *  empty. A mark and a colour rather than a colour alone, because a reader who
- *  does not see the colour is still owed the distinction — and because the one
- *  thing this page must never be ambiguous about is which of these lines it
+ *  does not see the colour is still owed the distinction — and because the
+ *  one thing this page must never be ambiguous about is which of these lines it
  *  put on the railroad. */
 const SENT_MARK = "»";
 
@@ -167,12 +167,12 @@ const REFERS = "commands ↗";
  *  where in the view that row sat.
  *
  *  Not a number of pixels from the top of the conversation. The oldest lines
- *  are dropped at capacity (`KEPT`, `monitor.js`), so what a trim takes is
- *  the top of that list, and a view left at the same `scrollTop` is looking at
- *  a different line afterwards. A row is not moved out from under a reader by
- *  that — it is carried up along with everything below what went — so putting
- *  the view back on the row puts the reader back on what they were reading,
- *  whether a thousand lines were dropped or none (#75).
+ *  are dropped at capacity (`KEPT`, `monitor.js`), so what a trim takes is the
+ *  top of that list, and a view left at the same `scrollTop` is looking at a
+ *  different line afterwards. A row is not moved out from under a reader by
+ *  that — it is carried up along with everything below what went — so
+ *  putting the view back on the row puts the reader back on what they were
+ *  reading, whether a thousand lines were dropped or none (#75).
  *
  *  The row is the newest one drawn. Lines arrive below it, so nothing arriving
  *  moves it, and it is the last row a trim could reach. */

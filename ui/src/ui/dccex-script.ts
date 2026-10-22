@@ -47,9 +47,9 @@
  * own counterparty would be a second answer to what the page talks to (the
  * organisation's ADR-0002, `dccex-app.ts`).
  *
- * **What it works out without drawing is `script.ts`'s** — the text a railroad
- * with no script opens with, and whether what is in the editor is what was
- * applied — so those are run rather than read (`ui/test/script.test.ts`).
+ * **What it works out without drawing is `script.ts`'s** — the text a
+ * railroad with no script opens with, and whether what is in the editor is what
+ * was applied — so those are run rather than read (`ui/test/script.test.ts`).
  * What is decided here is the drawing: where the name sits, where the warnings
  * open, and where the editor goes.
  *
@@ -159,8 +159,8 @@ export class DccexScript extends LitElement {
    *
    *  It is not Lit's. CodeMirror holds its own DOM, its own selection and its
    *  own undo history, and a template that drew it would make a second one on
-   *  every draw — which is the history this view was losing (ADR-0019). So the
-   *  template draws a place for it and `updated` puts one there. */
+   *  every draw — which is the history this view was losing (ADR-0019). So
+   *  the template draws a place for it and `updated` puts one there. */
   #editor: EditorView | null = null;
 
   /** The railroad the editor is open on, or `null` where no editor is. It is
@@ -302,9 +302,9 @@ export class DccexScript extends LitElement {
    * Three cases, and they are the three states above. Nothing to edit lets the
    * editor go. A railroad that is not the one it was open on opens a new
    * document in it, which is a new history: an undo that reached back into
-   * another railroad's script would be an edit nobody made. Anything else — an
-   * Apply, a warning opening, the railroad being unloaded under the edits —
-   * leaves it alone, because what is in it is what somebody typed.
+   * another railroad's script would be an edit nobody made. Anything else —
+   * an Apply, a warning opening, the railroad being unloaded under the edits
+   * — leaves it alone, because what is in it is what somebody typed.
    *
    * It is opened on `edited` and not on `opened.text`. The two are the same
    * text when a railroad opens, and where they differ it is because there are
@@ -332,8 +332,8 @@ export class DccexScript extends LitElement {
   /** Apply, and the warning it opens under.
    *
    * The control is dead while an Apply is in flight, while there is nothing to
-   * apply, and on a railroad that has been unloaded under the edits — there is
-   * no railroad to stand down for that text — and it says what the gesture
+   * apply, and on a railroad that has been unloaded under the edits — there
+   * is no railroad to stand down for that text — and it says what the gesture
    * does before it is pressed a second time: the operator is the guard on a
    * railroad standing down, and a person can only be one if they are told
    * (ADR-0006 d.2, ADR-0015 d.3, issue 238).
@@ -401,8 +401,8 @@ export class DccexScript extends LitElement {
    *
    * A railroad that is unreported is none of the three either, and is read
    * before them: it is not a name this editor is not on, it is no name at all
-   * (issue 242). Nothing opens and nothing closes, and the one thing it does
-   * is shut the Apply warning — a question about standing a railroad down that
+   * (issue 242). Nothing opens and nothing closes, and the one thing it does is
+   * shut the Apply warning — a question about standing a railroad down that
    * the page cannot reach the broker to ask is not a question to leave open,
    * and nothing was sent.
    *
@@ -431,11 +431,12 @@ export class DccexScript extends LitElement {
   }
 
   /** The edits on an unloaded railroad discarded, which opens the railroad
-   *  `control` has loaded now — or leaves nothing to edit, where it has loaded
-   *  none. Nothing was written to either railroad. */
+   *  `control` has loaded now — or leaves nothing to edit, where it has
+   *  loaded none. Nothing was written to either railroad. */
   readonly #discards = (): void => {
     // The control is drawn on the warning alone, and the warning is a railroad
-    // `control` has loaded another of — so there is a reading here to open and
+    // `control` has loaded another of — so there is a reading here to open
+    // and
     // the railroad is not unreported.
     void this.#shows(this.loaded ?? null);
   };

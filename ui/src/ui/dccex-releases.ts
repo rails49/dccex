@@ -3,13 +3,13 @@
  * row on a **view** of its own, and the one place on the page one is written
  * onto the **station**.
  *
- * Newest first, each with its title and the day it was published, the one
- * that is on the station now marked as such, and a release there is nothing to write from —
- * no firmware, or none with a digest to check it against — saying so (#8,
- * #81, docs/ui/README.md; the issue that last changed these words is named
+ * Newest first, each with its title and the day it was published, the one that
+ * is on the station now marked as such, and a release there is nothing to write
+ * from — no firmware, or none with a digest to check it against — saying so
+ * (#8, #81, docs/ui/README.md; the issue that last changed these words is named
  * there and in `releases.js` rather than here, because an issue number in the
- * hundreds is three hex digits and the colour scan (`tests/ui/paths.py`) reads one
- * in a component as a colour). The ordering, the dates and the mark are the
+ * hundreds is three hex digits and the colour scan (`tests/ui/paths.py`) reads
+ * one in a component as a colour). The ordering, the dates and the mark are the
  * listing module's — a pure function of what the **face** answered and what
  * the station said (`releases.js`) — and this component is handed them and
  * draws them, as the tiles are handed their readings.
@@ -22,15 +22,15 @@
  * them (issue 169). The row still opens and shuts: a long list on a phone is
  * why it is a row at all.
  *
- * **And choosing one flashes it** (#9). A release that carries a firmware
- * with a digest to check it against is pressed, the operator is told what flashing does — the station resets, the
- * rails go dead, every throttle loses it, it takes a minute or two — and asked
- * to say so a second time; what follows is `flash.js`'s sequence, and this
- * component shows which step it is on. Nothing behind the page guards any of
- * it: the mirror checks the tag, the release, the digest, the device and
- * whether it is already writing, and it checks nothing about a railroad
- * (ADR-0006). The operator is the guard, and the warning is what lets them be
- * one.
+ * **And choosing one flashes it** (#9). A release that carries a firmware with
+ * a digest to check it against is pressed, the operator is told what flashing
+ * does — the station resets, the rails go dead, every throttle loses it, it
+ * takes a minute or two — and asked to say so a second time; what follows is
+ * `flash.js`'s sequence, and this component shows which step it is on. Nothing
+ * behind the page guards any of it: the mirror checks the tag, the release, the
+ * digest, the device and whether it is already writing, and it checks nothing
+ * about a railroad (ADR-0006). The operator is the guard, and the warning is
+ * what lets them be one.
  *
  * **The steps, and every sentence they are said in, are the sequence's**, so
  * what an operator reads is asserted by running it rather than by reading this
@@ -49,8 +49,8 @@
  *
  * **The flash is not over when the answer comes back.** What is on the station
  * is the station's to say, so the row says it is waiting for the station until
- * the **build** arrives and then says whether it is the tag that was written —
- * a build that is something else is a failure whatever the mirror answered
+ * the **build** arrives and then says whether it is the tag that was written
+ * — a build that is something else is a failure whatever the mirror answered
  * (ADR-0006 d.3, ADR-0012 d.4). The reading is `flash.js`'s `became()` and what
  * is here is the three ways it is drawn.
  *
@@ -255,10 +255,10 @@ export class DccexReleases extends LitElement {
    *  something else (ADR-0012 d.4).
    *
    * The reading is `became()`'s and the sentence is the sequence's or the
-   * face's own — a page that wrote its own over a refusal it was given would be
-   * guessing at an answer it has (control ADR-0050). What is here is which of
-   * the three it is drawn as, and that it is drawn where the step is: the row
-   * can be shut, and this is what is on the page while the station comes
+   * face's own — a page that wrote its own over a refusal it was given would
+   * be guessing at an answer it has (control ADR-0050). What is here is which
+   * of the three it is drawn as, and that it is drawn where the step is: the
+   * row can be shut, and this is what is on the page while the station comes
    * back. */
   #became(): TemplateResult | typeof nothing {
     const came: Became | null = became(this.wrote, this.written, this.build);
@@ -333,8 +333,8 @@ export class DccexReleases extends LitElement {
    * **A second one cannot start while this is running.** The controls are dead
    * while a step is showing, and this refuses one anyway: the first step is
    * shown before the sequence's first `await`, so two presses in one turn
-   * cannot both pass the check — the same reason the mirror's own flag is read
-   * where nothing is awaited after it (`firmware.py`).
+   * cannot both pass the check — the same reason the mirror's own flag is
+   * read where nothing is awaited after it (`firmware.py`).
    *
    * What goes down the cable, in what order, and what is said at each step are
    * the sequence's; what this hands it is the page's stream, the page's face

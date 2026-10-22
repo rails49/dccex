@@ -42,8 +42,8 @@ import { read as decoded } from "./decoder.js";
  * A reverser that flipped and cleared the short is the railroad working; one
  * that flipped and did not is the thing to look at, and what tells the two
  * apart is how close together they are. The number is the page's and not the
- * hardware's — the station prints no flip count — and it is here to be changed
- * when the journal says what the right one is (ADR-0022, context).
+ * hardware's — the station prints no flip count — and it is here to be
+ * changed when the journal says what the right one is (ADR-0022, context).
  */
 export const FLIPPED_MS = 250;
 

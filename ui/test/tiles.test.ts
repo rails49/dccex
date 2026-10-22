@@ -10,7 +10,8 @@
  *
  * The row keeps its height while it is empty, so the monitor does not move
  * under the reader's thumb as the station goes (ADR-0008 d.3). That half is the
- * stylesheet's `min-height` and is still held there — happy-dom does no layout.
+ * stylesheet's `min-height` and is still held there — happy-dom does no
+ * layout.
  */
 
 import { expect, test } from "vitest";

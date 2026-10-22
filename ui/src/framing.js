@@ -29,10 +29,10 @@
  *
  * It is JavaScript with its types in JSDoc, as every module the gate runs
  * rather than reads is (listed in `tests/ui/test_decoder.py`). These two were
- * read for as long as there was no node to run them with, and a framing that kept its delimiter or a scheme
- * picked the wrong way round leaves a source saying every right word (#78,
- * #101). `tsc` checks this file as strictly as it checks the rest
- * (`ui/tsconfig.json`).
+ * read for as long as there was no node to run them with, and a framing that
+ * kept its delimiter or a scheme picked the wrong way round leaves a source
+ * saying every right word (#78, #101). `tsc` checks this file as strictly as it
+ * checks the rest (`ui/tsconfig.json`).
  */
 
 const HTTPS = "https:";

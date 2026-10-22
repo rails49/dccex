@@ -2,10 +2,10 @@
  * The **editor** the **script** view edits a railroad's Python in: CodeMirror
  * 6, built from its modules (ADR-0019 d.1).
  *
- * What is here is the editor's state — the language, the indent unit, the keys,
- * which tags carry which class, and the mark a refused Apply leaves on the line
- * it named — and nothing about the view it sits on. The pane makes one
- * `EditorView` over this and keeps it (`dccex-script.ts`).
+ * What is here is the editor's state — the language, the indent unit, the
+ * keys, which tags carry which class, and the mark a refused Apply leaves on
+ * the line it named — and nothing about the view it sits on. The pane makes
+ * one `EditorView` over this and keeps it (`dccex-script.ts`).
  *
  * **The colours are not here.** Every tag gets a class and the classes are
  * coloured in the pane's stylesheet, which is the one place the view's colours

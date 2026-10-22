@@ -2,18 +2,18 @@
  * The page: the band, the rail and the work pane between them.
  *
  * **The conversation is held here.** The page opens the **stream**, keeps the
- * lines that arrive on it and the lines it sent, and hands them down — because
- * what is made of that conversation is the whole page and not one pane of it:
- * the band's readings and the tiles' particulars are the same bytes the
+ * lines that arrive on it and the lines it sent, and hands them down —
+ * because what is made of that conversation is the whole page and not one pane
+ * of it: the band's readings and the tiles' particulars are the same bytes the
  * monitor is drawing (ADR-0008 d.2), and a second stream for them would be a
  * second client of the mirror's port for one page.
  *
  * The work pane shows one **view** and the **rail** picks it
  * (docs/ui/README.md, issue 169). There are four: the monitor view, which is
- * the **tile**s and the **monitor** under them — the station's particulars and
- * its conversation as it arrives (#4, #6, #7) — the releases, which is what
- * the station could be written with (#8), the **script**, which is what this
- * railroad wants of the station and is a document in `control`'s store
+ * the **tile**s and the **monitor** under them — the station's particulars
+ * and its conversation as it arrives (#4, #6, #7) — the releases, which is
+ * what the station could be written with (#8), the **script**, which is what
+ * this railroad wants of the station and is a document in `control`'s store
  * (issue 185, ADR-0015), and the **journal**, which is what the station said
  * about power while nobody was watching (issue 266, ADR-0022). What the page
  * around them proves is the installation the rest of the UI rests on: it is
@@ -93,13 +93,13 @@
  * **translator** running to ask it anything. So this page asks, on its own
  * schedule, up its own stream, as a throttle would — and the **mirror** goes
  * on originating nothing, which is the whole of its correctness argument
- * (ADR-0010 d.2). The polls go up the way anything typed goes up, but they
- * are not written to the monitor, and the answers to them are shown only when
- * they changed (ADR-0010 d.1, amended). The first one waits for the stream to say it is
- * open rather than for the schedule to come round: a poll written at a socket
- * that is still connecting is refused and goes nowhere, and a page that asked
- * there spent its first five seconds reporting a station that was answering as
- * one that was not (#82).
+ * (ADR-0010 d.2). The polls go up the way anything typed goes up, but they are
+ * not written to the monitor, and the answers to them are shown only when they
+ * changed (ADR-0010 d.1, amended). The first one waits for the stream to say it
+ * is open rather than for the schedule to come round: a poll written at a
+ * socket that is still connecting is refused and goes nowhere, and a page that
+ * asked there spent its first five seconds reporting a station that was
+ * answering as one that was not (#82).
  *
  * **One question is asked on the link rather than on the schedule**: the most
  * each track may draw, which the tiles carry under each track's current. It is
@@ -128,22 +128,22 @@
  * handed what they do the way it is handed its lines and its sending.
  *
  * **A flash in flight is followed on a schedule of its own** (ADR-0012 d.3,
- * issue 172). The mirror reads esptool's output as it writes and answers how far
- * it has got at a route of its own, so the page asks — twice a second while
- * there is a flash to follow, and once on load, which is how a tab opened or
- * reloaded in the middle of a write shows it. And nothing the rest of the time:
- * a page asking a question with one answer four times a minute, for every tab
- * left open on the box, is the poll ADR-0010 d.1 bought the right to and not one
- * worth spending. What it is told goes down to the releases pane, which draws
- * the bar (`dccex-releases.ts`).
+ * issue 172). The mirror reads esptool's output as it writes and answers how
+ * far it has got at a route of its own, so the page asks — twice a second
+ * while there is a flash to follow, and once on load, which is how a tab opened
+ * or reloaded in the middle of a write shows it. And nothing the rest of the
+ * time: a page asking a question with one answer four times a minute, for every
+ * tab left open on the box, is the poll ADR-0010 d.1 bought the right to and
+ * not one worth spending. What it is told goes down to the releases pane, which
+ * draws the bar (`dccex-releases.ts`).
  *
  * **The releases are asked for once and not on the poll** (#8). What the
  * station is doing changes under the eye, which is what the schedule above is
  * for; what the configured source carries changes when somebody publishes, and
  * a page that asked the release API through the face every five seconds would
  * spend somebody else's rate limit on an answer that is the same all evening.
- * What does change — which release is on the station — arrives on the banner
- * and is read off the **build** (ADR-0008 d.3).
+ * What does change — which release is on the station — arrives on the
+ * banner and is read off the **build** (ADR-0008 d.3).
  *
  * None of it changes the chrome: the band and the rail do not vary between
  * rails49 UIs, and the page is the same on a box with a command station and no
@@ -197,10 +197,10 @@ import "./dccex-tiles.js";
 /** What the page asks the station for every poll: the current on every track.
  *
  * One short line back (`<jI 4 8 0 0>`), so asking four times a second costs
- * every client on the port about sixty bytes a second. The station reports
- * one instantaneous ADC sample per track, which scatters widely around the
- * real current, so the page asks often and averages (`readings.js`). It is also what keeps the
- * **link** fresh, since any answer is the station speaking.
+ * every client on the port about sixty bytes a second. The station reports one
+ * instantaneous ADC sample per track, which scatters widely around the real
+ * current, so the page asks often and averages (`readings.js`). It is also what
+ * keeps the **link** fresh, since any answer is the station speaking.
  */
 const CURRENTS = "<JI>";
 
@@ -254,8 +254,8 @@ export const POLL_MS = 250;
  * questions a minute to move a bar by a pixel (ADR-0012 d.3).
  *
  * It is asked of the **face** and not up the stream: how far a write has got is
- * this app's own business about itself, and the station is away for the whole of
- * it.
+ * this app's own business about itself, and the station is away for the whole
+ * of it.
  */
 export const FOLLOW_MS = 500;
 
@@ -312,9 +312,9 @@ export class DccexApp extends LitElement {
   /** How far the flash in flight has got, as the face last answered, or `null`
    *  where none is running and where it did not say (`face.ts`).
    *
-   *  Any flash and not only the one this page asked for: what the mirror answers
-   *  is what it is doing, and a page reloaded in the middle of a write is
-   *  reading about that write (ADR-0012 d.3). */
+   *  Any flash and not only the one this page asked for: what the mirror
+   *  answers is what it is doing, and a page reloaded in the middle of a write
+   *  is reading about that write (ADR-0012 d.3). */
   flashing: Flashing | null = null;
 
   /** Which view the work pane is showing, as the hash names it. The view a
@@ -333,9 +333,9 @@ export class DccexApp extends LitElement {
 
   /** Whether a write this page asked for is still in flight.
    *
-   *  The mirror answers a POST when esptool has finished, so between the ask and
-   *  that answer there is a flash to follow whatever the last poll said — the
-   *  first of those polls goes out before the tool has printed anything. */
+   *  The mirror answers a POST when esptool has finished, so between the ask
+   *  and that answer there is a flash to follow whatever the last poll said —
+   *  the first of those polls goes out before the tool has printed anything. */
   #writing = false;
 
   /** Whether an ask about the flash is out already.
@@ -343,8 +343,8 @@ export class DccexApp extends LitElement {
    *  One at a time, so the answers cannot arrive out of order. Which order a
    *  browser hands back the answers to two requests in is the browser's, and an
    *  older answer landing after a newer one is the defect the count of clients
-   *  had (#88, issue 111): here it would walk the bar backwards. A tick that finds
-   *  one out goes by and the next asks. */
+   *  had (#88, issue 111): here it would walk the bar backwards. A tick that
+   *  finds one out goes by and the next asks. */
   #asking = false;
 
   /** The stream, and the two things it hands up: the lines that arrive, and
@@ -516,11 +516,10 @@ export class DccexApp extends LitElement {
 
   /** Send what somebody typed, and keep the line that went.
    *
-   * What comes back is what left the page, or `null` where nothing did — there
-   * was nothing to send, or there is no stream open to send it on. A line is
-   * kept only for what actually went: a line claiming the station was asked
-   * something it was never asked is the observation nobody made (ADR-0009
-   * d.2).
+   * What comes back is what left the page, or `null` where nothing did —
+   * there was nothing to send, or there is no stream open to send it on. A line
+   * is kept only for what actually went: a line claiming the station was asked
+   * something it was never asked is the observation nobody made (ADR-0009 d.2).
    */
   readonly #sends = (typed: string): string | null => {
     const sent = this.#stream.send(typed);
@@ -701,14 +700,14 @@ export class DccexApp extends LitElement {
    * under way follows it to the end whether or not it was the one that pressed:
    * the answer is about the mirror and not about who asked.
    *
-   * A face that could not be asked reads as no flash running, which is `face.ts`'s
-   * answer and is drawn as no bar: a bar left standing for an answer nobody got
-   * would say the station was being written (ADR-0009 d.2).
+   * A face that could not be asked reads as no flash running, which is
+   * `face.ts`'s answer and is drawn as no bar: a bar left standing for an
+   * answer nobody got would say the station was being written (ADR-0009 d.2).
    *
    * **One ask at a time.** Two out at once could be answered in either order,
-   * and the older answer landing last would walk the bar backwards — the defect
-   * the count of clients had, which the page stopped numbering for when it
-   * stopped drawing it (#88, issue 111).
+   * and the older answer landing last would walk the bar backwards — the
+   * defect the count of clients had, which the page stopped numbering for when
+   * it stopped drawing it (#88, issue 111).
    */
   async #follows(): Promise<void> {
     if (this.#asking) {

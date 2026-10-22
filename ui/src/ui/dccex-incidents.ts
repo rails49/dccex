@@ -4,14 +4,14 @@
  *
  * A row is what a person came to the view for — when it happened, which
  * district, which kind, how many times the station cut it, the highest current
- * it printed and how long it was cut for — and pressing it shows the station's
- * own words, so nobody has to read the file to see what the reading was made
- * of (ADR-0022 d.3; the issue these words were written for is named in
+ * it printed and how long it was cut for — and pressing it shows the
+ * station's own words, so nobody has to read the file to see what the reading
+ * was made of (ADR-0022 d.3; the issue these words were written for is named in
  * `docs/ui/README.md` and in `incidents.js` rather than here, because an issue
  * number in the hundreds is three hex digits and the colour scan
- * (`tests/ui/paths.py`) reads one in a component as a colour). Which lines those are is the
- * reading module's: an incident names them, and the flip a short outlived is
- * one of them.
+ * (`tests/ui/paths.py`) reads one in a component as a colour). Which lines
+ * those are is the reading module's: an incident names them, and the flip a
+ * short outlived is one of them.
  *
  * **The reading and every word of it are `incidents.js`'s.** The order, the
  * stamps, the kinds and the numbers come down as strings and this component

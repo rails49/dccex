@@ -1,5 +1,6 @@
 /**
- * What the page sends for what was typed: one whole `<…>` message, or nothing.
+ * What the page sends for what was typed: one whole `<…>` message, or
+ * nothing.
  *
  * A pure function of the text in the box and nothing else — no socket, no
  * state carried between calls, no clock and no DOM — so what leaves the page

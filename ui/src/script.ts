@@ -13,11 +13,11 @@
  * is a reading rather than a choice, and a script nothing is running cannot be
  * edited here (#238, `bus.ts`, `readings.js`'s `named`).
  *
- * What is here is everything about that a browser is not needed for — the text
- * a railroad with no script opens with, and whether what is in the editor is
- * the text that was applied — so that the rules can be run rather than read
- * (`ui/test/script.test.ts`, the seam `view.ts` is split on). The asking is
- * `face.ts`'s, the drawing is `dccex-script.ts`'s, and the indenting is the
+ * What is here is everything about that a browser is not needed for — the
+ * text a railroad with no script opens with, and whether what is in the editor
+ * is the text that was applied — so that the rules can be run rather than
+ * read (`ui/test/script.test.ts`, the seam `view.ts` is split on). The asking
+ * is `face.ts`'s, the drawing is `dccex-script.ts`'s, and the indenting is the
  * editor's (ADR-0019, `ui/src/ui/editor.ts`).
  *
  * **The sample is the translator's own**, copied here rather than fetched: the
@@ -248,8 +248,8 @@ export function opened(text: string | null | undefined): Opened {
  * The comparison is the whole of it: edits stay in the page until Apply, so
  * what says there are unapplied ones is the text differing from the one this
  * railroad opened with or was last applied with (ADR-0015 d.5). An editor
- * nobody has typed in — the sample a railroad with no script opens on — is not
- * an edit, and leaving it discards nothing anybody wrote.
+ * nobody has typed in — the sample a railroad with no script opens on — is
+ * not an edit, and leaving it discards nothing anybody wrote.
  *
  * @param edited what is in the editor
  * @param applied the text the railroad opened with, or was applied with

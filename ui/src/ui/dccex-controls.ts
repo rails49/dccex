@@ -5,12 +5,12 @@
  * **It decides nothing.** Which period is read, whether the routine lines are
  * shown and when the journal is asked for again are the view's, kept there and
  * handed down; a press hands the answer up (`dccex-journal.ts`). One direction
- * each, the way the **rail** hands a **view** up — a control that kept its own
- * answer would draw one period while the table counted another.
+ * each, the way the **rail** hands a **view** up — a control that kept its
+ * own answer would draw one period while the table counted another.
  *
- * **The periods are one list.** The three spans and every **build** the
- * journal carries are the same kind of answer — which lines are read — so they
- * are one chooser rather than a chooser and a second control beside it
+ * **The periods are one list.** The three spans and every **build** the journal
+ * carries are the same kind of answer — which lines are read — so they are
+ * one chooser rather than a chooser and a second control beside it
  * (`incidents.js`'s `choices()`).
  *
  * **The download is the browser's own fetch.** It is a link to the face's
