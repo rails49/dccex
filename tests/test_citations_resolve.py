@@ -10,7 +10,7 @@ ADR-0002 is available to carry it".
 
 Nothing can be renamed to end it — one of the two is another repository's — so
 what a page owes a reader is the owner beside the number. The glossary
-carries the URL once (`CONTEXT.md`, **face**), which is where the name is
+carries the URL once (`GLOSSARY.md`, **face**), which is where the name is
 resolved rather than only disambiguated.
 
 **A link is an owner too.** A citation written as the text of a link to one of
@@ -56,7 +56,7 @@ SELF = Path(__file__).resolve()
 
 ROOT = SELF.parent.parent
 
-CONTEXT = ROOT / "CONTEXT.md"
+GLOSSARY = ROOT / "GLOSSARY.md"
 
 #: The records, which are not read. An ADR is accepted as it was written and
 #: is not edited to satisfy a check; ADR-0003 and ADR-0006 cite this
@@ -248,7 +248,7 @@ def test_the_prose_cites_adr_0002_at_all() -> None:
         "ui/test/journal.test.ts",
     }
     assert {name for name, text in read if LINKED.search(text)} == {
-        "CONTEXT.md",
+        "GLOSSARY.md",
         "README.md",
         "docs/dccex_usb/README.md",
     }
@@ -392,5 +392,5 @@ def test_a_link_to_anything_else_is_not_an_owner() -> None:
 
 def test_the_glossary_resolves_the_organisations_adr_0002() -> None:
     """One place a reader of the code can turn the name into a decision."""
-    text = CONTEXT.read_text()
+    text = GLOSSARY.read_text()
     assert text.count(ORG) == 1, f"the glossary links {ORG} {text.count(ORG)} times"

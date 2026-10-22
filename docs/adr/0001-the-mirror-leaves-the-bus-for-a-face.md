@@ -130,7 +130,7 @@ their numbers.
 
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and
-[CONTEXT.md](../../CONTEXT.md) is where that is written down rather than in a
+[GLOSSARY.md](../../GLOSSARY.md) is where that is written down rather than in a
 docstring somebody has to find.
 
 ## Consequences

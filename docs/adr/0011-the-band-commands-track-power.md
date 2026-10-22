@@ -34,6 +34,6 @@ no confirmation.
 
 ## Consequences
 
-- The band is two readings and one control. CONTEXT.md's **band** entry says so.
+- The band is two readings and one control. GLOSSARY.md's **band** entry says so.
 - A press is a line on the stream like any other client's, and the station's
   `<p…>` answer is what turns the button's colour.

@@ -90,7 +90,7 @@ def said(
 
 def down(ms: int) -> Line:
     """The station stopped answering. The **build** goes with the link, so the
-    line carries none (CONTEXT.md, **build**)."""
+    line carries none (GLOSSARY.md, **build**)."""
     return {"at": at(ms), "railroad": RAILROAD, "build": "", "link": "down"}
 
 

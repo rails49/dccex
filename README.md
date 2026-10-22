@@ -52,7 +52,7 @@ top of them.
   and nothing in the app checks
   ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
 
-The words this repository uses are in [CONTEXT.md](CONTEXT.md). The gate is
+The words this repository uses are in [GLOSSARY.md](GLOSSARY.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware, no Docker daemon
 and no node — `uv` and an environment, and the first run in a fresh one
 downloads `pyright`'s own toolchain before it can check anything. The three checks that do need a daemon — the page's image built

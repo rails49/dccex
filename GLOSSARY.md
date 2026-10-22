@@ -2,9 +2,9 @@
 
 The words this repository uses. Words used in more than one rails49 repository
 are in the organisation's
-[CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md). Every
+[GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md). Every
 entry links to the doc that owns it (org
-[ADR-0017](https://github.com/rails49/.github/blob/main/docs/adr/0017-each-fact-has-one-owner-and-an-accepted-adr-does-not-change.md)).
+[ADR-0021](https://github.com/rails49/.github/blob/main/docs/adr/0021-each-fact-has-one-owner-and-the-glossary-is-glossary-md.md)).
 
 ## Language
 
@@ -74,7 +74,7 @@ _Avoid_: error, fault, event, alarm, short (one cause of a trip)
 
 **Face**:
 The organisation's word
-([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md),
+([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md),
 [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)).
 The mirror's face is private to this UI; what it answers is in
 [docs/dccex_usb/README.md](docs/dccex_usb/README.md#the-face).
@@ -145,10 +145,10 @@ _Avoid_: description, explanation, translation, tooltip, annotation, comment,
 label
 
 **Band**:
-The organisation's word ([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md)).
+The organisation's word ([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
 
 **Rail**:
-The organisation's word ([CONTEXT.md](https://github.com/rails49/.github/blob/main/CONTEXT.md)).
+The organisation's word ([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md)).
 
 **View**:
 `control`'s word, owned by its

@@ -316,7 +316,7 @@ export const QUIET = /** @type {Kept} */ ({
  */
 
 /**
- * One **tile**: one track's readings, as they are drawn (CONTEXT.md **tile**,
+ * One **tile**: one track's readings, as they are drawn (GLOSSARY.md **tile**,
  * issue 170).
  *
  * The power is what it is rather than a word, because the tile draws it as a
@@ -626,7 +626,7 @@ function says(letter, hot) {
 }
 
 /**
- * One **tile** per track the station names, in letter order (CONTEXT.md
+ * One **tile** per track the station names, in letter order (GLOSSARY.md
  * **tile**, issue 170).
  *
  * The station's answer to `<=>` lists every track its firmware is built with,

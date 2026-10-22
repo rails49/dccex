@@ -177,7 +177,7 @@ RELEASES_PATH = "/releases"
 prefix already off it (ADR-0004). Each of them goes back as four things: the
 **tag** it is chosen by, its title, the day it was published, and whether it
 carries a firmware to write. A tag is still the only thing a caller ever names
-(CONTEXT.md); the others are what a page needs to say what a release is, which
+(GLOSSARY.md); the others are what a page needs to say what a release is, which
 is newest and which one there would be nothing to write (#8)."""
 
 TAG = "tag_name"
@@ -323,7 +323,7 @@ translator beside it and no record to serve (`__main__.py`, ADR-0022 d.1)."""
 
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
-    # for a build (CONTEXT.md), and a body that names no tag asks nothing.
+    # for a build (GLOSSARY.md), and a body that names no tag asks nothing.
     Refusal.LATEST: HTTPStatus.BAD_REQUEST,
     # Somebody is writing the station already. What to do about it is to ask
     # again when it is over, which is what this says and 400 does not.

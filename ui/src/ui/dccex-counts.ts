@@ -10,7 +10,7 @@
  * a column means.
  *
  * **The station has a row of its own** because the link going down and the
- * station restarting are about no district (CONTEXT.md, **station**). It is
+ * station restarting are about no district (GLOSSARY.md, **station**). It is
  * the two counts in words rather than numbers under the district columns:
  * there is no trip, no peak and no rate to put there, and a zero in those
  * columns would be a reading nobody took (ADR-0009 d.2).

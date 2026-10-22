@@ -2,7 +2,7 @@
  * Where the mirror's face is, on this page's own origin.
  *
  * A **face** is an app's own interface, about that app rather than about a
- * railroad, and this page's one counterparty is the mirror's (CONTEXT.md,
+ * railroad, and this page's one counterparty is the mirror's (GLOSSARY.md,
  * ADR-0008 d.1). It answers under a prefix the door strips before the app
  * sees a request, so the page and the face share one origin and one
  * certificate and nothing here is a host or a port (ADR-0004 d.2).

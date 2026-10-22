@@ -671,7 +671,7 @@ back to. The commit is on the image as `org.opencontainers.image.revision`
 too, so `docker inspect` still answers the question for one somebody renamed.
 **A tag is not what this is called** — a tag names a firmware release, which
 is the thing that gets written onto the station, and the two sentences are one
-`docker` command apart on the same box ([CONTEXT.md](../../CONTEXT.md)).
+`docker` command apart on the same box ([GLOSSARY.md](../../GLOSSARY.md)).
 
 **An image built with no commit claims none.** That is what `docker compose up
 --build` on a clean clone makes, and the label it writes is empty: `dev` is what

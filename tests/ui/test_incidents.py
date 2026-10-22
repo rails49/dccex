@@ -231,7 +231,7 @@ def test_the_link_line_is_under_both_the_outage_and_the_trip_it_ended() -> None:
 @pytest.mark.node
 def test_the_station_s_own_row_is_the_link_losses_and_the_restarts() -> None:
     """The two things in the journal that are about no district, counted of the
-    station and headed by its word (CONTEXT.md, **station**)."""
+    station and headed by its word (GLOSSARY.md, **station**)."""
     assert drew(A_TRIP_AND_A_LINK_LOSS)["station"] == {
         "district": "station",
         "says": ["1 link loss", "0 restarts"],
@@ -296,7 +296,7 @@ def test_the_columns_are_the_district_the_kinds_and_the_counts() -> None:
 def test_the_periods_are_the_three_spans_and_the_builds_in_the_file() -> None:
     """Newest build first, because the last one in the file is what the station
     is running now. The empty build is not one of them: it is the station not
-    answering rather than something it was running (CONTEXT.md, **build**)."""
+    answering rather than something it was running (GLOSSARY.md, **build**)."""
     (served,) = run([{"served": lines(TWO_BUILDS)}])
     assert served["choices"] == ["all", "last day", "last 7 days", BUILD, BEFORE]
     assert served["builds"] == [BUILD, BEFORE]

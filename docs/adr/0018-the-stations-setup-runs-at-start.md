@@ -64,7 +64,7 @@ handler.
   it comes back.
 - The boot line is part of the contract, as the trip lines are (ADR-0016).
 - A railroad's script in the store moves its setup to `start` by hand.
-- CONTEXT.md's **event** entry has a third kind.
+- GLOSSARY.md's **event** entry has a third kind.
 
 ## Considered
 

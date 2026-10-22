@@ -473,7 +473,7 @@ def test_the_railroad_row_says_whether_the_railroad_is_built() -> None:
 
 @pytest.mark.node
 def test_there_is_a_tile_per_track_in_letter_order() -> None:
-    """One per track the station names, in letter order (CONTEXT.md **tile**).
+    """One per track the station names, in letter order (GLOSSARY.md **tile**).
     D is set to NONE and has a tile all the same.
 
     The **link** is not among them: the **band** carries it. Nor is the

@@ -55,7 +55,7 @@ the same origin rule.
 
 ## Consequences
 
-- The page is a client of the bus and of the mirror's face. CONTEXT.md's
+- The page is a client of the bus and of the mirror's face. GLOSSARY.md's
   **face** and **band** entries say so.
 - The page subscribes to two rows of a railroad rather than one (#239). A
   third would be this page reading a railroad, which is `control`'s UI.

@@ -82,7 +82,7 @@ import { scriptStyles } from "./dccex-script.styles.js";
 import { editing, mark } from "./editor.js";
 
 /** What the editor is labelled for assistive technology. The view draws no
- *  heading. The word is the glossary's (CONTEXT.md, **script**): a railroad's
+ *  heading. The word is the glossary's (GLOSSARY.md, **script**): a railroad's
  *  document in the store, which the translator loads and this page edits. */
 const LABEL = "script";
 

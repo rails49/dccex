@@ -166,7 +166,7 @@ line it is; `<jI …>` is the current each is drawing and is not read here."""
 
 _BANNER = re.compile(rb"iDCC-EX V-\S+ / \S+ / \S+ G-(\S+)$")
 """The banner, for the one field this app reads off it: `G-` is the **build**
-(CONTEXT.md). A banner without one is no reading — the station would be saying
+(GLOSSARY.md). A banner without one is no reading — the station would be saying
 it came up without saying as what."""
 
 
@@ -202,7 +202,7 @@ class Banner:
     sends when it comes up and answers `<s>` with.
 
     The **build**, which is a fact reported by the hardware and goes with the
-    **link** (CONTEXT.md). Read for the **journal**, which carries it on every
+    **link** (GLOSSARY.md). Read for the **journal**, which carries it on every
     line (ADR-0022 d.2); the row this app publishes carries no build, which
     went to the mirror's face with the flash (control#567).
     """
