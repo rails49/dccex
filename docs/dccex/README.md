@@ -36,7 +36,8 @@ them.
 where the id is the one this app is started with — `dccex`, the package's
 name, where it is given no other. The id is whatever the publisher calls
 itself, a value and not a contract: it appears in no drawing, no configuration
-and no list of ours (control ADR-0059).
+and no list of ours (control ADR-0059). A script posts on
+`tc49/ui/state/text/<name>` ([below](#what-a-script-is-written-with)).
 
 **It acts on every address it hears**, and there is no ownership table
 anywhere. An address names no system — it is the string the drawing carries
@@ -129,16 +130,21 @@ Event listeners:
     traction,
     function,
     reported_power, (reported by station)
-    reported_point.
+    reported_point,
+    reported_district, (a district's state, mode and limit)
+    reported_message. (every message the station sends)
 
 Handlers:
 * ordinary Python functions
 * run in place of the command the translator would have sent;
   `t.default()` sends that command as well.
 * `t.send(text)` sends one raw message.
+* `t.text(name, value)` sets the text the widget `name` shows.
 * `t.desired(row, address=None)` reads the desired value.
 * `t.reported(row, address=None)` the last reports;
+* `t.message` is the message on reported_message.
 * a value the bus has not given reads None.
+* return quickly: a handler that blocks holds up the translator.
 '''
 
 
@@ -167,6 +173,21 @@ def wx310_crossing(t):
         t.send("<= D MAIN_AUTO>")
 
 
+@on("reported_district")
+def show_district(t):
+    # show each district on the text widget track-<district>:
+    #      green on, amber near its limit, bold red tripped
+    d = t.reported("district", t.address)
+    state = "?" if d.state in (None, "unknown") else d.state
+    shown = f"{t.address} {state}"
+    if d.mode and d.mode.endswith("_INV"):
+        shown += " inverted"
+    colour = {"on": "32", "alert": "33", "tripped": "1;31"}.get(d.state)
+    if colour:
+        shown = f"{chr(27)}[{colour}m{shown}{chr(27)}[0m"
+    t.text(f"track-{t.address}", shown)
+
+
 # @on("point", "20")
 # @on("point", "21")
 # def signal_5(t):
@@ -185,26 +206,49 @@ spellings are the station's. `<JG district mA>` is in the rails49 firmware
 
 `on(row, address=None)` registers a handler. The rows are `start` for the
 station as this app has not set it, `power`, `point`, `signal`, `traction` and
-`function` for the desired values, and `reported_power` and `reported_point` for
-what the station said. The address is the string the bus carries and the
-hardware answers to; left out, the handler runs for **every** address of its
-row, which is the only form `start` and `power` have. Two of these stack on one
+`function` for the desired values, and `reported_power`, `reported_point`,
+`reported_district` and `reported_message` for what the station said. The
+address is the string the bus carries and the hardware answers to; left out,
+the handler runs for **every** address of its row, which is the only form
+`start`, `power` and `reported_message` have. Two of these stack on one
 function, which is how one signal is set from two turnouts. A row that is no
 event, or an address that is not a string, is a script that does not load.
 
-The handler is handed one argument, the event, and may do four things with
+The handler is handed one argument, the event, and may do five things with
 it:
 
 | written | does |
 | --- | --- |
 | `t.default()` | sends this app's own command for the value that fired, once per firing whoever asks; nothing at all for `start` or a report |
 | `t.send(text)` | sends one raw `<…>` message, as typed |
+| `t.text(name, value)` | posts `value` as the text widget `name` shows, on `tc49/ui/state/text/<name>`: raw UTF-8, retained, and only where it differs from the last text posted under that name. A name that is empty or holds `/`, `+` or `#` raises |
 | `t.desired(row, address=None)` | reads the desired picture: a position, an aspect, a speed, a function's bit, or the word the power is wanted in. `None` where the bus has not said |
-| `t.reported(row, address=None)` | reads the last reports: `power` by the track the station named — the empty address on the line that names none — and `point` by the id it named. `None` where the station has not said this session |
+| `t.reported(row, address=None)` | reads the last reports: `power` by the track the station named — the empty address on the line that names none — `point` by the id it named, and `district` by its letter. `None` where the station has not said this session |
 
-It publishes nothing on the bus: there is no method for it (ADR-0013 d.4).
-The rows `reported` reads are `power` and `point`, the verb carrying what the
-event names spell out.
+`t.address` is the address the event fired for, and `t.message` the station's
+message on `reported_message`. The text row is the one thing a handler
+publishes on the bus (ADR-0013 d.4 as amended by
+[ADR-0029](../adr/0029-a-script-posts-text-and-hears-what-the-station-says.md)
+d.1). The rows `reported` reads are `power`, `point` and `district`, the verb
+carrying what the event names spell out.
+
+**A district's record** is what `reported_district` fires on a change of and
+`t.reported("district", X)` reads: `state`, `mode` and `limit`, each `None`
+where the station has not said (ADR-0029 d.2). `state` is `on`, `off`,
+`tripped`, `alert` or `unknown`, with a trip and an alert read as
+[the mapping](#the-mapping) reads them. `mode` is the word `<=` takes, so a
+reversed auto-reverse district reads `MAIN_AUTO_INV` and a joined PROG track
+`MAIN`. `limit` is in mA. When the link goes and when the railroad stands down,
+every district a record was reported for reads `unknown`, so a widget does not
+go on showing a reading nobody can take.
+
+**`reported_message` fires on every message**, the poll's answers included,
+about seven a second on this railroad (d.3). A need the other rows do not
+cover is a script reading the station's own words.
+
+**A handler must return quickly** (d.4). It runs on this app's loop, which
+also sends the `<G 3>` the station needs every 3 s to keep the power on.
+Nothing stops a handler that blocks.
 
 **A handler sets everything it depends on each time it runs, from the desired
 picture** (d.5). Point 12's handler above sets district D's whole mode and
@@ -230,9 +274,9 @@ no transition kept here; a handler that wants only the ON reads
 every track's power once a second, and a handler on every one of those
 answers would be a handler on the clock; it runs where the value differs from
 the last one heard (d.3). Everything the station told us goes with the link,
-so the first thing said on the next one is a change. Power and turnouts are
-the two reports a handler can be keyed on; others are added when a script
-needs one. A turnout's report is the station's own faked answer to a throw
+so the first thing said on the next one is a change. Power, turnouts and a
+district's record are the reports that fire on a change. A turnout's report
+is the station's own faked answer to a throw
 ([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)),
 read for a script and for nothing else — it reaches no bus row — and it is
 how a throw from JMRI or a hand-held throttle reaches a railroad's own

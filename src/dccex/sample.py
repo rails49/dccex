@@ -30,16 +30,21 @@ Event listeners:
     traction,
     function,
     reported_power, (reported by station)
-    reported_point.
+    reported_point,
+    reported_district, (a district's state, mode and limit)
+    reported_message. (every message the station sends)
 
 Handlers:
 * ordinary Python functions
 * run in place of the command the translator would have sent;
   `t.default()` sends that command as well.
 * `t.send(text)` sends one raw message.
+* `t.text(name, value)` sets the text the widget `name` shows.
 * `t.desired(row, address=None)` reads the desired value.
 * `t.reported(row, address=None)` the last reports;
+* `t.message` is the message on reported_message.
 * a value the bus has not given reads None.
+* return quickly: a handler that blocks holds up the translator.
 '''
 
 
@@ -66,6 +71,21 @@ def wx310_crossing(t):
         t.send("<= D MAIN_AUTO_INV>")
     else:
         t.send("<= D MAIN_AUTO>")
+
+
+@on("reported_district")
+def show_district(t):
+    # show each district on the text widget track-<district>:
+    #      green on, amber near its limit, bold red tripped
+    d = t.reported("district", t.address)
+    state = "?" if d.state in (None, "unknown") else d.state
+    shown = f"{t.address} {state}"
+    if d.mode and d.mode.endswith("_INV"):
+        shown += " inverted"
+    colour = {"on": "32", "alert": "33", "tripped": "1;31"}.get(d.state)
+    if colour:
+        shown = f"{chr(27)}[{colour}m{shown}{chr(27)}[0m"
+    t.text(f"track-{t.address}", shown)
 
 
 # @on("point", "20")

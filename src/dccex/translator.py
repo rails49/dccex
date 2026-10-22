@@ -11,7 +11,8 @@ is a client of its port beside the others; the USB device is never opened here.
 *Subscribes* `tc49/layout/state/wanted/#` and `tc49/layout/alive_confirmed`.
 *Publishes* `tc49/layout/state/device/track` and
 `tc49/layout/state/device/link/<id>`, where the id is the one this app is
-started with (control ADR-0059).
+started with (control ADR-0059), and a script posts on
+`tc49/ui/state/text/<name>` (ADR-0029 d.1).
 
 The `<…>` syntax is this app's private business — it appears on no bus topic,
 in no other package and in no normative document — and
@@ -34,7 +35,8 @@ a link (`_poll`, `_heard`, ADR-0021).
 place of the command this app would have sent, one keyed on something the
 station reported runs after the fact, and a script that will not load is a
 railroad whose rails may not be made live (`_act`, `load`, ADR-0013,
-ADR-0015).
+ADR-0015). A district's record and every message the station sends are
+events too (`_reports`, `_heard`, ADR-0029).
 
 **A new script text ends the process** rather than being loaded in place
 (`following`, ADR-0015 d.3).
@@ -70,7 +72,7 @@ import contextlib
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 from tc49.lib.bus import Bus, Payload
 from tc49.lib.inventory import OFF, ON, device_topic, split_device
@@ -132,10 +134,22 @@ WANTED_BY_ROW = {row: topic for topic, row in SCRIPT_ROW.items()}
 REPORTED_EVENT = {
     script.ROW_POWER: script.REPORTED_POWER,
     script.ROW_POINT: script.REPORTED_POINT,
+    script.DISTRICT: script.REPORTED_DISTRICT,
 }
-"""The two things the station reports that a handler can be keyed on, and the
-event each is. Power and turnouts; others are added when a script needs one
-(ADR-0013 d.3)."""
+"""What the station reports that `t.reported` reads and a handler is keyed on
+a change of, and the event each is: power, turnouts and a district's record.
+Anything else is `reported_message` (ADR-0013 d.3 as amended by ADR-0029)."""
+
+TEXT = "tc49/ui/state/text"
+"""Where a text widget's text is posted, the widget's name the last level
+(control ADR-0087, ADR-0029 d.1)."""
+
+TRIPPED = "tripped"
+ALERT = "alert"
+UNKNOWN = "unknown"
+"""The states a district's record carries beside `on` and `off`: cut by the
+station, near its limit, and not read because the link is gone (ADR-0029
+d.2)."""
 
 DEVICE_TRACK = "tc49/layout/state/device/track"
 DEVICE_LINK = "tc49/layout/state/device/link"
@@ -222,13 +236,31 @@ class Wanted(NamedTuple):
     default: bytes
 
 
+class District(NamedTuple):
+    """What the station last said about one district, as `reported_district`
+    hands it to a script (ADR-0029 d.2). Each field is None where the station
+    has not said.
+
+    `state` is `on`, `off`, `tripped`, `alert` or `unknown`. `mode` is the
+    word `<=` takes, so `MAIN_AUTO_INV` is a reverser set the other way and a
+    joined PROG track reads `MAIN`. `limit` is the most it may draw, in mA."""
+
+    state: str | None
+    mode: str | None
+    limit: int | None
+
+
+UNREAD = District(UNKNOWN, None, None)
+"""A district whose station this app can no longer hear."""
+
+
 class Event:
-    """What a handler is handed: the event that fired, and the four things a
+    """What a handler is handed: the event that fired, and the five things a
     handler may do about it.
 
     A handler sends raw `<…>`, reads the desired picture and the last
-    reports, and **publishes nothing** on the bus — there is no method here
-    for it, which is the whole of that rule (ADR-0013 d.4). What it is given
+    reports, and posts a widget's text, which is the one thing it publishes
+    on the bus (ADR-0013 d.4 as amended by ADR-0029 d.1). What it is given
     is the two pictures as this app holds them, so a handler sets everything
     it depends on from the desired values each time it runs rather than from
     what an earlier handler sent (d.5).
@@ -245,17 +277,23 @@ class Event:
         address: str | None,
         *,
         sends: Callable[[bytes], None],
+        texts: Callable[[str, str], None],
         default: bytes | None,
         wanted: dict[str, "Wanted"],
-        reported: dict[tuple[str, str], str],
+        reported: dict[tuple[str, str], object],
+        message: str | None = None,
     ) -> None:
         self.row = row
         """The row this event is on, in the script's words."""
         self.address = address
         """The address on it, and None where the row has none."""
+        self.message = message
+        """The station's message verbatim on `reported_message`, `<` and `>`
+        included, and None on every other event (ADR-0029 d.3)."""
         self.sent_default = False
         """Whether this app's own command for the value has gone out."""
         self._sends = sends
+        self._texts = texts
         self._default = default
         self._wanted = wanted
         self._reported = reported
@@ -284,6 +322,14 @@ class Event:
         """
         self._sends(text.strip().encode())
 
+    def text(self, name: str, value: str) -> None:
+        """Post `value` as the text the widget `name` shows, on
+        `tc49/ui/state/text/<name>` and nowhere else: raw UTF-8, retained,
+        and only where it differs from the last text posted under that name
+        (ADR-0029 d.1). A name that is empty or holds `/`, `+` or `#` raises.
+        """
+        self._texts(name, value)
+
     def desired(self, row: str, address: str | None = None) -> object | None:
         """What the bus last wanted of one device, or None where it has not
         said. The rows are the script's: `power`, `point`, `signal`,
@@ -302,14 +348,15 @@ class Event:
         held = self._wanted.get(_topic(row, address))
         return None if held is None else _value(held)
 
-    def reported(self, row: str, address: str | None = None) -> str | None:
+    def reported(self, row: str, address: str | None = None) -> object | None:
         """What the station last said about one thing, or None where it has
-        said nothing this session. `power`, by the track it named, and
-        `point`, by the id it named.
+        said nothing this session. `power`, by the track it named, `point`,
+        by the id it named, and `district`, by its letter.
 
-        The station's own words — `on` and `off` for a track, `closed` and
-        `thrown` for a turnout — and the picture goes with the link: a
-        reading nobody can take is not the last one taken.
+        `on` and `off` for a track, `closed` and `thrown` for a turnout, and
+        a `District` for a district. The picture goes with the link: a
+        reading nobody can take is not the last one taken, and a district
+        reads `unknown` until the station speaks again.
 
         The track a `<p…>` line names, which is the empty address where it
         names none; that line is sent only when every track is on or none is.
@@ -421,8 +468,12 @@ class DccEx:
         # The last report the station made of each thing a handler can be
         # keyed on, by row and address. What a report event fires on a change
         # of, and what `Event.reported` reads. Forgotten with the link, like
-        # everything else the station told us.
-        self._reported: dict[tuple[str, str], str] = {}
+        # everything else the station told us, but for a district's record,
+        # which reads `unknown` until the station speaks again.
+        self._reported: dict[tuple[str, str], object] = {}
+        # The last text posted under each widget name, which a repeat of it
+        # is not posted against (ADR-0029 d.1).
+        self._posted: dict[str, str] = {}
         # The railroad this broker runs, as the row names it, and the script
         # it is running. `None` where no script is loaded, which is a
         # railroad this app carries out OFF, STOP and speeds for and refuses
@@ -550,16 +601,38 @@ class DccEx:
         loaded = self._script
         return [] if loaded is None else loaded.handlers(row, address)
 
-    def _firing(self, row: str, address: str | None, default: bytes | None) -> Event:
+    def _firing(
+        self,
+        row: str,
+        address: str | None,
+        default: bytes | None,
+        message: str | None = None,
+    ) -> Event:
         """One event, as a handler is handed it."""
         return Event(
             row,
             address,
             sends=self._send,
+            texts=self._text_posted,
             default=default,
             wanted=self._wanted,
             reported=self._reported,
+            message=message,
         )
+
+    def _text_posted(self, name: str, value: str) -> None:
+        """A widget's text, posted where it differs from the last one posted
+        under that name (ADR-0029 d.1). The name is a script's, so it is read
+        and never trusted: one that would reach another topic raises."""
+        given, said = cast(object, name), cast(object, value)
+        if not isinstance(given, str) or not given or any(c in given for c in "/+#"):
+            raise ValueError(f"{given!r} is no widget name")
+        if not isinstance(said, str):
+            raise TypeError(f"a widget's text is a string, and {said!r} is not")
+        if self._posted.get(given) == said:
+            return
+        self._posted[given] = said
+        self._bus.publish_text(f"{TEXT}/{given}", said)
 
     def _ran(self, handlers: list[script.Handler], firing: Event) -> None:
         """Run the handlers of one event, and send the default behind a
@@ -812,6 +885,9 @@ class DccEx:
         for addr in self._commanded:
             self._send(commands.traction(addr, 0.0))
         self._send(commands.track(OFF))
+        # A widget's text outlives the process, so it says the district is
+        # no longer read rather than what it was (ADR-0029 d.2).
+        self._unread(self._districts_reported())
         writer = self._writer
         if writer is not None:
             with contextlib.suppress(OSError):
@@ -989,6 +1065,10 @@ class DccEx:
         self._publish_track()
         self._journalled_said(message)
         self._reports(told)
+        handlers = self._handlers(script.REPORTED_MESSAGE, None)
+        if handlers:
+            said = message.decode(errors="replace")
+            self._ran(handlers, self._firing(script.REPORTED_MESSAGE, None, None, said))
         if restarted:
             self._started()
 
@@ -1017,6 +1097,10 @@ class DccEx:
         Power is the word the bus uses for it, and a turnout's position is
         the two words a point is commanded with, so a script compares against
         what it wrote rather than against a digit.
+
+        Every district the station has named is held against its record
+        after each message, whichever message it was: a trip, a mode and a
+        limit each arrive on a line of their own (ADR-0029 d.2).
         """
         if isinstance(told, replies.Power):
             self._reported_by(script.ROW_POWER, told.track, ON if told.on else OFF)
@@ -1026,8 +1110,35 @@ class DccEx:
                 told.point,
                 commands.THROWN if told.thrown else commands.CLOSED,
             )
+        named = set(self._tracks) | self._tripped | self._alerted
+        for district in sorted(named | set(self._modes) | set(self._limits)):
+            self._reported_by(script.DISTRICT, district, self._district(district))
 
-    def _reported_by(self, row: str, address: str, value: str) -> None:
+    def _district(self, district: str) -> District:
+        """One district's record, from what the station last said: tripped
+        until it is normal or on again, near its limit until then, and
+        otherwise what its digit says (ADR-0016 d.3, d.4)."""
+        if district in self._tripped:
+            state = TRIPPED
+        elif district in self._alerted:
+            state = ALERT
+        elif district in self._tracks:
+            state = ON if self._tracks[district] else OFF
+        else:
+            state = None
+        return District(state, self._modes.get(district), self._limits.get(district))
+
+    def _districts_reported(self) -> list[str]:
+        """The districts a record has been reported for."""
+        return [address for row, address in self._reported if row == script.DISTRICT]
+
+    def _unread(self, districts: list[str]) -> None:
+        """Each of `districts` reported `unknown`, the station no longer being
+        read (ADR-0029 d.2)."""
+        for district in districts:
+            self._reported_by(script.DISTRICT, district, UNREAD)
+
+    def _reported_by(self, row: str, address: str, value: object) -> None:
         """One report, held and — where it differs from the last one heard —
         handed to the handlers keyed on it."""
         if self._reported.get((row, address)) == value:
@@ -1046,7 +1157,10 @@ class DccEx:
         otherwise stand as an observation nobody made. The reports a script
         reads go with them, so the first thing the station says on the next
         link is a change and a handler keyed on it runs — the station on the
-        far end may be one that has just come up."""
+        far end may be one that has just come up. A district a record was
+        reported for is reported `unknown`, which is also a change from
+        whatever the next link says (ADR-0029 d.2)."""
+        districts = self._districts_reported()
         self._answered = False
         self._last_heard = None
         self._tracks.clear()
@@ -1066,6 +1180,7 @@ class DccEx:
         # so the first `<p…>` of the next link is a line: the station on the
         # far end may be another one.
         self._kept_power.clear()
+        self._unread(districts)
 
     def _send(self, message: bytes) -> None:
         """One whole message to the station, or nothing at all because the
