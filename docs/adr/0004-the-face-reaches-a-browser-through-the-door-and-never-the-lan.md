@@ -8,8 +8,8 @@
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (the
   mirror leaves the bus for a face),
   [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
-  (what a UI may talk to, and what a private face is),
-  [control ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)
+  (what a UI may talk to, and what a private face is), [control
+  ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)
   (the edge terminates TLS and the LAN is the trust boundary)
 
 ## Context

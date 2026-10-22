@@ -2,11 +2,12 @@
 
 - **Status:** accepted, 2026-09-23
 - **Ticket:** rails49/dccex#41, before #15
-- **Related:** [ADR-0004](0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
+- **Related:**
+  [ADR-0004](0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
   (the door, and the box steps that are not code here),
   [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md) (the
-  commit a copy came from, written down),
-  [control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)
+  commit a copy came from, written down), [control
+  ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)
   (broken things are reported, never worked around)
 
 ## Context
@@ -52,9 +53,9 @@ share the esptool pin that `firmware.py` is written against, and a second
 image would be a second answer to which esptool the repository was tested at.
 
 **d.3** The word for the name is the **commit**. `tag` is a release's here and
-stays a release's, whatever Docker calls the field — [GLOSSARY.md](../../GLOSSARY.md)
-gains **image** and says both. A rollback names a commit; a flash names a tag;
-neither sentence can be read as the other.
+stays a release's, whatever Docker calls the field —
+[GLOSSARY.md](../../GLOSSARY.md) gains **image** and says both. A rollback names
+a commit; a flash names a tag; neither sentence can be read as the other.
 
 **d.4** The image carries the commit as `org.opencontainers.image.revision`
 too, so a `docker inspect` on the box answers the question even for an image

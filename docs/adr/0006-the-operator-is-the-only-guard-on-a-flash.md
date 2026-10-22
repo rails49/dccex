@@ -5,12 +5,12 @@
 - **Related:** [ADR-0001](0001-the-mirror-leaves-the-bus-for-a-face.md) (the
   mirror leaves the bus, and what reaches the flash instead),
   [ADR-0004](0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
-  (the page and the face on one origin),
-  [control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
-  (the app that owns the device flashes it),
-  [control ADR-0051](https://github.com/rails49/control/blob/main/docs/adr/0051-the-panel-commands-track-power-and-the-operator-is-the-backstop.md)
-  and
-  [control ADR-0062](https://github.com/rails49/control/blob/main/docs/adr/0062-track-power-is-cut-only-when-nothing-is-moving-and-the-layout-checks.md)
+  (the page and the face on one origin), [control
+  ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
+  (the app that owns the device flashes it), [control
+  ADR-0051](https://github.com/rails49/control/blob/main/docs/adr/0051-the-panel-commands-track-power-and-the-operator-is-the-backstop.md)
+  and [control
+  ADR-0062](https://github.com/rails49/control/blob/main/docs/adr/0062-track-power-is-cut-only-when-nothing-is-moving-and-the-layout-checks.md)
   (a guarantee about a railroad lives in the client written to honour it)
 
 ## Context
@@ -51,8 +51,8 @@ gets a button for it.
 
 **d.1** The mirror checks nothing about the railroad before it writes. It does
 not read a run state, a track row, a throttle, or anything else that is a fact
-about a layout — and no later version of it does, because acquiring the ability
-is what ADR-0001 says this app is not for. What it does check is its own
+about a layout — and no later version of it does, because acquiring the
+ability is what ADR-0001 says this app is not for. What it does check is its own
 business: the tag, the release, the digest, the device, and whether it is
 already writing (#13).
 
@@ -74,11 +74,12 @@ the banner it sends when it comes back. Nobody has to be told what was written
 **d.4** This decision is recorded in this repository and amends nothing in
 another. #13 asked for it on ADR-0002, and neither ADR-0002 is available to
 carry it: the one here is about where a defect in copied code is fixed and is
-superseded ([ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)),
-and the one the face is built on is the organisation's, in `rails49/.github`,
-which is another repository — which is the thing the same criterion says not
-to touch. So it is written here, where the code it governs is, and #13's other
-half of that criterion is met exactly.
+superseded
+([ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)), and the
+one the face is built on is the organisation's, in `rails49/.github`, which is
+another repository — which is the thing the same criterion says not to touch.
+So it is written here, where the code it governs is, and #13's other half of
+that criterion is met exactly.
 
 ## Consequences
 

@@ -2,20 +2,21 @@
 
 - **Status:** accepted, 2026-09-23
 - **Ticket:** rails49/dccex#1
-- **Related:** [ADR-0007](0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)
+- **Related:**
+  [ADR-0007](0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)
   (the stream is one more client of the mirror's port),
   [ADR-0008](0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
-  (every reading on the page is made of the conversation),
-  [control ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)
+  (every reading on the page is made of the conversation), [control
+  ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)
   (the app that holds the device serves the port everything else is a client
-  of),
-  [control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
+  of), [control
+  ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
   (the link is the station answering)
 
 ## Context
 
-The **band**'s two readings and three of the four **tile**s are made of what
-the station said (ADR-0008 d.2). The station volunteers some of it — it sends a
+The **band**'s two readings and three of the four **tile**s are made of what the
+station said (ADR-0008 d.2). The station volunteers some of it — it sends a
 banner when it comes up, and `<p…>` when power changes — but an idle station
 sitting on a bench says nothing at all, and a page whose readings are made of
 silence has no readings.
@@ -31,13 +32,13 @@ So somebody has to ask. Three could.
 
 **The mirror could.** It holds the device and a timer is four lines. What it
 costs is the only sentence that makes this app trustworthy: every byte on 2560
-came from the station, and every byte the device was sent came from a client.
-A mirror with a timer has an opinion about what `<s>` is and about when the
+came from the station, and every byte the device was sent came from a client. A
+mirror with a timer has an opinion about what `<s>` is and about when the
 railroad wants to be asked — it is reading payload to decide what to write —
-and a person watching the conversation on a monitor can no longer tell the
-app's own traffic from a throttle's, because for the first time there is some.
-The mirror gained a **face** in #12–#14 and kept that sentence intact; spending
-it on a timer would be spending it for convenience.
+and a person watching the conversation on a monitor can no longer tell the app's
+own traffic from a throttle's, because for the first time there is some. The
+mirror gained a **face** in #12–#14 and kept that sentence intact; spending it
+on a timer would be spending it for convenience.
 
 **The face could, on a page's behalf.** The bytes would even enter by the
 client path, since a **stream** is one more client of the port (ADR-0007). But

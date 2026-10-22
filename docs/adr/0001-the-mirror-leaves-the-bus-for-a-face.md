@@ -2,13 +2,14 @@
 
 - **Status:** accepted, 2026-09-22
 - **Ticket:** rails49/dccex#11, under #10
-- **Related:** [ADR-0008](https://github.com/rails49/.github/blob/main/docs/adr/0008-the-dcc-ex-ui-and-its-python-share-a-repository-of-their-own.md)
+- **Related:**
+  [ADR-0008](https://github.com/rails49/.github/blob/main/docs/adr/0008-the-dcc-ex-ui-and-its-python-share-a-repository-of-their-own.md)
   (why this repository exists),
   [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
-  (what a UI may talk to, and what a private face is),
-  [control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
-  (the app that owns the device flashes it),
-  [control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
+  (what a UI may talk to, and what a private face is), [control
+  ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
+  (the app that owns the device flashes it), [control
+  ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
   (what the link means)
 
 ## Context
@@ -59,40 +60,42 @@ things by a face it does not have yet is expected to be quiet, not broken.
 to share a namespace with.
 
 **d.6** It lands as a copy and says so. `control`'s file names are kept and the
-commit it was taken at is written down beside it ([SOURCE.md](../../src/SOURCE.md)),
-so the next person can diff the two and see only the bus coming out. The way
-the mirror behaves is not up for reconsideration here: the backoff, the grace,
-the outstanding-bytes cut-off and the handover are what they were, down to
-their numbers.
+commit it was taken at is written down beside it
+([SOURCE.md](../../src/SOURCE.md)), so the next person can diff the two and see
+only the bus coming out. The way the mirror behaves is not up for
+reconsideration here: the backoff, the grace, the outstanding-bytes cut-off and
+the handover are what they were, down to their numbers.
 
-> **Amended 2026-09-22 (#23, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
-> one of those behaviours has moved, which this says at the time rather than
-> leaving d.6 to read as though nothing did. A client's connection is now
-> aborted wherever it is dropped — shutting down, and when the grace ends an
-> outage, as it already was when the client fell too far behind — because
-> closing it waits for a write buffer that a client which has stopped reading
-> never drains, and that wait hung the shutdown and held the device. What is
-> lost with the abort is bytes that client was not taking. The numbers are
-> untouched: the backoff, the grace and the outstanding-bytes bound are what
-> they were.
+> **Amended 2026-09-22 (#23,
+> [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):** one of
+> those behaviours has moved, which this says at the time rather than leaving
+> d.6 to read as though nothing did. A client's connection is now aborted
+> wherever it is dropped — shutting down, and when the grace ends an outage,
+> as it already was when the client fell too far behind — because closing it
+> waits for a write buffer that a client which has stopped reading never drains,
+> and that wait hung the shutdown and held the device. What is lost with the
+> abort is bytes that client was not taking. The numbers are untouched: the
+> backoff, the grace and the outstanding-bytes bound are what they were.
 
-> **Amended 2026-09-22 (#24, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
-> and a second, on the handover itself. A client's message already being
-> written when the device is let go is dropped now, where it used to wait for
-> ever: closing the descriptor dropped it from the selector without waking
-> what was parked on it, so that write kept the write lock and every message
-> from every client queued behind it — the mirror stopped forwarding to the
-> station, silently, until the process was restarted. The descriptor comes
-> off the loop and the parked write is woken before it is closed, in that
-> order, so nothing is written to and nothing unregistered from a descriptor
-> number the OS may have handed on. What is lost is the tail of one message
-> that was going into an outage, which is where the rest of that message was
-> going anyway. The numbers are untouched again.
+> **Amended 2026-09-22 (#24,
+> [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):** and a
+> second, on the handover itself. A client's message already being written when
+> the device is let go is dropped now, where it used to wait for ever: closing
+> the descriptor dropped it from the selector without waking what was parked on
+> it, so that write kept the write lock and every message from every client
+> queued behind it — the mirror stopped forwarding to the station, silently,
+> until the process was restarted. The descriptor comes off the loop and the
+> parked write is woken before it is closed, in that order, so nothing is
+> written to and nothing unregistered from a descriptor number the OS may have
+> handed on. What is lost is the tail of one message that was going into an
+> outage, which is where the rest of that message was going anyway. The numbers
+> are untouched again.
 
-> **Amended 2026-09-22 (#26, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
-> and a third, on the handover again — this time on how it ends. A handover
-> that finishes on a station which has been closed meanwhile no longer takes
-> the device back: it used to start a fresh watcher whatever had become of the
+> **Amended 2026-09-22 (#26,
+> [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):** and a
+> third, on the handover again — this time on how it ends. A handover that
+> finishes on a station which has been closed meanwhile no longer takes the
+> device back: it used to start a fresh watcher whatever had become of the
 > station, which reopens and holds the cable of a mirror nobody is using. That
 > is reachable on a signal mid-flash, where the flash is shielded from the
 > cancellation and the mirror is closed under it. What stopped it being a held
@@ -101,9 +104,10 @@ their numbers.
 > now, and the handover asks. Nothing a client can see changes, and the numbers
 > are untouched once more.
 
-> **Amended 2026-09-22 (#34, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
-> and a fourth, which is the #24 amendment above being held to what it claimed.
-> It said nothing is written to or unregistered from a number the OS may have
+> **Amended 2026-09-22 (#34,
+> [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):** and a
+> fourth, which is the #24 amendment above being held to what it claimed. It
+> said nothing is written to or unregistered from a number the OS may have
 > handed on. That was true of a write woken by the teardown and not of one the
 > selector had already woken: waking does not resume a write, so a device found
 > with room moments before it was let go left a write that took the number for
@@ -113,20 +117,21 @@ their numbers.
 > client can see is unchanged, the two behaviours above stand as amended, and
 > the numbers are untouched a fourth time.
 
-> **Amended 2026-09-23 (#36, [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):**
-> and a fifth, which changes nothing the mirror does and corrects what the
-> first of these says #23 did. That amendment names two places a connection
-> is aborted — shutting down, and when the grace ends an outage — and the
-> cut-off as the place it already was. There is a third it does not name: the
-> per-client handler's teardown, the path every client leaves by whichever of
-> the others sent it there, and which #23 changed along with those two. So
-> three sites changed and the cut-off was already aborting, and the four of
-> them together are every place a client is let go of. What the handler's
-> abort costs is the least of the four: a client that is reading has taken
-> what was fanned to it, so what goes with the abort is nothing, or the tail
-> of one fan-out it had not taken on its way out. Small, and written down
-> because a cost nobody has stated reads the same as a cost nobody has looked
-> for. The numbers are untouched a fifth time.
+> **Amended 2026-09-23 (#36,
+> [ADR-0003](0003-the-copy-has-no-original-left-and-is-fixed-here.md)):** and a
+> fifth, which changes nothing the mirror does and corrects what the first of
+> these says #23 did. That amendment names two places a connection is aborted
+> — shutting down, and when the grace ends an outage — and the cut-off as
+> the place it already was. There is a third it does not name: the per-client
+> handler's teardown, the path every client leaves by whichever of the others
+> sent it there, and which #23 changed along with those two. So three sites
+> changed and the cut-off was already aborting, and the four of them together
+> are every place a client is let go of. What the handler's abort costs is the
+> least of the four: a client that is reading has taken what was fanned to it,
+> so what goes with the abort is nothing, or the tail of one fan-out it had not
+> taken on its way out. Small, and written down because a cost nobody has stated
+> reads the same as a cost nobody has looked for. The numbers are untouched a
+> fifth time.
 
 **d.7** The words go with it. `station` here is the command station, which is
 the opposite of `control`'s reservation for the same word, and

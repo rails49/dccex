@@ -2,9 +2,9 @@
 
 - **Status:** accepted, 2026-09-30
 - **Ticket:** #180
-- **Related:** ADR-0001 (the mirror leaves the bus), ADR-0003 (the copy has
-  no original left and is fixed here), ADR-0013 (the script),
-  [org ADR-0006](https://github.com/rails49/.github/blob/main/docs/adr/0006-the-bus-contract-is-controls-and-travels-when-something-reads-it.md)
+- **Related:** ADR-0001 (the mirror leaves the bus), ADR-0003 (the copy has no
+  original left and is fixed here), ADR-0013 (the script), [org
+  ADR-0006](https://github.com/rails49/.github/blob/main/docs/adr/0006-the-bus-contract-is-controls-and-travels-when-something-reads-it.md)
   (the bus contract is `control`'s)
 
 ## Context

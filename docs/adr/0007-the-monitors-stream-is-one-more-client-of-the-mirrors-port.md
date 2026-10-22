@@ -6,21 +6,21 @@
   mirror leaves the bus for a face),
   [ADR-0004](0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)
   (the face reaches a browser through the door, and the stream rides the same
-  router),
-  [control ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)
+  router), [control
+  ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)
   (the app that holds the device serves the port everything else is a client
-  of),
-  [control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
+  of), [control
+  ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
   (the link is the station answering, not the socket being open)
 
 ## Context
 
-The UI shows the station's conversation and has a box to type into. That is
-what 2560 has always served — every byte to every client, and a client's bytes
-to the device as whole `<…>` messages — and the page cannot have it that way:
-a browser cannot open a TCP socket, and a page served over `https` cannot open
-a plain one even where it could. What a browser can open is a stream on the
-origin it is already on, which is the face's (ADR-0004 d.3).
+The UI shows the station's conversation and has a box to type into. That is what
+2560 has always served — every byte to every client, and a client's bytes to
+the device as whole `<…>` messages — and the page cannot have it that way: a
+browser cannot open a TCP socket, and a page served over `https` cannot open a
+plain one even where it could. What a browser can open is a stream on the origin
+it is already on, which is the face's (ADR-0004 d.3).
 
 So the bytes have to reach the page through the face. **How** is the question,
 and there were two shapes.
@@ -47,11 +47,11 @@ interface inside the container, and a client the mirror cannot tell from JMRI
 joins 2560 on `127.0.0.1` when a page opens a stream, and what it does after
 that is carry bytes: the station's out, and what the page types in.
 
-**d.2** Every rule about a client is the mirror's and is not written again.
-The fan-out, the megabyte a client may fall behind by, the cut-off, the grace
-that disconnects everyone on an outage, the abort rather than the close, the
-`<…>` framing and its size cap — all of them reach a page because a page is a
-client of that port, and none of them has a second version for the stream.
+**d.2** Every rule about a client is the mirror's and is not written again. The
+fan-out, the megabyte a client may fall behind by, the cut-off, the grace that
+disconnects everyone on an outage, the abort rather than the close, the `<…>`
+framing and its size cap — all of them reach a page because a page is a client
+of that port, and none of them has a second version for the stream.
 
 **d.3** Nothing is buffered between the two ends. What the browser has not
 taken is waited on before more is read off the mirror, so a monitor that has

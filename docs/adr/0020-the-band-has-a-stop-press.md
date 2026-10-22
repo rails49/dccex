@@ -1,7 +1,8 @@
 # ADR-0020 — the band has a STOP press
 
-- **Status:** accepted, 2026-10-09; d.1 amended by [ADR-0023](0023-the-chrome-comes-from-look.md);
-  d.2 and d.3 superseded by [ADR-0026](0026-the-bands-power-control-is-controls.md)
+- **Status:** accepted, 2026-10-09; d.1 amended by
+  [ADR-0023](0023-the-chrome-comes-from-look.md); d.2 and d.3 superseded by
+  [ADR-0026](0026-the-bands-power-control-is-controls.md)
 - **Ticket:** #208
 - **Related:** ADR-0017 (the band asks `layout` for power), `control` ADR-0062
 
