@@ -57,6 +57,13 @@ A district the station cut itself, after an overload or a fault on its driver
 _Avoid_: short (one cause of a trip), fault (`control`'s band's word), off (a
 district someone turned off)
 
+**Alert**:
+A district the station says is near its limit and still powers, until it says
+the district is normal or trips it
+([docs/dccex/README.md](docs/dccex/README.md#what-it-publishes-back)).
+_Avoid_: over current, warning, overload (the station's word for one cause of
+a trip)
+
 **Journal**:
 The translator's record of what the station said about power, of the link
 going down and of the station restarting, each line stamped with when it

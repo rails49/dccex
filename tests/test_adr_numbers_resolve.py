@@ -113,6 +113,7 @@ CONTROL = {
     "0065": "the app that owns the device flashes it",
     "0066": "the link is the station answering not the socket being open",
     "0085": "the editor saves when it is left and a railroad can be named without being built",
+    "0087": "a widget is on the drawing and control carries its payload without reading it",
 }
 
 #: Where `control`'s records are, at the address every link in this repository
