@@ -13,27 +13,27 @@ the rail picks it (#169): the monitor view, which is the **tile**s and the
 **monitor** under them — the station's conversation as it arrives, every line
 stamped with the time it arrived, newest at the bottom (#4), and a box at the
 foot that types a whole `<…>` message back (#6) — the **release**s, the
-railroad's **script**, or the **journal**. The band
-carries the **link** and the power button and the tiles carry the
-particulars — all of them made of what the station said and kept live by the
-page's own polling, except the power, which is a row `layout` reports on the
-bus (#7, #168, #205). The releases are listed newest first with the one
-on the station marked (#8), and choosing one writes it onto the station — which
-is the last thing here that needed a terminal (#9). The script is the
-translator's commands for this railroad's station, edited in an editor and
-applied to `control`'s store through the face (#185). The journal is what the
-station said about power while nobody was watching, read afterwards with the
-counts beside it (#266, ADR-0022). What it says was decided
-in rails49/dccex#1 and the tickets under that spec are each a part of it, as
-[the cutover page](../cutover.md) was written ahead of its evening. What is
-already here besides is the other end: the **mirror**'s **face**, which is one
-of the two things the page talks to ([the mirror's page](../dccex_usb/README.md)).
+railroad's **script**, or the **journal**. The band carries the **link** and the
+power button and the tiles carry the particulars — all of them made of what
+the station said and kept live by the page's own polling, except the power,
+which is a row `layout` reports on the bus (#7, #168, #205). The releases are
+listed newest first with the one on the station marked (#8), and choosing one
+writes it onto the station — which is the last thing here that needed a
+terminal (#9). The script is the translator's commands for this railroad's
+station, edited in an editor and applied to `control`'s store through the face
+(#185). The journal is what the station said about power while nobody was
+watching, read afterwards with the counts beside it (#266, ADR-0022). What it
+says was decided in rails49/dccex#1 and the tickets under that spec are each a
+part of it, as [the cutover page](../cutover.md) was written ahead of its
+evening. What is already here besides is the other end: the **mirror**'s
+**face**, which is one of the two things the page talks to
+([the mirror's page](../dccex_usb/README.md)).
 
 ## What it talks to
 
 Two counterparties: `dccex-usb`'s face, and the bus. Both on the page's own
-origin, behind the same
-door ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md),
+origin, behind the same door
+([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md),
 [ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md),
 [ADR-0017](../adr/0017-the-band-asks-layout-for-power.md)).
 
@@ -224,11 +224,11 @@ the station names, in letter order (#7, #170).
 | max current | the most it may draw, in mA, after `max`: `max 1233 mA` |
 
 The letter heads the tile, and the symbol and the three words are centred under
-it. The power is the symbol's label as well — `track A power is on` — because a
-reader who cannot see the colour is owed the same reading, which is how the
-**link** is drawn on the band (#168). `<=>` lists every track the firmware is
-built with, so a track set to `NONE` has a tile too. One the station has given a
-current for and not yet a mode has a tile with a blank mode.
+it. The power is the symbol's label as well — `track A power is on` —
+because a reader who cannot see the colour is owed the same reading, which is
+how the **link** is drawn on the band (#168). `<=>` lists every track the
+firmware is built with, so a track set to `NONE` has a tile too. One the station
+has given a current for and not yet a mode has a tile with a blank mode.
 
 The current is the station's own measure (`<JI>` → `<jI 120 2 0 0>`, A first),
 asked four times a second and shown as the mean of the last eight readings. The
@@ -356,20 +356,20 @@ that did not go leaves the locomotives stopped and the power still on, which is
 a railroad nobody should walk up to thinking it is dead (#93).
 
 The control is on the release's own row and only on the releases that carry a
-firmware with a digest to check the write against (#81, #109) — a tag the mirror
-would refuse is not a thing to offer. The warning opens under it and the yes is
-a press of its own beside a cancel, because a sequence the operator declines is
-a flash that was not asked for rather than one that was refused. The step is
-drawn under the row rather than inside it, since the row can be shut while the
-station is away. And while a sequence is running there is nothing to press: a
-second flash is a second station reset.
+firmware with a digest to check the write against (#81, #109) — a tag the
+mirror would refuse is not a thing to offer. The warning opens under it and the
+yes is a press of its own beside a cancel, because a sequence the operator
+declines is a flash that was not asked for rather than one that was refused. The
+step is drawn under the row rather than inside it, since the row can be shut
+while the station is away. And while a sequence is running there is nothing to
+press: a second flash is a second station reset.
 
 What goes down the cable, in what order, and what is said at each step is
-`ui/src/flash.js`'s — a module with no socket, no face and no DOM of its own, so
-the whole of it runs under a bare node (`tests/ui/test_flash.py`). The drawing
-is `ui/src/ui/dccex-releases.ts`'s, and what it flashes with is handed down from
-the page: the same `send` an operator's typing goes up, so the stop and the cut
-are marked as the page's in the monitor, and the face's own `flash`.
+`ui/src/flash.js`'s — a module with no socket, no face and no DOM of its own,
+so the whole of it runs under a bare node (`tests/ui/test_flash.py`). The
+drawing is `ui/src/ui/dccex-releases.ts`'s, and what it flashes with is handed
+down from the page: the same `send` an operator's typing goes up, so the stop
+and the cut are marked as the page's in the monitor, and the face's own `flash`.
 
 **Nothing behind the page guards this.** The mirror checks the tag, the
 release, the digest, the device and whether it is already writing, and it
@@ -378,14 +378,14 @@ layout there is no dispatcher to ask
 ([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)). The
 sequence above is where the care lives and the operator is the guard.
 
-**A flash that cannot start says why.** The face answers a refusal with a
-status and a sentence — a tag with no release, a source that could not be asked
-about it at all or answered with something that is not a release, a release
-with no asset or no digest, a digest that did not match, a station that is not
-there, a flash already in flight — so a bad tag never looks like a slow one,
-and a source that is away never looks like a bad tag: what the operator is told
-is that the release source could not be read, and not to go and retype a tag
-that is perfectly good (#46). A second flash asked for while one is running is
+**A flash that cannot start says why.** The face answers a refusal with a status
+and a sentence — a tag with no release, a source that could not be asked about
+it at all or answered with something that is not a release, a release with no
+asset or no digest, a digest that did not match, a station that is not there, a
+flash already in flight — so a bad tag never looks like a slow one, and a
+source that is away never looks like a bad tag: what the operator is told is
+that the release source could not be read, and not to go and retype a tag that
+is perfectly good (#46). A second flash asked for while one is running is
 refused and not queued.
 
 **How far the write has got is asked for and drawn as one bar** (#172,
@@ -399,12 +399,12 @@ full for the verify (ADR-0012 d.5, #201).
 
 The answer is about the mirror and not about who pressed, so a page opened or
 reloaded in the middle of a write shows that write, and offers no press while it
-runs — a second flash is what the mirror refuses anyway. An idle page asks once,
-on load, and then nothing: a question with one answer asked four times a minute
-by every tab left open on the box is not a poll worth spending (this
+runs — a second flash is what the mirror refuses anyway. An idle page asks
+once, on load, and then nothing: a question with one answer asked four times a
+minute by every tab left open on the box is not a poll worth spending (this
 repository's ADR-0010). One ask is out at a time, because two could be answered
-in either order and the older answer landing last would walk the bar backwards —
-the defect the count of clients had (#88, #111).
+in either order and the older answer landing last would walk the bar backwards
+— the defect the count of clients had (#88, #111).
 
 **A flash that started is not replied to; it is observed.** The stream drops as
 the device goes, the tiles go, and when the station comes back its banner
@@ -463,9 +463,9 @@ what is at stake; the browser's own words on a close are the browser's.
 **Apply says what it does before it does it.** The translator exits on a text
 that differs from the one it is running, which cuts track power and stands the
 railroad down, and the script takes effect from the next ON (ADR-0015 d.3).
-Nothing behind the page guards that — the face compiles and the store
-stores — so the operator is told and asked a second time, exactly as they are
-for a flash ([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)
+Nothing behind the page guards that — the face compiles and the store stores
+— so the operator is told and asked a second time, exactly as they are for a
+flash ([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)
 d.2).
 
 The second press sends the text to the face, which compiles it and puts it to
@@ -473,8 +473,8 @@ the store. **A text that does not compile is refused with the line and the
 message, and the page shows what the mirror said**: there is no Python in a
 browser, and a second opinion here about what compiles is the disagreement that
 would put a text in the store the translator cannot load. What the page says of
-its own is one sentence, and only where there was no answer to read
-([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+its own is one sentence, and only where there was no answer to read ([control
+ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
 The editor marks the refused line until the next edit
 ([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)).
 
@@ -509,15 +509,15 @@ the same answer to which lines are read. The two spans are counted back from
 when the face answered rather than from the draw, so nothing drops out of the
 list while somebody is reading it.
 
-**The statistics are at the top**: one row per district the file names, with
-its **incident**s by kind, how many times the station cut it, how long for, the
+**The statistics are at the top**: one row per district the file names, with its
+**incident**s by kind, how many times the station cut it, how long for, the
 highest mA it printed about it, the flips nothing came of, how long it was
-powered and its incidents per hour powered — and one row for the station, which
-is the link losses and the restarts, because those are about no district. Every
-count is a number and a reading nobody took is blank: a district that was never
-powered has no rate, and one the station printed no current about has no peak
-(ADR-0009 d.2). The table scrolls sideways inside itself on a narrow screen and
-never takes the page with it.
+powered and its incidents per hour powered — and one row for the station,
+which is the link losses and the restarts, because those are about no district.
+Every count is a number and a reading nobody took is blank: a district that was
+never powered has no rate, and one the station printed no current about has no
+peak (ADR-0009 d.2). The table scrolls sideways inside itself on a narrow screen
+and never takes the page with it.
 
 **The incidents are below it, newest first.** A row says when it happened,
 which district, which kind, how many times the station cut it, the highest mA
@@ -571,9 +571,9 @@ type into at the foot.
   said, so an operator can tell their own traffic from the railroad's. They
   carry no gloss.
 - It follows the newest line while the view is at the bottom and stays put once
-  it has been scrolled up, so reading back does not fight the stream — including
-  across a trim, where the lines it is measured from are the ones that go. It
-  can be paused, and it can be cleared, from two icons above the lines.
+  it has been scrolled up, so reading back does not fight the stream —
+  including across a trim, where the lines it is measured from are the ones that
+  go. It can be paused, and it can be cleared, from two icons above the lines.
 
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
@@ -596,15 +596,15 @@ browser can hold:
 - a status line — the banner, the power on a track or on all of them, the
   display, a track's mode — is shown only when it says something different
   from the last one about the same thing. The measured currents (`<jI …>`) and
-  the limits (`<jG …>`) are never shown: the currents move on nearly every poll,
-  and the tiles are where both are read. Every poll is
-  answered with the same eight lines, and every open page polls. The readings
-  still hear every line; it is only the monitor that leaves the repeats out;
+  the limits (`<jG …>`) are never shown: the currents move on nearly every
+  poll, and the tiles are where both are read. Every poll is answered with the
+  same eight lines, and every open page polls. The readings still hear every
+  line; it is only the monitor that leaves the repeats out;
 - a stream that closed is opened again after two seconds, because everything
-  that ends one is something that ends — the cut-off, an outage past its grace,
-  the app restarting (ADR-0007 d.2). Nothing is asked for on the new one and
-  nothing is replayed on it, so what the station said while it was away is not
-  in it.
+  that ends one is something that ends — the cut-off, an outage past its
+  grace, the app restarting (ADR-0007 d.2). Nothing is asked for on the new one
+  and nothing is replayed on it, so what the station said while it was away is
+  not in it.
 
 **The busiest line is the cheapest drawing of it** (#74). Two thousand lines
 kept and the oldest dropped means that at capacity every arriving line shifts
@@ -664,26 +664,27 @@ is doing while a reader holds the monitor still.
 
 **The two controls are icons** (#167). The pause is a pause and becomes a play
 while the view is held, so what is drawn is what pressing it will do; the clear
-is the lines going. Each button carries its word — *pause*, *resume*, *clear* —
-as a tooltip and as an aria-label, because a shape is not a word and the phone
-at the layout has no pointer to hover with. The glyphs are
-Bootstrap Icons drawn by Shoelace — `pause-fill`, `play-fill` and `eraser` —
-served from the page's own origin, like every glyph on the page (ADR-0023).
+is the lines going. Each button carries its word — *pause*, *resume*, *clear*
+— as a tooltip and as an aria-label, because a shape is not a word and the
+phone at the layout has no pointer to hover with. The glyphs are Bootstrap Icons
+drawn by Shoelace — `pause-fill`, `play-fill` and `eraser` — served from the
+page's own origin, like every glyph on the page (ADR-0023).
 
-Two things a full queue is owed, and did not get until #144. **A line the
-queue drops is forgotten as well as counted.** A status line is shown only when
-it says something new, and one that was pushed off the front of the queue never
+Two things a full queue is owed, and did not get until #144. **A line the queue
+drops is forgotten as well as counted.** A status line is shown only when it
+says something new, and one that was pushed off the front of the queue never
 reached the conversation at all — so a `<p1>` dropped while the view was held
 left every later answer about the power looking like a repeat, and the monitor
 never said the power came on (#142). What went is forgotten, and the next poll
 that answers for that subject is news again. **And the gap is marked where it
-is.** The "500 waiting, 12 dropped" count goes away with the pause that made
-it, so a resume used to leave twelve lines missing out of the middle of a
+is.** The "500 waiting, 12 dropped" count goes away with the pause that made it,
+so a resume used to leave twelve lines missing out of the middle of a
 conversation with nothing at all saying so; now one note goes in where the gap
-is — *12 lines dropped while paused* — ahead of the lines that survived. It is
-the page's own note and is drawn as such, in the page's face and with no stamp,
-no mark and no gloss, because none of those would be true of it; it is trimmed
-and cleared like any other entry, and a resume that dropped nothing adds none.
+is — *12 lines dropped while paused* — ahead of the lines that survived. It
+is the page's own note and is drawn as such, in the page's face and with no
+stamp, no mark and no gloss, because none of those would be true of it; it is
+trimmed and cleared like any other entry, and a resume that dropped nothing adds
+none.
 
 The conversation is the page's — the band and the tiles are made of the same
 bytes — and everything that happens to it is `ui/src/monitor.js`'s: what is on
@@ -736,49 +737,46 @@ the mirror reads for the `>`, exactly as it does for JMRI and a throttle
 (ADR-0007 d.2, `framing.py`).
 
 **The pairs are run rather than read.** What is still read off the sources is
-read there because the gate is Python and has no browser in it. These cannot
-be: a sentence an operator is shown is worth nothing asserted
-against the source that would produce it — and so is a rule about what goes
-down a cable to a command station, and so is what the band says about the
-railroad's power, and so is the order the releases an operator picks from come
-out in, and so is the order a flash does things to a railroad in before it
-writes — and ADR-0009 d.3 asks for the pairs themselves. So
-`tests/ui/test_decoder.py` puts every line the page glosses and every near miss
-through the real function under `node`, by way of `tests/ui/gloss.mjs`,
-`tests/ui/test_message.py` puts every spelling an operator may type through the
-real function the same way (`tests/ui/message.mjs`), and
-`tests/ui/test_readings.py` puts whole conversations through the readings and
-reads the band and the tiles back (`tests/ui/readings.mjs`), and
-`tests/ui/test_releases.py` puts a `releases` document through the reader that
-answers whether the page could read it at all and what the face answered
-through the listing, and reads the release rows back (`tests/ui/releases.mjs`),
-and
-`tests/ui/test_flash.py` puts a flash through the sequence and reads back what
-went down the cable, in what order, what the page said while it did, what it
-made of the mirror's answer about how far the write had got, and what became of
-the flash once the station came back (`tests/ui/flash.mjs`), and
-`tests/ui/test_stream.py` puts a page's own address
+read there because the gate is Python and has no browser in it. These cannot be:
+a sentence an operator is shown is worth nothing asserted against the source
+that would produce it — and so is a rule about what goes down a cable to a
+command station, and so is what the band says about the railroad's power, and so
+is the order the releases an operator picks from come out in, and so is the
+order a flash does things to a railroad in before it writes — and ADR-0009 d.3
+asks for the pairs themselves. So `tests/ui/test_decoder.py` puts every line the
+page glosses and every near miss through the real function under `node`, by way
+of `tests/ui/gloss.mjs`, `tests/ui/test_message.py` puts every spelling an
+operator may type through the real function the same way
+(`tests/ui/message.mjs`), and `tests/ui/test_readings.py` puts whole
+conversations through the readings and reads the band and the tiles back
+(`tests/ui/readings.mjs`), and `tests/ui/test_releases.py` puts a `releases`
+document through the reader that answers whether the page could read it at all
+and what the face answered through the listing, and reads the release rows back
+(`tests/ui/releases.mjs`), and `tests/ui/test_flash.py` puts a flash through the
+sequence and reads back what went down the cable, in what order, what the page
+said while it did, what it made of the mirror's answer about how far the write
+had got, and what became of the flash once the station came back
+(`tests/ui/flash.mjs`), and `tests/ui/test_stream.py` puts a page's own address
 and a conversation arriving on the socket through the rules that answer where
 the stream is and where a line ends (`tests/ui/framing.mjs`), and
 `tests/ui/test_monitor.py` puts a scroller, a time and whole conversations —
 lines arriving, a pause, a resume, a clear — through the rules that answer
-whether the reader is at the bottom, what the stamp beside a line reads and
-what is on the screen afterwards (`tests/ui/monitor.mjs`), and
+whether the reader is at the bottom, what the stamp beside a line reads and what
+is on the screen afterwards (`tests/ui/monitor.mjs`), and
 `tests/ui/test_journal.py` puts whole journals through the function that reads
 them into incidents and counts (`tests/ui/journal.mjs`). The framing and the
-monitor's rules cannot either, and were read off
-their sources only for as long as there was no node here to run them with: a
-framing that kept its delimiter, a scheme picked the wrong way round and a
-stamp an hour out all leave a module saying every right word, which is what
-reading one can be held to (#78). What that asks of a machine is a node and
-nothing else — no packages, no bundler, nothing fetched, no DOM — and it is not
-asked of every machine the gate runs on: these checks carry the `node` marker,
-`scripts/check.sh` does not collect them, and the workflow runs them in a job a
-pull request requires (#101). Where they do run, a node that is not there is red
-rather than skipped, as everything else a gate needs is. It is why
-the modules `tests/ui/test_decoder.py` lists are written as JavaScript with
-their types in JSDoc: `tsc` checks them as strictly as the rest
-(`ui/tsconfig.json`), and a bare node can still run them.
+monitor's rules cannot either, and were read off their sources only for as long
+as there was no node here to run them with: a framing that kept its delimiter, a
+scheme picked the wrong way round and a stamp an hour out all leave a module
+saying every right word, which is what reading one can be held to (#78). What
+that asks of a machine is a node and nothing else — no packages, no bundler,
+nothing fetched, no DOM — and it is not asked of every machine the gate runs
+on: these checks carry the `node` marker, `scripts/check.sh` does not collect
+them, and the workflow runs them in a job a pull request requires (#101). Where
+they do run, a node that is not there is red rather than skipped, as everything
+else a gate needs is. It is why the modules `tests/ui/test_decoder.py` lists are
+written as JavaScript with their types in JSDoc: `tsc` checks them as strictly
+as the rest (`ui/tsconfig.json`), and a bare node can still run them.
 
 What is left in the modules those came out of is what needs a browser — the
 socket, its timer and `window.location` in `ui/src/stream.ts`, the rows, the
@@ -824,11 +822,11 @@ and nothing is added to `pyproject.toml` or installed on the machine. What it
 does not reach is what is not about a width: a stylesheet check is still where
 a rule is held as written, and this is where it is held as drawn.
 
-**Sending is held at the other end too.** What a page types is one more
-client's bytes on the mirror's port, so two monitors typing at once is the
-interleaving rule `tests/dccex_usb/test_face.py` runs against a pty — two whole
-messages at the device, in one order or the other, on a machine with no command
-station attached.
+**Sending is held at the other end too.** What a page types is one more client's
+bytes on the mirror's port, so two monitors typing at once is the interleaving
+rule `tests/dccex_usb/test_face.py` runs against a pty — two whole messages at
+the device, in one order or the other, on a machine with no command station
+attached.
 
 The pause, the clear and the queue behind a pause are held the same way and in
 the same place: what the queue holds, what it drops and what it says, that the
@@ -846,11 +844,11 @@ monitor (`ui/test/monitor.test.ts`), handed the facts a page would hand it.
 and an idle one says nothing; on a box with no **translator** running, nothing
 else asks. So the page asks on its own schedule — `<JI>` four times a second,
 and `<s>` and `<=>` every fifteen seconds, because every client on the port
-receives the eight lines `<s>` is answered with — and `<JG>` once each time the
-**link** comes up, because the most a track may draw is compiled into the build
-and does not move while the station is running (#170) — up the stream, through
-the same send an operator's typing goes through, though the poll itself is not
-written to the monitor — and the mirror goes on originating nothing
+receives the eight lines `<s>` is answered with — and `<JG>` once each time
+the **link** comes up, because the most a track may draw is compiled into the
+build and does not move while the station is running (#170) — up the stream,
+through the same send an operator's typing goes through, though the poll itself
+is not written to the monitor — and the mirror goes on originating nothing
 ([ADR-0010](../adr/0010-the-page-polls-and-the-mirror-originates-nothing.md)).
 Five seconds without a word, which is twenty polls, and the **link** is down.
 The readings are worked out again on a one-second tick as well, because the link
@@ -871,20 +869,20 @@ open like any other. The schedule is untouched and is started once, where the
 page joins the document, so a stream that drops and comes back leaves one
 poller and not two.
 
-**No reading the poll feeds is a request** (#111). The count of **client**s
-was the one that was: it came off the face rather than off the stream, and
-which order a browser hands back the answers to a dozen requests in is the
-browser's, so an answer from an older ask could put a count from a minute ago
-on the page and leave it there until another happened to arrive in order.
-During a flash it was a dozen — the face sits inside esptool for the length of
-a write while the schedule goes on firing. The asks were numbered for it and an
-answer that was not the newest ask's was dropped where it arrived (#88). The
-page stopped drawing that count and the numbering went with the ask it
-guarded: every reading here is now made of lines off the stream and of the
-clock, and both of those only go forward. What the page asks the face for is
-the releases, once where it joins the document, a flash, on a press, and how far
-a flash has got, on a schedule of its own — twice a second while there is one to
-follow, once on load, and not at all otherwise (`tests/ui/test_releases.py`,
+**No reading the poll feeds is a request** (#111). The count of **client**s was
+the one that was: it came off the face rather than off the stream, and which
+order a browser hands back the answers to a dozen requests in is the browser's,
+so an answer from an older ask could put a count from a minute ago on the page
+and leave it there until another happened to arrive in order. During a flash it
+was a dozen — the face sits inside esptool for the length of a write while the
+schedule goes on firing. The asks were numbered for it and an answer that was
+not the newest ask's was dropped where it arrived (#88). The page stopped
+drawing that count and the numbering went with the ask it guarded: every reading
+here is now made of lines off the stream and of the clock, and both of those
+only go forward. What the page asks the face for is the releases, once where it
+joins the document, a flash, on a press, and how far a flash has got, on a
+schedule of its own — twice a second while there is one to follow, once on
+load, and not at all otherwise (`tests/ui/test_releases.py`,
 `tests/ui/test_page.py`). That last one is a reading of this shape again, and
 what keeps its answers in order is that one ask is out at a time rather than the
 numbering (#172).
@@ -899,7 +897,8 @@ page asks again rather than the stream remembering.
 The page is one more client of the mirror's port and is subject to every rule
 that port has, including being cut off once it falls too far behind and being
 disconnected alongside the throttles when the device has been away past the
-grace ([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
+grace
+([ADR-0007](../adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
 
 ## What it makes of the journal
 
@@ -961,24 +960,24 @@ work-pane component puts look's `lookTheme` first in its styles, and the gate
 runs look's `look-check`, which fails on app code that styles the chrome.
 
 Glyphs are Bootstrap Icons, which Shoelace fetches from `/shoelace` on the
-page's own origin. Building the page copies them there
-(`ui/vite.config.ts`) and nginx answers a missing one with 404 (`deploy/nginx.conf`).
+page's own origin. Building the page copies them there (`ui/vite.config.ts`) and
+nginx answers a missing one with 404 (`deploy/nginx.conf`).
 
 The work pane takes the system's light or dark setting through `look.css` and
 offers no toggle; the chrome keeps one look in both.
 
 ## How it is built and served
 
-A multi-stage image, `deploy/ui.Dockerfile`: node to build the sources, nginx
-to serve what came out. The box needs Docker and nothing else — no node
-toolchain on a machine whose job is a command station — and the node that
-builds the page is a container that lasts only while it builds. It installs
-with **pnpm**, which is what the project builds pages with (#1, #58), at the
-version `ui/package.json` names and from `ui/pnpm-lock.yaml`, frozen: the
-image is the versions this repository was checked at, and a lock file that has
-drifted stops the image from building. Nothing outside the image installs
-anything, so building it is also the only step that catches the drift. No image is
-published anywhere: the box clones and builds
+A multi-stage image, `deploy/ui.Dockerfile`: node to build the sources, nginx to
+serve what came out. The box needs Docker and nothing else — no node toolchain
+on a machine whose job is a command station — and the node that builds the
+page is a container that lasts only while it builds. It installs with **pnpm**,
+which is what the project builds pages with (#1, #58), at the version
+`ui/package.json` names and from `ui/pnpm-lock.yaml`, frozen: the image is the
+versions this repository was checked at, and a lock file that has drifted stops
+the image from building. Nothing outside the image installs anything, so
+building it is also the only step that catches the drift. No image is published
+anywhere: the box clones and builds
 ([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
 It is named by the commit it was built from like everything else here, as
 `dccex-ui:<commit>`; it is a second image rather than the mirror's, which shares
@@ -1005,14 +1004,14 @@ argument rather than repeating it (`deploy/Dockerfile`, #96).
 **And it carries that commit as well as being named by it.** Building it takes
 the commit as an argument and writes it on the image as
 `org.opencontainers.image.revision`, so a `docker inspect` on the box says what
-a container was built from even for an image somebody renamed — the name is not
-the only copy of the fact, which is what
+a container was built from even for an image somebody renamed — the name is
+not the only copy of the fact, which is what
 [ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)
-d.4 asks for and what the mirror's image has had since #15. `compose.yaml`
-sets that argument from the same variable it builds the name from, so the two
-cannot name different commits. An image built with no commit — which is
-what `docker compose up --build` on a clean clone makes — carries that label
-empty: the name says `dev`, where it is true, and a revision that reads like a commit
+d.4 asks for and what the mirror's image has had since #15. `compose.yaml` sets
+that argument from the same variable it builds the name from, so the two cannot
+name different commits. An image built with no commit — which is what `docker
+compose up --build` on a clean clone makes — carries that label empty: the
+name says `dev`, where it is true, and a revision that reads like a commit
 reference and is none would be worse than none at all (#57).
 
 `compose.yaml` at the root is the compose project: one service, the door route
@@ -1036,27 +1035,27 @@ marker, and the workflow runs it in a job of its own that a pull request
 requires, where a missing daemon is a failure (#54, #56). Run by hand where no
 daemon answers it skips and says so.
 
-**And it comes up as a project and not only as an image.** The sentence above —
-`docker compose up --build` from a clean clone serves the page — is
+**And it comes up as a project and not only as an image.** The sentence above
+— `docker compose up --build` from a clean clone serves the page — is
 `compose.yaml`'s own, and `tests/ui/test_compose_serves.py` is what runs it
 rather than reading it (#53): `docker compose up -d --build` against this
 repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
 page fetched over HTTP on the port `docker compose port web 80` says it got, the
 image name, the commit the project built it from, and the eight route labels
-read back off the running container — which is where a door reads them from —
-and `docker compose down` with its volumes, its network and the image it built,
-in a `finally`, so a red assertion leaves nothing behind either. It carries the
-same `docker` marker and the same no-daemon rule as the check above it. Two
-things it does not hold: what a route *does*, which wants a door and is #40's,
-and the shared network, which is declared external in `compose.box.yaml` and
-deliberately not here, so that `up` works on a clean clone at all. A project
-already up under the name the file pins — `name: dccex` — fails the check with a
-sentence saying so, because taking down a project it did not start is not its to
-do. The other guard — that nothing left in a shell can point those commands at a
-project nobody here named — is a `monkeypatch` over the environment the commands
-are run in and needs no daemon at all, so it is asserted in
-`tests/ui/test_commands_run_clean.py`, which the gate does collect (#112). That
-environment is on every command the check runs and not only on the
+read back off the running container — which is where a door reads them from
+— and `docker compose down` with its volumes, its network and the image it
+built, in a `finally`, so a red assertion leaves nothing behind either. It
+carries the same `docker` marker and the same no-daemon rule as the check above
+it. Two things it does not hold: what a route *does*, which wants a door and is
+#40's, and the shared network, which is declared external in `compose.box.yaml`
+and deliberately not here, so that `up` works on a clean clone at all. A project
+already up under the name the file pins — `name: dccex` — fails the check
+with a sentence saying so, because taking down a project it did not start is not
+its to do. The other guard — that nothing left in a shell can point those
+commands at a project nobody here named — is a `monkeypatch` over the
+environment the commands are run in and needs no daemon at all, so it is
+asserted in `tests/ui/test_commands_run_clean.py`, which the gate does collect
+(#112). That environment is on every command the check runs and not only on the
 `docker compose` ones: the plain `docker` helper the two checks share takes an
 environment, the compose check hands it one at each call, and the same
 daemonless module holds that what the helper is handed is what the process it
@@ -1117,22 +1116,21 @@ Two things the prototype left open and the tickets settle while building:
   #169, and what would change it is somebody reading a long one on the box;
 - narrow widths are drawn in a browser as of #127, and not all of them are
   asserted there. What is: no horizontal scroll, the band keeping the dot, the
-  link's words, the power toggle and STOP, the rail's four
-  buttons at a thumb, the command box on screen and typed into, and a release
-  row wrapping rather than running off the side. What is not: the tiles onto
-  more rows — there is no station behind the page in that job, so there are no
-  tiles to measure — the flash's warning taking its own line above the two
-  presses that answer it, the bar a flash fills, which wants a flash in
-  flight and there is no face behind the page in that job to run one, and the
-  **script** view's editor and controls, which want a face with a store behind
-  it for the same reason, and the **journal** view's table and list, which want
-  a face with a journal behind it — every button on the rail is measured there,
-  including those two views', and the panes behind them are not (#185, #266). And what
-  the check drives is a Chromium at a phone's width
-  rather than a phone — a real one was considered for #127 and left out, so the
-  thing that is still open is somebody holding one up to it. Mounting the
-  components settled none of it and could not: happy-dom does no layout
-  (#126).
+  link's words, the power toggle and STOP, the rail's four buttons at a thumb,
+  the command box on screen and typed into, and a release row wrapping rather
+  than running off the side. What is not: the tiles onto more rows — there is
+  no station behind the page in that job, so there are no tiles to measure —
+  the flash's warning taking its own line above the two presses that answer it,
+  the bar a flash fills, which wants a flash in flight and there is no face
+  behind the page in that job to run one, and the **script** view's editor and
+  controls, which want a face with a store behind it for the same reason, and
+  the **journal** view's table and list, which want a face with a journal behind
+  it — every button on the rail is measured there, including those two views',
+  and the panes behind them are not (#185, #266). And what the check drives is a
+  Chromium at a phone's width rather than a phone — a real one was considered
+  for #127 and left out, so the thing that is still open is somebody holding one
+  up to it. Mounting the components settled none of it and could not: happy-dom
+  does no layout (#126).
 
 What each tile reads while the link is down was the third and is settled above,
 by ADR-0008 d.3.

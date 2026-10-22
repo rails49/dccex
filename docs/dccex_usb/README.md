@@ -4,23 +4,24 @@ The command station is reached over USB, and one process can hold the device.
 That process is the `dccex-usb` app, the **mirror**: it opens the serial device
 and mirrors it on a TCP port, so everything else — the `dccex` translator,
 JMRI, a hand-held throttle — is a client of the port and they coexist
-([control ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)).
+([control
+ADR-0043](https://github.com/rails49/control/blob/main/docs/adr/0043-the-layout-interface-is-a-core-app-and-hardware-hangs-under-it-by-address.md)).
 DecoderPro keeps working with every app of ours down.
 
 It has no state of its own and, here, **nothing on either of its sides but its
 own two ports**: the one the cable is mirrored on, and the one this app's own
 face is answered on. In `control` it was an app on the bus, because of the one
 thing it does that is not mirroring — **writing a released firmware build onto
-the station**, which only the process holding the device can do
-([control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)).
-That ask arrived on a topic and a refusal went back as a row. Neither is here:
-a command station is not a fact about a railroad, so the mirror answers to
-this app's own face instead ([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md)).
-The face answers what releases the configured source carries (#12), writes
-one of them onto the station when a caller names its tag (#13), and carries
-the station's conversation to the page and back (#14). All three are the app's
-own business on the app's own interface, and none of them is a fact about a
-railroad.
+the station**, which only the process holding the device can do ([control
+ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)).
+That ask arrived on a topic and a refusal went back as a row. Neither is here: a
+command station is not a fact about a railroad, so the mirror answers to this
+app's own face instead
+([ADR-0001](../adr/0001-the-mirror-leaves-the-bus-for-a-face.md)). The face
+answers what releases the configured source carries (#12), writes one of them
+onto the station when a caller names its tag (#13), and carries the station's
+conversation to the page and back (#14). All three are the app's own business on
+the app's own interface, and none of them is a fact about a railroad.
 
 It carries one thing that *is* a fact about a railroad, and it carries it
 rather than keeping it: the railroad's **script**, which is the translator's
@@ -75,13 +76,13 @@ There is no bind address either. Both servers bind every interface, and what
 each of them can be reached from is what the stack publishes. **2560 is
 published raw**: JMRI, a throttle and the translator reach the mirror as
 `dccex-usb:2560`, and what limits their reach is the LAN, which is the trust
-boundary
-([control ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)).
-For the same reason there is no authentication on that port and no limit on
-the number of clients beyond the OS's — though there is a limit on how far
-behind one may fall, which is a different question. **The face's port is not
-published to the LAN at all**: the door reaches it on the box's own network,
-and a browser reaches it through the door and never the LAN
+boundary ([control
+ADR-0042](https://github.com/rails49/control/blob/main/docs/adr/0042-the-edge-terminates-tls-and-the-lan-is-the-trust-boundary.md)).
+For the same reason there is no authentication on that port and no limit on the
+number of clients beyond the OS's — though there is a limit on how far behind
+one may fall, which is a different question. **The face's port is not published
+to the LAN at all**: the door reaches it on the box's own network, and a browser
+reaches it through the door and never the LAN
 ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
 
 **A mirror that cannot serve its port exits**, and so does a face that cannot.
@@ -105,19 +106,19 @@ everyone look alike on it. Each client hears the whole conversation and
 ignores what is not its business, which is what a shared bus has always
 asked of the things on it.
 
-**A client that has stopped reading is cut off.** Nothing waits for a client
-to take what was fanned to it, so one that never does — a sleeping laptop, a
+**A client that has stopped reading is cut off.** Nothing waits for a client to
+take what was fanned to it, so one that never does — a sleeping laptop, a
 throttle whose Wi-Fi dropped, a hung DecoderPro — would have bytes buffered
-for it for as long as the railroad runs, until the process is killed for
-memory and *every* client loses the command station because one of them
-walked out of range. Once more than a megabyte is outstanding to a client,
-about a minute and a half of everything the device has to say, its connection
-is aborted and the log says it went too far behind rather than closing itself.
-It may reconnect and pick the live conversation up. Not a bounded buffer that
-discards instead: this direction is unframed, so dropping from the middle
-hands the client half a message it reads as garbage, and not silence either —
-if hardware or a peer breaks, the software says so
-([control ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
+for it for as long as the railroad runs, until the process is killed for memory
+and *every* client loses the command station because one of them walked out of
+range. Once more than a megabyte is outstanding to a client, about a minute and
+a half of everything the device has to say, its connection is aborted and the
+log says it went too far behind rather than closing itself. It may reconnect and
+pick the live conversation up. Not a bounded buffer that discards instead: this
+direction is unframed, so dropping from the middle hands the client half a
+message it reads as garbage, and not silence either — if hardware or a peer
+breaks, the software says so ([control
+ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
 
 **From a client to the device: whole messages only.** A client's bytes are
 buffered until a complete `<…>` message and then written in one write, so two
@@ -138,22 +139,22 @@ the app is part way through writing when the device goes is dropped the same
 way and at once, rather than waiting on a cable that is no longer there.
 
 **An outage that outlasts the grace disconnects every client on the port.**
-The grace is two reopens at the first backoff, about a second, counted off
-the backoff rather than kept as a number of its own. A client cannot tell an
-away device from a quiet one and this port has no way to tell it, so a mirror
-that held its clients through a station switched off would leave the
-translator reporting a link that is up over a railroad that cannot move. The
-socket closing is the whole signal: the translator's session ends the way it
-already ends, and nothing is inferred anywhere
-([control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
+The grace is two reopens at the first backoff, about a second, counted off the
+backoff rather than kept as a number of its own. A client cannot tell an away
+device from a quiet one and this port has no way to tell it, so a mirror that
+held its clients through a station switched off would leave the translator
+reporting a link that is up over a railroad that cannot move. The socket closing
+is the whole signal: the translator's session ends the way it already ends, and
+nothing is inferred anywhere ([control
+ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
 An outage the first reopen recovers is invisible to clients, which is what the
-grace is for — a USB blip, not a flash — and a client that connects to an away
-device is served the outage itself, its bytes dropped because a command is
-honored now or ignored. The grace is the outage's and not each client's, so
-one that arrives while an outage is being waited out leaves with the clients
-already on it, and one that arrives after they are gone starts the next grace
-and gets all of it. Falling too far behind is a different reason to disconnect
-and keeps its own rule.
+grace is for — a USB blip, not a flash — and a client that connects to an
+away device is served the outage itself, its bytes dropped because a command is
+honored now or ignored. The grace is the outage's and not each client's, so one
+that arrives while an outage is being waited out leaves with the clients already
+on it, and one that arrives after they are gone starts the next grace and gets
+all of it. Falling too far behind is a different reason to disconnect and keeps
+its own rule.
 
 Every way the device can fail to be there is the same outage: a path that is
 not there, a path that will not take the line discipline because it is no
@@ -277,9 +278,9 @@ $ curl http://dccex-usb:8080/clients
 ```
 
 The **release**s the configured source carries, in the order the release API
-lists them, so nobody has to type a **tag** from memory. Three facts about
-each: the tag it is named by, the moment the source published it, and whether
-it carries the `firmware.bin` this app would write — with the digest the source
+lists them, so nobody has to type a **tag** from memory. Three facts about each:
+the tag it is named by, the moment the source published it, and whether it
+carries the `firmware.bin` this app would write — with the digest the source
 reports for it, because an asset the source reports no digest for is one this
 app refuses to write, and a flag that said otherwise would send an operator
 through the whole flash sequence for a refusal (#81). The last two are what a
@@ -302,15 +303,15 @@ list is drawn (docs/ui/README.md).
 
 The fifth is how many **client**s are on 2560 at the moment it is asked, and it
 was the one reading the page drew that is not the station talking: a command
-station knows nothing about who is listening to it, and the app holding the
-port does ([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
+station knows nothing about who is listening to it, and the app holding the port
+does
+([ADR-0008](../adr/0008-the-page-talks-to-the-face-and-reads-the-build-off-the-banner.md)
 d.4, #7). The page no longer draws it and this face still answers it (#111,
 docs/ui/README.md). A count and not a list — clients are equal here and the
-mirror does not know which of them is which — read off the fan-out
-at the question rather than kept, so a throttle that has gone is not one a
-caller is answered with. Nobody on the port is `0` and an answer like any
-other: on the box this UI exists for, a page and nothing else is the ordinary
-evening.
+mirror does not know which of them is which — read off the fan-out at the
+question rather than kept, so a throttle that has gone is not one a caller is
+answered with. Nobody on the port is `0` and an answer like any other: on the
+box this UI exists for, a page and nothing else is the ordinary evening.
 
 The second is [the flash](#writing-the-firmware), and the answer comes back
 when it is over: a minute or two, because that is how long writing four
@@ -337,7 +338,8 @@ station.
 
 The **script** is a railroad's Python document in `control`'s store, one per
 railroad, holding the **handler**s the translator runs for this station
-(ADR-0015, [ADR-0013](../adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
+(ADR-0015,
+[ADR-0013](../adr/0013-a-railroads-own-station-commands-are-a-script-in-the-translator.md)).
 It is edited on the page, and the page edits it through here:
 
 ```
@@ -408,13 +410,13 @@ log on the box (control ADR-0050):
   fix at all, and it is what the page opens the sample under. A face is
   private to its app and is not somewhere else to get at the railroad.
 - `405` — the releases, the count of clients, how far a flash has got, a
-  railroad's script and the journal are read, with `GET`; a flash is asked
-  for, with `POST`, and a script is applied, with `PUT`. `/flash` and
-  `/scripts/<railroad>` are the paths with two of them on each, and the split
-  is the point: a page that reloaded a read would not write the station
-  again, nor store a text again. There is nothing at `/clients` to change, because
-  who is on 2560 is decided by who dialled it. Nothing writes a line of the
-  journal through here either: the record is the translator's to keep.
+  railroad's script and the journal are read, with `GET`; a flash is asked for,
+  with `POST`, and a script is applied, with `PUT`. `/flash` and
+  `/scripts/<railroad>` are the paths with two of them on each, and the split is
+  the point: a page that reloaded a read would not write the station again, nor
+  store a text again. There is nothing at `/clients` to change, because who is
+  on 2560 is decided by who dialled it. Nothing writes a line of the journal
+  through here either: the record is the translator's to keep.
 - `502` — the source could not be reached, or answered with something that
   cannot be used: not a list of releases, not JSON at all, a status other than
   the `404` above, a release carrying no `firmware.bin`, no digest for it, or
@@ -442,8 +444,9 @@ log on the box (control ADR-0050):
   killed. The station may be half written; both are on the box's log as well,
   because neither is the caller's doing.
 - `403` — a page on another origin. The page and the face share one origin
-  behind the door, so a browser says which page asked and this face holds it
-  to that ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
+  behind the door, so a browser says which page asked and this face holds it to
+  that
+  ([ADR-0004](../adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)).
   It is the stream's own guard as much as the other routes': a browser asks
   nobody before opening one.
 - `503` — also the mirror's port not being there when a page opens a stream.
@@ -464,13 +467,13 @@ and a path the face does not answer is the caller's own to read.
 
 Of HTTP it reads the request line, the length of the body, the origin the
 request was addressed to, the origin of the page that asked and the key a
-browser names when it is opening a stream — nothing else — and it answers one
-request per connection. This is a private origin spoken to by one page, so
+browser names when it is opening a stream — nothing else — and it answers
+one request per connection. This is a private origin spoken to by one page, so
 negotiation and a connection kept open for the next request are protocol it
 would carry without ever being asked for it. One request is bounded in time,
-because the loop it is answered on is the one that holds the command station.
-A stream is not: it is open for as long as somebody is watching the railroad,
-and what lets go of one that has stopped reading is the mirror.
+because the loop it is answered on is the one that holds the command station. A
+stream is not: it is open for as long as somebody is watching the railroad, and
+what lets go of one that has stopped reading is the mirror.
 
 Nothing in the gate reaches the release API. What fetches a URL is injected
 here exactly as it is for the flash, and the suite substitutes its own, so
@@ -545,13 +548,13 @@ page's own origin with no second certificate anywhere (ADR-0004 d.3).
 
 What rides on it is the bytes and nothing else. The station's go out as
 **binary** frames, unchanged: a text frame has to carry valid UTF-8, a serial
-line promises none, and one garbled byte would end a stream whose whole
-contract is that every byte arrives as it was sent. What the page sends is read
-the other way round — text, binary or a continuation, all of it payload —
-because what ends a message is `>` and the mirror is what reads for it. There
-is no protocol of our own on the stream: no progress, no status, no link. What
-the link is doing is read off the conversation, as the translator reads it
-([control ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
+line promises none, and one garbled byte would end a stream whose whole contract
+is that every byte arrives as it was sent. What the page sends is read the other
+way round — text, binary or a continuation, all of it payload — because what
+ends a message is `>` and the mirror is what reads for it. There is no protocol
+of our own on the stream: no progress, no status, no link. What the link is
+doing is read off the conversation, as the translator reads it ([control
+ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)).
 
 Nothing is buffered between the page and the port. What the browser has not
 taken is waited on before more is read off the mirror, so a monitor that has
@@ -649,16 +652,16 @@ after one failure would be worse than the failure.
 
 **Whether it is safe to reset the station is the operator's**, not this app's,
 and that is where the obligation sits now that a page can ask
-([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
-Flashing drops the rails and disconnects every throttle, and nothing between
-the person and the station checks that a train is not moving: this app is not
-on the bus, so it cannot read a run state or a track row, and the face is about
-this app rather than about a railroad. The page sequences what it can and
-confirms; what it cannot do is prevent, and none of the refusals above is a
-safety mechanism — they are about tags, sources, digests and devices. It is the
-rule cutting track power already has, on the other thing that stops a railroad
-(control ADR-0051, control ADR-0062). Reading the dispatcher's state is the
-coupling this app has never had and the reason it is trustworthy.
+([ADR-0006](../adr/0006-the-operator-is-the-only-guard-on-a-flash.md)). Flashing
+drops the rails and disconnects every throttle, and nothing between the person
+and the station checks that a train is not moving: this app is not on the bus,
+so it cannot read a run state or a track row, and the face is about this app
+rather than about a railroad. The page sequences what it can and confirms; what
+it cannot do is prevent, and none of the refusals above is a safety mechanism
+— they are about tags, sources, digests and devices. It is the rule cutting
+track power already has, on the other thing that stops a railroad (control
+ADR-0051, control ADR-0062). Reading the dispatcher's state is the coupling this
+app has never had and the reason it is trustworthy.
 
 ## Deploying it, and going back
 
@@ -729,28 +732,29 @@ pin, and a second image of them would be a second answer to which esptool
 this repository was tested at. The page is built by node and served by nginx,
 so `dccex-ui:<commit>` is its own (`deploy/ui.Dockerfile`).
 
-The stack's `.env` holds that one line, because the commit is the one thing
-that differs between two deploys of this repository, and writing it there is
-what makes `restart: unless-stopped` bring back what was rolled back *to*.
-**One line and not two**: the commit names the mirror's image and the page's
-both — `dccex:<commit>` and `dccex-ui:<commit>` — and ADR-0005 d.7 is amended
-for it, because when d.7 was written the page was not here to be rolled back
-with the mirror. Nothing about a rollback moves `main`: the box is behind the repository
+The stack's `.env` holds that one line, because the commit is the one thing that
+differs between two deploys of this repository, and writing it there is what
+makes `restart: unless-stopped` bring back what was rolled back *to*. **One line
+and not two**: the commit names the mirror's image and the page's both —
+`dccex:<commit>` and `dccex-ui:<commit>` — and ADR-0005 d.7 is amended for it,
+because when d.7 was written the page was not here to be rolled back with the
+mirror. Nothing about a rollback moves `main`: the box is behind the repository
 until somebody commits the fix and deploys it, and the record above is where
 that is visible. One step back is what is kept; older images are the box's to
 prune, and what pruning them costs is a second step.
 
 **A deploy that fails is a deploy that did not happen.** `.env` has to say the
-new commit before the `up` — `--env-file .env` is how compose is told which one
-— so an `up` that fails is a file naming a commit that was never brought up. It
-is put back: the previous commit, or removed where a first deploy onto a box had
-none, so that what the next deploy reads for its `went` is true (#83). Nothing
-is appended to the record. The `up` may have recreated some containers before
-it failed (#313), so the box may not be on the commit `.env` names. The failure
-is loud: the deploy exits non-zero, says what it put `.env` back to, prints the
-`docker compose ... ps -a` that shows which containers run what, and points to
-the rollback in the script's header. The containers are not rolled back; going
-back is the command above rather than something a failure does on its own.
+new commit before the `up` — `--env-file .env` is how compose is told which
+one — so an `up` that fails is a file naming a commit that was never brought
+up. It is put back: the previous commit, or removed where a first deploy onto a
+box had none, so that what the next deploy reads for its `went` is true (#83).
+Nothing is appended to the record. The `up` may have recreated some containers
+before it failed (#313), so the box may not be on the commit `.env` names. The
+failure is loud: the deploy exits non-zero, says what it put `.env` back to,
+prints the `docker compose ... ps -a` that shows which containers run what, and
+points to the rollback in the script's header. The containers are not rolled
+back; going back is the command above rather than something a failure does on
+its own.
 
 All of this is code here now. `deploy/Dockerfile` is the image; `compose.yaml`
 and `compose.box.yaml` are the project, the second being the box's half — the

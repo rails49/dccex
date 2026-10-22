@@ -29,42 +29,40 @@ top of them.
   [SOURCE.md](src/SOURCE.md)).
 - **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
   lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into. **The page is here and the work pane is full**
-  (#3, #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
+  with a box to type into. **The page is here and the work pane is full** (#3,
+  #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
   **view** in — the **tile**s and the **monitor** under them, the releases,
   the railroad's **script**, or the **journal** (#169, #185, #266) — built by
-  node inside its own image
-  and served by nginx out of it,
-  drawing in the look rules from its first commit. The
-  whole of what is on it is written down ([the page](docs/ui/README.md)). The
-  mirror's face is what it talks to, on that same label under `/dccex-usb` and
-  behind the same certificate
+  node inside its own image and served by nginx out of it, drawing in the look
+  rules from its first commit. The whole of what is on it is written down
+  ([the page](docs/ui/README.md)). The mirror's face is what it talks to, on
+  that same label under `/dccex-usb` and behind the same certificate
   ([ADR-0004](docs/adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)):
   that face carries the releases the configured source lists, writes one onto
   the station when the page names its tag, reads and applies the railroad's
   script in `control`'s store, which a browser on that origin cannot reach
   ([ADR-0015](docs/adr/0015-the-script-is-a-railroads-document-in-the-store.md)
-  d.5), and carries the station's
-  conversation both ways on a **stream** the page opens on its own origin —
-  one more client of the mirror's port and not a second mirror
-  ([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)). Whether the railroad can spare
-  its station is the operator's to answer: the page sequences and confirms,
-  and nothing in the app checks
+  d.5), and carries the station's conversation both ways on a **stream** the
+  page opens on its own origin — one more client of the mirror's port and not
+  a second mirror
+  ([ADR-0007](docs/adr/0007-the-monitors-stream-is-one-more-client-of-the-mirrors-port.md)).
+  Whether the railroad can spare its station is the operator's to answer: the
+  page sequences and confirms, and nothing in the app checks
   ([ADR-0006](docs/adr/0006-the-operator-is-the-only-guard-on-a-flash.md)).
 
 The words this repository uses are in [GLOSSARY.md](GLOSSARY.md). The gate is
 `./scripts/check.sh`, one command, and it needs no hardware, no Docker daemon
 and no node — `uv` and an environment, and the first run in a fresh one
-downloads `pyright`'s own toolchain before it can check anything. The three checks that do need a daemon — the page's image built
-and served,
-the compose project brought up, served and taken down, and the mirror's image
-run with a pty for a device and 2560 dialled against it — carry the `docker`
-marker, which the gate does not collect; `uv run pytest -m docker` is how they
-are run, and the workflow runs them in a job of its own that a pull request
-requires, where a missing daemon is a failure rather than a skip (#53, #54,
-#56, #15). The checks that put the page's own functions through a bare node
-carry a `node` marker beside it, are kept out of the gate the same way, and are
-run in a job of their own for the same reason (#101).
+downloads `pyright`'s own toolchain before it can check anything. The three
+checks that do need a daemon — the page's image built and served, the compose
+project brought up, served and taken down, and the mirror's image run with a pty
+for a device and 2560 dialled against it — carry the `docker` marker, which
+the gate does not collect; `uv run pytest -m docker` is how they are run, and
+the workflow runs them in a job of its own that a pull request requires, where a
+missing daemon is a failure rather than a skip (#53, #54, #56, #15). The checks
+that put the page's own functions through a bare node carry a `node` marker
+beside it, are kept out of the gate the same way, and are run in a job of their
+own for the same reason (#101).
 
 ## What the UI talks to
 
@@ -138,12 +136,14 @@ stays in `CommandStation-EX` where it belongs.
 
 ## The decisions
 
-- [ADR-0008](https://github.com/rails49/.github/blob/main/docs/adr/0008-the-dcc-ex-ui-and-its-python-share-a-repository-of-their-own.md) —
-  why this repository exists and what builds it
-- [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md) —
-  what a UI may talk to, and what a private face is
-- [ADR-0001](https://github.com/rails49/.github/blob/main/docs/adr/0001-a-ui-of-its-own-is-about-something-other-than-the-loaded-railroad.md) —
-  why this is a UI of its own and not a view of `control`'s
-- [control ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
-  and [ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md) —
-  flashing, and what the link means
+- [ADR-0008](https://github.com/rails49/.github/blob/main/docs/adr/0008-the-dcc-ex-ui-and-its-python-share-a-repository-of-their-own.md)
+  — why this repository exists and what builds it
+- [ADR-0002](https://github.com/rails49/.github/blob/main/docs/adr/0002-a-ui-talks-to-the-bus-the-store-and-its-own-apps-face.md)
+  — what a UI may talk to, and what a private face is
+- [ADR-0001](https://github.com/rails49/.github/blob/main/docs/adr/0001-a-ui-of-its-own-is-about-something-other-than-the-loaded-railroad.md)
+  — why this is a UI of its own and not a view of `control`'s
+- [control
+  ADR-0065](https://github.com/rails49/control/blob/main/docs/adr/0065-the-app-that-owns-the-device-flashes-it.md)
+  and
+  [ADR-0066](https://github.com/rails49/control/blob/main/docs/adr/0066-the-link-is-the-station-answering-not-the-socket-being-open.md)
+  — flashing, and what the link means

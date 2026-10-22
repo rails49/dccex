@@ -89,17 +89,17 @@ a reader sorting the diff is told which side of it is ours:
   event loop's task cleanup happened to cancel it. The station records that it
   has been closed, and the handover asks before it takes the device back. One
   test holds it.
-- **#34** — `station.py` and the tests for it: #24's fix woke a parked write by
-  handing it an exception, and passed over one the selector had already woken.
-  That write resumed with nothing to tell it the device had gone, so it took
-  the closed number for its own — unregistering a writer from it and writing a
-  client's command bytes into whatever the OS had handed it to next, while
-  reporting the message sent. The open device is an object of its own now,
+- **#34** — `station.py` and the tests for it: #24's fix woke a parked write
+  by handing it an exception, and passed over one the selector had already
+  woken. That write resumed with nothing to tell it the device had gone, so it
+  took the closed number for its own — unregistering a writer from it and
+  writing a client's command bytes into whatever the OS had handed it to next,
+  while reporting the message sent. The open device is an object of its own now,
   `Device`: it holds the descriptor, the write lock and whatever is parked, no
-  `os.read`, `os.write`, `os.close` or loop registration happens outside it,
-  and a write asks it whether the number is still the device's rather than
-  inferring that from how it was woken. `Station` lost three fields with it.
-  One test holds it, and it goes red against the shape #24 left.
+  `os.read`, `os.write`, `os.close` or loop registration happens outside it, and
+  a write asks it whether the number is still the device's rather than inferring
+  that from how it was woken. `Station` lost three fields with it. One test
+  holds it, and it goes red against the shape #24 left.
 - **#12** — `firmware.py`, in its prose alone: three sentences said the flash
   would have a caller once the face was written. The face is written and
   answers what releases the source carries; what will ask for a flash is the
@@ -134,16 +134,16 @@ a reader sorting the diff is told which side of it is ours:
   the rule over this package, the glossary and the pages of `docs/`, which is
   as far as it read until #150. Docstrings and comments only: nothing in any
   file's code moved, and no decision says anything different than it did.
-- **#150** — the suites' prose alone: the same defect one tree over. #128 fixed
-  the package, and the check it left behind did not read `tests/`, so four of
-  the suites that came across with the package went on citing `control`'s
+- **#150** — the suites' prose alone: the same defect one tree over. #128
+  fixed the package, and the check it left behind did not read `tests/`, so four
+  of the suites that came across with the package went on citing `control`'s
   decisions bare, the way #128 found the package citing them — eight citations
   in `test_face.py`, seven in `test_firmware.py`, five in `test_station.py` and
   two in `test_main.py`. `test_stream.py`'s two already named `control` and
   `test_framing.py` cites nothing; both are untouched. Each of the twenty-two
   names `control` now, and `tests/test_adr_numbers_resolve.py` reads `tests/`
-  along with every other tree a reader reads, so the next one is red in the
-  gate rather than found by a range review. Docstrings only: nothing in any file's
+  along with every other tree a reader reads, so the next one is red in the gate
+  rather than found by a range review. Docstrings only: nothing in any file's
   code moved, and no decision says anything different than it did.
 
 # Where the translator came from
@@ -182,8 +182,8 @@ The first commit of #180 is the copy untouched. The second:
 - `tests/dccex/test_main.py` carries the `broker` marker, and the imports are
   sorted where `ruff` sorts them.
 
-`tests/dccex/test_layout_to_station.py` and `tests/dccex/test_what_it_imports.py`
-are this repository's.
+`tests/dccex/test_layout_to_station.py` and
+`tests/dccex/test_what_it_imports.py` are this repository's.
 
 `control` deletes its copy in control#587. From then on a defect in the
 translator is fixed here (ADR-0003).
