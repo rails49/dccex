@@ -162,7 +162,7 @@ function current(rest) {
  * The two are one shape and are read together because they are one **tile**'s
  * reading in two halves: the current, and the limit under it
  * (docs/ui/README.md, issue 170). The letter says which. A `j` line in any
- * other letter is not read.
+ * other letter is not read here; `clock` reads `jC`.
  *
  * @param {string} rest what follows the `j`
  * @returns {Reading | null}
@@ -182,6 +182,38 @@ function measured(rest) {
         say: `the tracks may draw up to ${milliamps.join(", ")} milliamps`,
         limits: milliamps,
       };
+}
+
+/**
+ * The station's fast clock: `<jC 390 4>`, the minute of the day and the rate,
+ * or `<jC 390>`, the answer to a bare `<JC>`. The translator sets it with
+ * `<JC>` (#348).
+ *
+ * @param {string} rest what follows the `j`
+ * @returns {Reading | null}
+ */
+function clock(rest) {
+  const said = /^C (\d+)(?: (\d+))?$/.exec(rest);
+  const minute = Number(said?.[1]);
+  if (said === null || minute >= 24 * 60) {
+    return null;
+  }
+  const time =
+    `${String(Math.floor(minute / 60)).padStart(2, "0")}:` +
+    String(minute % 60).padStart(2, "0");
+  const rate = said[2] === undefined ? "" : ` ×${said[2]}`;
+  return { say: `fast clock ${time}${rate}` };
+}
+
+/**
+ * A `j` line, the station's answer to a `<J…>`: the milliamps or the fast
+ * clock.
+ *
+ * @param {string} rest what follows the `j`
+ * @returns {Reading | null}
+ */
+function jLine(rest) {
+  return measured(rest) ?? clock(rest);
 }
 
 /** The modifier letters the station puts after MAIN or BOOST, and the word
@@ -280,7 +312,7 @@ const READS = {
   H: turnout,
   i: banner,
   c: current,
-  j: measured,
+  j: jLine,
   "=": mode,
   l: loco,
   X: rejected,

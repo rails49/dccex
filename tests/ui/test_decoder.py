@@ -88,6 +88,9 @@ CASES: dict[str, str] = {
     "<jG 1233 1233 250 250>": (
         "the tracks may draw up to 1233, 1233, 250, 250 milliamps"
     ),
+    "<jC 390 4>": "fast clock 06:30 ×4",
+    "<jC 390>": "fast clock 06:30",
+    "<jC 1439 63>": "fast clock 23:59 ×63",
     "<= A MAIN>": "track A is MAIN",
     "<= C DC 3>": "track C is DC",
     "<= C MAIN A>": "track C is MAIN_AUTO",
@@ -132,11 +135,11 @@ FACTS: dict[str, dict[str, object]] = {
 #: The near misses: a line the decoder half-recognises, and gets nothing for.
 #: A malformed payload, a truncated message, and a whole message the station
 #: says in a letter the page has never learned — which is the common one.
-#: `<jV …>` is that inside a letter the page has: `<jI …>` and `<jG …>` are
-#: read and nothing else under the `j` is (issue 170). This fork answers a
-#: subset of DCC-EX's vocabulary and upstream adds to it, so a station saying
-#: something new degrades to a stream of raw lines rather than to a page of
-#: confident nonsense (ADR-0009).
+#: `<jV …>` is that inside a letter the page has: `<jI …>`, `<jG …>` and
+#: `<jC …>` are read and nothing else under the `j` is (issue 170, #348).
+#: This fork answers a subset of DCC-EX's vocabulary and upstream adds to it,
+#: so a station saying something new degrades to a stream of raw lines rather
+#: than to a page of confident nonsense (ADR-0009).
 SILENT: tuple[str, ...] = (
     "<p>",
     "<p3>",
@@ -148,6 +151,10 @@ SILENT: tuple[str, ...] = (
     "<jI>",
     "<jG>",
     "<jV 1 2>",
+    "<jC>",
+    "<jC 1440 4>",
+    "<jC 390 4 1>",
+    "<jC x 4>",
     "<= Z MAIN>",
     "<= A>",
     "<= C MAIN X>",

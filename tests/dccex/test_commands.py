@@ -110,3 +110,17 @@ def test_the_mark_is_what_a_boot_clears() -> None:
     a locomotive id to the station and names nothing here."""
     assert commands.MARK == b"<JM 32000 1>"
     assert commands.STASH_ID == 32000
+
+
+def test_the_fast_clock_is_the_minute_of_the_day_and_the_rate() -> None:
+    """`time` is fast seconds since midnight and the station takes minutes;
+    23400 s is 06:30."""
+    assert commands.clock(23400, 4) == b"<JC 390 4>"
+    assert commands.clock(23459, 4) == b"<JC 390 4>"
+
+
+def test_the_fast_clock_rate_is_rounded_into_what_the_station_holds() -> None:
+    """Rounded, and held to 1..63."""
+    assert commands.clock(0, 0.4) == b"<JC 0 1>"
+    assert commands.clock(0, 100) == b"<JC 0 63>"
+    assert commands.clock(0, 2.6) == b"<JC 0 3>"

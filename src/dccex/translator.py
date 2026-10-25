@@ -8,7 +8,8 @@ port 2560 so that JMRI and hand-held throttles share the same command station.
 That mirror is the other app in this repository (`src/dccex_usb`) and this one
 is a client of its port beside the others; the USB device is never opened here.
 
-*Subscribes* `tc49/layout/state/wanted/#` and `tc49/layout/alive_confirmed`.
+*Subscribes* `tc49/layout/state/wanted/#`, `tc49/layout/alive_confirmed` and
+`tc49/layout/state/clock`.
 *Publishes* `tc49/layout/state/device/track` and
 `tc49/layout/state/device/link/<id>`, where the id is the one this app is
 started with (control ADR-0059), and a script posts on
@@ -30,6 +31,10 @@ station restarts (`_started`, ADR-0013 d.6, ADR-0018, ADR-0021 d.2).
 **A restart is that stash read back empty**, which every boot clears: the poll
 asks for it beside the status, and a station that never answers is logged once
 a link (`_poll`, `_heard`, ADR-0021).
+
+**The station's fast clock follows `layout`'s**, told once a fast minute and
+again on connect and after a restart. Nothing the station says about its clock
+reaches the bus (`_on_clock`, #348).
 
 **It runs one railroad's script**: a handler keyed on a desired value runs in
 place of the command this app would have sent, one keyed on something the
@@ -80,6 +85,7 @@ from tc49.lib.inventory import OFF, ON, device_topic, split_device
 from dccex import commands, replies, script
 from dccex.journal import Journal, Line
 from dccex.rows import (
+    clock,
     commanded_power,
     desired_aspect,
     desired_function,
@@ -115,6 +121,10 @@ WANTED_TRACK = "tc49/layout/state/wanted/track"
 
 ALIVE_CONFIRMED = "tc49/layout/alive_confirmed"
 """Published by `layout` once a second while it is up (rails49/control#716)."""
+
+CLOCK = "tc49/layout/state/clock"
+"""The fast clock, said by `layout` once a second while a railroad is loaded
+and cleared when another is (control ADR-0090)."""
 
 SCRIPT_ROW = {
     WANTED_TRACK: script.ROW_POWER,
@@ -492,6 +502,8 @@ class DccEx:
         # station, so what is held is the pair rather than the word.
         self._track: tuple[str, str | None] | None = None
         self._link: tuple[bool, str] | None = None
+        # The last `<JC>` sent; an equal one is not sent again.
+        self._clocked: bytes | None = None
         # The station's own half of the link row, before the script's trouble
         # is said beside it.
         self._reached = (False, f"not connected to {self._where}")
@@ -503,6 +515,7 @@ class DccEx:
         bus.subscribe(WANTED, self._on_wanted)
         bus.subscribe(RAILROAD, self._on_railroad)
         bus.subscribe(ALIVE_CONFIRMED, self._on_alive)
+        bus.subscribe(CLOCK, self._on_clock)
 
     # -- the bus: what the hardware should do --------------------------------
 
@@ -510,6 +523,16 @@ class DccEx:
         """`layout` is up: restart the station's host timeout. Dropped with no
         link, like any command."""
         self._send(commands.HOST_TIMEOUT)
+
+    def _on_clock(self, topic: str, payload: Payload) -> None:
+        """The fast clock, sent where its minute or its rate moved."""
+        said = clock(payload)
+        if said is None:
+            return
+        built = commands.clock(*said)
+        if built != self._clocked:
+            self._clocked = built
+            self._send(built)
 
     def _on_wanted(self, topic: str, payload: Payload) -> None:
         """One desired value, remembered and — if the link is up — applied.
@@ -671,6 +694,8 @@ class DccEx:
         connect: `start` is where a railroad sets its modes and limits, so
         what comes back is the picture it has just established
         (`commands.MODES`, ADR-0022 d.2).
+
+        The fast clock goes last, where the bus holds one (#348).
         """
         self._send(commands.MARK)
         handlers = self._handlers(script.START, None)
@@ -680,6 +705,8 @@ class DccEx:
         self._send(commands.LIMITS)
         for wanted in self._applied():
             self._act(wanted)
+        self._clocked = None
+        self._on_clock(CLOCK, self._bus.last_values.get(CLOCK, {}))
 
     def _applied(self) -> list[Wanted]:
         """The desired picture in the order a fresh connection is handed it:
@@ -714,6 +741,8 @@ class DccEx:
         name = payload.get("name")
         if isinstance(name, str):
             self._railroad = name
+        # A load clears the clock row; the next railroad's clock goes out.
+        self._clocked = None
 
     def load(self, text: str | None) -> None:
         """Run `text` and hold the handlers it registered.

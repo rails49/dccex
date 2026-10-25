@@ -7,8 +7,10 @@ taken down by whatever published it (`docs/BUS.md`, rule 4).
 
 control ADR-0075 declares `tc49.lib.payload` for no other repository, so
 these are copied from `control`'s `src/tc49/lib/payload.py` at 8950c92.
+`clock`, which reads `tc49/layout/state/clock`, is this app's own.
 """
 
+import math
 from typing import cast
 
 from tc49.lib.inventory import OFF, ON
@@ -61,6 +63,22 @@ def desired_function(payload: object) -> bool | None:
         return None
     stated = cast(dict[str, object], payload).get("value")
     return stated if isinstance(stated, bool) else None
+
+
+def clock(payload: object) -> tuple[int, float] | None:
+    """The fast clock a `state/clock` value says: whole fast seconds since
+    midnight, `0..86399`, and the fast seconds per real second, finite and
+    more than `0`. None where the payload says no such clock (control
+    ADR-0090)."""
+    if not isinstance(payload, dict):
+        return None
+    said = cast(dict[str, object], payload)
+    time, speed_up = said.get("time"), said.get("speed_up")
+    if isinstance(time, bool) or not isinstance(time, int) or not 0 <= time < 86400:
+        return None
+    if isinstance(speed_up, bool) or not isinstance(speed_up, (int, float)):
+        return None
+    return (time, speed_up) if 0 < speed_up < math.inf else None
 
 
 def _stated(payload: object, field: str) -> str | None:

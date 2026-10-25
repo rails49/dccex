@@ -7,7 +7,7 @@ in. The `<…>` syntax is this app's private business and appears nowhere else
 in the repository (control ADR-0043);
 [docs/dccex/README.md](../../docs/dccex/README.md) is where it is written down.
 
-Three of the six functions answer `None`. A value this app cannot put on a
+Three of the seven functions answer `None`. A value this app cannot put on a
 wire — a position that is neither `closed` nor `thrown`, an aspect no head
 here is wired for, a function value the station's binary `<F>` cannot express
 — sends **nothing** rather than something near it: a translator that guessed
@@ -116,6 +116,9 @@ HOST_TIMEOUT = b"<G 3>"
 """Sent on each `tc49/layout/alive_confirmed`. The station cuts track power
 3 s after the last one (rails49/CommandStation-EX#5)."""
 
+RATE_MAX = 63
+"""The fastest fast clock the station is told: the most RCN-122 allows."""
+
 
 def traction(addr: str, speed: float) -> bytes:
     """A locomotive's speed: `<t addr step dir>`.
@@ -197,6 +200,16 @@ def track(power: str) -> bytes:
         return b"<1>"
     assert power == OFF, power
     return b"<0>"
+
+
+def clock(time: int, speed_up: float) -> bytes:
+    """The fast clock: `<JC minute rate>`.
+
+    `time`'s seconds are dropped, the station counting minutes. `speed_up`
+    is rounded and held to `1..63`.
+    """
+    rate = min(max(round(speed_up), 1), RATE_MAX)
+    return f"<JC {time // 60} {rate}>".encode()
 
 
 def _number(addr: str, most: int, *, least: int) -> int | None:
