@@ -1,13 +1,14 @@
-"""The five readers of the desired half, a table per reader: what each row
-reads as, and what reads as nothing.
+"""The five readers of the desired half and the fast clock's, a table per
+reader: what each row reads as, and what reads as nothing.
 
-The cases are `control`'s for the same functions at 8950c92
+The cases for the five are `control`'s for the same functions at 8950c92
 (`tests/lib/test_payload.py`), where they were taken from.
 """
 
 from tc49.lib.inventory import OFF, ON
 
 from dccex.rows import (
+    clock,
     commanded_power,
     desired_aspect,
     desired_function,
@@ -87,3 +88,26 @@ def test_a_desired_function_is_a_boolean_and_a_word_is_no_value() -> None:
     ]
     for payload in unreadable:
         assert desired_function(payload) is None, payload
+
+
+def test_a_clock_reads_as_its_time_and_its_speed_up() -> None:
+    assert clock({"at": 1.0, "time": 23400, "speed_up": 4}) == (23400, 4)
+    assert clock({"at": 1.0, "time": 86399, "speed_up": 0.5}) == (86399, 0.5)
+
+
+def test_a_clock_that_is_no_time_of_day_or_no_speed_up_reads_as_none() -> None:
+    unreadable: list[object] = [
+        23400,
+        {"speed_up": 4},
+        {"time": 23400},
+        {"time": 86400, "speed_up": 4},
+        {"time": -1, "speed_up": 4},
+        {"time": 23400.5, "speed_up": 4},
+        {"time": True, "speed_up": 4},
+        {"time": 23400, "speed_up": 0},
+        {"time": 23400, "speed_up": True},
+        {"time": 23400, "speed_up": "4"},
+        {"time": 23400, "speed_up": float("inf")},
+    ]
+    for payload in unreadable:
+        assert clock(payload) is None, payload

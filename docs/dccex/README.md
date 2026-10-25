@@ -31,7 +31,8 @@ throttles share the same command station. This app is one client of that port
 beside the others, and every client is a peer — nothing in the firmware ranks
 them.
 
-*Subscribes* `tc49/layout/state/wanted/#`. *Publishes*
+*Subscribes* `tc49/layout/state/wanted/#`, `tc49/layout/alive_confirmed` and
+`tc49/layout/state/clock`. *Publishes*
 `tc49/layout/state/device/track` and `tc49/layout/state/device/link/<id>`,
 where the id is the one this app is started with — `dccex`, the package's
 name, where it is given no other. The id is whatever the publisher calls
@@ -351,6 +352,7 @@ the comparison is the text and never the name.
 | `wanted/track` `on` | `<1>`, which reaches every track the station has |
 | `wanted/track` `off` | `<0>` |
 | `wanted/function/<addr>/<n>` `value` | `<F addr n 0\|1>`, the boolean as the bit — every value the row carries is one the station can be told |
+| `state/clock` `time`, `speed_up` | `<JC m r>`: `m` is `time // 60`, the minute of the day, and `r` is `speed_up` rounded and held to 1–63 |
 | `alive_confirmed` | `<G 3>`, once each time it is published while the link is up |
 
 Every row but the last is a pure function in `dccex/commands.py`, asserted as
@@ -384,6 +386,19 @@ here is wired for and sends nothing.
 values a model may leave unstated are the two that reach the wire; a value from
 a longer list — the `low` and `high` of a three-position vacuum — names a
 state this hardware has no packet for, and nothing is sent.
+
+**The fast clock is sent once a fast minute.** `layout` says it once a real
+second; `<JC>` goes out only where the minute or the rate differs from the last
+one sent. The station holds the rate in an `int8` and RCN-122 allows 0–63, 0
+being stopped, so a running clock is never sent as stopped. On connect and
+after a restart the clock the bus holds goes out after the replay; with none
+held, nothing does. A railroad load clears the row, and nothing is sent for
+that; the next railroad's first clock is sent whatever the last one was. The
+clock goes one way: the `<jC>` the station broadcasts, for this
+app's `<JC>` or another client's, publishes nothing on the bus. No script
+handler is keyed on the clock; a `<jC>` reaches a script as `reported_message`,
+as every message does. The journal and the monitor treat `<jC>` as any other
+line, and the page glosses `<jC 390 4>` as `fast clock 06:30 ×4` (#348).
 
 Two rules are not a row of the table.
 

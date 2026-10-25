@@ -24,8 +24,9 @@ from pathlib import Path
 import pytest
 from tc49.lib.bus import InProcessBus, Payload
 from tc49.lib.clock import Clock
+from tc49.lib.inventory import TOPICS
 
-from dccex import sample
+from dccex import sample, translator
 from dccex.journal import Journal
 from dccex.store import Scripts
 from dccex.translator import RAILROAD, DccEx
@@ -2149,6 +2150,138 @@ async def _poll_does_not_send_the_host_timeout() -> None:
         first = await station.heard(1 + 2 * 2)
         assert first.count(HOST_TIMEOUT) == 1
         assert await station.heard(2 * 3) == POLL * 3
+
+
+# -- the fast clock (#348) ------------------------------------------------
+
+CLOCK = "tc49/layout/state/clock"
+
+
+def test_the_clock_is_the_inventorys_topic() -> None:
+    assert translator.CLOCK == CLOCK
+    assert CLOCK in TOPICS
+
+
+def test_a_clock_is_sent_once_a_fast_minute() -> None:
+    asyncio.run(_clock_is_sent_once_a_fast_minute())
+
+
+async def _clock_is_sent_once_a_fast_minute() -> None:
+    """`layout` says the clock once a real second; the station is told only
+    where the minute or the rate moved."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        bus.publish(CLOCK, {"time": 23400, "speed_up": 4})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 390 4>"]
+        bus.publish(CLOCK, {"time": 23404, "speed_up": 4})
+        bus.drain()
+        await station.heard_nothing_more()
+        bus.publish(CLOCK, {"time": 23460, "speed_up": 4})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 391 4>"]
+        bus.publish(CLOCK, {"time": 23461, "speed_up": 2})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 391 2>"]
+
+
+def test_a_clock_that_cannot_be_read_sends_nothing() -> None:
+    asyncio.run(_clock_that_cannot_be_read_sends_nothing())
+
+
+async def _clock_that_cannot_be_read_sends_nothing() -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        bus.publish(CLOCK, {"time": 86400, "speed_up": 4})
+        bus.drain()
+        await station.heard_nothing_more()
+
+
+def test_the_held_clock_is_sent_on_connect_and_after_a_restart() -> None:
+    asyncio.run(_held_clock_is_sent_on_connect_and_after_a_restart())
+
+
+async def _held_clock_is_sent_on_connect_and_after_a_restart() -> None:
+    bus, _ = bus_and_tap()
+    bus.publish(CLOCK, {"time": 23400, "speed_up": 4})
+    wanted(bus, POINT, "5", {"addr": "5", "position": "thrown"})
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        assert await station.heard(2) == [b"<a 2 0 1>", b"<JC 390 4>"]
+        await station.heard_nothing_more()
+        station.says(EMPTY)
+        assert await station.heard(5) == [
+            MARK,
+            *ASKS,
+            b"<a 2 0 1>",
+            b"<JC 390 4>",
+        ]
+        await station.heard_nothing_more()
+
+
+def test_a_cleared_clock_is_not_sent_on_the_next_connect() -> None:
+    asyncio.run(_cleared_clock_is_not_sent_on_the_next_connect())
+
+
+async def _cleared_clock_is_not_sent_on_the_next_connect() -> None:
+    """A railroad load clears the row. Nothing is sent for it, and the
+    clock it held is not the next railroad's."""
+    bus, _ = bus_and_tap()
+    bus.publish(CLOCK, {"time": 23400, "speed_up": 4})
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        assert await station.heard(1) == [b"<JC 390 4>"]
+        bus.clear(CLOCK)
+        bus.drain()
+        await station.heard_nothing_more()
+        station.hangs_up()
+        again = await port.opened(2)
+        await again.heard_nothing_more()
+
+
+def test_a_railroad_load_sends_the_next_clock_whatever_the_last_was() -> None:
+    asyncio.run(_railroad_load_sends_the_next_clock_whatever_the_last_was())
+
+
+async def _railroad_load_sends_the_next_clock_whatever_the_last_was() -> None:
+    """The station's clock has run on since the last `<JC>`, so the next
+    railroad's first clock goes out even at the same minute and rate."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        bus.publish(CLOCK, {"time": 23400, "speed_up": 4})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 390 4>"]
+        bus.clear(CLOCK)
+        bus.publish(RAILROAD, {"name": "yard"})
+        bus.publish(CLOCK, {"time": 23400, "speed_up": 4})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 390 4>"]
+
+
+def test_a_clock_the_station_says_is_not_published() -> None:
+    asyncio.run(_clock_the_station_says_is_not_published())
+
+
+async def _clock_the_station_says_is_not_published() -> None:
+    """The clock goes one way: the station's own echo, or another client's
+    `<JC>`, is a message and nothing on the bus."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        station.says(b"<jC 390 4>")
+        await asyncio.sleep(QUIET_S)
+        bus.drain()
+        assert CLOCK not in tap.topics()
+        assert "tc49/layout/clock_wanted" not in tap.topics()
 
 
 # -- standing the railroad down -------------------------------------------
