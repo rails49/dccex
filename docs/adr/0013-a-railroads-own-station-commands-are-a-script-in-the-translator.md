@@ -4,7 +4,8 @@
   [ADR-0015](0015-the-script-is-a-railroads-document-in-the-store.md); d.6 and
   d.9 amended by [ADR-0018](0018-the-stations-setup-runs-at-start.md); d.3
   and d.4 amended by
-  [ADR-0029](0029-a-script-posts-text-and-hears-what-the-station-says.md)
+  [ADR-0029](0029-a-script-posts-text-and-hears-what-the-station-says.md); d.4
+  amended by [ADR-0030](0030-a-script-reports-where-a-point-lies.md)
 - **Related:** `control` ADR-0050 (broken hardware is reported, never worked
   around), `control` ADR-0054 (the railroad comes up at rest and points replay)
 

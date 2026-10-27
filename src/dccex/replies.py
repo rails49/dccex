@@ -76,10 +76,10 @@ class Turnout:
     The station keeps turnouts of its own and this app commands none of them
     — a point is thrown with a stateless accessory packet, and the position
     the station answers with is one it faked (control ADR-0022). So this is
-    never read back as an observation and `device/point` stays empty. It is
-    read because a **script** may be keyed on it: a throw from JMRI or a
-    hand-held throttle reaches a railroad's own commands only this way, after
-    the station has acted (ADR-0013 d.3).
+    never read back as an observation and is not what `device/point` is
+    published from (ADR-0030). It is read because a **script** may be keyed
+    on it: a throw from JMRI or a hand-held throttle reaches a railroad's own
+    commands only this way, after the station has acted (ADR-0013 d.3).
 
     The id is the station's own turnout number, which is what its table is
     keyed by and not the accessory number a `point` is commanded with.

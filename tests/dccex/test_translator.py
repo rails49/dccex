@@ -907,6 +907,102 @@ async def _widget_name_that_reaches_another_topic_raises(
     assert "no widget name" in caplog.text
 
 
+# -- where a script says a point lies (ADR-0030) --------------------------
+
+PAIRED = """\
+@on("point", "105")
+def pair(t):
+    t.default()
+    thrown = t.desired("point", "105") == "thrown"
+    t.send(f"<T 104 {0 if thrown else 1}>")
+    t.point("105", t.desired("point", "105"))
+    t.point("104", "closed" if thrown else "thrown")
+"""
+
+
+def positions(tap: Tap, address: str) -> list[object]:
+    """Every position published on `device/point` for one address."""
+    return [value["position"] for value in tap.values(f"{DEVICE_POINT}/{address}")]
+
+
+def test_a_handler_reports_where_a_point_lies() -> None:
+    asyncio.run(_handler_reports_where_a_point_lies())
+
+
+async def _handler_reports_where_a_point_lies() -> None:
+    """A point the script moves by its own logic is reported beside the one
+    it was asked for (control ADR-0097 d.2)."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    async with running(bus, port, text=PAIRED):
+        station = await port.opened()
+        wanted(bus, POINT, "105", {"addr": "105", "position": "thrown"})
+        bus.drain()
+        assert await station.heard(2) == [b"<a 27 0 1>", b"<T 104 0>"]
+        bus.drain()
+    assert positions(tap, "105") == ["thrown"]
+    assert positions(tap, "104") == ["closed"]
+    assert tap.values(f"{DEVICE_POINT}/104")[0]["addr"] == "104"
+
+
+def test_a_position_that_repeats_the_last_is_not_published() -> None:
+    asyncio.run(_position_that_repeats_the_last_is_not_published())
+
+
+async def _position_that_repeats_the_last_is_not_published() -> None:
+    """The row is retained, so it is published on a change. A reconnect's
+    `start` saying it again changes nothing, and neither the link going nor
+    standing down clears it (ADR-0030 d.4)."""
+    bus, tap = bus_and_tap()
+    port = Port()
+    says = '@on("start")\ndef s(t):\n    t.point("104", "closed")\n'
+    async with running(bus, port, text=says + "\n\n" + PAIRED) as app:
+        first = await port.opened(asks=False)
+        await asyncio.sleep(QUIET_S)
+        first.hangs_up()
+        await port.opened(2, asks=False)
+        for position in ("closed", "thrown"):
+            wanted(bus, POINT, "105", {"addr": "105", "position": position})
+            bus.drain()
+            await asyncio.sleep(QUIET_S)
+        await app.shutdown()
+        bus.drain()
+    assert positions(tap, "104") == ["closed", "thrown", "closed"]
+    assert positions(tap, "105") == ["closed", "thrown"]
+    assert bus.last_values[f"{DEVICE_POINT}/104"]["position"] == "closed"
+
+
+@pytest.mark.parametrize(
+    ("call", "says"),
+    [
+        ('t.point("104", "open")', "no position"),
+        ('t.point("104/1", "closed")', "no point address"),
+        ('t.point("", "closed")', "no point address"),
+        ('t.point("10+", "closed")', "no point address"),
+        ('t.point("#", "closed")', "no point address"),
+        ('t.point(104, "closed")', "no point address"),
+    ],
+)
+def test_a_report_a_point_cannot_take_raises(
+    caplog: pytest.LogCaptureFixture, call: str, says: str
+) -> None:
+    asyncio.run(_report_a_point_cannot_take_raises(caplog, call, says))
+
+
+async def _report_a_point_cannot_take_raises(
+    caplog: pytest.LogCaptureFixture, call: str, says: str
+) -> None:
+    bus, tap = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.ERROR):
+        async with running(bus, port, text=f'@on("start")\ndef s(t):\n    {call}\n'):
+            await port.opened(asks=False)
+            await asyncio.sleep(QUIET_S)
+            bus.drain()
+    assert not [topic for topic in tap.topics() if topic.startswith(DEVICE_POINT)]
+    assert says in caplog.text
+
+
 # -- the station as this app has not set it (ADR-0018, ADR-0021) ---------
 
 SETS_UP = """\
@@ -1878,8 +1974,9 @@ def test_no_position_is_ever_observed() -> None:
 
 async def _no_position_is_ever_observed() -> None:
     """This railroad's turnouts have no feedback and the station's answer to
-    a throw is one it faked, so the row stays empty however many turnouts are
-    thrown: a faked observation is worse than silence."""
+    a throw is one it faked, so with a script that reports none the row stays
+    empty however many turnouts are thrown: a faked observation is worse than
+    silence (ADR-0030)."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port):
