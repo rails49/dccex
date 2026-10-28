@@ -75,6 +75,10 @@ export const HEADINGS = [
   "per hour",
 ];
 
+/** The columns of the list under the table, in order. A routine row puts the
+ *  station's words where the last four are. */
+export const COLUMNS = ["when", "district", "kind", "trips", "peak mA", "cut"];
+
 /** What the controls say. The words are the page's and they are here rather
  *  than in the components, so that what an operator reads is run rather than
  *  read off a template (`dccex-controls.ts`). */

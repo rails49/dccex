@@ -293,6 +293,13 @@ def test_the_columns_are_the_district_the_kinds_and_the_counts() -> None:
 
 
 @pytest.mark.node
+def test_the_list_is_headed_by_its_own_columns() -> None:
+    """The list is headed once, and its numbers are named as the table names
+    them."""
+    assert own()["columns"] == ["when", "district", "kind", "trips", "peak mA", "cut"]
+
+
+@pytest.mark.node
 def test_the_periods_are_the_three_spans_and_the_builds_in_the_file() -> None:
     """Newest build first, because the last one in the file is what the station
     is running now. The empty build is not one of them: it is the station not

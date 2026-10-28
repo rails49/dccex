@@ -35,6 +35,7 @@
 
 import {
   ALL,
+  COLUMNS,
   DAY,
   DOWNLOADS,
   EMPTY,
@@ -61,6 +62,7 @@ const answered = (ask) => {
     return {
       spans: SPANS,
       headings: HEADINGS,
+      columns: COLUMNS,
       says: {
         ALL,
         DAY,

@@ -11,7 +11,7 @@
 
 import { expect, test } from "vitest";
 
-import { type Entry } from "../src/incidents.js";
+import { COLUMNS, type Entry } from "../src/incidents.js";
 import { DccexIncidents } from "../src/ui/dccex-incidents.js";
 import { all, mounted, part, reads } from "./mounted.js";
 
@@ -118,6 +118,29 @@ test("a row says the time, the district, the kind and the numbers", async () => 
     cut: "100 ms",
     says: "",
   });
+});
+
+test("the list is headed once with the module's columns", async () => {
+  expect(all(await list([OUTAGE, REVERSAL]), ".head .heading")).toStrictEqual(
+    COLUMNS,
+  );
+});
+
+test("a row's parts are in the order of the headings", async () => {
+  // The columns are laid by position, so a part out of order is a number under
+  // the wrong heading.
+  const drawn = await list([REVERSAL]);
+  const parts = [...part(drawn, ".incident summary").children].map(
+    (element) => element.className,
+  );
+  expect(parts).toStrictEqual([
+    "when",
+    "district",
+    "kind",
+    "trips",
+    "milliamps",
+    "cut",
+  ]);
 });
 
 test("the rows are drawn in the order they are handed down", async () => {

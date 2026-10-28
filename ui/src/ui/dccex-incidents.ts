@@ -35,7 +35,7 @@
 import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
-import { type Entry, type Said } from "../incidents.js";
+import { COLUMNS, type Entry, type Said } from "../incidents.js";
 import { incidentsStyles } from "./dccex-incidents.styles.js";
 
 export class DccexIncidents extends LitElement {
@@ -52,6 +52,11 @@ export class DccexIncidents extends LitElement {
 
   override render(): TemplateResult {
     return html`
+      <div class="head">
+        ${COLUMNS.map(
+          (column: string) => html`<span class="heading">${column}</span>`,
+        )}
+      </div>
       <ol class="incidents">
         ${this.entries.map(
           (entry: Entry) => html`

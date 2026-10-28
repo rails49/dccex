@@ -11,8 +11,8 @@ import { css } from "lit";
  * **The controls stay where they are and the list scrolls under them.** A
  * journal is as long as the evening was, and a reader at the foot of it still
  * has the reload and the period where they were. Nothing here scrolls
- * sideways: the table is what is wider than a phone and it scrolls inside
- * itself (`dccex-counts.styles.ts`).
+ * sideways: the table and the list are wider than a phone and each scrolls
+ * inside itself (`dccex-counts.styles.ts`, `dccex-incidents.styles.ts`).
  */
 export const journalStyles = css`
   :host {
@@ -25,7 +25,7 @@ export const journalStyles = css`
   /* What is read: the rows, under everything that says which rows they are. */
   dccex-incidents {
     min-height: 0;
-    overflow-y: auto;
+    overflow: auto;
   }
 
   /* A journal with nothing in it, or one the face would not serve. Quiet,

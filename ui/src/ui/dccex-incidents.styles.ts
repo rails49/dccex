@@ -2,20 +2,16 @@ import { css } from "lit";
 
 /**
  * The incidents: one row to a line, each opening on the journal lines under
- * it.
+ * it, in columns under one heading.
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
  * (`look.css`). The chrome's colours stay on the chrome.
  *
- * **A row wraps rather than running off the side**, as a **release** row does
- * and for the same reason: the phone at the layout is where this is read, and a
- * stamp, a kind and three numbers are wider than it. A reading goes onto a
- * second line and is never lost (docs/ui/README.md).
- *
- * **The row is a handle and is sized for a thumb.** `--rail-button` is the
- * look rules' minimum for one, which is what a control pressed on a phone held
- * at the layout asks for (`dccex-monitor.styles.ts`).
+ * **Every row is laid on the same columns**, `--columns`, so a column of
+ * stamps, kinds or numbers reads down the list. The list is wider than a phone
+ * and scrolls sideways inside itself, as the table does
+ * (`dccex-counts.styles.ts`); the heading stays at the top while it scrolls.
  *
  * **A routine line is drawn quietly.** It is in the list because somebody
  * asked for it, and what they came for is the incidents: the station's words
@@ -24,9 +20,11 @@ import { css } from "lit";
  */
 export const incidentsStyles = css`
   :host {
+    --columns: 11rem 4rem 9rem 3rem 5rem 5rem 1fr;
+
     display: block;
     box-sizing: border-box;
-    padding: 0.5rem;
+    padding: 0 0.5rem 0.5rem;
   }
 
   .incidents,
@@ -36,35 +34,51 @@ export const incidentsStyles = css`
     list-style: none;
   }
 
-  /* One incident. The border is what divides the list rather than a rule
-     between every pair of lines inside a row. */
-  .incident {
-    border-top: 1px solid var(--sl-color-neutral-100);
-  }
-
-  .incident:first-child {
-    border-top: none;
-  }
-
-  /* The handle: everything a row says before it is opened, on one line where
-     there is room and wrapped where there is not. */
-  summary {
-    display: flex;
-    flex-wrap: wrap;
+  /* The heading and every row: the same columns, at least as wide as the
+     pane. */
+  .head,
+  summary,
+  .line {
+    display: grid;
+    grid-template-columns: var(--columns);
     align-items: baseline;
-    gap: 0.5rem;
+    column-gap: 0.5rem;
+    min-width: max-content;
     box-sizing: border-box;
-    min-height: var(--rail-button);
-    padding: 0.25rem 0.5rem;
+    padding: 0.125rem 0.5rem;
     font-family: var(--sl-font-sans);
     font-size: var(--sl-font-size-small);
+  }
+
+  /* What each column is, quieter than what is under it, and on top of the
+     rows as they scroll under it. */
+  .head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-top: 0.5rem;
+    border-bottom: 1px solid var(--sl-color-neutral-200);
+    background: var(--sl-color-neutral-0);
+    color: var(--sl-color-neutral-500);
+    font-size: var(--sl-font-size-x-small);
+    font-weight: var(--sl-font-weight-semibold);
+  }
+
+  summary {
     cursor: pointer;
+  }
+
+  /* The numbers and their headings sit against the right of the column. */
+  .heading:nth-child(n + 4),
+  .trips,
+  .milliamps,
+  .cut {
+    text-align: right;
   }
 
   /* When it happened, on the reader's own clock. Tabular, because a column of
      stamps a person is reading down is a column. */
   .when {
-    flex: none;
     color: var(--sl-color-neutral-500);
     font-size: var(--sl-font-size-x-small);
     font-variant-numeric: tabular-nums;
@@ -72,7 +86,6 @@ export const incidentsStyles = css`
 
   /* Which district, or the word for the station. */
   .district {
-    flex: none;
     color: var(--sl-color-neutral-900);
     font-weight: var(--sl-font-weight-semibold);
   }
@@ -80,7 +93,6 @@ export const incidentsStyles = css`
   /* What kind of incident it is, which is the reading the row exists to
      carry. */
   .kind {
-    flex: none;
     color: var(--sl-color-danger-700);
   }
 
@@ -89,15 +101,15 @@ export const incidentsStyles = css`
   .trips,
   .milliamps,
   .cut {
-    flex: none;
     color: var(--sl-color-neutral-700);
     font-variant-numeric: tabular-nums;
   }
 
-  /* A line no incident took: the station's own words, where an incident has
-     its kind. Monospaced, as the conversation is on the monitor. */
+  /* A line no incident took: the station's own words across the columns an
+     incident has its kind and numbers in. Monospaced, as the conversation is
+     on the monitor. */
   .says {
-    flex: 1 1 12rem;
+    grid-column: 3 / -1;
     min-width: 0;
     color: var(--sl-color-neutral-600);
     font-family: var(--sl-font-mono);
@@ -112,22 +124,14 @@ export const incidentsStyles = css`
     font-weight: var(--sl-font-weight-normal);
   }
 
-  /* The lines the row is made of, under it and indented to say so. */
+  /* The lines the row is made of, under it: the stamp in the stamp's column
+     and the station's words where a routine row has them. */
   .lines {
-    padding: 0.25rem 0.5rem 0.5rem 1.5rem;
-  }
-
-  /* One journal line: when it arrived, and what the station said, verbatim. */
-  .line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem;
-    padding: 0.125rem 0;
+    padding-bottom: 0.25rem;
   }
 
   .said {
-    flex: 1 1 12rem;
+    grid-column: 3 / -1;
     min-width: 0;
     color: var(--sl-color-neutral-900);
     font-family: var(--sl-font-mono);
