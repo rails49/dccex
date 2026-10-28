@@ -1,9 +1,10 @@
 /**
  * The monitor's rules that are not drawing: whether the reader is at the
  * bottom of the conversation, the time a line arrived as a clock says it,
- * which of the station's repeats are worth showing, which alerts fold into
- * one row, and the conversation itself — what is on screen, what waits behind
- * a pause, and what a pause, a resume and a clear do to either.
+ * which of the station's repeats are worth showing, which alerts and speed
+ * changes fold into one row, and the conversation itself — what is on screen,
+ * what waits behind a pause, and what a pause, a resume and a clear do to
+ * either.
  *
  * The page is `ui/src/ui/dccex-monitor.ts`, and everything about it that
  * needs a browser stays there — the rows, the box at the foot, the controls,
@@ -25,7 +26,8 @@
  * **tile**s show is `readings.js`'s and what a line means is the
  * **decoder**'s; these are about a person reading a page — where they are in
  * it, the clock beside what they are reading, and what the page is holding
- * back while they read (#125).
+ * back while they read (#125). What a speed line says is asked of the
+ * decoder, so a speed row says it as the gloss does (#359).
  *
  * It is JavaScript with its types in JSDoc, as every module the gate runs
  * rather than reads is (listed in `tests/ui/test_decoder.py`). They were read
@@ -33,6 +35,8 @@
  * leaves a source saying every right word (#78, #101). `tsc` checks this file
  * as strictly as it checks the rest (`ui/tsconfig.json`).
  */
+
+import { speed } from "./decoder.js";
 
 /** How close to the bottom still counts as being at it, in CSS pixels. A
  *  scroller that is one rounded sub-pixel from the end is a reader who has not
@@ -553,13 +557,15 @@ export function cleared(conversation) {
 }
 
 /**
- * Alerts a track cleared, drawn as one row (#358).
+ * Lines drawn as one row: alerts a track cleared (#358), or a loco's speed
+ * changes (#359). An alert fold names its `track`, a speed fold its `cab`.
  *
  * The key is its first line's, so the row stays the same row while the run
  * grows.
  *
  * @typedef {{
- *   readonly track: string,
+ *   readonly track?: string,
+ *   readonly cab?: string,
  *   readonly says: string,
  *   readonly lines: readonly Line[],
  *   readonly key: number,
@@ -653,35 +659,98 @@ function clearings(said) {
 }
 
 /**
- * A fold being built: the track, how many alerts, and their lines.
+ * A run of alerts being built: the track, how many alerts, and their lines.
  *
  * @typedef {{ track: string, alerts: number, lines: Line[], key: number }} Run
  */
 
+/** @typedef {import("./decoder.js").Speed} Speed */
+
 /**
- * The rows `said` is drawn as (#358).
+ * A run of one loco's speed changes being built: the cab, what every line in
+ * it says alike, and its lines with the speed each says.
+ *
+ * @typedef {{
+ *   cab: string,
+ *   alike: string,
+ *   speeds: Speed[],
+ *   lines: Line[],
+ *   key: number,
+ * }} Ramp
+ */
+
+/**
+ * The row a run of speed lines is drawn as: the one line where it is one,
+ * else a fold that says the direction and the first and latest step.
+ *
+ * @param {Ramp} ramp
+ * @returns {Row}
+ */
+function ramped(ramp) {
+  const { cab, speeds, lines, key } = ramp;
+  const [line] = lines;
+  if (lines.length === 1 && line !== undefined) {
+    return line;
+  }
+  const way = speeds[0]?.way ?? "";
+  const from = speeds[0]?.step ?? "";
+  const to = speeds[speeds.length - 1]?.step ?? "";
+  const both = from.startsWith("step ") && to.startsWith("step ");
+  const says =
+    `loco ${cab} ${way}: ${from} → ${both ? to.slice(5) : to} ` +
+    `(${lines.length} lines)`;
+  return { cab, says, lines, key };
+}
+
+/**
+ * The rows `said` is drawn as (#358, #359).
  *
  * Cleared alerts on one track with no other station line between them are one
  * row, which says the track, how many alerts and the highest mA on any of
- * their lines. A line this page sent and the page's own note do not break a
- * run; they are rows of their own after the folded one. An alert that has not
- * cleared, or that ended in an overload or a fault, is shown line by line.
+ * their lines. An alert that has not cleared, or that ended in an overload or
+ * a fault, is shown line by line.
+ *
+ * A loco's speed lines with the same slot, direction and functions are one
+ * row, which says the direction and the first and latest step. A change of
+ * any of those starts a new run for the cab. Speed lines for other cabs do not
+ * end it, so two locos ramping at once are two rows. A run of one line is the
+ * line.
+ *
+ * Any other station line ends every run. A line this page sent and the page's
+ * own note do not; they are rows of their own after the folded one.
  *
  * @param {readonly Shown[]} said what is on screen, oldest first
  * @returns {Row[]}
  */
 export function folded(said) {
   const alerts = clearings(said);
-  /** @type {(Shown | Run)[]} */
+  /** @type {(Shown | Run | Ramp)[]} */
   const rows = [];
   /** @type {Run | null} */
   let run = null;
+  /** @type {Map<string, Ramp>} */
+  const ramps = new Map();
   said.forEach((entry, i) => {
     if (!spoken(entry)) {
       rows.push(entry);
       return;
     }
     const alert = alerts.get(i);
+    const moving = alert === undefined ? speed(entry.line) : null;
+    if (moving !== null) {
+      run = null;
+      const { cab, alike } = moving;
+      let ramp = ramps.get(cab);
+      if (ramp === undefined || ramp.alike !== alike) {
+        ramp = { cab, alike, speeds: [], lines: [], key: entry.key };
+        ramps.set(cab, ramp);
+        rows.push(ramp);
+      }
+      ramp.speeds.push(moving);
+      ramp.lines.push(entry);
+      return;
+    }
+    ramps.clear();
     if (alert === undefined) {
       run = null;
       rows.push(entry);
@@ -696,6 +765,9 @@ export function folded(said) {
     run.lines.push(entry);
   });
   return rows.map((row) => {
+    if ("speeds" in row) {
+      return ramped(row);
+    }
     if (!("alerts" in row)) {
       return row;
     }
