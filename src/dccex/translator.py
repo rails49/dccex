@@ -1088,6 +1088,7 @@ class DccEx:
             # Written before the link's readings go, so the line carries the
             # build the station was last saying it ran (ADR-0022 d.2).
             self._journalled({"restart": True})
+            _log.warning("the station restarted, so start runs again")
             # What it said before the restart is no longer true of it, and a
             # handler `start` replays reads its reports (ADR-0018 d.3).
             self._forget()
@@ -1332,12 +1333,19 @@ class DccEx:
         The row is republished when only the detail changes — a connect
         retried against a station that is not there says so each time — and
         the journal keeps the link going down and coming up rather than every
-        sentence about it (ADR-0022 d.2). A process that has just started has
-        a link that is down and has not gone anywhere, which is why the
+        sentence about it (ADR-0022 d.2). The log gets a line where the
+        journal does. A process that has just started has a link that is
+        down and has not gone anywhere, which is why the
         constructor says the row without coming through here.
         """
         if up != self._reached[0]:
             self._journalled({"link": UP if up else DOWN})
+            # The line in the log that explains the output that follows:
+            # `start` runs again on a link that comes back (#364).
+            if up:
+                _log.warning("the station answers, so start runs: %s", detail)
+            else:
+                _log.warning("the link is down: %s", detail)
         self._reached = (up, detail)
         self._said_link()
 

@@ -2803,3 +2803,60 @@ async def _with_no_journal_nothing_is_written(tmp_path: Path) -> None:
         station.says(b"<p1 A>", INVERT)
         await asyncio.sleep(QUIET_S)
     assert list(tmp_path.iterdir()) == []
+
+
+# -- the log: a line where start runs again (#364) -------------------------
+
+
+def test_the_log_says_when_the_link_goes_and_comes_back(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_log_says_when_the_link_goes_and_comes_back(caplog))
+
+
+async def _log_says_when_the_link_goes_and_comes_back(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One line each, and none for a retry that changes only the detail:
+    `start` runs on each connect, and the line explains its output."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.WARNING):
+        async with running(bus, port):
+            first = await port.opened()
+            first.says(b"<p1>")
+            await asyncio.sleep(QUIET_S)
+            first.hangs_up()
+            second = await port.opened(2)
+            second.says(b"<p1>")
+            await asyncio.sleep(QUIET_S)
+            said = [record.getMessage() for record in caplog.records]
+    assert [line.split(":")[0] for line in said] == [
+        "the station answers, so start runs",
+        "the link is down",
+        "the station answers, so start runs",
+    ]
+
+
+def test_the_log_says_when_the_station_restarts(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    asyncio.run(_log_says_when_the_station_restarts(caplog))
+
+
+async def _log_says_when_the_station_restarts(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    with caplog.at_level(logging.WARNING):
+        async with running(bus, port):
+            station = await port.opened()
+            station.says(b"<p1>")
+            await asyncio.sleep(QUIET_S)
+            caplog.clear()
+            station.says(EMPTY)
+            await asyncio.sleep(QUIET_S)
+            assert [record.getMessage() for record in caplog.records] == [
+                "the station restarted, so start runs again"
+            ]
