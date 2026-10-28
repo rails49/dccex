@@ -79,6 +79,19 @@ something written in it
 ([docs/ui/README.md](docs/ui/README.md#what-it-makes-of-the-journal)).
 _Avoid_: error, fault, event, alarm, short (one cause of a trip)
 
+**Reverser**:
+A district in `MAIN_AUTO`, whose polarity the station turns over itself when
+a train shorts across its gap
+([docs/dccex/README.md](docs/dccex/README.md#the-journal)).
+_Avoid_: reversing loop (the track, not the district), auto-reverse
+
+**Flip**:
+The station turning a **reverser** over: a `<* TRACK X INVERT … *>` line. A
+flip nothing came of is the reverser working; one a short outlived is a
+`reversal` **incident**
+([docs/ui/README.md](docs/ui/README.md#what-it-makes-of-the-journal)).
+_Avoid_: invert, inversion, reversal (the incident), polarity swap
+
 **Face**:
 The organisation's word
 ([GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md),
