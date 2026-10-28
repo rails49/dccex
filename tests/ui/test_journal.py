@@ -234,6 +234,20 @@ AN_ALERT_ON_EACH: list[Line] = [
     said(2_200, normal("B", 20), district="B", mode="PROG", limit=250),
 ]
 
+#: A fault the station printed no current for, and the current after the
+#: district recovered on the `NORMAL` that ended it (#369).
+AN_ALERT_FAULT: list[Line] = [
+    said(0, "<p1 A>", district="A", mode="MAIN", limit=3000),
+    said(1_000, "<* TRACK A ALERT FAULT *>", district="A", mode="MAIN", limit=3000),
+    said(
+        1_021,
+        "<* TRACK A NORMAL (after 20msec/21msec) 24mA *>",
+        district="A",
+        mode="MAIN",
+        limit=3000,
+    ),
+]
+
 #: An alert in the first second of a link, before the station has said what
 #: the district is set to.
 AN_ALERT_BEFORE_A_MODE: list[Line] = [
@@ -336,6 +350,7 @@ ASKS: dict[str, dict[str, Any]] = {
     "four retries": {"journal": FOUR_RETRIES},
     "an alert on each": {"journal": AN_ALERT_ON_EACH},
     "an alert before a mode": {"journal": AN_ALERT_BEFORE_A_MODE},
+    "an alert fault": {"journal": AN_ALERT_FAULT},
     "a trip and a link loss": {"journal": A_TRIP_AND_A_LINK_LOSS},
     "powered": {"journal": POWERED},
     "powered, from before the period": {
@@ -514,6 +529,16 @@ def test_a_current_over_the_limit_that_came_back_is_a_spike() -> None:
     assert one["district"] == "A"
     assert one["trips"] == 0
     assert one["milliamps"] == 2900
+
+
+@pytest.mark.node
+def test_the_current_on_a_normal_line_is_not_the_peak() -> None:
+    """`NORMAL` prints the current after the district recovered. An alert
+    that printed none has a blank peak, and so has its district (#369)."""
+    (one,) = incidents("an alert fault")
+    assert (one["kind"], one["district"]) == ("spike", "A")
+    assert one["milliamps"] is None
+    assert district("an alert fault", "A")["milliamps"] is None
 
 
 @pytest.mark.node
