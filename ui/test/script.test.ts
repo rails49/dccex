@@ -26,6 +26,7 @@ import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { expect, test } from "vitest";
 
+import { type Logged } from "../src/log.js";
 import {
   APPLIES,
   CONFIRMS,
@@ -45,6 +46,8 @@ import {
   stored,
   unapplied,
 } from "../src/script.js";
+import { DccexDivider } from "../src/ui/dccex-divider.js";
+import { DccexLog } from "../src/ui/dccex-log.js";
 import { DccexScript } from "../src/ui/dccex-script.js";
 import { mounted, part, press, reads } from "./mounted.js";
 
@@ -706,4 +709,38 @@ test("edits are unapplied where the editor is not the text that was applied", ()
   expect(unapplied(SCRIPT, SCRIPT)).toBe(false);
   expect(unapplied(`${SCRIPT}\n`, SCRIPT)).toBe(true);
   expect(unapplied("anything", null)).toBe(false);
+});
+
+/** The log pane the view drew beside the editor. */
+function logPane(drawn: DccexScript): DccexLog {
+  return part(drawn, "dccex-log") as DccexLog;
+}
+
+test("the view draws the log beside the editor, with a divider between", async () => {
+  const [drawn] = await pane();
+  const asks = (): Promise<Logged> => Promise.resolve(null);
+  drawn.logs = asks;
+  await drawn.updateComplete;
+  part(drawn, ".edits .editing");
+  part(drawn, "dccex-divider");
+  expect(logPane(drawn).reads).toBe(asks);
+  expect(logPane(drawn).showing).toBe(true);
+});
+
+test("the log does not ask while the view is hidden", async () => {
+  const [drawn] = await pane();
+  drawn.setAttribute("hidden", "");
+  await drawn.updateComplete;
+  expect(logPane(drawn).showing).toBe(false);
+  drawn.removeAttribute("hidden");
+  await drawn.updateComplete;
+  expect(logPane(drawn).showing).toBe(true);
+});
+
+test("the divider at the edge hides the log, and it stops asking", async () => {
+  const [drawn] = await pane();
+  (part(drawn, "dccex-divider") as DccexDivider).moves(0);
+  await drawn.updateComplete;
+  expect(logPane(drawn).hidden).toBe(true);
+  expect(logPane(drawn).showing).toBe(false);
 });

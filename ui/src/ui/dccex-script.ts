@@ -53,6 +53,13 @@
  * What is decided here is the drawing: where the name sits, where the warnings
  * open, and where the editor goes.
  *
+ * **The log is beside the editor** (#365). The view is split into the editor
+ * and the translator's **log**, with a divider between them that can be
+ * dragged (`dccex-divider.ts`). Wide, the log is to the right; narrow, it is
+ * below. Dragged to the edge the log is hidden. The log asks for new lines
+ * about once a second while the view is showing and not otherwise
+ * (`dccex-log.ts`), through the hand the page passes down.
+ *
  * **The editor is CodeMirror and it is not Lit's** (ADR-0019). What it is made
  * of is `editor.ts`'s; what is here is one of them, made over the place the
  * template leaves and kept across every draw, because the document, the
@@ -64,6 +71,7 @@ import { EditorView } from "@codemirror/view";
 import { lookTheme } from "@rails49/look";
 import { LitElement, html, nothing, type TemplateResult } from "lit";
 
+import { type Logged } from "../log.js";
 import {
   APPLIES,
   CANCELS,
@@ -78,6 +86,9 @@ import {
   refusal,
   unapplied,
 } from "../script.js";
+import "./dccex-divider.js";
+import { SHARE } from "./dccex-divider.js";
+import "./dccex-log.js";
 import { scriptStyles } from "./dccex-script.styles.js";
 import { editing, mark } from "./editor.js";
 
@@ -93,6 +104,9 @@ export class DccexScript extends LitElement {
     loaded: { attribute: false },
     opens: { attribute: false },
     applies: { attribute: false },
+    logs: { attribute: false },
+    hidden: { type: Boolean, reflect: true },
+    share: { state: true },
     railroad: { state: true },
     opened: { state: true },
     edited: { state: true },
@@ -127,6 +141,14 @@ export class DccexScript extends LitElement {
    *  nothing stored. */
   applies: (railroad: string, text: string) => Promise<Applied> = () =>
     Promise.resolve({ applied: false, says: UNANSWERED });
+
+  /** What asks the face for the translator's **log** from byte N, as the page
+   *  hands it down. A pane handed none reads nothing. */
+  logs: (from: number) => Promise<Logged> = () => Promise.resolve(null);
+
+  /** The log's share of the view, as the divider says it: `0` where the log
+   *  is hidden. */
+  share = SHARE;
 
   /** The railroad whose script is open, or `null` where none is. */
   railroad: string | null = null;
@@ -197,18 +219,38 @@ export class DccexScript extends LitElement {
     this.#open = null;
   }
 
+  /** The editor and what goes with it on one side of the divider, and the log
+   *  on the other. The log asks only while the view is showing and the
+   *  divider has not hidden it. */
   override render(): TemplateResult {
     return html`
-      ${this.#unloaded()} ${this.#says()} ${this.#editing()}
-      ${this.#controls()}
-      ${this.became === null
-        ? nothing
-        : html`<p
-            class=${this.became.applied ? "became applied" : "became failed"}
-            aria-live="polite"
-          >
-            ${this.became.says}
-          </p>`}
+      <div class="split">
+        <div class="edits">
+          ${this.#unloaded()} ${this.#says()} ${this.#editing()}
+          ${this.#controls()}
+          ${this.became === null
+            ? nothing
+            : html`<p
+                class=${this.became.applied
+                  ? "became applied"
+                  : "became failed"}
+                aria-live="polite"
+              >
+                ${this.became.says}
+              </p>`}
+        </div>
+        <dccex-divider
+          @divided=${(e: CustomEvent<number>) => {
+            this.share = e.detail;
+          }}
+        ></dccex-divider>
+        <dccex-log
+          style="flex: 0 0 ${this.share * 100}%"
+          ?hidden=${this.share === 0}
+          .reads=${this.logs}
+          .showing=${!this.hidden && this.share > 0}
+        ></dccex-log>
+      </div>
     `;
   }
 
