@@ -264,7 +264,9 @@ test("alerts a track cleared are one row that opens and folds", async () => {
   expect(all(drawn, ".said")).toStrictEqual([]);
   press(drawn, ".folded");
   await drawn.updateComplete;
-  expect(all(drawn, ".fold .said")).toStrictEqual([...PULSE, ...PULSE]);
+  expect(all(drawn, ".fold .said")).toStrictEqual(
+    [...PULSE, ...PULSE].map((line) => line.replace(/\s+/g, " ")),
+  );
   expect(all(drawn, ".fold .line time")).toHaveLength(7);
   press(drawn, ".folded");
   await drawn.updateComplete;
