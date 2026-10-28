@@ -319,8 +319,9 @@ export function waiting(behind) {
  * The page's own note in the conversation, keyed as a line is.
  *
  * Not something the station said and not something this page sent: the page
- * telling the reader what became of the conversation itself. So far there is
- * one — the lines that went while the view was held (`held`, #143).
+ * telling the reader what became of the conversation itself: the lines that
+ * went while the view was held (`held`, #143), and the commands a list from
+ * the box did not send (`noted`, `paced.js`, #357).
  *
  * It carries no time, because it is not an arrival: what a stamp beside it
  * would say is when a gap was noticed rather than when anything happened. It
@@ -352,7 +353,7 @@ export function waiting(behind) {
  *
  * @typedef {object} Conversation
  * @property {readonly Shown[]} said what is on screen, oldest first
- * @property {Behind<Line>} behind what is waiting behind a pause
+ * @property {Behind<Shown>} behind what is waiting behind a pause
  * @property {boolean} paused whether the view is held
  * @property {Readonly<Record<string, string>>} last what each subject last
  *   said, so that a poll answered the same way twice is shown once
@@ -416,13 +417,13 @@ function gap(dropped) {
  * last said about it.
  *
  * @param {Readonly<Record<string, string>>} last what each subject last said
- * @param {readonly Line[]} went the lines the queue dropped
+ * @param {readonly Shown[]} went the entries the queue dropped
  * @returns {Record<string, string>}
  */
 function forgotten(last, went) {
   const now = { ...last };
   for (const line of went) {
-    const status = line.sent ? null : told(line.line);
+    const status = "note" in line || line.sent ? null : told(line.line);
     if (status !== null && now[status.about] === status.says) {
       delete now[status.about];
     }
@@ -467,6 +468,34 @@ export function arrived(conversation, said) {
   }
   const { behind, went } = queued(conversation.behind, worth);
   return { ...conversation, behind, last: forgotten(last, went), keys };
+}
+
+/**
+ * The conversation after the page put in a note of its own (#357).
+ *
+ * Appended where a line would be, and queued behind a pause as a line is.
+ *
+ * @param {Conversation} conversation the conversation as it stands
+ * @param {string} note what the page says
+ * @returns {Conversation}
+ */
+export function noted(conversation, note) {
+  const keys = conversation.keys + 1;
+  const worth = [{ note, key: conversation.keys }];
+  if (!conversation.paused) {
+    return {
+      ...conversation,
+      said: trimmed([...conversation.said, ...worth]),
+      keys,
+    };
+  }
+  const { behind, went } = queued(conversation.behind, worth);
+  return {
+    ...conversation,
+    behind,
+    last: forgotten(conversation.last, went),
+    keys,
+  };
 }
 
 /**
