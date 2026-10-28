@@ -22,10 +22,19 @@
  * `message.js`'s, writing it is the stream's, and holding the conversation is
  * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
+ * **The box takes a list** (#357). Text that opens with `<`, closes with `>`
+ * and has `>` then `<` inside is a list of messages, sent in order, each its
+ * own `»` line. After a PROG command (`<W>`, `<V>`, `<B>`, `<R>`, `<r>`) the
+ * next waits for the station's `<r …>`, `<v …>` or `<X>`. A reply ending in
+ * `-1`, an `<X>`, no reply within 10 s or the stream closing stops the list,
+ * and a page note says how many commands were not sent and why. What is typed
+ * while a list runs waits behind it. The rules are `paced.js`'s.
+ *
  * **The box remembers what was sent.** ↑ and ↓, as keys or as the two
  * buttons beside the send, step through the last commands as a shell does, and
  * what was being typed comes back past the newest one. Tapping a sent line puts
- * it in the box. The history is what `sends` handed back, not the page's polls,
+ * it in the box. ↑ recalls a list as the whole typed text, one entry. The
+ * history is what `sends` handed back, not the page's polls,
  * and it is kept in `localStorage` for this device.
  *
  * **The lines are handed to it and the sending is handed to it**, because what
@@ -216,8 +225,8 @@ export class DccexMonitor extends LitElement {
    *  lines, and the page's own notes among them. */
   said: readonly Shown[] = [];
 
-  /** What sends a typed command, as the page hands it down: the message that
-   *  went back, or `null` where nothing did.
+  /** What sends a typed command, as the page hands it down: what ↑ recalls
+   *  for it, or `null` where nothing was taken.
    *
    *  A monitor nobody handed one to sends nothing, rather than reaching for a
    *  stream of its own. The box still takes typing — it is a raw monitor and
