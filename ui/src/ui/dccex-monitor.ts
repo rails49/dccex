@@ -113,6 +113,7 @@ import { gloss } from "../decoder.js";
 import {
   EMPTIED,
   type Behind,
+  type Line,
   type Shown,
   atBottom,
   stamped,
@@ -320,25 +321,10 @@ export class DccexMonitor extends LitElement {
           : repeat(
               this.said,
               (said: Shown) => said.key,
-              (said: Shown) => {
-                if ("note" in said) {
-                  return html`<div class="note">${said.note}</div>`;
-                }
-                const read = said.sent ? null : gloss(said.line);
-                return html`
-                  <div
-                    class=${said.sent ? "line sent" : "line"}
-                    @click=${said.sent ? () => this.#recall(said.line) : nothing}
-                  >
-                    <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
-                    <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
-                    <span class="said">${said.line}</span>
-                    ${read === null
-                      ? nothing
-                      : html`<span class="gloss">${read}</span>`}
-                  </div>
-                `;
-              },
+              (said: Shown) =>
+                "note" in said
+                  ? html`<div class="note">${said.note}</div>`
+                  : this.#line(said),
             )}
       </div>
       <form class="box" @submit=${this.#send}>
@@ -377,6 +363,23 @@ export class DccexMonitor extends LitElement {
         </button>
         <button type="submit">send</button>
       </form>
+    `;
+  }
+
+  /** A line, stamped, marked if this page sent it, and glossed if the station
+   *  said it and the decoder knows it. */
+  #line(said: Line): TemplateResult {
+    const read = said.sent ? null : gloss(said.line);
+    return html`
+      <div
+        class=${said.sent ? "line sent" : "line"}
+        @click=${said.sent ? () => this.#recall(said.line) : nothing}
+      >
+        <time datetime=${said.at.toISOString()}>${stamped(said.at)}</time>
+        <span class="mark">${said.sent ? SENT_MARK : nothing}</span>
+        <span class="said">${said.line}</span>
+        ${read === null ? nothing : html`<span class="gloss">${read}</span>`}
+      </div>
     `;
   }
 
