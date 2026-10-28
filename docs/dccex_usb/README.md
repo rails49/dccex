@@ -68,6 +68,10 @@ The device to open and the port to serve it on. Four more are optional:
   (`compose.box.yaml`). **Left out is a mirror with no journal**: the
   journal route answers a status and a sentence, and a box with no translator
   beside it has no record to serve.
+- `--log <path>`, the file the translator copies its **log** to, which this
+  app's face serves at `/log` ([below](#the-log)). On the box it is
+  `/var/lib/dccex/log.txt` on the same volume. Left out, the log route
+  answers a status and a sentence.
 
 There is no broker argument and no identity argument. Both went with the bus:
 there is nothing to dial and no row to key by a name.
@@ -252,10 +256,11 @@ The face's router is code, and it is in `compose.box.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
 the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
 
-What it answers, which is eight things — seven questions and a conversation.
+What it answers, which is nine things — eight questions and a conversation.
 Five are about the station and this app, two are the railroad's script
-([below](#the-railroads-script)) and one is the **journal**
-([below](#the-journal)):
+([below](#the-railroads-script)), one is the **journal**
+([below](#the-journal)) and one is the translator's **log**
+([below](#the-log)):
 
 ```
 $ curl http://dccex-usb:8080/releases
@@ -410,8 +415,8 @@ log on the box (control ADR-0050):
   fix at all, and it is what the page opens the sample under. A face is
   private to its app and is not somewhere else to get at the railroad.
 - `405` — the releases, the count of clients, how far a flash has got, a
-  railroad's script and the journal are read, with `GET`; a flash is asked for,
-  with `POST`, and a script is applied, with `PUT`. `/flash` and
+  railroad's script, the journal and the log are read, with `GET`; a flash is
+  asked for, with `POST`, and a script is applied, with `PUT`. `/flash` and
   `/scripts/<railroad>` are the paths with two of them on each, and the split is
   the point: a page that reloaded a read would not write the station again, nor
   store a text again. There is nothing at `/clients` to change, because who is
@@ -455,8 +460,10 @@ log on the box (control ADR-0050):
 - `503` — and a mirror started with no `--store`, on the three script routes.
   It is a state of the installation rather than of the request, and it is what
   a box mirroring a cable with nothing else running answers: the sentence names
-  the flag. **A mirror started with no `--journal` answers its route the
-  same way**, for the same reason and in the same shape.
+  the flag. **A mirror started with no `--journal` or no `--log` answers
+  that route the same way**, for the same reason and in the same shape.
+- `416` — a range past the end of the log: the translator trimmed it. The
+  page fetches the whole file again ([below](#the-log)).
 - `500` — the journal could not be read: the path is not a file this app can
   open, which is a mount somebody has to fix on the box. A journal that is
   simply not there is not this — it is an empty body.
@@ -466,8 +473,9 @@ caller's doing: a source that could not be read is a line on stderr as well,
 and a path the face does not answer is the caller's own to read.
 
 Of HTTP it reads the request line, the length of the body, the origin the
-request was addressed to, the origin of the page that asked and the key a
-browser names when it is opening a stream — nothing else — and it answers
+request was addressed to, the origin of the page that asked, the key a
+browser names when it is opening a stream, and the range a page names for
+part of the log — nothing else — and it answers
 one request per connection. This is a private origin spoken to by one page, so
 negotiation and a connection kept open for the next request are protocol it
 would carry without ever being asked for it. One request is bounded in time,
@@ -530,6 +538,30 @@ trim is a new file renamed over the old one, and the file is opened by name on
 each read, so a read is the old file or the new one whole (d.4 as amended,
 `src/dccex/journal.py`). The volume is mounted read-only here
 (`compose.box.yaml`).
+
+### The log
+
+The translator's **log** is what it writes to stdout and stderr, copied to a
+file on the journal's volume, each line stamped
+([docs/dccex/README.md](../dccex/README.md#the-log)). This app serves the
+file as it is, as `text/plain`:
+
+```
+$ curl http://dccex-usb:8080/log
+2026-10-28T19:38:31.540+00:00 dccex: starting, built from d97a0bc
+2026-10-28T19:38:33.106+00:00 the station answers, so start runs: connected to mirror:2560
+```
+
+**A GET with `Range: bytes=N-` answers from byte N**, as a `206` with
+`Content-Range`, so a page polling once a second reads only new lines. A range
+at the end is a `206` with no bytes. A range past the end is a `416` with
+`Content-Range: bytes */<size>`: the translator trimmed the file, and the page
+fetches the whole of it again. A range of any other shape is not read, and
+the whole file goes back.
+
+A log that is not there is an empty body, as a journal is. The translator
+trims the file by renaming a new one over it, and the file is opened by name
+on each read.
 
 ### The monitor's stream
 

@@ -72,6 +72,12 @@ arrived
 _Avoid_: log (what the apps write to stderr), trace (`control`'s recording of
 the bus), history, event log (an **event** is what a handler is keyed on)
 
+**Log**:
+What an app writes to stderr. The script view shows the translator's
+([docs/dccex/README.md](docs/dccex/README.md#the-log)).
+_Avoid_: console (the monitor), output, debug log, journal (what the station
+said)
+
 **Incident**:
 Something in the **journal** a person should look at, such as a trip, the link
 going down or the station restarting. It is a reading of the journal and not
