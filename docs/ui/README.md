@@ -638,11 +638,12 @@ So the page paces the list.
   `<` inside is a list. Anything else is one message, as before. Text with no
   brackets is never split, and an empty `<>` in a list is dropped.
 - The messages go up in order, each shown as its own `»` line. After a PROG
-  command the next waits for the station's next `<r …>`, `<v …>` or `<X>`. Any
-  other command is followed right away.
+  command the next waits for the station's next `<r…>`, `<v …>`, `<w …>` or
+  `<X>`. Any other command is followed right away. If no reply comes within
+  10 s, a page note says so and the next goes.
 - The page sends nothing more from the list if a reply ends in `-1`, a reply is
-  `<X>`, no reply comes within 10 s, or the stream closes. A page note says how
-  many commands were not sent and why.
+  `<X>`, or the stream closes. A page note says how many commands were not sent
+  and why.
 - What is sent from the box while a list runs waits behind it and follows the
   same rule. Pause and clear change only the view.
 - ↑ recalls the whole typed text as one entry.

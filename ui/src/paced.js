@@ -6,12 +6,13 @@
  * `<B>`, `<R>` or `<r>` waits for its ack it answers any other one of these
  * with `<X>` (`stashBusy`, `CommandStation-EX/DCCEXParser.cpp`). So the page
  * sends a list in order, and after one of these waits for the station's next
- * `<r …>`, `<v …>` or `<X>` before it sends the next message. Any other
- * command is followed right away.
+ * `<r…>`, `<v …>`, `<w …>` or `<X>` before it sends the next message. Any
+ * other command is followed right away. Where no reply comes within
+ * `REPLY_MS` the next message goes, and the page puts in a note.
  *
- * A list stops where a reply ends in `-1`, a reply is `<X>`, no reply comes
- * within `REPLY_MS`, or the stream closes. What was not sent is dropped, and
- * the page puts in a note saying how many and why.
+ * A list stops where a reply ends in `-1`, a reply is `<X>`, or the stream
+ * closes. What was not sent is dropped, and the page puts in a note saying how
+ * many and why.
  *
  * Everything typed at the box goes through here, so what is typed while a
  * list runs waits behind it. The state is one value and each function is a
@@ -24,8 +25,10 @@ import { message } from "./message.js";
 /** How long the page waits for the reply to a PROG command, in ms. */
 export const REPLY_MS = 10_000;
 
-/** Why a list stopped, where the page says it. */
+/** What the page says where a reply did not come. */
 export const SILENT = "no reply within 10 s";
+
+/** Why a list stopped, where the page says it. */
 export const CLOSED = "the stream closed";
 
 /** A list: `<`, then `>` and `<` with only spaces between, then `>`. */
@@ -38,7 +41,7 @@ const BETWEEN = />\s*</;
 const PROG = /^<[WVBRr][ >]/;
 
 /** A PROG reply, or the station refusing. */
-const REPLY = /^<(?:[rv] .*|X)>$/;
+const REPLY = /^<(?:[rvw][ \d].*|X)>$/;
 
 /** A reply that says the command failed. */
 const FAILED = /^<X>$|[ ]-1>$/;
@@ -139,6 +142,16 @@ export function answered(pacing, line) {
   return FAILED.test(line)
     ? stopped(pacing, `the station answered ${line}`)
     : { pacing: { ...pacing, awaiting: false }, note: null };
+}
+
+/**
+ * `pacing` once no reply came within `REPLY_MS`: the next message may go.
+ *
+ * @param {Pacing} pacing
+ * @returns {{ pacing: Pacing, note: string }}
+ */
+export function waited(pacing) {
+  return { pacing: { ...pacing, awaiting: false }, note: SILENT };
 }
 
 /**

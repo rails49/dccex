@@ -123,6 +123,38 @@ def test_every_prog_command_waits_for_its_reply(command: str) -> None:
 
 
 @pytest.mark.node
+@pytest.mark.parametrize(
+    ("command", "reply"),
+    [
+        ("<W 1 3>", "<r 1 3>"),
+        ("<V 1 3>", "<v 1 3>"),
+        ("<R 1>", "<v 1 3>"),
+        ("<R>", "<r 3>"),
+        ("<R LOCOID>", "<r LOCOID 3>"),
+        ("<W 3>", "<w 3>"),
+        ("<W CONSIST 5>", "<w CONSIST 5>"),
+        ("<B 29 5 1>", "<r0|0|29 5 1>"),
+        ("<W 1 3 7 8>", "<r7|8|1 3>"),
+        ("<R 1 7 8>", "<r7|8|1 3>"),
+        ("<r 3 1>", "<r 3 1 3 >"),
+    ],
+)
+def test_every_reply_the_station_gives_lets_the_next_go(
+    command: str, reply: str
+) -> None:
+    """Each PROG callback's reply (`DCCEXParser.cpp`, `callback_*`)."""
+    assert run({"typed": f"{command} <s>"}, {"heard": reply}) == sent(command, "<s>")
+
+
+@pytest.mark.node
+def test_a_loco_address_the_station_could_not_write_stops_the_list() -> None:
+    assert run({"typed": "<W 3> <s>"}, {"heard": "<w -1>"}) == [
+        *sent("<W 3>"),
+        {"note": "1 command not sent: the station answered <w -1>"},
+    ]
+
+
+@pytest.mark.node
 def test_a_reply_ending_in_minus_one_stops_the_list() -> None:
     assert run(
         {"typed": "<W 32 0> <W 263 128> <W 271 128> <W 279 128>"},
@@ -144,10 +176,11 @@ def test_an_x_stops_the_list() -> None:
 
 
 @pytest.mark.node
-def test_no_reply_stops_the_list() -> None:
+def test_no_reply_lets_the_next_go_with_a_note() -> None:
     assert run({"typed": "<R> <W 1 3> <s>"}, {"silent": True}) == [
         *sent("<R>"),
-        {"note": "2 commands not sent: no reply within 10 s"},
+        {"note": "no reply within 10 s"},
+        *sent("<W 1 3>"),
     ]
 
 

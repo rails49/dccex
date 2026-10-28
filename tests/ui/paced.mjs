@@ -30,13 +30,13 @@
 import {
   CLOSED,
   IDLE,
-  SILENT,
   added,
   answered,
   listed,
   next,
   recalled,
   stopped,
+  waited,
 } from "../../ui/src/paced.js";
 import { each } from "./each.mjs";
 
@@ -64,8 +64,10 @@ const run = (steps) => {
       pacing = added(pacing, listed(step.typed));
     } else if ("heard" in step) {
       stop(answered(pacing, step.heard));
+    } else if ("silent" in step) {
+      stop(waited(pacing));
     } else {
-      stop(stopped(pacing, "silent" in step ? SILENT : CLOSED));
+      stop(stopped(pacing, CLOSED));
     }
     drain();
   }
