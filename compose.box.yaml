@@ -149,6 +149,10 @@ services:
     # out, the face answers that route with a sentence, which a clean clone with no translator
     # beside this app gets.
     #
+    # The **log** is the translator's stdout and stderr, which it copies to a
+    # second file on the same volume and this app's face serves at `/log`
+    # (#364). The same path is named for both.
+    #
     # The device is the `by-id` path under `/host/dev`. Its links are
     # relative, so they resolve there. The variable is the host path, so a
     # box that moves it overrides one line.
@@ -156,7 +160,8 @@ services:
       ["--device", "/host${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}",
        "--port", "2560",
        "--store", "${DCCEX_STORE_URL:-http://store:8765}",
-       "--journal", "/var/lib/dccex/journal.jsonl"]
+       "--journal", "/var/lib/dccex/journal.jsonl",
+       "--log", "/var/lib/dccex/log.txt"]
     # Long enough for a flash to be waited out. `firmware.py` gives esptool
     # 300 seconds before it kills it, and a container killed in the middle of
     # a write leaves the command station half written; the app closes its face
@@ -241,11 +246,16 @@ services:
     # path of the box's, so nothing has to exist on the box for it either
     # (ADR-0022 d.1). Left off, this app writes nothing, which is what a
     # clean clone and a bench get.
+    #
+    # Beside it is the **log**: what this app writes to stdout and stderr,
+    # copied to a file on the same volume so the mirror's face serves it
+    # (#364). `docker logs` gets the same lines.
     command:
       ["--broker", "broker:1883",
        "--station", "mirror:2560",
        "--store", "${DCCEX_STORE_URL:-http://store:8765}",
-       "--journal", "/var/lib/dccex/journal.jsonl"]
+       "--journal", "/var/lib/dccex/journal.jsonl",
+       "--log", "/var/lib/dccex/log.txt"]
     networks:
       - default
       - rails49

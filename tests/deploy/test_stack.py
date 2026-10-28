@@ -137,6 +137,10 @@ JOURNAL_MOUNT = f"{JOURNAL}:{JOURNAL_AT}"
 #: The file on it the translator appends to, which is what `--journal` names.
 JOURNAL_FILE = f"{JOURNAL_AT}/journal.jsonl"
 
+#: The file on it the translator copies its log to, which is what `--log`
+#: names on both apps (#364).
+LOG_FILE = f"{JOURNAL_AT}/log.txt"
+
 
 def uncommented(text: str) -> list[str]:
     """The file's lines with its prose taken out.
@@ -377,6 +381,14 @@ def test_both_apps_are_given_the_one_file_on_that_volume() -> None:
     for app in ("translator", "mirror"):
         assert f'"--journal", "{JOURNAL_FILE}"' in services(BOX)[app], app
     assert "--journal" not in BASE.read_text()
+
+
+def test_both_apps_are_given_the_one_log_on_that_volume() -> None:
+    """The translator copies its log to the file and the mirror's face serves
+    it (#364). Left off the clean clone, which runs no translator."""
+    for app in ("translator", "mirror"):
+        assert f'"--log", "{LOG_FILE}"' in services(BOX)[app], app
+    assert "--log" not in BASE.read_text()
 
 
 def test_the_journals_volume_is_the_boxs_and_not_a_clean_clones() -> None:
