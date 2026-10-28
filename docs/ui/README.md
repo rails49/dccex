@@ -1025,6 +1025,11 @@ many times it was cut, the highest mA the station printed in it and how long
 it was cut for, which is each trip until the next `POWER RESTORE` or until the
 end.
 
+**The peak is read from its `ALERT`, trip and `INVERT` lines.** The mA on
+a `NORMAL` line is the current after the district recovered and is not
+counted, for an incident or for its district. An `ALERT FAULT` prints no mA,
+so a spike made of it and its `NORMAL` has a blank peak (#369).
+
 **Its kind is the most specific reading of what happened**, in this order: a
 `repeated reversal`, three flips on one district inside a second; a
 `reversal`, an alert or a trip within 250 ms of a flip on any district; a
