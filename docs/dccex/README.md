@@ -562,7 +562,7 @@ never a number somebody could count.
 ```json
 {"at":"2026-10-12T18:00:12.345+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<* TRACK C INVERT (fast) *>","district":"C","mode":"MAIN_AUTO","limit":500}
 {"at":"2026-10-12T18:00:12.361+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<p0 C>","district":"C","mode":"MAIN_AUTO","limit":500}
-{"at":"2026-10-12T18:00:19.004+00:00","railroad":"gleis49","build":"","link":"down"}
+{"at":"2026-10-12T18:00:19.004+00:00","railroad":"gleis49","build":"","link":"down","why":"silent"}
 {"at":"2026-10-12T18:00:21.118+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","link":"up"}
 {"at":"2026-10-12T18:02:03.772+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","restart":true}
 ```
@@ -570,7 +570,10 @@ never a number somebody could count.
 A link line carries `link`, `down` or `up`, and is written where the word
 moves rather than on every sentence about it: a connect retried against a
 station that is not there says `down` on the row each time and writes one
-line. A restart carries `restart: true`, and is the only record of one — the
+line. A `down` line carries `why`: `stopped` where this app is shutting down,
+`closed` where the mirror closed the connection, and `silent` where the
+station stopped answering the poll. A `down` line written before #367 has no
+`why`. A restart carries `restart: true`, and is the only record of one — the
 link did not go, so nothing says it on the row (ADR-0021 d.4).
 
 **This app decides nothing about a line** (d.3). Whether a line is part of an
