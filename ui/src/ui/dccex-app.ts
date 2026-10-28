@@ -171,7 +171,21 @@ import {
   arrived,
   cleared,
   held,
+  noted,
 } from "../monitor.js";
+import {
+  CLOSED,
+  IDLE,
+  REPLY_MS,
+  SILENT,
+  added,
+  answered,
+  listed,
+  next,
+  recalled,
+  stopped,
+  type Pacing,
+} from "../paced.js";
 import {
   QUIET,
   UNREACHABLE,
@@ -327,6 +341,13 @@ export class DccexApp extends LitElement {
    *  second thing to draw would be a second answer to what the page knows. */
   #kept: Kept = QUIET;
 
+  /** What the box has left to send, and whether a PROG reply is awaited
+   *  (`paced.js`, #357). */
+  #pacing: Pacing = IDLE;
+
+  /** The wait for that reply. */
+  #replying: ReturnType<typeof setTimeout> | null = null;
+
   #polling: ReturnType<typeof setInterval> | null = null;
   #ticking: ReturnType<typeof setInterval> | null = null;
   #following: ReturnType<typeof setInterval> | null = null;
@@ -347,9 +368,10 @@ export class DccexApp extends LitElement {
    *  finds one out goes by and the next asks. */
   #asking = false;
 
-  /** The stream, and the two things it hands up: the lines that arrive, and
+  /** The stream, and the three things it hands up: the lines that arrive,
    *  the socket being open — which is when the page asks, because a poll sent
-   *  at one that was still connecting was refused and went nowhere (#82). */
+   *  at one that was still connecting was refused and went nowhere (#82) —
+   *  and the socket closing, which stops a list the box is sending (#357). */
   readonly #stream = new Stream(
     (said: Said[]) => {
       this.#keep(said);
@@ -357,6 +379,10 @@ export class DccexApp extends LitElement {
     () => {
       this.#polls = 0;
       this.#ask();
+    },
+    () => {
+      this.#settles(stopped(this.#pacing, CLOSED));
+      this.#paces();
     },
   );
 
@@ -414,6 +440,8 @@ export class DccexApp extends LitElement {
       clearInterval(this.#following);
       this.#following = null;
     }
+    this.#pacing = IDLE;
+    this.#paces();
   }
 
   override render(): TemplateResult {
@@ -443,7 +471,7 @@ export class DccexApp extends LitElement {
       <dccex-tiles .readings=${this.readings}></dccex-tiles>
       <dccex-monitor
         .said=${this.conversation.said}
-        .sends=${this.#sends}
+        .sends=${this.#types}
         .paused=${this.conversation.paused}
         .behind=${this.conversation.behind}
         .pauses=${this.#pauses}
@@ -528,6 +556,67 @@ export class DccexApp extends LitElement {
     }
     return sent;
   };
+
+  /** Send what was typed at the box, one PROG reply at a time (#357).
+   *
+   * A list of messages goes up in order, and what is typed while one runs
+   * waits behind it. What goes next and when a list stops is `paced.js`'s.
+   * What comes back is what ↑ recalls, or `null` where nothing was taken:
+   * nothing typed, or no stream open.
+   */
+  readonly #types = (typed: string): string | null => {
+    const said = listed(typed);
+    if (said.length === 0 || !this.#stream.ready) {
+      return null;
+    }
+    this.#pacing = added(this.#pacing, said);
+    this.#paces();
+    return recalled(typed);
+  };
+
+  /** Send what `paced.js` says goes now, and wait for the reply it says to
+   *  wait for. A message the stream refused stops the list. */
+  #paces(): void {
+    for (;;) {
+      const before = this.#pacing;
+      const going = next(before);
+      if (going.send === null) {
+        break;
+      }
+      this.#pacing = going.pacing;
+      if (this.#sends(going.send) === null) {
+        this.#settles(stopped(before, CLOSED));
+        break;
+      }
+      if (this.#pacing.awaiting) {
+        this.#waits();
+      }
+    }
+    if (!this.#pacing.awaiting && this.#replying !== null) {
+      clearTimeout(this.#replying);
+      this.#replying = null;
+    }
+  }
+
+  /** Give the reply `REPLY_MS`, and stop the list where it does not come. */
+  #waits(): void {
+    if (this.#replying !== null) {
+      clearTimeout(this.#replying);
+    }
+    this.#replying = setTimeout(() => {
+      this.#replying = null;
+      this.#settles(stopped(this.#pacing, SILENT));
+      this.#paces();
+    }, REPLY_MS);
+  }
+
+  /** Take what `paced.js` answered, and put in its note where it has one. */
+  #settles({ pacing, note }: { pacing: Pacing; note: string | null }): void {
+    this.#pacing = pacing;
+    if (note !== null) {
+      this.conversation = noted(this.conversation, note);
+    }
+  }
 
   /** Ask `layout` for power, which is a row on the bus (ADR-0026 d.2).
    *
@@ -736,6 +825,9 @@ export class DccexApp extends LitElement {
    * What becomes of the lines from there — which repeats are worth showing,
    * what is appended and what is queued, what the queue drops and what it
    * forgets — is `arrived`'s (`monitor.js`).
+   *
+   * **A reply the box waits for is read here**, after the line is kept, so a
+   * note on a stopped list follows the reply that stopped it (`paced.js`).
    */
   #keep(said: Said[]): void {
     for (const line of said) {
@@ -745,6 +837,13 @@ export class DccexApp extends LitElement {
     }
     this.#now();
     this.conversation = arrived(this.conversation, said);
+    const replies = said.filter((line) => !line.sent);
+    for (const line of replies) {
+      this.#settles(answered(this.#pacing, line.line));
+    }
+    if (replies.length > 0) {
+      this.#paces();
+    }
   }
 }
 

@@ -465,7 +465,7 @@ def test_the_stream_says_when_it_is_open() -> None:
     """
     source = STREAM.read_text()
     assert (
-        "constructor(said: (said: Said[]) => void, opened: () => void)" in source
+        "said: (said: Said[]) => void,\n    opened: () => void,\n" in source
     ), "the stream has no second signal to hand the open up on"
     dialling = code(source)
     dialling = dialling[dialling.index("#dial(): void {") : dialling.index("#arrived(")]
