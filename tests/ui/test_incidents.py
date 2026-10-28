@@ -36,13 +36,16 @@ import pytest
 from tests.ui.node import HELD, ran
 from tests.ui.paths import UI
 from tests.ui.test_journal import (
+    A_BURST_ON_ANOTHER_DISTRICT,
     A_CLEAN_FLIP,
+    A_FLIP_ON_ANOTHER_DISTRICT,
     A_FLIP_THE_SHORT_OUTLIVED,
     A_SLOW_FLIP,
     A_TRIP_AND_A_LINK_LOSS,
     AN_ALERT_ON_EACH,
     BEFORE,
     BUILD,
+    FLIPS_ON_TWO_DISTRICTS,
     POWERED,
     THREE_FLIPS,
     TWO_BUILDS,
@@ -164,6 +167,35 @@ def test_the_flips_a_burst_took_are_under_the_burst() -> None:
     (one,) = drew(THREE_FLIPS)["entries"]
     assert one["kind"] == "repeated reversal"
     assert [line["said"] for line in one["lines"]] == [*[invert("C")] * 3, "<p0 C>"]
+
+
+@pytest.mark.node
+def test_a_reversal_row_names_the_district_that_flipped() -> None:
+    """A reversal is filed under the district that was cut, so where another
+    district flipped the kind names it (#368). Where the flip was the
+    district's own the kind reads as it is."""
+    (one,) = drew(A_FLIP_ON_ANOTHER_DISTRICT)["entries"]
+    assert (one["district"], one["kind"]) == ("A", "reversal (C)")
+    (own,) = drew(A_FLIP_THE_SHORT_OUTLIVED)["entries"]
+    assert (own["district"], own["kind"]) == ("C", "reversal")
+
+
+@pytest.mark.node
+def test_a_repeated_reversal_row_names_the_district_that_flipped() -> None:
+    """The burst on D is D's row and reads as it is; the cut it caused on A
+    names D."""
+    rows = drew(A_BURST_ON_ANOTHER_DISTRICT)["entries"]
+    assert sorted((row["district"], row["kind"]) for row in rows) == [
+        ("A", "repeated reversal (D)"),
+        ("D", "repeated reversal"),
+    ]
+
+
+@pytest.mark.node
+def test_a_reversal_that_took_flips_on_two_districts_names_both() -> None:
+    """A first, as the districts are."""
+    (one,) = drew(FLIPS_ON_TWO_DISTRICTS)["entries"]
+    assert (one["district"], one["kind"]) == ("A", "reversal (C, D)")
 
 
 @pytest.mark.node

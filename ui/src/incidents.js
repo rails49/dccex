@@ -162,7 +162,8 @@ const M = 1000000;
  * @property {string} when that stamp on the reader's own clock
  * @property {string} district the letter, or `station` for the station's own,
  *   or empty on a line that names none
- * @property {string} kind which kind of incident, or empty on a routine line
+ * @property {string} kind which kind of incident, with the districts that
+ *   flipped where they are not its own, or empty on a routine line
  * @property {string} says the line's words on a routine row, and empty on an
  *   incident
  * @property {string} trips how many times the station cut the district in it
@@ -400,6 +401,21 @@ function drawn(line) {
 }
 
 /**
+ * What an incident's kind reads as on its row: with the districts whose flips
+ * it took, where they are not the incident's own district alone (#368).
+ *
+ * @param {Incident} incident
+ * @returns {string}
+ */
+function named(incident) {
+  const { kind, district, flipped } = incident;
+  return flipped.length === 0 ||
+    (flipped.length === 1 && flipped[0] === district)
+    ? kind
+    : `${kind} (${flipped.join(", ")})`;
+}
+
+/**
  * One incident as a row, with the lines it is made of under it.
  *
  * **Which lines those are is the reading module's and not this one's**
@@ -418,7 +434,7 @@ function row(incident, lines) {
     at: incident.start,
     when: when(incident.start),
     district: incident.district ?? STATION,
-    kind: incident.kind,
+    kind: named(incident),
     says: "",
     trips: String(incident.trips),
     milliamps: current(incident.milliamps),
