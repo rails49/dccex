@@ -575,6 +575,34 @@ type into at the foot.
   including across a trim, where the lines it is measured from are the ones that
   go. It can be paused, and it can be cleared, from two icons above the lines.
 
+**Alerts a track cleared are one row** (#358). Each ack pulse on PROG crosses
+the track's limit for 20-25 ms and the station says three lines about it, so a
+CV read is 27 lines in about a second:
+
+```
+<* TRACK B ALERT  278mA *>
+<* TRACK B CURRENT (100msec ignore) 396mA *>
+<* TRACK B NORMAL (after 20msec/25msec) 17mA *>
+```
+
+- A cleared alert is an `ALERT` for a track, then that track's `NORMAL`, with
+  no `POWER OVERLOAD`, `FAST OVERLOAD` or `FAULT` for it in between. The
+  track's `CURRENT` lines in between belong to it.
+- Cleared alerts on one track with no other station line between them are one
+  row, stamped with its first line: `track B: 9 alerts cleared, peak 396 mA`.
+  The peak is the highest mA on any of their lines.
+- Clicking the row shows the lines it holds, each stamped as any line is.
+  Clicking again folds them.
+- An alert that has not cleared is shown line by line, and its lines fold once
+  `NORMAL` arrives. An alert that ends in an overload or a fault is never
+  folded, and nor is one with another station line among its lines.
+- Lines this page sent, page notes, and the status lines the monitor leaves
+  out do not break a run. Sent lines and notes stay rows of their own, after
+  the folded row.
+
+Which lines fold is `folded` in `ui/src/monitor.js`, run under node by
+`tests/ui/test_monitor.py`. The journal keeps every line (ADR-0022 d.2).
+
 **The box takes a list of commands** (#357). A list of CV writes can be pasted
 and sent in one go:
 
