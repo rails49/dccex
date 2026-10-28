@@ -603,6 +603,26 @@ CV read is 27 lines in about a second:
 Which lines fold is `folded` in `ui/src/monitor.js`, run under node by
 `tests/ui/test_monitor.py`. The journal keeps every line (ADR-0022 d.2).
 
+**A loco's speed changes are one row** (#359). The station says `<l cab slot
+speed functions>` after every speed change, so a throttle ramping a loco is
+one line per step.
+
+- A cab's `<l>` line starts a run and is shown as any line is.
+- A following `<l>` for the same cab with the same slot, direction bit and
+  functions joins the run. The run is one row that updates in place, stamped
+  with its first line: `loco 3 forward: step 9 → 53 (23 lines)`. Stop and
+  emergency stop read as the gloss says them.
+- A change of direction, functions or slot starts a new run for the cab.
+- `<l>` lines for other cabs do not end a run, so two locos ramping at once
+  are two rows. Any other station line ends every run, as does an `<l>` with
+  no slot.
+- Lines this page sent, page notes, and the status lines the monitor leaves
+  out do not end a run.
+- Clicking the row shows the lines it holds, as the alert row does.
+
+Which lines fold is `folded` in `ui/src/monitor.js`. What a `<l>` says about
+a loco's speed is `speed` in `ui/src/decoder.js`.
+
 **The box takes a list of commands** (#357). A list of CV writes can be pasted
 and sent in one go:
 
