@@ -33,6 +33,16 @@
  * a run. Which lines fold is `folded`'s (`monitor.js`); which folds are open
  * is this component's.
  *
+ * **A loco's speed changes are one row** (#359). The station says `<l cab slot
+ * speed functions>` after every speed change, so a throttle ramping a loco is
+ * one line per step. A cab's `<l>` lines with the same slot, direction and
+ * functions are drawn as one row that updates in place, stamped with its first
+ * line: `loco 3 forward: step 9 → 53 (23 lines)`. Stop and emergency stop
+ * read as the gloss says them. A run of one line is the line. A change of
+ * direction, functions or slot starts a new run for the cab. `<l>` lines for
+ * other cabs do not end a run, so two locos ramping at once are two rows; any
+ * other station line ends every run. It opens and folds as the alert row does.
+ *
  * **The box takes a list** (#357). Text that opens with `<`, closes with `>`
  * and has `>` then `<` inside is a list of messages, sent in order, each its
  * own `»` line. After a PROG command (`<W>`, `<V>`, `<B>`, `<R>`, `<r>`) the
@@ -142,7 +152,7 @@ import { monitorStyles } from "./dccex-monitor.styles.js";
  *  put on the railroad. */
 const SENT_MARK = "»";
 
-/** What marks a row of folded alerts, closed and open. */
+/** What marks a folded row, closed and open. */
 const FOLD_MARK = "▸";
 const OPEN_MARK = "▾";
 
@@ -406,8 +416,8 @@ export class DccexMonitor extends LitElement {
     `;
   }
 
-  /** Alerts a track cleared, as one row stamped with its first line. Clicked,
-   *  the lines it holds are drawn below it; clicked again, they fold. */
+  /** Folded lines, as one row stamped with its first line. Clicked, the lines
+   *  it holds are drawn below it; clicked again, they fold. */
   #fold(fold: Fold): TemplateResult {
     const open = this.#opened.has(fold.key);
     const first = fold.lines[0];
