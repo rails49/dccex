@@ -138,6 +138,8 @@ const HOUR_MS = 3600000;
  * @property {string | null} [mode] what that district was set to
  * @property {number | null} [limit] the most it could draw, in milliamps
  * @property {string} [link] `down` or `up`, on a line about the link
+ * @property {string} [why] `stopped`, `closed` or `silent`, on a `down` line
+ *   written since #367
  * @property {boolean} [restart] true on a line about the station restarting
  */
 

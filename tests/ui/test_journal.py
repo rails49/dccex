@@ -88,10 +88,14 @@ def said(
     return line
 
 
-def down(ms: int) -> Line:
+def down(ms: int, *, why: str | None = None) -> Line:
     """The station stopped answering. The **build** goes with the link, so the
-    line carries none (GLOSSARY.md, **build**)."""
-    return {"at": at(ms), "railroad": RAILROAD, "build": "", "link": "down"}
+    line carries none (GLOSSARY.md, **build**). `why` is left out the way a
+    line written before #367 leaves it out."""
+    line: Line = {"at": at(ms), "railroad": RAILROAD, "build": "", "link": "down"}
+    if why is not None:
+        line["why"] = why
+    return line
 
 
 def up(ms: int, *, build: str = BUILD) -> Line:
