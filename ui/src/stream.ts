@@ -84,7 +84,8 @@ const CHARACTERS = new TextDecoder("latin1");
  * page's first poll, sent in the line after `open()` and dropped, leaving a
  * healthy station reading as absent until the interval came round (#82). The
  * open is a signal of the same kind as a line arriving, and every socket this
- * dials gives it, the reopen timer's included.
+ * dials gives it, the reopen timer's included. A socket of its own closing is
+ * the third: a list the box is sending stops there (`paced.js`, #357).
  *
  * **Nothing is held to be sent when one does.** A message an operator typed
  * while the stream was down is a command to a command station, and sending it
@@ -96,15 +97,26 @@ const CHARACTERS = new TextDecoder("latin1");
 export class Stream {
   readonly #said: (said: Said[]) => void;
   readonly #opened: () => void;
+  readonly #closed: () => void;
   #socket: WebSocket | null = null;
   #reopening: ReturnType<typeof setTimeout> | null = null;
   #wanted = false;
   #partial = "";
   #partialAt = new Date();
 
-  constructor(said: (said: Said[]) => void, opened: () => void) {
+  constructor(
+    said: (said: Said[]) => void,
+    opened: () => void,
+    closed: () => void,
+  ) {
     this.#said = said;
     this.#opened = opened;
+    this.#closed = closed;
+  }
+
+  /** Whether a message sent now would go. */
+  get ready(): boolean {
+    return this.#socket?.readyState === WebSocket.OPEN;
   }
 
   /** Open the stream, and keep one open until `close()`. */
@@ -219,6 +231,7 @@ export class Stream {
       this.#said([{ at: this.#partialAt, line: this.#partial, sent: false }]);
       this.#partial = "";
     }
+    this.#closed();
     if (this.#wanted) {
       this.#reopening = setTimeout(() => {
         this.#dial();
