@@ -1015,6 +1015,13 @@ are `link` and `restart`. The 250 ms and the three in a second are named
 constants and they are the page's own: the station prints no flip count, and
 the right numbers are not known before the record exists (ADR-0022, context).
 
+**A reversal is filed under the district that was cut**, which need not be
+the one that flipped: a reverser flipping C shorts whatever is across the join.
+A `reversal` or a `repeated reversal` carries the districts whose flips it
+took, and where they are not its own district alone the row's kind names them,
+A first: `reversal (C)`, `repeated reversal (D)`, `reversal (C, D)`. Where the
+flip was its own district's, the kind reads as it is (#368).
+
 **What is the railroad working is not an incident**: a flip nothing came of,
 which is counted as a flip and nothing more; an `ALERT` that ended in `NORMAL`
 on a district the station said was `PROG`, which is a decoder acknowledging;
