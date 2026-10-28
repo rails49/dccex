@@ -172,8 +172,8 @@ export const monitorStyles = css`
     color: var(--sl-color-primary-700);
   }
 
-  /* Alerts a track cleared, folded into one row (#358). Pressed, it shows
-     the lines it holds below it. */
+  /* Alerts a track cleared or a loco's speed changes, folded into one row
+     (#358, #359). Pressed, it shows the lines it holds below it. */
   .folded {
     cursor: pointer;
   }

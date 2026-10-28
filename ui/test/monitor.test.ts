@@ -270,3 +270,16 @@ test("alerts a track cleared are one row that opens and folds", async () => {
   await drawn.updateComplete;
   expect(all(drawn, ".said")).toStrictEqual([]);
 });
+
+test("a loco's speed changes are one row that opens (#359)", async () => {
+  const RAMP = ["<l 3 0 138 0>", "<l 3 0 139 0>", "<l 3 0 140 0>"];
+  const drawn = await monitor(
+    RAMP.map((line, key) => ({ line, at: AT, sent: false, key })),
+  );
+  expect(all(drawn, ".folded .says")).toStrictEqual([
+    "loco 3 forward: step 9 → 11 (3 lines)",
+  ]);
+  press(drawn, ".folded");
+  await drawn.updateComplete;
+  expect(all(drawn, ".fold .said")).toStrictEqual(RAMP);
+});
