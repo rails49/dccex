@@ -49,9 +49,12 @@ export const ALL = "all";
 export const DAY = "last day";
 export const WEEK = "last 7 days";
 
-/** The periods that are not a **build**, in the order they are offered. A
- *  build is the fourth kind and comes off the file (`choices`). */
+/** The periods that are not a **build** or a day, in the order they are
+ *  offered. Builds and days come off the file (`choices`). */
 export const SPANS = [ALL, DAY, WEEK];
+
+/** How a day is spelt as a period: `2026-10-28`. A build has no such name. */
+const SPELT = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** How long the two spans are, in milliseconds. */
 const DAY_MS = 86400000;
@@ -218,10 +221,7 @@ function padded(value, width = 2) {
  */
 export function when(at) {
   const stamp = new Date(Date.parse(at));
-  return (
-    `${stamp.getFullYear()}-${padded(stamp.getMonth() + 1)}` +
-    `-${padded(stamp.getDate())} ${stamped(stamp)}`
-  );
+  return `${dated(stamp)} ${stamped(stamp)}`;
 }
 
 /**
@@ -348,22 +348,57 @@ export function builds(lines) {
 }
 
 /**
- * The periods on offer: the three spans, and one per build in the journal.
+ * A day on the reader's own clock, spelt as a stamp's day is (`when`).
+ *
+ * @param {Date} stamp
+ * @returns {string}
+ */
+function dated(stamp) {
+  return (
+    `${stamp.getFullYear()}-${padded(stamp.getMonth() + 1)}` +
+    `-${padded(stamp.getDate())}`
+  );
+}
+
+/**
+ * Every day the journal has a line on, newest first (#370).
+ *
+ * A day is the reader's, as the stamps in the list are, so a line written at
+ * 23:30 UTC is on the next day for a reader in Berlin.
+ *
+ * @param {readonly Line[]} lines the journal, in the order it was written
+ * @returns {string[]}
+ */
+function days(lines) {
+  /** @type {Set<string>} */
+  const found = new Set();
+  for (const line of lines) {
+    const at = Date.parse(line.at);
+    if (!Number.isNaN(at)) {
+      found.add(dated(new Date(at)));
+    }
+  }
+  return [...found].sort().reverse();
+}
+
+/**
+ * The periods on offer: the three spans, one per build in the journal, and one
+ * per day it has a line on.
  *
  * @param {readonly Line[]} lines the journal, in the order it was written
  * @returns {string[]}
  */
 export function choices(lines) {
-  return [...SPANS, ...builds(lines)];
+  return [...SPANS, ...builds(lines), ...days(lines)];
 }
 
 /**
  * The period a choice means, as `journal.js` reads one.
  *
- * A choice is one of `SPANS` or a build, which is what makes a chooser one
- * list rather than two controls. The two spans are counted back from `now`,
- * which is when the journal was read: the page hands its clock in, so nothing
- * here keeps one (ADR-0009 d.1).
+ * A choice is one of `SPANS`, a day or a build, which is what makes a chooser
+ * one list rather than three controls. The two spans are counted back from
+ * `now`, which is when the journal was read: the page hands its clock in, so
+ * nothing here keeps one (ADR-0009 d.1).
  *
  * @param {string} choice one of `choices()`
  * @param {number} now when the journal was read, on the page's clock
@@ -375,6 +410,18 @@ export function over(choice, now) {
   }
   if (choice === WEEK) {
     return { start: new Date(now - WEEK_MS).toISOString() };
+  }
+  const day = SPELT.exec(choice);
+  if (day !== null) {
+    // Midnight to midnight on the reader's clock, which is 23 or 25 hours on
+    // the day summer time starts or ends. The end is inclusive (`journal.js`).
+    const [year, month, date] = day.slice(1).map(Number);
+    return {
+      start: new Date(year, month - 1, date).toISOString(),
+      end: new Date(
+        new Date(year, month - 1, date + 1).getTime() - 1,
+      ).toISOString(),
+    };
   }
   return choice === ALL ? {} : { build: choice };
 }

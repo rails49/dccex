@@ -40,7 +40,7 @@ export const controlsStyles = css`
     color: var(--sl-color-neutral-700);
   }
 
-  /* Which lines are read: the three spans and the builds in the file. */
+  /* Which lines are read: the spans, the builds and the days in the file. */
   .choices {
     box-sizing: border-box;
     min-height: var(--rail-button);
