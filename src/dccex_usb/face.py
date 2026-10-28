@@ -59,6 +59,11 @@ served as the bytes it is, and **no line of it is read here**. What a line means
 while the file does not (d.3, d.5). A mirror started with no journal answers
 it with a status and a sentence, as one with no store does.
 
+**And one about the translator's log**, which it copies to a file on the
+journal's volume (#364): the file as it is, or from a byte on, so a page
+polling it reads only what is new. A mirror started with no log answers it
+with a status and a sentence.
+
 **Nothing here guards the railroad.** This face cannot read a run state or a
 track row — the mirror is not on the bus and a command station is not a fact
 about a railroad — so the guarantee that a station is not written under a
@@ -99,6 +104,7 @@ either way.
 
 import asyncio
 import json
+import re
 from collections.abc import Awaitable, Callable, Mapping
 from http import HTTPStatus
 from typing import NamedTuple, Protocol, cast
@@ -155,6 +161,10 @@ ADDRESSED = "host"
 """What a request names the origin it was sent to in, which the door passes on
 as the label it answered for. A page on the face's own origin named the same
 one."""
+
+RANGE = "range"
+"""What a request names the part of the log it wants in, as `bytes=N-`. Read
+on the log's route alone."""
 
 KEY = "sec-websocket-key"
 """What a browser opening a stream names, and the whole of the upgrade that is
@@ -321,6 +331,23 @@ journal. It is a state of the installation and not of the request, as a mirror
 with no store is: a box mirroring a cable with nothing else running has no
 translator beside it and no record to serve (`__main__.py`, ADR-0022 d.1)."""
 
+LOG_PATH = "/log"
+"""What the translator's **log** is served at, with the door's prefix already
+off it (ADR-0004). A GET is the file as it is, or from byte N with
+`Range: bytes=N-`."""
+
+TEXT_PLAIN = "text/plain; charset=utf-8"
+"""What the log goes back as: lines of text, each stamped by the translator."""
+
+NO_LOG = (
+    "this mirror was given no log, so it cannot serve"
+    " one: the path is --log on its command line"
+)
+"""What the log route answers where the app was started with no log."""
+
+FROM_BYTE = re.compile(r"bytes=(\d+)-")
+"""The one range the log's route reads: from byte N to the end."""
+
 STATUS: Mapping[Refusal, HTTPStatus] = {
     # The caller's own to fix, and the two that are: `latest` is not a name
     # for a build (GLOSSARY.md), and a body that names no tag asks nothing.
@@ -444,9 +471,10 @@ class Answered(NamedTuple):
     one answer that does not end the connection: what the caller does next is
     talk, which is the server's to carry (`Monitor`).
 
-    `served` is the **journal**, and `None` and not empty is what says there
-    are no bytes to pass on: a journal with nothing in it is `b""` and an
-    answer of the face's own is rendered from `body` (ADR-0022 d.4).
+    `served` is the **journal** or the **log**, and `None` and not empty is
+    what says there are no bytes to pass on: a journal with nothing in it is
+    `b""` and an answer of the face's own is rendered from `body` (ADR-0022
+    d.4). `span` is the `Content-Range` of a part of the log.
     """
 
     status: HTTPStatus
@@ -454,6 +482,7 @@ class Answered(NamedTuple):
     upgrade: str = ""
     served: bytes | None = None
     kind: str = JSON
+    span: str = ""
 
 
 class Carried(NamedTuple):
@@ -679,6 +708,7 @@ class Face:
         counts: Counts,
         store: Keeps | None = None,
         journal: Kept | None = None,
+        log: Kept | None = None,
     ) -> None:
         self._releases = releases
         self._fetch = fetch
@@ -686,6 +716,7 @@ class Face:
         self._counts = counts
         self._store = store
         self._journal = journal
+        self._log = log
 
     async def answer(
         self,
@@ -696,19 +727,22 @@ class Face:
         origin: str = "",
         host: str = "",
         key: str = "",
+        span: str = "",
     ) -> Answered:
         """One request answered: the method, the path as it arrived, the bytes
         that came with it, who it came from — the origin of the page that
         asked, where a browser named one, and the origin it was addressed to —
-        and the key, where what is being asked for is the stream.
+        the key, where what is being asked for is the stream, and the range,
+        where it is part of the log.
 
         The path arrives whole, query string and all, and the query is split
         off and dropped here rather than somewhere a reader has to go and
         check: this is the function that would have to read a source out of a
         request for one to redirect the face, and it does not. The door's
         prefix is already off it: what the face answers is `/releases`,
-        `/flash`, `/clients`, `/stream`, `/scripts/<railroad>` and `/journal`,
-        and a prefix that arrived is a path this does not answer (ADR-0004).
+        `/flash`, `/clients`, `/stream`, `/scripts/<railroad>`, `/journal` and
+        `/log`, and a prefix that arrived is a path this does not answer
+        (ADR-0004).
 
         **A page from another origin is refused before anything is routed**,
         because what it asked for does not matter: a face is private to its
@@ -785,6 +819,13 @@ class Face:
                     f"{asked} is read with GET, and this was {method}",
                 )
             return await self._kept()
+        if asked == LOG_PATH:
+            if method != "GET":
+                return refused(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    f"{asked} is read with GET, and this was {method}",
+                )
+            return await self._logged(span)
         if asked == STREAM_PATH:
             if method != "GET":
                 return refused(
@@ -878,6 +919,43 @@ class Face:
                 f"the journal at {journal.where} could not be read: {unreadable}",
             )
         return Answered(HTTPStatus.OK, {}, served=served, kind=NDJSON)
+
+    async def _logged(self, span: str) -> Answered:
+        """The translator's **log**, whole, or from byte N where the request
+        named `Range: bytes=N-`.
+
+        A range at the end is a `206` with no bytes: nothing new. A range past
+        the end is a `416`, which a page reads as a trim and asks for the
+        whole file again. A range of any other shape is not read, and the
+        whole file goes back.
+        """
+        log = self._log
+        if log is None:
+            return refused(HTTPStatus.SERVICE_UNAVAILABLE, NO_LOG)
+        try:
+            served = await log.served()
+        except OSError as unreadable:
+            return refused(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                f"the log at {log.where} could not be read: {unreadable}",
+            )
+        start = FROM_BYTE.fullmatch(span.strip())
+        if start is None:
+            return Answered(HTTPStatus.OK, {}, served=served, kind=TEXT_PLAIN)
+        first, size = int(start[1]), len(served)
+        if first > size:
+            return refused(
+                HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+                f"the log is {size} bytes, and this asked from byte {first}",
+            )._replace(span=f"bytes */{size}")
+        part = f"bytes {first}-{size - 1}/{size}" if first < size else f"bytes */{size}"
+        return Answered(
+            HTTPStatus.PARTIAL_CONTENT,
+            {},
+            served=served[first:],
+            kind=TEXT_PLAIN,
+            span=part,
+        )
 
     async def _script(self, railroad: str) -> Answered:
         """One railroad's **script**, as the text the store holds, or a `404`
@@ -976,7 +1054,8 @@ class Asked(NamedTuple):
     """What a request says before its body: the method, the path it names as
     it was written, how many bytes of body it says are coming, the origin of
     the page that asked where a browser named one, the origin it was addressed
-    to, and the key where the request is a browser opening a stream."""
+    to, the key where the request is a browser opening a stream, and the
+    range where it asks for part of the log."""
 
     method: str
     path: str
@@ -984,6 +1063,7 @@ class Asked(NamedTuple):
     origin: str = ""
     host: str = ""
     key: str = ""
+    span: str = ""
 
 
 def requested(head: bytes) -> Asked | None:
@@ -994,7 +1074,8 @@ def requested(head: bytes) -> Asked | None:
     asked it — the origin a browser attaches to a page's request, and the
     origin the request was addressed to, which the door passes on as the label
     it answered for (ADR-0004) — and the key a browser names when what it is
-    doing is opening a stream. This is a face on a private origin behind the
+    doing is opening a stream, and the range a page names for part of the
+    log. This is a face on a private origin behind the
     door, spoken to by one page (the organisation's ADR-0002), so the parts
     of the protocol a general server owes the world — negotiation, encodings,
     a connection kept open for the next request — are parts this would carry
@@ -1032,6 +1113,7 @@ def requested(head: bytes) -> Asked | None:
         said.get(ORIGIN, ""),
         said.get(ADDRESSED, ""),
         said.get(KEY, ""),
+        said.get(RANGE, ""),
     )
 
 
@@ -1063,10 +1145,12 @@ def response(answered: Answered) -> bytes:
         if answered.served is None
         else answered.served
     )
+    ranged = f"Content-Range: {answered.span}{CRLF}" if answered.span else ""
     head = (
         f"HTTP/1.1 {int(answered.status)} {answered.status.phrase}{CRLF}"
         f"Content-Type: {answered.kind}{CRLF}"
         f"Content-Length: {len(body)}{CRLF}"
+        f"{ranged}"
         f"Connection: close{CRLF}{CRLF}"
     )
     return head.encode() + body
@@ -1463,6 +1547,7 @@ class Server:
             origin=asked.origin,
             host=asked.host,
             key=asked.key,
+            span=asked.span,
         )
 
     def _serving(self) -> asyncio.Server:

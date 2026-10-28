@@ -141,6 +141,23 @@ def test_the_journal_the_face_serves_is_named_on_the_command_line() -> None:
     assert args.journal == JOURNAL
 
 
+LOG = "/var/lib/dccex/log.txt"
+"""The file on the journal's volume the translator copies its log to, which
+is what the box passes (`compose.box.yaml`, #364)."""
+
+
+def test_no_log_is_the_mirror_a_box_with_a_cable_and_nothing_else_runs() -> None:
+    args = command_line().parse_args(STARTED)
+
+    assert args.log == ""
+
+
+def test_the_log_the_face_serves_is_named_on_the_command_line() -> None:
+    args = command_line().parse_args([*STARTED, "--log", LOG])
+
+    assert args.log == LOG
+
+
 def test_the_face_is_served_on_a_port_of_its_own_by_default() -> None:
     """A port that is not the mirror's: 2560 carries the station's own
     conversation, and the door reaches the face on this one."""

@@ -39,6 +39,7 @@ from dccex_usb.face import (
     CRLF,
     HEAD_END,
     NO_JOURNAL,
+    NO_LOG,
     NO_STORE,
     STATUS,
     Answered,
@@ -51,12 +52,14 @@ from dccex_usb.face import (
     Loopback,
     Server,
     Writes,
+    requested,
     response,
     under,
 )
 from dccex_usb.firmware import Doing, Flasher, Ran, Refusal, Saw, Stage, Wrote
 from dccex_usb.framing import MAX_MESSAGE
 from dccex_usb.journal import Journal
+from dccex_usb.log import Log as Logged
 from dccex_usb.station import READ_SIZE, to_stderr
 from dccex_usb.store import Store
 from dccex_usb.stream import CLOSE, GOING_AWAY, accepted
@@ -195,6 +198,7 @@ def face(
     counts: Counts | None = None,
     store: Keeps | None = None,
     journal: Kept | None = None,
+    log: Kept | None = None,
 ) -> Face:
     """The face a test asks something of, built in one place.
 
@@ -220,6 +224,7 @@ def face(
         counts=counts if counts is not None else Counting(),
         store=store,
         journal=journal,
+        log=log,
     )
 
 
@@ -2496,3 +2501,131 @@ def test_an_upgrade_that_is_never_written_lets_go_of_the_client_it_joined() -> N
         asyncio.run(asyncio.wait_for(scenario(), TIMEOUT_S))
 
     assert left == [], left
+
+
+# -- the log ------------------------------------------------------------------
+
+LOGGED = (
+    "2026-10-28T19:38:30.000+00:00 dccex: starting, built from d97a0bc\n"
+    "2026-10-28T19:38:31.000+00:00 the station answers, so start runs\n"
+)
+"""Two lines of the translator's log, as it copies them (`dccex.log`)."""
+
+
+def logged(path: Path, text: str = LOGGED) -> Face:
+    """A face serving the log at `path`, the real reader on a real file."""
+    if text:
+        path.write_text(text, encoding="utf-8")
+    return face(log=Logged(path))
+
+
+def test_the_log_goes_back_whole_as_text(tmp_path: Path) -> None:
+    answered = asyncio.run(logged(tmp_path / "log.txt").answer("GET", "/log", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == LOGGED.encode()
+    on_the_wire = response(answered)
+    assert b"Content-Type: text/plain; charset=utf-8\r\n" in on_the_wire
+    assert b"Content-Range" not in on_the_wire
+    assert on_the_wire.endswith(LOGGED.encode())
+
+
+def test_a_range_from_a_byte_answers_from_that_byte(tmp_path: Path) -> None:
+    """A page polling once a second reads only the lines that are new."""
+    first = len(LOGGED.splitlines(keepends=True)[0])
+    answered = asyncio.run(
+        logged(tmp_path / "log.txt").answer("GET", "/log", b"", span=f"bytes={first}-")
+    )
+
+    assert answered.status == HTTPStatus.PARTIAL_CONTENT
+    assert answered.served == LOGGED.encode()[first:]
+    size = len(LOGGED)
+    assert answered.span == f"bytes {first}-{size - 1}/{size}"
+    assert f"Content-Range: bytes {first}-{size - 1}/{size}\r\n".encode() in (
+        response(answered)
+    )
+
+
+def test_a_range_at_the_end_is_nothing_new(tmp_path: Path) -> None:
+    size = len(LOGGED)
+    answered = asyncio.run(
+        logged(tmp_path / "log.txt").answer("GET", "/log", b"", span=f"bytes={size}-")
+    )
+
+    assert answered.status == HTTPStatus.PARTIAL_CONTENT
+    assert answered.served == b""
+
+
+def test_a_range_past_the_end_answers_416(tmp_path: Path) -> None:
+    """What a page reads as a trim, and fetches the whole file again."""
+    size = len(LOGGED)
+    answered = asyncio.run(
+        logged(tmp_path / "log.txt").answer(
+            "GET", "/log", b"", span=f"bytes={size + 1}-"
+        )
+    )
+
+    assert answered.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+    assert answered.served is None
+    assert f"Content-Range: bytes */{size}\r\n".encode() in response(answered)
+
+
+@pytest.mark.parametrize(
+    "span",
+    [
+        pytest.param("bytes=0-10", id="closed"),
+        pytest.param("bytes=-10", id="suffix"),
+        pytest.param("lines=3-", id="unit"),
+    ],
+)
+def test_a_range_of_another_shape_answers_the_whole_log(
+    tmp_path: Path, span: str
+) -> None:
+    answered = asyncio.run(
+        logged(tmp_path / "log.txt").answer("GET", "/log", b"", span=span)
+    )
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == LOGGED.encode()
+
+
+def test_a_log_that_is_not_there_is_an_empty_body(tmp_path: Path) -> None:
+    answered = asyncio.run(logged(tmp_path / "log.txt", "").answer("GET", "/log", b""))
+
+    assert answered.status == HTTPStatus.OK
+    assert answered.served == b""
+
+
+def test_a_mirror_with_no_log_says_so() -> None:
+    answered = asyncio.run(face().answer("GET", "/log", b""))
+
+    assert answered.status == HTTPStatus.SERVICE_UNAVAILABLE
+    assert answered.body == {"reason": NO_LOG}
+    assert answered.served is None
+
+
+def test_the_log_is_read_with_get_and_nothing_else(tmp_path: Path) -> None:
+    path = tmp_path / "log.txt"
+
+    answered = asyncio.run(logged(path).answer("PUT", "/log", b""))
+
+    assert answered.status == HTTPStatus.METHOD_NOT_ALLOWED
+    assert path.read_text(encoding="utf-8") == LOGGED
+
+
+def test_a_page_from_another_origin_reaches_no_log(tmp_path: Path) -> None:
+    answered = asyncio.run(
+        logged(tmp_path / "log.txt").answer(
+            "GET", "/log", b"", origin=ELSEWHERE_ORIGIN, host=LABEL
+        )
+    )
+
+    assert answered.status == HTTPStatus.FORBIDDEN
+    assert answered.served is None
+
+
+def test_the_range_a_request_names_is_read_off_its_head() -> None:
+    asked = requested(b"GET /log HTTP/1.1\r\nRange: bytes=120-\r\n\r\n")
+
+    assert asked is not None
+    assert asked.span == "bytes=120-"
