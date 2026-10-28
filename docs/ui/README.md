@@ -575,6 +575,34 @@ type into at the foot.
   including across a trim, where the lines it is measured from are the ones that
   go. It can be paused, and it can be cleared, from two icons above the lines.
 
+**The box takes a list of commands** (#357). A list of CV writes can be pasted
+and sent in one go:
+
+```
+<W 32 0> <W 263 128> <W 271 128> <W 279 128> <W 287 128>
+```
+
+The station handles one PROG command at a time: while a `<W>`, `<V>`, `<B>`,
+`<R>` or `<r>` waits for its ack it answers any other one of these with `<X>`.
+So the page paces the list.
+
+- Text that starts with `<`, ends with `>` and has `>` then optional spaces then
+  `<` inside is a list. Anything else is one message, as before. Text with no
+  brackets is never split, and an empty `<>` in a list is dropped.
+- The messages go up in order, each shown as its own `»` line. After a PROG
+  command the next waits for the station's next `<r …>`, `<v …>` or `<X>`. Any
+  other command is followed right away.
+- The page sends nothing more from the list if a reply ends in `-1`, a reply is
+  `<X>`, no reply comes within 10 s, or the stream closes. A page note says how
+  many commands were not sent and why.
+- What is sent from the box while a list runs waits behind it and follows the
+  same rule. Pause and clear change only the view.
+- ↑ recalls the whole typed text as one entry.
+
+What goes next and when a list stops is `ui/src/paced.js`, a pure function run
+under node by `tests/ui/test_paced.py`. The page holds the state and the 10 s
+wait. The flash's own `<!>` and `<0>` do not wait behind a list.
+
 **What is built of it is the reading** (#4). The page opens the stream on its
 own origin — the page's own address with the scheme swapped, under the prefix
 the door strips (ADR-0004 d.2, d.3) — cuts what arrives at the newlines the
