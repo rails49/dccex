@@ -1,9 +1,9 @@
 /**
  * The monitor's rules that are not drawing: whether the reader is at the
  * bottom of the conversation, the time a line arrived as a clock says it,
- * which of the station's repeats are worth showing, and the conversation
- * itself — what is on screen, what waits behind a pause, and what a pause, a
- * resume and a clear do to either.
+ * which of the station's repeats are worth showing, which alerts fold into
+ * one row, and the conversation itself — what is on screen, what waits behind
+ * a pause, and what a pause, a resume and a clear do to either.
  *
  * The page is `ui/src/ui/dccex-monitor.ts`, and everything about it that
  * needs a browser stays there — the rows, the box at the foot, the controls,
@@ -550,4 +550,159 @@ export function held(conversation) {
  */
 export function cleared(conversation) {
   return { ...conversation, said: [], behind: EMPTIED };
+}
+
+/**
+ * Alerts a track cleared, drawn as one row (#358).
+ *
+ * The key is its first line's, so the row stays the same row while the run
+ * grows.
+ *
+ * @typedef {{
+ *   readonly track: string,
+ *   readonly says: string,
+ *   readonly lines: readonly Line[],
+ *   readonly key: number,
+ * }} Fold
+ */
+
+/**
+ * One row of the monitor: an entry of the conversation, or a fold of them.
+ *
+ * @typedef {Shown | Fold} Row
+ */
+
+/** A diagnostic line about one track: `<* TRACK B ALERT  278mA *>`. The words
+ *  are the station's (`src/dccex/replies.py`). */
+const DIAGNOSTIC =
+  /^<\* TRACK ([A-H]) (ALERT|CURRENT|NORMAL|POWER OVERLOAD|FAST OVERLOAD|FAULT)\b/;
+
+/** A current on a diagnostic line. */
+const MILLIAMPS = /(\d+) ?mA\b/g;
+
+/**
+ * The highest current any of `lines` says, in mA.
+ *
+ * @param {readonly Line[]} lines
+ * @returns {number}
+ */
+function peak(lines) {
+  let most = 0;
+  for (const { line } of lines) {
+    for (const [, mA] of line.matchAll(MILLIAMPS)) {
+      most = Math.max(most, Number(mA));
+    }
+  }
+  return most;
+}
+
+/**
+ * Whether `entry` is a line the station said, rather than one this page sent
+ * or the page's own note.
+ *
+ * @param {Shown} entry
+ * @returns {entry is Line}
+ */
+function spoken(entry) {
+  return !("note" in entry) && !entry.sent;
+}
+
+/**
+ * Which entries of `said` are a cleared alert: by the index of each of its
+ * lines, the track and the index of the alert's first line.
+ *
+ * A cleared alert is a track's `ALERT`, any `CURRENT` for that track, and its
+ * `NORMAL`. An overload or a fault for the track in between means it did not
+ * clear. One whose lines have another station line among them is not
+ * counted, so a fold never takes a line out from between others.
+ *
+ * @param {readonly Shown[]} said
+ * @returns {Map<number, { track: string, first: number }>}
+ */
+function clearings(said) {
+  /** @type {Map<string, number[]>} */
+  const pending = new Map();
+  /** @type {Map<number, { track: string, first: number }>} */
+  const alerts = new Map();
+  said.forEach((entry, i) => {
+    const told = spoken(entry) ? DIAGNOSTIC.exec(entry.line) : null;
+    if (told === null) {
+      return;
+    }
+    const [, track, word] = told;
+    const lines = pending.get(track);
+    if (word === "ALERT") {
+      pending.set(track, [i]);
+    } else if (word === "CURRENT") {
+      lines?.push(i);
+    } else if (word === "NORMAL" && lines !== undefined) {
+      lines.push(i);
+      const first = lines[0] ?? i;
+      const between = said.slice(first, i + 1).filter(spoken).length;
+      if (between === lines.length) {
+        for (const line of lines) {
+          alerts.set(line, { track, first });
+        }
+      }
+      pending.delete(track);
+    } else {
+      pending.delete(track);
+    }
+  });
+  return alerts;
+}
+
+/**
+ * A fold being built: the track, how many alerts, and their lines.
+ *
+ * @typedef {{ track: string, alerts: number, lines: Line[], key: number }} Run
+ */
+
+/**
+ * The rows `said` is drawn as (#358).
+ *
+ * Cleared alerts on one track with no other station line between them are one
+ * row, which says the track, how many alerts and the highest mA on any of
+ * their lines. A line this page sent and the page's own note do not break a
+ * run; they are rows of their own after the folded one. An alert that has not
+ * cleared, or that ended in an overload or a fault, is shown line by line.
+ *
+ * @param {readonly Shown[]} said what is on screen, oldest first
+ * @returns {Row[]}
+ */
+export function folded(said) {
+  const alerts = clearings(said);
+  /** @type {(Shown | Run)[]} */
+  const rows = [];
+  /** @type {Run | null} */
+  let run = null;
+  said.forEach((entry, i) => {
+    if (!spoken(entry)) {
+      rows.push(entry);
+      return;
+    }
+    const alert = alerts.get(i);
+    if (alert === undefined) {
+      run = null;
+      rows.push(entry);
+      return;
+    }
+    const { track, first } = alert;
+    if (run === null || run.track !== track) {
+      run = { track, alerts: 0, lines: [], key: entry.key };
+      rows.push(run);
+    }
+    run.alerts += first === i ? 1 : 0;
+    run.lines.push(entry);
+  });
+  return rows.map((row) => {
+    if (!("alerts" in row)) {
+      return row;
+    }
+    const { track, alerts: count, lines, key } = row;
+    const says =
+      `track ${track}: ${count} alert${count === 1 ? "" : "s"} cleared, ` +
+      `peak ${peak(lines)} mA`;
+    return { track, says, lines, key };
+  });
 }

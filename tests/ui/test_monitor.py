@@ -1108,3 +1108,110 @@ def test_a_line_this_page_sent_goes_through_the_same_keeping() -> None:
     app = APP.read_text()
     sending = app[app.index("#sends = ") :]
     assert "this.#keep(" in sending[: sending.index("};")], "a sent line skips the keep"
+
+
+def folding(said: list[Any]) -> list[dict[str, Any]]:
+    """The rows `said` is drawn as. An entry is a line, with whether this page
+    sent it, or `{"note": …}` for the page's own."""
+    rows: list[dict[str, Any]] = run([{"folding": said}])[0]
+    return rows
+
+
+def alert(track: str, peak: int = 396) -> list[tuple[str, bool]]:
+    """One ack pulse on PROG: an alert, its current, and its clearing (#358)."""
+    return [
+        (f"<* TRACK {track} ALERT  278mA *>", False),
+        (f"<* TRACK {track} CURRENT (100msec ignore) {peak}mA *>", False),
+        (f"<* TRACK {track} NORMAL (after 20msec/25msec) 17mA *>", False),
+    ]
+
+
+def shown(rows: list[dict[str, Any]]) -> list[str | None]:
+    """What each row says: a line its bytes, a folded row its summary."""
+    return [row.get("says", row.get("line", row.get("note"))) for row in rows]
+
+
+@pytest.mark.node
+def test_cleared_alerts_on_one_track_are_one_row() -> None:
+    """A CV read on PROG is nine alerts and 27 lines in about a second (#358).
+    The peak is the highest mA on any of their lines."""
+    said = [line for n in range(9) for line in alert("B", 300 + n)]
+    rows = folding(said)
+    assert shown(rows) == ["track B: 9 alerts cleared, peak 308 mA"]
+    assert [line["line"] for line in rows[0]["lines"]] == [line for line, _ in said]
+
+
+@pytest.mark.node
+def test_one_cleared_alert_is_a_row_of_its_own() -> None:
+    assert shown(folding(alert("B"))) == ["track B: 1 alert cleared, peak 396 mA"]
+
+
+@pytest.mark.node
+def test_a_folded_row_is_keyed_by_its_first_line() -> None:
+    """So the row stays the same row while a run grows."""
+    rows = folding([("<X>", False), *alert("B"), *alert("B")])
+    assert [row["key"] for row in rows] == [0, 1]
+
+
+@pytest.mark.node
+def test_an_alert_that_has_not_cleared_is_shown_line_by_line() -> None:
+    pending = alert("B")[:2]
+    assert shown(folding(pending)) == [line for line, _ in pending]
+    rows = folding([*alert("B"), *pending])
+    assert shown(rows)[1:] == [line for line, _ in pending]
+    assert shown(folding([*alert("B"), *alert("B")]))[0].startswith("track B: 2 ")
+
+
+@pytest.mark.node
+def test_an_alert_that_ends_in_a_trip_is_never_folded() -> None:
+    for trip in ("POWER OVERLOAD 1200mA", "FAST OVERLOAD", "FAULT PIN detected"):
+        said = [*alert("B")[:2], (f"<* TRACK B {trip} *>", False)]
+        late = [*said, ("<* TRACK B NORMAL (after 20msec/25msec) 17mA *>", False)]
+        assert shown(folding(late)) == [line for line, _ in late], trip
+
+
+@pytest.mark.node
+def test_another_station_line_breaks_a_run() -> None:
+    rows = folding([*alert("B"), ("<H 12 1>", False), *alert("B")])
+    assert shown(rows) == [
+        "track B: 1 alert cleared, peak 396 mA",
+        "<H 12 1>",
+        "track B: 1 alert cleared, peak 396 mA",
+    ]
+
+
+@pytest.mark.node
+def test_each_track_is_its_own_run() -> None:
+    rows = folding([*alert("A"), *alert("B")])
+    assert shown(rows) == [
+        "track A: 1 alert cleared, peak 396 mA",
+        "track B: 1 alert cleared, peak 396 mA",
+    ]
+
+
+@pytest.mark.node
+def test_an_alert_with_another_station_line_inside_it_is_not_folded() -> None:
+    a, b, c = alert("B")
+    said = [a, ("<* TRACK A ALERT  280mA *>", False), b, c]
+    assert shown(folding(said)) == [line for line, _ in said]
+
+
+@pytest.mark.node
+def test_a_sent_line_or_a_note_does_not_break_a_run() -> None:
+    """They stay rows of their own, after the folded row."""
+    said = [*alert("B"), ("<R 1>", True), {"note": "a note"}, *alert("B")]
+    assert shown(folding(said)) == [
+        "track B: 2 alerts cleared, peak 396 mA",
+        "<R 1>",
+        "a note",
+    ]
+
+
+@pytest.mark.node
+def test_a_line_the_monitor_quiets_does_not_break_a_run() -> None:
+    """`<jI …>` is never kept, so it is not between the alerts at all."""
+    steps = [heard([line for line, _ in alert("B")]), heard(["<jI 13 2 0 0>"])]
+    steps.append(heard([line for line, _ in alert("B")]))
+    said: list[dict[str, Any]] = keeping(steps)["said"]
+    rows = folding([(entry["line"], entry["sent"]) for entry in said])
+    assert shown(rows) == ["track B: 2 alerts cleared, peak 396 mA"]

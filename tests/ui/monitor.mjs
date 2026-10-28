@@ -52,6 +52,11 @@
 //
 //     {"keeping": [{"noted": "1 command not sent: the stream closed"}]}
 //
+// or entries to fold into rows, each a line with whether this page sent it or
+// the page's own note, keyed in order:
+//
+//     {"folding": [["<* TRACK B ALERT  278mA *>", false], {"note": "…"}]}
+//
 // The moment a line arrived is the page's and the rules never read one, so a
 // step names none and every line in a run is stamped the same.
 //
@@ -72,6 +77,7 @@ import {
   arrived,
   atBottom,
   cleared,
+  folded,
   held,
   noted,
   queued,
@@ -117,6 +123,15 @@ const answered = (ask) => {
   }
   if ("waiting" in ask) {
     return { says: waiting(ask.waiting) };
+  }
+  if ("folding" in ask) {
+    return folded(
+      ask.folding.map((entry, key) =>
+        Array.isArray(entry)
+          ? { line: entry[0], at: ARRIVED, sent: entry[1], key }
+          : { note: entry.note, key },
+      ),
+    );
   }
   if ("keeping" in ask) {
     return keeping(ask.keeping);
