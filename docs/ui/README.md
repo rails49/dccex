@@ -597,7 +597,11 @@ browser can hold:
   display, a track's mode — is shown only when it says something different
   from the last one about the same thing. The measured currents (`<jI …>`) and
   the limits (`<jG …>`) are never shown: the currents move on nearly every
-  poll, and the tiles are where both are read. Every poll is answered with the
+  poll, and the tiles are where both are read. The fast clock's display line,
+  `Time hh:mm (r)`, is never shown, whatever its row. Its broadcast,
+  `<jC m r>`, is shown the first time after the page opens and then only when
+  the rate `r` changes. The answer to a typed `<JC>`, `<jC m>`, is always
+  shown (#356). Every poll is answered with the
   same eight lines, and every open page polls. The readings still hear every
   line; it is only the monitor that leaves the repeats out;
 - a stream that closed is opened again after two seconds, because everything
