@@ -180,6 +180,9 @@ const HOUR_MS = 3600000;
  * @property {number} cut how long the district was cut for, in milliseconds
  * @property {number[]} taken which journal lines it is made of, by their place
  *   in the lines this was handed, in the order they were written
+ * @property {string[]} flipped the districts whose flips it took, A first:
+ *   on a `reversal` or a `repeated reversal`, the reverser that flipped, which
+ *   need not be `district` (#368)
  */
 
 /**
@@ -385,6 +388,7 @@ export function reads(line, period = {}) {
  * @property {boolean} slow whether a flip of it was not a fast one
  * @property {boolean} caused whether an alert or a trip followed a flip of it
  * @property {number[]} taken which lines have been folded into it
+ * @property {Set<string>} flipped the districts whose flips it took
  */
 
 /**
@@ -415,6 +419,7 @@ function reading(district, start, mode, index, fixed = null) {
     start,
     fixed,
     taken: [index],
+    flipped: new Set(),
     trips: 0,
     milliamps: null,
     cut: 0,
@@ -627,6 +632,7 @@ export function read(lines, period = {}) {
       // reading, and a line reached twice is one line: what goes out is the
       // journal's own order, once each.
       taken: [...new Set(held.taken)].sort((first, second) => first - second),
+      flipped: [...held.flipped].sort(),
     });
     if (held.district !== null) {
       const counts = counted(held.district);
@@ -761,6 +767,7 @@ export function read(lines, period = {}) {
         held.slow = held.slow || !told.fast;
         flip.spent = true;
         held.taken.push(index);
+        held.flipped.add(name);
         // The flips the third one counted are part of what it says, so a burst
         // of three is one reading and not an incident with two good flips
         // beside it.
@@ -809,6 +816,7 @@ export function read(lines, period = {}) {
       // the reverser got away with, so the line it is on is one of this
       // incident's.
       held.taken.push(flip.index);
+      held.flipped.add(flip.district);
     }
     if (told.word === "trip") {
       held.tripped = true;

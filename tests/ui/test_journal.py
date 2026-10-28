@@ -173,6 +173,41 @@ THREE_FLIPS: list[Line] = [
     said(5_000, "<p0 C>", district="C", mode="MAIN_AUTO", limit=3000),
 ]
 
+#: A reverser flipping C, and A, across the join, cut 100 ms later. The
+#: incident is A's and the flip is C's.
+A_FLIP_ON_ANOTHER_DISTRICT: list[Line] = [
+    said(0, "<p1 A>", district="A", mode="MAIN", limit=3000),
+    said(10, "<p1 C>", district="C", mode="MAIN_AUTO", limit=3000),
+    said(1_000, invert("C"), district="C", mode="MAIN_AUTO", limit=3000),
+    said(1_100, guarded("A"), district="A", mode="MAIN", limit=3000),
+    said(1_200, restore("A"), district="A", mode="MAIN", limit=3000),
+    said(1_300, normal("A"), district="A", mode="MAIN", limit=3000),
+]
+
+#: One short on A that two reversers kept up: a flip on C cut it, the station
+#: retried, and a flip on D cut it again.
+FLIPS_ON_TWO_DISTRICTS: list[Line] = [
+    said(0, "<p1 A>", district="A", mode="MAIN", limit=3000),
+    said(1_000, invert("C"), district="C", mode="MAIN_AUTO", limit=3000),
+    said(1_100, guarded("A"), district="A", mode="MAIN", limit=3000),
+    said(1_200, restore("A"), district="A", mode="MAIN", limit=3000),
+    said(1_300, invert("D"), district="D", mode="MAIN_AUTO", limit=3000),
+    said(1_400, guarded("A"), district="A", mode="MAIN", limit=3000),
+    said(1_500, restore("A"), district="A", mode="MAIN", limit=3000),
+    said(1_600, normal("A"), district="A", mode="MAIN", limit=3000),
+]
+
+#: A reverser on D that cannot settle, and A cut after its third flip.
+A_BURST_ON_ANOTHER_DISTRICT: list[Line] = [
+    said(0, "<p1 A>", district="A", mode="MAIN", limit=3000),
+    said(1_000, invert("D"), district="D", mode="MAIN_AUTO", limit=3000),
+    said(1_400, invert("D"), district="D", mode="MAIN_AUTO", limit=3000),
+    said(1_800, invert("D"), district="D", mode="MAIN_AUTO", limit=3000),
+    said(1_900, guarded("A"), district="A", mode="MAIN", limit=3000),
+    said(2_000, normal("A"), district="A", mode="MAIN", limit=3000),
+    said(5_000, "<p0 D>", district="D", mode="MAIN_AUTO", limit=3000),
+]
+
 #: One short, and the station retrying it four times before the district is
 #: itself again. The retry doubles its wait, which is what the gaps are.
 FOUR_RETRIES: list[Line] = [
@@ -295,6 +330,9 @@ ASKS: dict[str, dict[str, Any]] = {
     "a clean flip": {"journal": A_CLEAN_FLIP},
     "a flip the short outlived": {"journal": A_FLIP_THE_SHORT_OUTLIVED},
     "three flips": {"journal": THREE_FLIPS},
+    "a flip on another district": {"journal": A_FLIP_ON_ANOTHER_DISTRICT},
+    "flips on two districts": {"journal": FLIPS_ON_TWO_DISTRICTS},
+    "a burst on another district": {"journal": A_BURST_ON_ANOTHER_DISTRICT},
     "four retries": {"journal": FOUR_RETRIES},
     "an alert on each": {"journal": AN_ALERT_ON_EACH},
     "an alert before a mode": {"journal": AN_ALERT_BEFORE_A_MODE},
@@ -397,6 +435,50 @@ def test_the_flips_the_third_counted_are_part_of_what_it_says() -> None:
     """A burst of three is one reading and not an incident with two good flips
     beside it."""
     assert district("three flips", "C")["flips"] == 0
+
+
+@pytest.mark.node
+def test_a_reversal_carries_the_district_that_flipped() -> None:
+    """It is filed under the district that was cut, which need not be the one
+    that flipped (#368)."""
+    (own,) = incidents("a flip the short outlived")
+    assert own["flipped"] == ["C"]
+    (one,) = incidents("a flip on another district")
+    assert (one["kind"], one["district"], one["flipped"]) == ("reversal", "A", ["C"])
+
+
+@pytest.mark.node
+def test_a_reversal_that_took_flips_on_two_districts_carries_both() -> None:
+    """A first, as the districts are."""
+    (one,) = incidents("flips on two districts")
+    assert (one["kind"], one["district"], one["flipped"]) == (
+        "reversal",
+        "A",
+        ["C", "D"],
+    )
+
+
+@pytest.mark.node
+def test_a_repeated_reversal_carries_the_district_that_flipped() -> None:
+    """The burst is D's own incident, and the cut it caused on A is A's."""
+    cut, burst = incidents("a burst on another district")
+    assert (burst["kind"], burst["district"], burst["flipped"]) == (
+        "repeated reversal",
+        "D",
+        ["D"],
+    )
+    assert (cut["kind"], cut["district"], cut["flipped"]) == (
+        "repeated reversal",
+        "A",
+        ["D"],
+    )
+
+
+@pytest.mark.node
+def test_an_incident_that_took_no_flip_carries_no_district_that_flipped() -> None:
+    """A trip with no flip before it names no district but its own."""
+    (one,) = incidents("four retries")
+    assert one["flipped"] == []
 
 
 @pytest.mark.node
