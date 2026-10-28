@@ -1,6 +1,7 @@
 # ADR-0029 — a script posts a widget's text and hears what the station says
 
-- **Status:** accepted, 2026-10-22
+- **Status:** accepted, 2026-10-22; d.1 amended by
+  [ADR-0030](0030-a-script-reports-where-a-point-lies.md)
 - **Ticket:** #342
 - **Related:** [control
   ADR-0087](https://github.com/rails49/control/blob/main/docs/adr/0087-a-widget-is-on-the-drawing-and-control-carries-its-payload-without-reading-it.md)

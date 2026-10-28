@@ -13,7 +13,8 @@ is a client of its port beside the others; the USB device is never opened here.
 *Publishes* `tc49/layout/state/device/track` and
 `tc49/layout/state/device/link/<id>`, where the id is the one this app is
 started with (control ADR-0059), and a script posts on
-`tc49/ui/state/text/<name>` (ADR-0029 d.1).
+`tc49/ui/state/text/<name>` (ADR-0029 d.1) and reports on
+`tc49/layout/state/device/point/<address>` (ADR-0030).
 
 The `<…>` syntax is this app's private business — it appears on no bus topic,
 in no other package and in no normative document — and
@@ -54,9 +55,10 @@ restates every district's power (`_diagnosed`, `commands.STATUS`, ADR-0016).
 has commanded, then the track off. Whoever constructs this app calls it before
 letting the loop go (`shutdown`, `__main__.py`).
 
-**No `device/point` is ever published**, this railroad's turnouts having no
-feedback and the station's answer to a throw being one it faked (`_reports`,
-control ADR-0022, control ADR-0050).
+**`device/point` is published only where a script reports it**, this
+railroad's turnouts having no feedback and the station's answer to a throw
+being one it faked (`_point_reported`, `_reports`, ADR-0030, control ADR-0022,
+control ADR-0097).
 
 **`device/link` is the station answering and not the socket being open**, so
 ten intervals of silence lower it with the connection still there
@@ -163,6 +165,7 @@ d.2)."""
 
 DEVICE_TRACK = "tc49/layout/state/device/track"
 DEVICE_LINK = "tc49/layout/state/device/link"
+DEVICE_POINT = "tc49/layout/state/device/point"
 
 UP = "up"
 DOWN = "down"
@@ -265,12 +268,13 @@ UNREAD = District(UNKNOWN, None, None)
 
 
 class Event:
-    """What a handler is handed: the event that fired, and the five things a
+    """What a handler is handed: the event that fired, and the six things a
     handler may do about it.
 
     A handler sends raw `<…>`, reads the desired picture and the last
-    reports, and posts a widget's text, which is the one thing it publishes
-    on the bus (ADR-0013 d.4 as amended by ADR-0029 d.1). What it is given
+    reports, posts a widget's text and reports where a point lies. The last
+    two are what it publishes on the bus (ADR-0013 d.4 as amended by
+    ADR-0029 d.1 and ADR-0030 d.1). What it is given
     is the two pictures as this app holds them, so a handler sets everything
     it depends on from the desired values each time it runs rather than from
     what an earlier handler sent (d.5).
@@ -288,6 +292,7 @@ class Event:
         *,
         sends: Callable[[bytes], None],
         texts: Callable[[str, str], None],
+        points: Callable[[str, str], None],
         default: bytes | None,
         wanted: dict[str, "Wanted"],
         reported: dict[tuple[str, str], object],
@@ -304,6 +309,7 @@ class Event:
         """Whether this app's own command for the value has gone out."""
         self._sends = sends
         self._texts = texts
+        self._points = points
         self._default = default
         self._wanted = wanted
         self._reported = reported
@@ -339,6 +345,16 @@ class Event:
         (ADR-0029 d.1). A name that is empty or holds `/`, `+` or `#` raises.
         """
         self._texts(name, value)
+
+    def point(self, address: str, position: str) -> None:
+        """Report that the point at `address` lies `closed` or `thrown`, on
+        `tc49/layout/state/device/point/<address>` and nowhere else: retained,
+        and only where it differs from the last position reported for that
+        address. It sends nothing to the station, and `reported` still reads
+        what the station said (ADR-0030). An address that is empty or holds
+        `/`, `+` or `#` raises, and so does any other position.
+        """
+        self._points(address, position)
 
     def desired(self, row: str, address: str | None = None) -> object | None:
         """What the bus last wanted of one device, or None where it has not
@@ -484,6 +500,9 @@ class DccEx:
         # The last text posted under each widget name, which a repeat of it
         # is not posted against (ADR-0029 d.1).
         self._posted: dict[str, str] = {}
+        # The last position a script reported for each point, which a repeat
+        # of it is not published against (ADR-0030).
+        self._positions: dict[str, str] = {}
         # The railroad this broker runs, as the row names it, and the script
         # it is running. `None` where no script is loaded, which is a
         # railroad this app carries out OFF, STOP and speeds for and refuses
@@ -637,6 +656,7 @@ class DccEx:
             address,
             sends=self._send,
             texts=self._text_posted,
+            points=self._point_reported,
             default=default,
             wanted=self._wanted,
             reported=self._reported,
@@ -656,6 +676,20 @@ class DccEx:
             return
         self._posted[given] = said
         self._bus.publish_text(f"{TEXT}/{given}", said)
+
+    def _point_reported(self, address: str, position: str) -> None:
+        """Where a script says a point lies (ADR-0030). The address and the
+        position are a script's, so they are read and never trusted."""
+        given, said = cast(object, address), cast(object, position)
+        if not isinstance(given, str) or not given or any(c in given for c in "/+#"):
+            raise ValueError(f"{given!r} is no point address")
+        if said not in (commands.CLOSED, commands.THROWN):
+            raise ValueError(f"{said!r} is no position")
+        if self._positions.get(given) == said:
+            return
+        self._positions[given] = said
+        frame: Payload = {"addr": given, "position": said}
+        self._bus.publish(device_topic(DEVICE_POINT, given), frame)
 
     def _ran(self, handlers: list[script.Handler], firing: Event) -> None:
         """Run the handlers of one event, and send the default behind a

@@ -40,6 +40,7 @@ Handlers:
   `t.default()` sends that command as well.
 * `t.send(text)` sends one raw message.
 * `t.text(name, value)` sets the text the widget `name` shows.
+* `t.point(address, position)` reports where a point lies.
 * `t.desired(row, address=None)` reads the desired value.
 * `t.reported(row, address=None)` the last reports;
 * `t.message` is the message on reported_message.

@@ -141,6 +141,7 @@ Handlers:
   `t.default()` sends that command as well.
 * `t.send(text)` sends one raw message.
 * `t.text(name, value)` sets the text the widget `name` shows.
+* `t.point(address, position)` reports where a point lies.
 * `t.desired(row, address=None)` reads the desired value.
 * `t.reported(row, address=None)` the last reports;
 * `t.message` is the message on reported_message.
@@ -242,7 +243,7 @@ the handler runs for **every** address of its row, which is the only form
 function, which is how one signal is set from two turnouts. A row that is no
 event, or an address that is not a string, is a script that does not load.
 
-The handler is handed one argument, the event, and may do five things with
+The handler is handed one argument, the event, and may do six things with
 it:
 
 | written | does |
@@ -250,14 +251,16 @@ it:
 | `t.default()` | sends this app's own command for the value that fired, once per firing whoever asks; nothing at all for `start` or a report |
 | `t.send(text)` | sends one raw `<…>` message, as typed |
 | `t.text(name, value)` | posts `value` as the text widget `name` shows, on `tc49/ui/state/text/<name>`: raw UTF-8, retained, and only where it differs from the last text posted under that name. A name that is empty or holds `/`, `+` or `#` raises |
+| `t.point(address, position)` | reports that the point lies `closed` or `thrown`, on `tc49/layout/state/device/point/<address>`: retained, and only where it differs from the last position reported for that address. It sends nothing to the station, and `t.reported` still reads what the station said. An address that is empty or holds `/`, `+` or `#` raises, and so does any other position |
 | `t.desired(row, address=None)` | reads the desired picture: a position, an aspect, a speed, a function's bit, or the word the power is wanted in. `None` where the bus has not said |
 | `t.reported(row, address=None)` | reads the last reports: `power` by the track the station named — the empty address on the line that names none — `point` by the id it named, and `district` by its letter. `None` where the station has not said this session |
 
 `t.address` is the address the event fired for, and `t.message` the station's
-message on `reported_message`. The text row is the one thing a handler
-publishes on the bus (ADR-0013 d.4 as amended by
+message on `reported_message`. The text row and the point row are the two
+things a handler publishes on the bus (ADR-0013 d.4 as amended by
 [ADR-0029](../adr/0029-a-script-posts-text-and-hears-what-the-station-says.md)
-d.1). The rows `reported` reads are `power`, `point` and `district`, the verb
+d.1 and [ADR-0030](../adr/0030-a-script-reports-where-a-point-lies.md) d.1).
+The rows `reported` reads are `power`, `point` and `district`, the verb
 carrying what the event names spell out.
 
 **A district's record** is what `reported_district` fires on a change of and
@@ -497,11 +500,13 @@ The `G-` field is read all the same, for the **journal**, which carries the
 app can read no field off raises the link just the same, a message this app
 reads nothing out of being the station answering as much as one it does.
 
-**No `device/point`.** This railroad's turnouts have no feedback and the
-station's answer to a throw is one it faked
+**`device/point` only from a script.** This railroad's turnouts have no
+feedback and the station's answer to a throw is one it faked
 ([ADR-0022](https://github.com/rails49/control/blob/main/docs/adr/0022-a-symbol-carries-its-hardware-address.md)),
-so the row stays empty however many turnouts are thrown. A faked observation is
-worse than silence.
+so the station's answer is never published. A faked observation is worse than
+silence. A script reports where a point lies with `t.point`, for an address
+the drawing lists as `reported`
+([ADR-0030](../adr/0030-a-script-reports-where-a-point-lies.md)).
 
 **No `device/refused`.** The station answers a command it rejects with a bare
 `<X>`, and the mirror passes every line to every client, so an `<X>` cannot be
