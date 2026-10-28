@@ -248,6 +248,64 @@ function mode(rest) {
   };
 }
 
+/** A loco's speed line: cab, slot, speed byte and functions. */
+const LOCO = /^(\d+) (-1|\d+) (\d+) (-?\d+)$/;
+
+/**
+ * The speed a `<l>` speed byte says, in the gloss's words: `step 25`,
+ * `stopped` or `emergency stop`. Only the low 7 bits are read; bit 7 is the
+ * direction.
+ *
+ * @param {number} speed the speed byte
+ * @returns {string}
+ */
+function stepped(speed) {
+  const step = speed & 0x7f;
+  if (step === 0) {
+    return "stopped";
+  }
+  return step === 1 ? "emergency stop" : `step ${step - 1}`;
+}
+
+/**
+ * A loco's speed as the monitor folds it (#359).
+ *
+ * `alike` is the same for two lines from one cab with the same slot,
+ * direction and functions, which are the lines that differ only in their
+ * step.
+ *
+ * @typedef {{
+ *   readonly cab: string,
+ *   readonly way: string,
+ *   readonly step: string,
+ *   readonly alike: string,
+ * }} Speed
+ */
+
+/**
+ * What a `<l>` line with a slot says about a loco's speed, or `null` where
+ * `line` is not one.
+ *
+ * @param {string} line one line of the conversation, as the station said it
+ * @returns {Speed | null}
+ */
+export function speed(line) {
+  const said = line.trim();
+  const fields = /^<l (.*)>$/.exec(said);
+  const loco = fields === null ? null : LOCO.exec(fields[1] ?? "");
+  if (loco === null || loco[2] === "-1" || Number(loco[3]) > 255) {
+    return null;
+  }
+  const [, cab = "", slot, byte, functions] = loco;
+  const speed = Number(byte);
+  return {
+    cab,
+    way: speed & 0x80 ? "forward" : "reverse",
+    step: stepped(speed),
+    alike: `${slot} ${speed & 0x80} ${functions}`,
+  };
+}
+
 /**
  * A loco's speed, direction and functions: `<l 3 0 154 1>`.
  *
@@ -260,7 +318,7 @@ function mode(rest) {
  * @returns {Reading | null}
  */
 function loco(rest) {
-  const said = /^(\d+) (-1|\d+) (\d+) (-?\d+)$/.exec(rest);
+  const said = LOCO.exec(rest);
   if (said === null) {
     return null;
   }
@@ -273,13 +331,11 @@ function loco(rest) {
     return null;
   }
   const way = speed & 0x80 ? "forward" : "reverse";
-  const step = speed & 0x7f;
-  let say = `loco ${cab} ${way} at step ${step - 1}`;
-  if (step === 0) {
-    say = `loco ${cab} ${way}, stopped`;
-  } else if (step === 1) {
-    say = `loco ${cab} ${way}, emergency stop`;
-  }
+  const step = stepped(speed);
+  const say =
+    (speed & 0x7f) > 1
+      ? `loco ${cab} ${way} at ${step}`
+      : `loco ${cab} ${way}, ${step}`;
   const functions = Number(said[4]) >>> 0;
   /** @type {string[]} */
   const on = [];
