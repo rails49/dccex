@@ -27,6 +27,10 @@ value that is this deployment's rather than the railroad's:
 - `--journal <path>`, the file the **journal** is appended to, which is a
   file on a volume the box keeps and is this deployment's rather than the
   railroad's. Left out, nothing is written (ADR-0022 d.1).
+- `--log <path>`, the file the **log** is copied to: everything this process
+  writes to stdout and stderr, each line stamped, on the volume the journal is
+  on, where the mirror's face serves it (`log.py`). Left out, the log reaches
+  `docker logs` alone.
 
 Neither the drain period nor the poll nor the backoff is a flag — nothing
 outside this process has an opinion about how often it takes what the broker's
@@ -83,6 +87,7 @@ down with it.
 import argparse
 import asyncio
 import contextlib
+import os
 import signal
 import sys
 import threading
@@ -93,6 +98,7 @@ from tc49.lib.bus import Payload
 from tc49.lib.mqtt import BROKER_EXAMPLE, MqttBus, address
 
 from dccex.journal import Journal
+from dccex.log import Log, teed
 from dccex.store import Scripts
 from dccex.translator import (
     FIRST_BACKOFF_S,
@@ -133,6 +139,14 @@ JOURNAL_EXAMPLE = "/var/lib/dccex/journal.jsonl"
 the named volume the mirror mounts beside this app, whose face serves it to
 the page (`compose.box.yaml`, ADR-0022 d.4)."""
 
+LOG_EXAMPLE = "/var/lib/dccex/log.txt"
+"""What a log's path looks like, for the help. On the box it is a file on the
+journal's volume, which the mirror's face serves (`compose.box.yaml`)."""
+
+COMMIT = "DCCEX_COMMIT"
+"""The variable the image carries the commit it was built from in
+(`deploy/Dockerfile`, ADR-0005 d.4)."""
+
 STATION_EXAMPLE = "mirror:2560"
 """What a station address looks like, for the help and for a refusal. The
 `dccex-usb` mirror serves the command station on 2560, and on the box it is
@@ -146,6 +160,18 @@ def to_stderr(line: str) -> None:
     on the bus rather than here — `device/link` is where a participant that
     cannot reach its hardware reports it (control ADR-0050)."""
     print(f"dccex: {line}", file=sys.stderr, flush=True)
+
+
+def started(log: str | None, commit: str) -> None:
+    """The log copied to the file at `log`, where there is one, and the line
+    that says this process is starting, which is the first one it writes.
+
+    The line names the commit the image was built from, so a log read after a
+    deploy says which code wrote the lines that follow.
+    """
+    if log:
+        teed(Log(log))
+    to_stderr(f"starting, built from {commit or 'an unrecorded commit'}")
 
 
 def connected(bus: MqttBus, stop: threading.Event, log: Callable[[str], None]) -> bool:
@@ -346,7 +372,17 @@ def main() -> None:
         " appended to a file on a volume the box keeps, e.g."
         f" {JOURNAL_EXAMPLE}; left out, nothing is written",
     )
+    parser.add_argument(
+        "--log",
+        metavar="PATH",
+        help="a file the log is copied to, each line stamped, e.g."
+        f" {LOG_EXAMPLE}; left out, it reaches stderr alone",
+    )
     args = parser.parse_args()
+    # Before anything else is said, so the start line is the first line of
+    # this process in the file. Never closed: the traceback of an exception
+    # nothing caught is written after every `finally` below has run.
+    started(args.log, os.environ.get(COMMIT, ""))
     try:
         host, port = address(args.broker)
     except ValueError as refused:
@@ -370,7 +406,8 @@ def main() -> None:
     signal.signal(signal.SIGTERM, signal.default_int_handler)
     to_stderr(
         f"broker {host}:{port}, station {station[0]}:{station[1]},"
-        f" store {args.store}, journal {args.journal or 'none'}"
+        f" store {args.store}, journal {args.journal or 'none'},"
+        f" log {args.log or 'none'}"
     )
     # Opened here and not inside the app, so a path that cannot be written
     # refuses the process rather than being discovered on the first trip

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from dccex.__main__ import started
 from dccex.log import Log, Tee, teed
 
 AT = "2026-10-28T19:38:30.123+00:00"
@@ -108,3 +109,36 @@ def test_the_streams_teed_carry_print_logging_and_an_uncaught_exception(
     assert f"{AT} the link to the station is down\n" in said
     assert f"{AT} Traceback (most recent call last):\n" in said
     assert f"{AT} RuntimeError: the handler raised\n" in said
+
+
+def test_the_first_line_says_the_process_is_starting_and_what_it_was_built_from(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After the old run's last lines, so the file shows where one run ends
+    and the next begins."""
+    stderr = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", io.StringIO())
+    monkeypatch.setattr(sys, "stderr", stderr)
+    path = tmp_path / "log.txt"
+    path.write_text(
+        f"{AT} dccex: the script changed: the railroad is down and this"
+        " process is ending\n"
+    )
+    started(str(path), "d97a0bc")
+    said = path.read_text().splitlines()
+    assert said[0].endswith(
+        "the script changed: the railroad is down and this" " process is ending"
+    )
+    assert said[1].endswith(" dccex: starting, built from d97a0bc")
+    assert len(said) == 2
+    assert stderr.getvalue() == "dccex: starting, built from d97a0bc\n"
+
+
+def test_with_no_log_the_start_line_reaches_stderr_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stderr = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stderr)
+    started(None, "")
+    assert sys.stderr is stderr
+    assert stderr.getvalue() == "dccex: starting, built from an unrecorded commit\n"

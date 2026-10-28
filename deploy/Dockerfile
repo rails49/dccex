@@ -93,6 +93,9 @@ FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e6
 # still works with nothing set.
 ARG DCCEX_COMMIT=
 LABEL org.opencontainers.image.revision=$DCCEX_COMMIT
+# And to the process, which names it on the first line of its log
+# (`dccex.__main__`, #364).
+ENV DCCEX_COMMIT=$DCCEX_COMMIT
 LABEL org.opencontainers.image.source=https://github.com/rails49/dccex
 
 # The log is what a box has of this app — connects, disconnects, the device,
