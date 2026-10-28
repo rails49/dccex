@@ -15,6 +15,9 @@ one before it ended.
 the oldest lines go, down to the newest `TRIMMED_TO` bytes at a line
 boundary. The trim is written beside the file and renamed over it, as the
 journal's is (`journal.py`), so the face serves the old file or the new one.
+
+A file that cannot be written or trimmed does not stop the stream: the
+line still reaches `docker logs`, and the first failure is said there once.
 """
 
 import io
@@ -56,6 +59,12 @@ class Log:
         self._lock = threading.Lock()
         self._file = self._opened()
         self._trimmed()
+        self.failed = False
+        """Whether a write or a trim has failed, which is said once."""
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def _opened(self) -> IO[str]:
         # Open until the next trim or the end of the process.
@@ -99,7 +108,15 @@ class Tee(io.TextIOBase):
         self._stream.write(s)
         *ended, self._held = (self._held + s).split("\n")
         for line in ended:
-            self._log.wrote(line)
+            try:
+                self._log.wrote(line)
+            except OSError as error:
+                if not self._log.failed:
+                    self._log.failed = True
+                    self._stream.write(
+                        f"dccex: the log at {self._log.path} cannot be written:"
+                        f" {error}\n"
+                    )
         return len(s)
 
     def flush(self) -> None:
