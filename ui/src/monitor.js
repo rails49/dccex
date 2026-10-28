@@ -100,11 +100,18 @@ export function stamped(at) {
   );
 }
 
-/** The subjects the monitor never shows: see `subject`. */
-const MEASURED = new Set(["jI", "jG"]);
+/** The subjects the monitor never shows: see `told`. */
+const MEASURED = new Set(["jI", "jG", "time"]);
+
+/** The station's fast clock on a display row: `<@ 0 6 "Time 23:16 (8)">`. */
+const CLOCKED = /^<@ \d+ \d+ "Time \d{1,2}:\d{2} \(\d+\)">$/;
+
+/** The fast clock's broadcast, `<jC 1396 8>`: the minute and the rate. */
+const BROADCAST = /^<jC \d+ (\d+)>$/;
 
 /**
- * What a status line is about, or `null` for a line that is not one.
+ * What a status line is about and what it says about it, or `null` for a line
+ * that is not one.
  *
  * The station answers every poll with the same handful of lines: its banner,
  * the power on each track, the power as a whole and the display. Another
@@ -116,21 +123,33 @@ const MEASURED = new Set(["jI", "jG"]);
  * The measured currents (`<jI …>`) and limits (`<jG …>`) are never shown:
  * the current moves on nearly every poll, and the tiles are where it is read.
  *
+ * The fast clock sends two lines every fast minute (#356). The display row
+ * `Time hh:mm (r)` is never shown, whatever its row. The broadcast
+ * `<jC m r>` says its rate, so it is shown when the rate changed. The answer
+ * to a typed `<JC>`, `<jC m>`, is not a status line.
+ *
  * @param {string} line a whole `<…>` message
- * @returns {string | null}
+ * @returns {{ about: string, says: string } | null}
  */
-export function subject(line) {
+function told(line) {
+  if (CLOCKED.test(line)) {
+    return { about: "time", says: line };
+  }
+  const rate = BROADCAST.exec(line);
+  if (rate !== null) {
+    return { about: "jC", says: `<jC ${rate[1]}>` };
+  }
   const said =
-    /^<(?:p[01]( [A-Z]+)?|(i)DCC-EX\b.*|(@ \d+ \d+) .*|(j[A-Z]) .*|(= [A-Z]) .*|(#) \d+)>$/.exec(
+    /^<(?:p[01]( [A-Z]+)?|(i)DCC-EX\b.*|(@ \d+ \d+) .*|(j[A-BD-Z]) .*|(= [A-Z]) .*|(#) \d+)>$/.exec(
       line,
     );
   if (said === null) {
     return null;
   }
   const [, track, banner, display, currents, mode, slots] = said;
-  return (
-    banner ?? display ?? currents ?? mode ?? slots ?? `p${track ?? ""}`
-  );
+  const about =
+    banner ?? display ?? currents ?? mode ?? slots ?? `p${track ?? ""}`;
+  return { about, says: line };
 }
 
 /**
@@ -147,12 +166,13 @@ export function subject(line) {
 export function quieted(last, said) {
   const now = { ...last };
   const shown = said.map(({ line, sent }) => {
-    const about = sent ? null : subject(line);
-    if (about === null) {
+    const status = sent ? null : told(line);
+    if (status === null) {
       return true;
     }
-    const changed = !MEASURED.has(about) && now[about] !== line;
-    now[about] = line;
+    const { about, says } = status;
+    const changed = !MEASURED.has(about) && now[about] !== says;
+    now[about] = says;
     return changed;
   });
   return { shown, last: now };
@@ -402,9 +422,9 @@ function gap(dropped) {
 function forgotten(last, went) {
   const now = { ...last };
   for (const line of went) {
-    const about = line.sent ? null : subject(line.line);
-    if (about !== null && now[about] === line.line) {
-      delete now[about];
+    const status = line.sent ? null : told(line.line);
+    if (status !== null && now[status.about] === status.says) {
+      delete now[status.about];
     }
   }
   return now;

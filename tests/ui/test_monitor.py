@@ -595,6 +595,50 @@ def test_currents_and_limits_are_never_shown() -> None:
     assert quiet(said)["shown"] == [False, False, False]
 
 
+def test_the_fast_clock_on_the_display_is_never_shown() -> None:
+    """The station writes its fast clock to a display row every fast minute,
+    and the row is not always the same one (#356)."""
+    said = [
+        ('<@ 0 6 "Time 23:16 (8)">', False),
+        ('<@ 0 6 "Time 23:17 (8)">', False),
+        ('<@ 0 3 "Time 23:17 (8)">', False),
+        ('<@ 0 6 "Time 9:05 (1)">', False),
+    ]
+    assert quiet(said)["shown"] == [False] * len(said)
+
+
+def test_a_display_row_that_is_not_the_clock_is_still_shown() -> None:
+    said = [('<@ 0 6 "Time 23:16 (8)">', False), ('<@ 0 6 "PWR On">', False)]
+    assert quiet(said)["shown"] == [False, True]
+
+
+def test_the_clock_broadcast_is_shown_first_and_then_when_its_rate_changes() -> None:
+    """`<jC m r>` comes every fast minute. The first one after the page opens
+    is shown; after that, only one whose rate is new (#356)."""
+    said = [
+        ("<jC 1396 8>", False),
+        ("<jC 1397 8>", False),
+        ("<jC 1398 8>", False),
+        ("<jC 1398 4>", False),
+        ("<jC 1399 4>", False),
+    ]
+    first = quiet(said)
+    assert first["shown"] == [True, False, False, True, False]
+    assert quiet([("<jC 1400 4>", False)], first["last"])["shown"] == [False]
+    assert quiet([("<jC 1400 1>", False)], first["last"])["shown"] == [True]
+
+
+def test_the_answer_to_a_typed_clock_ask_is_always_shown() -> None:
+    """`<jC m>` is the reply to a `<JC>` someone typed (#356)."""
+    said = [
+        ("<jC 1396 8>", False),
+        ("<jC 1396>", False),
+        ("<jC 1396>", False),
+        ("<jC 1397 8>", False),
+    ]
+    assert quiet(said)["shown"] == [True, True, True, False]
+
+
 def test_the_loco_slot_count_is_shown_only_when_it_changes() -> None:
     """Another client asks `<#>` every thirty seconds and every client sees
     the answer, `<# 120>`, which does not change."""
@@ -877,6 +921,16 @@ def test_a_subject_the_queue_still_holds_is_not_forgotten() -> None:
     )
     assert lines(after)[1] == "<p0>", "the line that went was not the oldest"
     assert lines(after)[-1] != "<p0>", "a repeat of what is on screen was shown"
+
+
+@pytest.mark.node
+def test_a_clock_broadcast_the_queue_dropped_is_shown_again() -> None:
+    """A broadcast is compared on its rate, and so is forgotten on it (#356)."""
+    filling = [f"<H {n} 1>" for n in range(cap())]
+    after = keeping(
+        [HOLDS, heard(["<jC 1396 8>"]), heard(filling), HOLDS, heard(["<jC 1397 8>"])]
+    )
+    assert lines(after)[-1] == "<jC 1397 8>", "the clock was never shown"
 
 
 @pytest.mark.node
