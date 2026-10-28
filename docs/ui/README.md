@@ -523,11 +523,14 @@ the document while another view is showing, so coming back to the journal is
 what asks for it again.
 
 **The period is the reader's**: the last day, the last 7 days, the whole file,
-or one **build** the journal carries — the builds come off the file, newest
-first, and are offered in the same chooser as the three spans, because they are
-the same answer to which lines are read. The two spans are counted back from
-when the face answered rather than from the draw, so nothing drops out of the
-list while somebody is reading it.
+one **build** the journal carries, or one day it has a line on — the builds
+and the days come off the file, newest first, and are offered in the same
+chooser as the three spans, because they are the same answer to which lines
+are read. The two spans are counted back from when the face answered rather
+than from the draw, so nothing drops out of the list while somebody is reading
+it. A day is spelt `2026-10-28` and runs from midnight to midnight on the
+reader's clock, as the list's stamps do, so it is 23 or 25 hours long on the
+day summer time starts or ends (#370).
 
 **The statistics are at the top**: one row per district the file names, with its
 **incident**s by kind, how many times the station cut it, how long for, the
