@@ -65,6 +65,7 @@ def test_the_package_is_all_that_is_here() -> None:
         "firmware.py",
         "framing.py",
         "journal.py",
+        "log.py",
         "station.py",
         "store.py",
         "stream.py",

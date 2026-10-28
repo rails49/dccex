@@ -35,6 +35,9 @@ ADR-0042).
   with no journal**: the journal route answers a status and a sentence, and a box holding a cable
   with no translator beside it has no record to serve. Configuration and never
   payload, like the store.
+- `--log <path>`, the file the translator copies its **log** to, which the face
+  serves at `/log` (`log.py`, #364). Left out, that route answers a status and
+  a sentence, as the journal's does.
 
 **There is no broker and no identity.** Both went with the bus (ADR-0001):
 the flash was asked for on a bus in `control` and is asked for on this app's
@@ -58,6 +61,7 @@ from dccex_usb.face import PORT as FACE_PORT
 from dccex_usb.face import Face, Loopback, Server
 from dccex_usb.firmware import RELEASES, Flasher
 from dccex_usb.journal import Journal
+from dccex_usb.log import Log
 from dccex_usb.station import Station, to_stderr
 from dccex_usb.store import Store
 
@@ -66,6 +70,10 @@ JOURNAL_EXAMPLE = "/var/lib/dccex/journal.jsonl"
 the named volume the translator beside this app appends to, which this app's
 face serves (`compose.box.yaml`, ADR-0022 d.4) — the same spelling
 the writer's own help carries (`dccex.__main__`)."""
+
+LOG_EXAMPLE = "/var/lib/dccex/log.txt"
+"""What a log's path looks like, for the help: the file on the journal's
+volume the translator copies its log to (`compose.box.yaml`)."""
 
 PERIOD_S = 0.5
 """How often the loop looks at `stop`. It waits on the mirror the rest of the
@@ -82,6 +90,7 @@ def serve(
     face_port: int = FACE_PORT,
     store: str = "",
     journal: str = "",
+    log: str = "",
     period_s: float = PERIOD_S,
 ) -> None:
     """The app: the mirror, the flasher on the device it holds, and the face
@@ -127,6 +136,7 @@ def serve(
             counts=station,
             store=Store(store) if store else None,
             journal=Journal(journal) if journal else None,
+            log=Log(log) if log else None,
         ),
         face_port,
         joins=Loopback(station),
@@ -135,7 +145,7 @@ def serve(
     to_stderr(
         f"serving {device} on {port}, face on {face_port},"
         f" flashing from {releases}, {scripts},"
-        f" journal {journal or 'none'}"
+        f" journal {journal or 'none'}, log {log or 'none'}"
     )
     asyncio.run(mirroring(station, flasher, face, stop, period_s))
 
@@ -190,7 +200,7 @@ async def mirroring(
 
 
 def command_line() -> argparse.ArgumentParser:
-    """The six flags, which are the whole of the configuration."""
+    """The seven flags, which are the whole of the configuration."""
     parser = argparse.ArgumentParser(
         prog="python -m dccex_usb",
         description="Mirror the command station's serial device on a TCP port,"
@@ -230,6 +240,14 @@ def command_line() -> argparse.ArgumentParser:
         f" page, e.g. {JOURNAL_EXAMPLE}; left out, the face answers the"
         " journal route with a sentence",
     )
+    parser.add_argument(
+        "--log",
+        default="",
+        metavar="PATH",
+        help="the file the translator copies its log to, which the face"
+        f" serves, e.g. {LOG_EXAMPLE}; left out, the face answers the log"
+        " route with a sentence",
+    )
     return parser
 
 
@@ -248,6 +266,7 @@ def main() -> None:
             args.face_port,
             args.store,
             args.journal,
+            args.log,
         )
 
 
