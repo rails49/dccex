@@ -22,6 +22,17 @@
  * `message.js`'s, writing it is the stream's, and holding the conversation is
  * the page's (`dccex-app.ts`); this component holds the box and draws lines.
  *
+ * **Alerts a track cleared are one row** (#358). An ack pulse on PROG is an
+ * `ALERT`, a `CURRENT` and a `NORMAL` for the track, and a CV read is nine of
+ * them. Cleared alerts on one track with no other station line between them
+ * are drawn as one row, `track B: 9 alerts cleared, peak 396 mA`, stamped with
+ * its first line. Clicking it shows the lines it holds, each stamped as any
+ * line is; clicking again folds them. An alert that has not cleared is shown
+ * line by line until its `NORMAL`, and one that ends in an overload or a fault
+ * is never folded. A line this page sent and the page's own note do not break
+ * a run. Which lines fold is `folded`'s (`monitor.js`); which folds are open
+ * is this component's.
+ *
  * **The box takes a list** (#357). Text that opens with `<`, closes with `>`
  * and has `>` then `<` inside is a list of messages, sent in order, each its
  * own `»` line. After a PROG command (`<W>`, `<V>`, `<B>`, `<R>`, `<r>`) the
@@ -113,9 +124,12 @@ import { gloss } from "../decoder.js";
 import {
   EMPTIED,
   type Behind,
+  type Fold,
   type Line,
+  type Row,
   type Shown,
   atBottom,
+  folded,
   stamped,
   waiting,
 } from "../monitor.js";
@@ -127,6 +141,10 @@ import { monitorStyles } from "./dccex-monitor.styles.js";
  *  one thing this page must never be ambiguous about is which of these lines it
  *  put on the railroad. */
 const SENT_MARK = "»";
+
+/** What marks a row of folded alerts, closed and open. */
+const FOLD_MARK = "▸";
+const OPEN_MARK = "▾";
 
 /** What the box says before anything is typed into it: the command an
  *  operator types most, with and without its brackets. */
@@ -256,6 +274,9 @@ export class DccexMonitor extends LitElement {
    *  down. */
   clears: () => void = () => {};
 
+  /** The folds a reader has opened, by key. */
+  #opened = new Set<number>();
+
   /** Whether the reader was at the bottom when the lines last changed. */
   #following = true;
 
@@ -319,12 +340,14 @@ export class DccexMonitor extends LitElement {
         ${this.said.length === 0
           ? html`<div class="quiet">nothing said yet</div>`
           : repeat(
-              this.said,
-              (said: Shown) => said.key,
-              (said: Shown) =>
-                "note" in said
-                  ? html`<div class="note">${said.note}</div>`
-                  : this.#line(said),
+              folded(this.said),
+              (row: Row) => row.key,
+              (row: Row) => {
+                if ("note" in row) {
+                  return html`<div class="note">${row.note}</div>`;
+                }
+                return "says" in row ? this.#fold(row) : this.#line(row);
+              },
             )}
       </div>
       <form class="box" @submit=${this.#send}>
@@ -381,6 +404,38 @@ export class DccexMonitor extends LitElement {
         ${read === null ? nothing : html`<span class="gloss">${read}</span>`}
       </div>
     `;
+  }
+
+  /** Alerts a track cleared, as one row stamped with its first line. Clicked,
+   *  the lines it holds are drawn below it; clicked again, they fold. */
+  #fold(fold: Fold): TemplateResult {
+    const open = this.#opened.has(fold.key);
+    const first = fold.lines[0];
+    return html`
+      <div class="fold">
+        <div
+          class="line folded"
+          role="button"
+          aria-expanded=${open ? "true" : "false"}
+          @click=${() => this.#unfold(fold.key)}
+        >
+          <time datetime=${first?.at.toISOString() ?? nothing}>
+            ${first === undefined ? nothing : stamped(first.at)}
+          </time>
+          <span class="mark">${open ? OPEN_MARK : FOLD_MARK}</span>
+          <span class="says">${fold.says}</span>
+        </div>
+        ${open ? fold.lines.map((line) => this.#line(line)) : nothing}
+      </div>
+    `;
+  }
+
+  /** Show the lines a fold holds, or fold them again. */
+  #unfold(key: number): void {
+    if (!this.#opened.delete(key)) {
+      this.#opened.add(key);
+    }
+    this.requestUpdate();
   }
 
   /** Wait for the next animation frame, and draw once for everything that

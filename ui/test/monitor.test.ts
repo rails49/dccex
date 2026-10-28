@@ -246,3 +246,27 @@ test("the controls link to the command reference in a new tab", async () => {
   expect(link.target).toBe("_blank");
   expect(link.rel).toBe("noopener");
 });
+
+/** One ack pulse on PROG, cleared (#358). */
+const PULSE = [
+  "<* TRACK B ALERT  278mA *>",
+  "<* TRACK B CURRENT (100msec ignore) 396mA *>",
+  "<* TRACK B NORMAL (after 20msec/25msec) 17mA *>",
+];
+
+test("alerts a track cleared are one row that opens and folds", async () => {
+  const drawn = await monitor(
+    [...PULSE, ...PULSE].map((line, key) => ({ line, at: AT, sent: false, key })),
+  );
+  expect(all(drawn, ".folded .says")).toStrictEqual([
+    "track B: 2 alerts cleared, peak 396 mA",
+  ]);
+  expect(all(drawn, ".said")).toStrictEqual([]);
+  press(drawn, ".folded");
+  await drawn.updateComplete;
+  expect(all(drawn, ".fold .said")).toStrictEqual([...PULSE, ...PULSE]);
+  expect(all(drawn, ".fold .line time")).toHaveLength(7);
+  press(drawn, ".folded");
+  await drawn.updateComplete;
+  expect(all(drawn, ".said")).toStrictEqual([]);
+});

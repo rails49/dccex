@@ -400,7 +400,9 @@ def test_the_rows_are_keyed_by_the_key_the_page_gave_each_line() -> None:
     ), "the conversation is drawn unkeyed"
     assert "this.said.map(" not in drawn, "the rows are still matched by position"
     assert (
-        re.search(r"repeat\(\s*this\.said,\s*\(said: Shown\) => said\.key,", drawn)
+        re.search(
+            r"repeat\(\s*folded\(this\.said\),\s*\(row: Row\) => row\.key,", drawn
+        )
         is not None
     ), "the conversation is not drawn keyed by the key it was kept under"
 
@@ -1113,8 +1115,9 @@ def test_a_line_this_page_sent_goes_through_the_same_keeping() -> None:
 def folding(said: list[Any]) -> list[dict[str, Any]]:
     """The rows `said` is drawn as. An entry is a line, with whether this page
     sent it, or `{"note": …}` for the page's own."""
-    rows: list[dict[str, Any]] = run([{"folding": said}])[0]
-    return rows
+    rows: Any = run([{"folding": said}])[0]
+    folded: list[dict[str, Any]] = rows
+    return folded
 
 
 def alert(track: str, peak: int = 396) -> list[tuple[str, bool]]:
@@ -1159,7 +1162,9 @@ def test_an_alert_that_has_not_cleared_is_shown_line_by_line() -> None:
     assert shown(folding(pending)) == [line for line, _ in pending]
     rows = folding([*alert("B"), *pending])
     assert shown(rows)[1:] == [line for line, _ in pending]
-    assert shown(folding([*alert("B"), *alert("B")]))[0].startswith("track B: 2 ")
+    assert shown(folding([*alert("B"), *alert("B")])) == [
+        "track B: 2 alerts cleared, peak 396 mA"
+    ]
 
 
 @pytest.mark.node

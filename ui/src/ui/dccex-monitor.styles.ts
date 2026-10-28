@@ -172,6 +172,16 @@ export const monitorStyles = css`
     color: var(--sl-color-primary-700);
   }
 
+  /* Alerts a track cleared, folded into one row (#358). Pressed, it shows
+     the lines it holds below it. */
+  .folded {
+    cursor: pointer;
+  }
+
+  .says {
+    color: var(--sl-color-neutral-700);
+  }
+
   /* The page's own note among the lines: so far, the gap a pause left when
      the queue behind it filled. In the page's own face and quieter
      than the bytes, as a gloss is, because it is the page speaking and not
