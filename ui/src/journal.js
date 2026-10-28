@@ -167,7 +167,8 @@ const HOUR_MS = 3600000;
  *
  * `milliamps` is the highest the station printed inside it, and `null` where
  * it printed none: an `ALERT FAULT` carries no number, and a zero nobody
- * measured is a reading nobody took (ADR-0009 d.2).
+ * measured is a reading nobody took (ADR-0009 d.2). The current on a `NORMAL`
+ * line is after the district recovered and is not counted (#369).
  *
  * @typedef {object} Incident
  * @property {string} kind one of `KINDS`, or `link` or `restart`
@@ -200,7 +201,8 @@ const HOUR_MS = 3600000;
  * @property {Record<string, number>} incidents how many of each of `KINDS`
  * @property {number} trips how many times the station cut it
  * @property {number} cut how long it was cut for, in milliseconds
- * @property {number | null} milliamps the highest the station printed about it
+ * @property {number | null} milliamps the highest the station printed about it,
+ *   leaving out `NORMAL` lines
  * @property {number} flips the flips nothing came of
  * @property {number} hours how long it was powered
  * @property {number | null} rate incidents per hour powered
@@ -749,7 +751,11 @@ export function read(lines, period = {}) {
     }
     const name = told.district;
     const district = counted(name);
-    district.milliamps = highest(district.milliamps, told.milliamps);
+    // A `NORMAL` line prints the current after the district recovered, which
+    // is not a peak of anything (#369).
+    if (told.word !== "normal") {
+      district.milliamps = highest(district.milliamps, told.milliamps);
+    }
     if (told.word === "flip") {
       const within = flips.filter(
         (found) => found.district === name && at - found.at < REPEATED_MS,
@@ -793,7 +799,6 @@ export function read(lines, period = {}) {
       const held = open.get(name);
       if (held !== undefined) {
         held.normal = true;
-        held.milliamps = highest(held.milliamps, told.milliamps);
         closes(name, index);
       }
       powers(name);
