@@ -46,10 +46,11 @@
  * **The box takes a list** (#357). Text that opens with `<`, closes with `>`
  * and has `>` then `<` inside is a list of messages, sent in order, each its
  * own `»` line. After a PROG command (`<W>`, `<V>`, `<B>`, `<R>`, `<r>`) the
- * next waits for the station's `<r …>`, `<v …>` or `<X>`. A reply ending in
- * `-1`, an `<X>`, no reply within 10 s or the stream closing stops the list,
- * and a page note says how many commands were not sent and why. What is typed
- * while a list runs waits behind it. The rules are `paced.js`'s.
+ * next waits for the station's `<r…>`, `<v …>`, `<w …>` or `<X>`, and after
+ * 10 s with no reply goes with a page note. A reply ending in `-1`, an `<X>`
+ * or the stream closing stops the list, and a page note says how many
+ * commands were not sent and why. What is typed while a list runs waits
+ * behind it. The rules are `paced.js`'s.
  *
  * **The box remembers what was sent.** ↑ and ↓, as keys or as the two
  * buttons beside the send, step through the last commands as a shell does, and

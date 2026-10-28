@@ -177,13 +177,13 @@ import {
   CLOSED,
   IDLE,
   REPLY_MS,
-  SILENT,
   added,
   answered,
   listed,
   next,
   recalled,
   stopped,
+  waited,
   type Pacing,
 } from "../paced.js";
 import {
@@ -598,14 +598,14 @@ export class DccexApp extends LitElement {
     }
   }
 
-  /** Give the reply `REPLY_MS`, and stop the list where it does not come. */
+  /** Give the reply `REPLY_MS`, and send the next where it does not come. */
   #waits(): void {
     if (this.#replying !== null) {
       clearTimeout(this.#replying);
     }
     this.#replying = setTimeout(() => {
       this.#replying = null;
-      this.#settles(stopped(this.#pacing, SILENT));
+      this.#settles(waited(this.#pacing));
       this.#paces();
     }, REPLY_MS);
   }
