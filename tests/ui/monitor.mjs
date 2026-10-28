@@ -43,10 +43,14 @@
 // or a conversation, kept: a run of what happens to one, from the conversation
 // a page opens with, answered with the conversation the run left. A step is
 // lines arriving, each with whether this page sent it, or a press of the
-// pause, or a press of the clear:
+// pause, or a press of the clear, or a note the page puts in:
 //
 //     {"keeping": [{"said": [["<p1 A>", false]]}, {"held": true},
 //                  {"said": [["<X>", false]]}, {"cleared": true}]}
+//
+// or the page's own note:
+//
+//     {"keeping": [{"noted": "1 command not sent: the stream closed"}]}
 //
 // The moment a line arrived is the page's and the rules never read one, so a
 // step names none and every line in a run is stamped the same.
@@ -69,6 +73,7 @@ import {
   atBottom,
   cleared,
   held,
+  noted,
   queued,
   quieted,
   stamped,
@@ -96,6 +101,9 @@ const keeping = (steps) =>
         sent,
       }));
       return arrived(conversation, said);
+    }
+    if ("noted" in step) {
+      return noted(conversation, step.noted);
     }
     return "held" in step ? held(conversation) : cleared(conversation);
   }, OPENED);

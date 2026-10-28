@@ -882,6 +882,20 @@ def test_the_gap_a_full_queue_left_is_marked_where_it_is() -> None:
 
 
 @pytest.mark.node
+def test_the_page_s_own_note_goes_where_a_line_would() -> None:
+    """A list the box stopped is noted in the conversation (#357), and the
+    note is the view's like a line: queued behind a pause, after what came
+    first."""
+    noted = {"noted": "2 commands not sent: the station answered <X>"}
+    after = keeping([heard(["<X>"]), noted, heard(["<p1>"])])
+    assert lines(after) == ["<X>", None, "<p1>"]
+    assert after["said"][1]["note"] == noted["noted"]
+    paused = keeping([HOLDS, heard(["<X>"]), noted])
+    assert lines(paused) == [], "a note is appended through a pause"
+    assert lines(keeping([HOLDS, heard(["<X>"]), noted, HOLDS])) == ["<X>", None]
+
+
+@pytest.mark.node
 def test_a_resume_that_dropped_nothing_marks_nothing() -> None:
     """There is no gap, so there is nothing to say about one: a note on every
     resume would be the page talking about itself in a conversation about a

@@ -104,7 +104,6 @@ import { gloss } from "../decoder.js";
 import {
   EMPTIED,
   type Behind,
-  type Line,
   type Shown,
   atBottom,
   stamped,
@@ -233,7 +232,7 @@ export class DccexMonitor extends LitElement {
    *  this draws is read off it and the lines in it are not this pane's to
    *  draw — they are out of sight until the reader resumes, which is what
    *  being paused means. */
-  behind: Behind<Line> = EMPTIED;
+  behind: Behind<Shown> = EMPTIED;
 
   /** What holds the view and lets it go, as the page hands it down.
    *
