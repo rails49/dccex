@@ -91,6 +91,7 @@ def test_the_translator_is_all_that_is_here() -> None:
         "__main__.py",
         "commands.py",
         "journal.py",
+        "log.py",
         "replies.py",
         "rows.py",
         "sample.py",
