@@ -211,10 +211,14 @@ def test_the_rules_hold_nothing() -> None:
     stamp a line with when it was drawn instead. Whether the reader is at the
     bottom is three numbers somebody else read off an element, for the same
     reason: a rule that went looking for the element would be a rule only a
-    browser could be asked.
+    browser could be asked. The one import is the decoder's `speed`, which is
+    a function of the line alone (#359).
     """
     source = RULES.read_text()
-    assert "import " not in source, "the rules import something"
+    imports = re.findall(r"^import .*$", source, re.MULTILINE)
+    assert imports == [
+        'import { speed } from "./decoder.js";'
+    ], "the rules import something other than what a speed line says (#359)"
     for held in ("new Date(", "Math.random", "window", "document", "querySelector"):
         assert held not in source, f"the rules reach {held}"
 
@@ -1220,3 +1224,121 @@ def test_a_line_the_monitor_quiets_does_not_break_a_run() -> None:
     said: list[dict[str, Any]] = keeping(steps)["said"]
     rows = folding([(entry["line"], entry["sent"]) for entry in said])
     assert shown(rows) == ["track B: 2 alerts cleared, peak 396 mA"]
+
+
+def speed(
+    cab: int, step: int, forward: bool = True, slot: int = 0, fns: int = 0
+) -> tuple[str, bool]:
+    """The station's `<l>` for a cab at a speed step, as the gloss counts it:
+    step n is n + 1 in the low 7 bits. -1 writes stop and -2 emergency stop."""
+    byte = (0x80 if forward else 0) | (step + 1 if step > 0 else -step - 1)
+    return (f"<l {cab} {slot} {byte} {fns}>", False)
+
+
+def ramp(cab: int, steps: range, **same: Any) -> list[tuple[str, bool]]:
+    """A throttle ramping a loco: one `<l>` per step (#359)."""
+    return [speed(cab, step, **same) for step in steps]
+
+
+@pytest.mark.node
+def test_a_ramp_is_one_row() -> None:
+    said = ramp(3, range(9, 54, 2))
+    rows = folding(said)
+    assert shown(rows) == ["loco 3 forward: step 9 → 53 (23 lines)"]
+    assert [line["line"] for line in rows[0]["lines"]] == [line for line, _ in said]
+    assert rows[0]["key"] == 0
+
+
+@pytest.mark.node
+def test_one_speed_line_is_shown_as_it_is() -> None:
+    assert shown(folding([speed(3, 9)])) == ["<l 3 0 138 0>"]
+
+
+@pytest.mark.node
+def test_stop_and_emergency_stop_read_as_the_gloss_says() -> None:
+    """`step - 1` below zero is how `speed` writes 0 (stop) and 1 (e-stop)."""
+    stop, estop = speed(3, -1), speed(3, -2)
+    assert stop[0] == "<l 3 0 128 0>" and estop[0] == "<l 3 0 129 0>"
+    assert shown(folding([speed(3, 4), stop])) == [
+        "loco 3 forward: step 4 → stopped (2 lines)"
+    ]
+    assert shown(folding([stop, speed(3, 4, forward=True)])) == [
+        "loco 3 forward: stopped → step 4 (2 lines)"
+    ]
+    assert shown(folding([speed(3, 4), estop])) == [
+        "loco 3 forward: step 4 → emergency stop (2 lines)"
+    ]
+
+
+@pytest.mark.node
+def test_a_change_of_direction_functions_or_slot_starts_a_new_run() -> None:
+    for changed in ({"forward": False}, {"fns": 1}, {"slot": 1}):
+        said = [*ramp(3, range(1, 3)), *ramp(3, range(3, 5), **changed)]
+        rows = folding(said)
+        assert [row["key"] for row in rows] == [0, 2], changed
+        assert all(len(row["lines"]) == 2 for row in rows), changed
+
+
+@pytest.mark.node
+def test_two_locos_ramping_at_once_are_two_rows() -> None:
+    said = [
+        line
+        for pair in zip(ramp(3, range(1, 6)), ramp(7, range(1, 6)))
+        for line in pair
+    ]
+    assert shown(folding(said)) == [
+        "loco 3 forward: step 1 → 5 (5 lines)",
+        "loco 7 forward: step 1 → 5 (5 lines)",
+    ]
+
+
+@pytest.mark.node
+def test_another_station_line_ends_every_speed_run() -> None:
+    said = [*ramp(3, range(1, 3)), *ramp(7, range(1, 3)), ("<H 12 1>", False)]
+    said += [*ramp(3, range(3, 5)), *ramp(7, range(3, 5))]
+    assert shown(folding(said)) == [
+        "loco 3 forward: step 1 → 2 (2 lines)",
+        "loco 7 forward: step 1 → 2 (2 lines)",
+        "<H 12 1>",
+        "loco 3 forward: step 3 → 4 (2 lines)",
+        "loco 7 forward: step 3 → 4 (2 lines)",
+    ]
+    assert shown(
+        folding([*ramp(3, range(1, 3)), *alert("B"), *ramp(3, range(3, 5))])
+    ) == [
+        "loco 3 forward: step 1 → 2 (2 lines)",
+        "track B: 1 alert cleared, peak 396 mA",
+        "loco 3 forward: step 3 → 4 (2 lines)",
+    ]
+
+
+@pytest.mark.node
+def test_a_line_without_a_slot_ends_every_speed_run() -> None:
+    said = [*ramp(3, range(1, 3)), ("<l 3 -1 128 0>", False), *ramp(3, range(3, 5))]
+    assert shown(folding(said))[1:] == [
+        "<l 3 -1 128 0>",
+        "loco 3 forward: step 3 → 4 (2 lines)",
+    ]
+
+
+@pytest.mark.node
+def test_a_sent_line_or_a_note_does_not_end_a_speed_run() -> None:
+    said = [*ramp(3, range(1, 3)), ("<t 3 50 1>", True), {"note": "a note"}]
+    said += ramp(3, range(3, 5))
+    assert shown(folding(said)) == [
+        "loco 3 forward: step 1 → 4 (4 lines)",
+        "<t 3 50 1>",
+        "a note",
+    ]
+
+
+@pytest.mark.node
+def test_a_line_the_monitor_quiets_does_not_end_a_speed_run() -> None:
+    steps = [
+        heard([line for line, _ in ramp(3, range(1, 3))]),
+        heard(["<jI 13 2 0 0>"]),
+    ]
+    steps.append(heard([line for line, _ in ramp(3, range(3, 5))]))
+    said: list[dict[str, Any]] = keeping(steps)["said"]
+    rows = folding([(entry["line"], entry["sent"]) for entry in said])
+    assert shown(rows) == ["loco 3 forward: step 1 → 4 (4 lines)"]
