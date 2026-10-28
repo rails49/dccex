@@ -2766,6 +2766,75 @@ async def _link_going_down_and_up_is_a_line_each(tmp_path: Path) -> None:
         ]
 
 
+def test_a_link_the_mirror_closed_says_so(tmp_path: Path) -> None:
+    asyncio.run(_link_the_mirror_closed_says_so(tmp_path))
+
+
+async def _link_the_mirror_closed_says_so(tmp_path: Path) -> None:
+    """The connection to the mirror ended under a station that was
+    answering: `why` is `closed`, which a container restart reads as."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        first = await port.opened()
+        first.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+        first.hangs_up()
+        await port.opened(2)
+        assert kept(path)[-1] == {
+            "at": AT,
+            "railroad": "",
+            "build": "",
+            "link": "down",
+            "why": "closed",
+        }
+
+
+def test_a_link_the_station_went_quiet_on_says_so(tmp_path: Path) -> None:
+    asyncio.run(_link_the_station_went_quiet_on_says_so(tmp_path))
+
+
+async def _link_the_station_went_quiet_on_says_so(tmp_path: Path) -> None:
+    """Ten polls unanswered on a connection that stays open: `why` is
+    `silent`, which a USB or power fault reads as."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    clock = [0.0]
+    kept_in, path = journal(tmp_path)
+    async with running(
+        bus, port, poll_s=FAST_POLL_S, now=lambda: clock[0], journal=kept_in
+    ):
+        station = await port.opened()
+        station.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+        clock[0] = 10 * FAST_POLL_S
+        await asyncio.sleep(QUIET_S)
+        links = [line for line in kept(path) if "link" in line]
+        assert [line["link"] for line in links] == ["up", "down"]
+        assert links[-1]["why"] == "silent"
+
+
+def test_a_link_this_app_let_go_of_says_so(tmp_path: Path) -> None:
+    asyncio.run(_link_this_app_let_go_of_says_so(tmp_path))
+
+
+async def _link_this_app_let_go_of_says_so(tmp_path: Path) -> None:
+    """The app shutting down, which cancels the link: `why` is `stopped`.
+    An `up` line carries no `why`."""
+    bus, _ = bus_and_tap()
+    port = Port()
+    kept_in, path = journal(tmp_path)
+    async with running(bus, port, journal=kept_in):
+        station = await port.opened()
+        station.says(b"<p1>")
+        await asyncio.sleep(QUIET_S)
+    links = [line for line in kept(path) if "link" in line]
+    assert [line["link"] for line in links] == ["up", "down"]
+    assert "why" not in links[0]
+    assert links[-1]["why"] == "stopped"
+
+
 def test_a_restart_is_a_line(tmp_path: Path) -> None:
     asyncio.run(_restart_is_a_line(tmp_path))
 
