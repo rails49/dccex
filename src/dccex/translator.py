@@ -170,6 +170,13 @@ DEVICE_POINT = "tc49/layout/state/device/point"
 UP = "up"
 DOWN = "down"
 
+STOPPED = "stopped"
+CLOSED = "closed"
+SILENT = "silent"
+"""Why a link went down, as the journal's `down` line says it: this app
+shutting down, the mirror closing the connection, or the station not
+answering the poll (#367)."""
+
 POLL_S = 1.0
 """How often the station is asked what it is doing, which bounds how long a
 district switched by another throttle reads as it was and how long a fresh
@@ -972,8 +979,12 @@ class DccEx:
         self._stashed = False
         self._started()
         polling = asyncio.create_task(self._poll())
+        why = CLOSED
         try:
             await self._listen(reader)
+        except asyncio.CancelledError:
+            why = STOPPED
+            raise
         finally:
             polling.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -984,7 +995,7 @@ class DccEx:
             writer.close()
             with contextlib.suppress(OSError):
                 await writer.wait_closed()
-            self._publish_link(False, f"the link to {self._where} closed")
+            self._publish_link(False, f"the link to {self._where} closed", why)
             self._publish_track()
         return spoke
 
@@ -1065,6 +1076,7 @@ class DccEx:
         self._publish_link(
             False,
             f"the station at {self._where} has not answered for {silent:g}s",
+            SILENT,
         )
         self._publish_track()
 
@@ -1325,7 +1337,7 @@ class DccEx:
             frame["reason"] = why
         self._bus.publish(DEVICE_TRACK, frame)
 
-    def _publish_link(self, up: bool, detail: str) -> None:
+    def _publish_link(self, up: bool, detail: str, why: str | None = None) -> None:
         """What the station is doing, which is what the link row is: said
         again whenever it moves, and written to the **journal** where the
         word itself moves.
@@ -1337,9 +1349,14 @@ class DccEx:
         journal does. A process that has just started has a link that is
         down and has not gone anywhere, which is why the
         constructor says the row without coming through here.
+
+        `why` goes on a `down` line: `STOPPED`, `CLOSED` or `SILENT`.
         """
         if up != self._reached[0]:
-            self._journalled({"link": UP if up else DOWN})
+            line: Line = {"link": UP if up else DOWN}
+            if why is not None:
+                line["why"] = why
+            self._journalled(line)
             # The line in the log that explains the output that follows:
             # `start` runs again on a link that comes back (#364).
             if up:
