@@ -630,6 +630,11 @@ oldest lines go, down to the newest `TRIMMED_TO` bytes (800 KB) at a line
 boundary; the two are constants in `src/dccex/log.py`. The trim is written
 beside the file and renamed over it, as the journal's is. Nobody clears it.
 
+**A file that cannot be written does not stop the app.** The line still
+reaches `docker logs`, and the first failure is said there: `dccex: the log
+file at /var/lib/dccex/log.txt cannot be written: [Errno 28] No space left on
+device`.
+
 ## Standing the railroad down
 
 `shutdown()` sends **zero to every locomotive this app has commanded**, in the

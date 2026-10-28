@@ -20,7 +20,7 @@ from dccex.log import Log, Tee, teed
 AT = "2026-10-28T19:38:30.123+00:00"
 
 
-class _Full(io.TextIOWrapper):
+class FullFile(io.TextIOWrapper):
     def write(self, s: str) -> int:
         raise OSError(28, "No space left on device")
 
@@ -29,7 +29,7 @@ class FullLog(Log):
     """A log on a disk with no space left."""
 
     def _opened(self) -> IO[str]:
-        return _Full(self._path.open("ab"), encoding="utf-8")
+        return FullFile(self._path.open("ab"), encoding="utf-8")
 
 
 def test_a_line_reaches_the_stream_unchanged_and_the_file_stamped(
@@ -100,15 +100,6 @@ def test_a_file_over_its_size_is_trimmed_when_it_is_opened(tmp_path: Path) -> No
     assert all(line.startswith("old ") for line in kept)
 
 
-def test_a_log_that_cannot_be_written_leaves_the_stream_and_the_caller_alone(
-    tmp_path: Path,
-) -> None:
-    stream = io.StringIO()
-    tee = Tee(stream, FullLog(tmp_path / "log.txt", at=lambda: AT))
-    print("dccex: up", file=tee)
-    assert stream.getvalue().startswith("dccex: up\n")
-
-
 def test_a_log_that_cannot_be_written_is_said_once_on_the_stream(
     tmp_path: Path,
 ) -> None:
@@ -120,7 +111,7 @@ def test_a_log_that_cannot_be_written_is_said_once_on_the_stream(
     assert stream.getvalue().splitlines() == [
         "dccex: up",
         (
-            f"dccex: the log at {path} cannot be written:"
+            f"dccex: the log file at {path} cannot be written:"
             " [Errno 28] No space left on device"
         ),
         "dccex: still up",
@@ -138,6 +129,25 @@ def test_a_trim_that_fails_leaves_the_caller_alone(
     monkeypatch.setattr(Path, "read_bytes", unreadable)
     print("dccex: up", file=tee)
     assert stream.getvalue().startswith("dccex: up\n")
+
+
+def test_a_file_that_cannot_be_opened_again_after_a_trim_leaves_the_caller_alone(
+    tmp_path: Path,
+) -> None:
+    class Unopenable(Log):
+        opened = 0
+
+        def _opened(self) -> IO[str]:
+            self.opened += 1
+            if self.opened > 1:
+                raise OSError(24, "Too many open files")
+            return super()._opened()
+
+    stream = io.StringIO()
+    tee = Tee(stream, Unopenable(tmp_path / "log.txt", at=lambda: AT, above=0, to=0))
+    print("dccex: up", file=tee)
+    print("dccex: still up", file=tee)
+    assert stream.getvalue().splitlines()[-1] == "dccex: still up"
 
 
 def test_the_streams_teed_carry_print_logging_and_an_uncaught_exception(

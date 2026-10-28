@@ -16,8 +16,8 @@ the oldest lines go, down to the newest `TRIMMED_TO` bytes at a line
 boundary. The trim is written beside the file and renamed over it, as the
 journal's is (`journal.py`), so the face serves the old file or the new one.
 
-A file that cannot be written or trimmed does not stop the stream: the
-line still reaches `docker logs`, and the first failure is said there once.
+A line whose write or trim fails still reaches `docker logs`, and the first
+failure is said there.
 """
 
 import io
@@ -59,12 +59,7 @@ class Log:
         self._lock = threading.Lock()
         self._file = self._opened()
         self._trimmed()
-        self.failed = False
-        """Whether a write or a trim has failed, which is said once."""
-
-    @property
-    def path(self) -> Path:
-        return self._path
+        self._failed = False
 
     def _opened(self) -> IO[str]:
         # Open until the next trim or the end of the process.
@@ -79,15 +74,28 @@ class Log:
         trimmed = self._path.with_name(self._path.name + ".trimmed")
         trimmed.write_bytes(whole[cut:])
         trimmed.replace(self._path)
-        self._file.close()
-        self._file = self._opened()
+        old, self._file = self._file, self._opened()
+        old.close()
 
-    def wrote(self, line: str) -> None:
-        """One line, stamped and on the disk before this returns."""
+    def wrote(self, line: str) -> str | None:
+        """One line, stamped and on the disk before this returns.
+
+        A write or a trim that fails does not raise. The first one returns
+        the line that says so; the rest return `None`.
+        """
         with self._lock:
-            self._file.write(f"{self._at()} {line}\n")
-            self._file.flush()
-            self._trimmed()
+            try:
+                self._file.write(f"{self._at()} {line}\n")
+                self._file.flush()
+                self._trimmed()
+            except OSError as error:
+                if not self._failed:
+                    self._failed = True
+                    return (
+                        f"dccex: the log file at {self._path} cannot be written:"
+                        f" {error}\n"
+                    )
+        return None
 
 
 class Tee(io.TextIOBase):
@@ -108,15 +116,8 @@ class Tee(io.TextIOBase):
         self._stream.write(s)
         *ended, self._held = (self._held + s).split("\n")
         for line in ended:
-            try:
-                self._log.wrote(line)
-            except OSError as error:
-                if not self._log.failed:
-                    self._log.failed = True
-                    self._stream.write(
-                        f"dccex: the log at {self._log.path} cannot be written:"
-                        f" {error}\n"
-                    )
+            if failed := self._log.wrote(line):
+                self._stream.write(failed)
         return len(s)
 
     def flush(self) -> None:
