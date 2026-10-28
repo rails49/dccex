@@ -69,12 +69,13 @@ The translator's record of what the station said about power, of the link
 going down and of the station restarting, each line stamped with when it
 arrived
 ([docs/dccex/README.md](docs/dccex/README.md#the-journal)).
-_Avoid_: log (what the apps write to stderr), trace (`control`'s recording of
-the bus), history, event log (an **event** is what a handler is keyed on)
+_Avoid_: log (what the apps write to stdout and stderr), trace (`control`'s
+recording of the bus), history, event log (an **event** is what a handler is
+keyed on)
 
 **Log**:
-What an app writes to stderr. The script view shows the translator's
-([docs/dccex/README.md](docs/dccex/README.md#the-log)).
+What an app writes to stdout and stderr. The script view shows the
+translator's ([docs/dccex/README.md](docs/dccex/README.md#the-log)).
 _Avoid_: console (the monitor), output, debug log, journal (what the station
 said)
 
@@ -153,7 +154,7 @@ The page the **stream** is shown on and typed into. What makes it a monitor is
 that a person reads it: a throttle on 2560 is a **client**, not a monitor
 ([docs/ui/README.md](docs/ui/README.md#the-stream)).
 _Avoid_: console, terminal, serial monitor, log (what the apps write to
-stderr), the stream (what a monitor shows), the UI (the whole page)
+stdout and stderr), the stream (what a monitor shows), the UI (the whole page)
 
 **Decoder**:
 The UI's pure function from one line of the station's `<…>` to one reading or
