@@ -101,6 +101,8 @@ export const UNREADABLE = "the journal could not be read";
 const LINK_DOWN = "link down";
 const LINK_UP = "link up";
 const RESTARTED = "the station restarted";
+/* A `down` line written since #367 says why after `link down`, as
+ * `link down: closed`; one written before it reads `link down`. */
 
 /** What the link line says when the station stopped answering. */
 const DOWN = "down";
@@ -388,7 +390,9 @@ function drawn(line) {
     (line.restart === true
       ? RESTARTED
       : line.link === DOWN
-        ? LINK_DOWN
+        ? line.why === undefined
+          ? LINK_DOWN
+          : `${LINK_DOWN}: ${line.why}`
         : line.link === undefined
           ? ""
           : LINK_UP);
