@@ -51,6 +51,7 @@ import {
   progress,
 } from "./flash.js";
 import { type Served, parsed } from "./incidents.js";
+import { type Logged } from "./log.js";
 import { carried, type Carried } from "./releases.js";
 import {
   UNANSWERED as UNANSWERED_APPLY,
@@ -265,6 +266,52 @@ export async function journal(): Promise<Served | null> {
       lines: parsed(new TextDecoder().decode(served)),
       bytes: served.byteLength,
     };
+  } catch {
+    return null;
+  }
+}
+
+/** Where the translator's **log** is served: a GET hands back the file, or
+ *  the part of it from byte N with `Range: bytes=N-` (`face.py`). */
+export const LOG_PATH = `${FACE}/log`;
+
+/** What the face answers a range that starts past the end with: the file was
+ *  trimmed. */
+const TRIMMED = 416;
+
+/** What the face answers a part of the log with. */
+const PARTIAL = 206;
+
+/**
+ * The translator's **log** from byte `from` on (`log.ts`'s `Logged`).
+ *
+ * A `200` is the whole file and a `206` is the part asked for. A `416` is a
+ * file trimmed under the page. Anything else with a reason on it is the
+ * face's sentence, shown as it came, such as a mirror started without
+ * `--log`. Anything else is `null`.
+ */
+export async function log(from: number): Promise<Logged> {
+  try {
+    const answered = await fetch(LOG_PATH, {
+      headers: { range: `bytes=${from}-` },
+    });
+    if (answered.status === TRIMMED) {
+      return { trimmed: true };
+    }
+    if (answered.ok) {
+      return {
+        from: answered.status === PARTIAL ? from : 0,
+        bytes: new Uint8Array(await answered.arrayBuffer()),
+      };
+    }
+    const said: unknown = await answered.json().catch(() => null);
+    const reason =
+      typeof said === "object" && said !== null
+        ? (said as Record<string, unknown>)[REASON]
+        : undefined;
+    return typeof reason === "string" && reason !== ""
+      ? { says: reason }
+      : null;
   } catch {
     return null;
   }
