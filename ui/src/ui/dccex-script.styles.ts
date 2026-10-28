@@ -1,7 +1,10 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
+
+import { ACROSS } from "./dccex-divider.styles.js";
 
 /**
- * The **script** view: the editor, and the controls at the foot. The band
+ * The **script** view: the editor, and the controls at the foot, on one side
+ * of a divider and the translator's **log** on the other. The band
  * names the railroad, so the view does not.
  *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
@@ -31,16 +34,10 @@ import { css } from "lit";
  * control meant to be pressed on a phone held at the layout asks for.
  */
 export const scriptStyles = css`
-  /* A column, and the editor in it takes what is left. A flex column rather
-     than a grid of named rows because what is drawn varies — the sentence
-     above the editor is there for a railroad with no script and not otherwise,
-     and so are the warnings — and a row list would give the spare height to
-     whichever child happened to land on it. */
   :host {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    gap: 0.5rem;
     padding: 0.5rem;
     min-height: 0;
   }
@@ -52,6 +49,37 @@ export const scriptStyles = css`
      (dccex-app.ts). */
   :host([hidden]) {
     display: none;
+  }
+
+  /* The editor's side and the log, with the divider between: the log below
+     the editor, and beside it on a wide window. The log takes the share the
+     divider gives it, set on the element, and the editor's side the rest
+     (dccex-divider.ts). */
+  .split {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  @media ${unsafeCSS(ACROSS)} {
+    .split {
+      flex-direction: row;
+    }
+  }
+
+  /* The editor's side: a column, and the editor in it takes what is left. A
+     flex column rather than a grid of named rows because what is drawn varies
+     — the sentence above the editor is there for a railroad with no script
+     and not otherwise, and so are the warnings — and a row list would give the
+     spare height to whichever child happened to land on it. */
+  .edits {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 0;
   }
 
   /* What is said about the script in the editor: that the railroad has none,

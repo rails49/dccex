@@ -159,12 +159,14 @@ import {
   flash,
   flashing,
   journal,
+  log,
   releases,
   script,
 } from "../face.js";
 import { type Flashing, type Wrote } from "../flash.js";
 import { type Said } from "../framing.js";
 import { type Served } from "../incidents.js";
+import { type Logged } from "../log.js";
 import {
   OPENED,
   type Conversation,
@@ -515,7 +517,10 @@ export class DccexApp extends LitElement {
    *
    *  The reading is handed down whole, so the pane is told when the railroad is
    *  unreported rather than reading an outage as the railroad being unloaded
-   *  (issue 242, `readings.js`'s `Layout`). */
+   *  (issue 242, `readings.js`'s `Layout`).
+   *
+   *  The translator's **log** is beside the editor, and the pane is handed
+   *  the ask for it (#365). */
   #script(): TemplateResult {
     return html`
       <dccex-script
@@ -523,6 +528,7 @@ export class DccexApp extends LitElement {
         .loaded=${this.layout.railroad}
         .opens=${this.#opens}
         .applies=${this.#applies}
+        .logs=${this.#logs}
       ></dccex-script>
     `;
   }
@@ -746,6 +752,11 @@ export class DccexApp extends LitElement {
    */
   readonly #applies = (railroad: string, text: string): Promise<Applied> =>
     applies(railroad, text);
+
+  /** Ask the face for the translator's **log** from byte `from` on
+   *  (`face.ts`). The log pane times the asking: about once a second while
+   *  the script view is showing (#365). */
+  readonly #logs = (from: number): Promise<Logged> => log(from);
 
   /** Ask the face for the **journal** as the file stands (`face.ts`).
    *
