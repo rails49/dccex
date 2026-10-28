@@ -590,6 +590,43 @@ still says each district's power. The trim is written beside the journal and
 renamed over it, and the mirror's face opens the file by name on each read,
 so it serves the old file or the new one whole. Nobody clears it.
 
+## The log
+
+**What this app writes to stdout and stderr**, copied to a file the mirror's
+face serves at `/log` (#364). It is `--log <path>`, on the box
+`/var/lib/dccex/log.txt` on the journal's volume. What reaches `docker logs`
+does not change.
+
+**Everything goes in**: this app's own `dccex:` lines, `lib`'s `mqtt:` lines,
+a logged warning or traceback — a handler that raised, a script that does not
+load — a script's `print`, and the traceback of an exception nothing caught,
+written as the process dies. Each line starts with the time it was written,
+ISO 8601 in UTC to the millisecond, and is flushed as it is written.
+
+```
+2026-10-28T19:38:30.012+00:00 dccex: the script changed: the railroad is down and this process is ending
+2026-10-28T19:38:31.540+00:00 dccex: starting, built from d97a0bc
+2026-10-28T19:38:31.541+00:00 dccex: broker broker:1883, station mirror:2560, store http://store:8765, journal /var/lib/dccex/journal.jsonl, log /var/lib/dccex/log.txt
+2026-10-28T19:38:33.106+00:00 the station answers, so start runs: connected to mirror:2560
+```
+
+**The first line of a process says it is starting**, with the commit its
+image was built from (`DCCEX_COMMIT`, `deploy/Dockerfile`). The file is
+appended to, so it survives the process: applying a new script ends it, and
+the log shows the old run's last lines, `the script changed: …`, the start
+line, and the new run's lines. The traceback from before the restart is
+still there.
+
+**`start` runs again on a link that comes back and on a station that
+restarted**, so each gets a line: `the link is down: …`, `the station
+answers, so start runs: …`, and `the station restarted, so start runs again`.
+What a script prints after one of them is explained by it.
+
+**This app keeps the file to a size.** Above `TRIMMED_ABOVE` bytes (1 MB) the
+oldest lines go, down to the newest `TRIMMED_TO` bytes (800 KB) at a line
+boundary; the two are constants in `src/dccex/log.py`. The trim is written
+beside the file and renamed over it, as the journal's is. Nobody clears it.
+
 ## Standing the railroad down
 
 `shutdown()` sends **zero to every locomotive this app has commanded**, in the
@@ -610,7 +647,7 @@ reach is one it was not driving, and `_send` drops rather than queues.
 
 ```
 python -m dccex --broker <host:port> --store <url> --station <host:port>
-                     [--id <name>] [--journal <path>]
+                     [--id <name>] [--journal <path>] [--log <path>]
 ```
 
 The process a container runs, coming up alone against a broker
@@ -621,15 +658,15 @@ do, and as `dccex-usb` has all along.
 **A store, and no railroad on the command line.** `--station` is where
 `dccex-usb` serves the command station, `--store` where the store serves the
 documents, `--id` the name the link row is keyed by, the package's where it is
-given no other, and `--journal` the file the journal is appended to, on the
-box `/var/lib/dccex/journal.jsonl` on the volume the mirror mounts beside this
-app. There is no `--railroad`: the one document this app
-reads is its railroad's script, and which railroad that is is the row's to
-say (above). An address is the string the hardware answers to rather than
-something looked up, so nothing else here is a railroad's. The id names the
-broker's client too, `tc49-<id>`: this is the one app a railroad may run
-twice, and two clients sharing a client id take turns disconnecting each
-other.
+given no other, and `--journal` the file the journal is appended to, on the box
+`/var/lib/dccex/journal.jsonl` on the volume the mirror mounts beside this app,
+and `--log` the file the log is copied to ([above](#the-log)). There is no
+`--railroad`: the one document this app reads is its railroad's script, and
+which railroad that is is the row's to say (above). An address is the string
+the hardware answers to rather than something looked up, so nothing else here
+is a railroad's. The id names the broker's client too, `tc49-<id>`: this is the
+one app a railroad may run twice, and two clients sharing a client id take
+turns disconnecting each other.
 
 The drain period, the poll, the reconnect backoff and how often the store is
 asked are not flags. Nothing outside the process has an opinion about them,
