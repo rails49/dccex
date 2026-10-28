@@ -47,6 +47,7 @@ https://dccex.$BOX_DOMAIN/dccex-usb/scripts/<railroad>
                                                one railroad's script, read and
                                                applied
 https://dccex.$BOX_DOMAIN/dccex-usb/journal    the journal, served
+https://dccex.$BOX_DOMAIN/dccex-usb/log        the translator's log, from a byte on
 wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both ways
 wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad's
                                                power, read and asked for
@@ -478,11 +479,30 @@ ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hard
 The editor marks the refused line until the next edit
 ([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)).
 
-**Whether the translator loaded it is not on this page.** A load error is a row
-in `control`'s UI and a line in the translator's log, which is where a
-railroad's own state is said (ADR-0015, consequences). Nor is deleting a
-script: this face has no verb for one, as it has none for a document of any
-other kind.
+**The view is split into the editor and the translator's log** (#365). The
+**log** is what the translator writes to stdout and stderr, which the mirror's
+face serves at `/log`
+([the mirror's page](../dccex_usb/README.md#the-log)). A divider between the
+two can be dragged, or moved with the arrow keys. Wider than 1100 px the log is
+to the right of the editor; narrower, it is below. Dragged to the log's edge
+the divider hides the log, and dragged back it shows it. The browser remembers
+where the divider is (`localStorage`); a browser that refuses the store opens
+it at its default. The log has no heading (`ui/src/ui/dccex-divider.ts`,
+`ui/src/ui/dccex-log.ts`).
+
+**The log is read about once a second while the view is showing**, from the
+byte the page has read up to (`Range: bytes=N-`), and new lines are added at
+the bottom. A `416` is a file the translator trimmed, and the page reads it
+whole again. Asking stops while another view is showing and while the log is
+hidden. The log follows the bottom unless the reader has scrolled up, and
+follows again once they scroll back down. A mirror started without `--log`
+answers with a sentence, and the log shows it as it came (`ui/src/log.ts`).
+
+**Whether the translator loaded it is said in the log.** A load error is a row
+in `control`'s UI and a line in the translator's log beside the editor, which
+is where a railroad's own state is said (ADR-0015, consequences). Deleting a
+script is not on this page: this face has no verb for one, as it has none for
+a document of any other kind.
 
 ### The journal
 
