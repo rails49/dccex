@@ -352,13 +352,92 @@ def test_the_list_is_headed_by_its_own_columns() -> None:
 
 
 @pytest.mark.node
-def test_the_periods_are_the_three_spans_and_the_builds_in_the_file() -> None:
+def test_the_periods_are_the_three_spans_the_builds_and_the_days_in_the_file() -> None:
     """Newest build first, because the last one in the file is what the station
     is running now. The empty build is not one of them: it is the station not
-    answering rather than something it was running (GLOSSARY.md, **build**)."""
+    answering rather than something it was running (GLOSSARY.md, **build**).
+    The days come last (#370)."""
     (served,) = run([{"served": lines(TWO_BUILDS)}])
-    assert served["choices"] == ["all", "last day", "last 7 days", BUILD, BEFORE]
+    assert served["choices"] == [
+        "all",
+        "last day",
+        "last 7 days",
+        BUILD,
+        BEFORE,
+        "2026-10-12",
+    ]
     assert served["builds"] == [BUILD, BEFORE]
+
+
+@pytest.mark.node
+def test_every_day_the_journal_has_a_line_on_is_a_period_newest_first() -> None:
+    """After the builds, spelt as the list's stamps start, on the reader's
+    clock: 23:30 UTC is the next day in Berlin (#370)."""
+    journal = [
+        {"at": "2026-10-11T08:00:00.000+00:00", "said": "<p1 A>"},
+        {"at": "2026-10-11T09:00:00.000+00:00", "said": "<p0 A>"},
+        {"at": "2026-10-12T23:30:00.000+00:00", "said": "<p1 A>"},
+    ]
+    (utc,) = run([{"served": lines(journal)}], "UTC")
+    assert utc["choices"][3:] == ["2026-10-12", "2026-10-11"]
+    (berlin,) = run([{"served": lines(journal)}], "Europe/Berlin")
+    assert berlin["choices"][3:] == ["2026-10-13", "2026-10-11"]
+
+
+@pytest.mark.node
+def test_a_day_runs_from_local_midnight_to_local_midnight() -> None:
+    """On the reader's clock, as the list's stamps are. The bounds are
+    inclusive, so the day ends a millisecond before the next one starts."""
+    (utc,) = run([{"choice": "2026-10-12", "now": NOW}], "UTC")
+    assert utc == {
+        "start": "2026-10-12T00:00:00.000Z",
+        "end": "2026-10-12T23:59:59.999Z",
+    }
+    (honolulu,) = run([{"choice": "2026-10-12", "now": NOW}], "Pacific/Honolulu")
+    assert honolulu == {
+        "start": "2026-10-12T10:00:00.000Z",
+        "end": "2026-10-13T09:59:59.999Z",
+    }
+
+
+@pytest.mark.node
+def test_a_day_that_crosses_a_daylight_saving_change_is_that_day() -> None:
+    """Berlin leaves summer time on 2026-10-25, so that day is 25 hours long
+    and the one after it starts an hour later in UTC than the one before."""
+    before, change, after = run(
+        [
+            {"choice": "2026-10-24", "now": NOW},
+            {"choice": "2026-10-25", "now": NOW},
+            {"choice": "2026-10-26", "now": NOW},
+        ],
+        "Europe/Berlin",
+    )
+    assert before == {
+        "start": "2026-10-23T22:00:00.000Z",
+        "end": "2026-10-24T21:59:59.999Z",
+    }
+    assert change == {
+        "start": "2026-10-24T22:00:00.000Z",
+        "end": "2026-10-25T22:59:59.999Z",
+    }
+    assert after == {
+        "start": "2026-10-25T23:00:00.000Z",
+        "end": "2026-10-26T22:59:59.999Z",
+    }
+    (served,) = run(
+        [
+            {
+                "served": lines(
+                    [
+                        {"at": "2026-10-24T22:30:00.000+00:00", "said": "<p1 A>"},
+                        {"at": "2026-10-25T22:30:00.000+00:00", "said": "<p0 A>"},
+                    ]
+                )
+            }
+        ],
+        "Europe/Berlin",
+    )
+    assert served["choices"][3:] == ["2026-10-25"], "both lines are on the 25th"
 
 
 @pytest.mark.node

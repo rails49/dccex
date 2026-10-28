@@ -14,7 +14,7 @@
 
 import { expect, test } from "vitest";
 
-import { EMPTY, UNREADABLE, type Served } from "../src/incidents.js";
+import { EMPTY, UNREADABLE, type Served, when } from "../src/incidents.js";
 import { type DccexControls } from "../src/ui/dccex-controls.js";
 import { type DccexCounts } from "../src/ui/dccex-counts.js";
 import { type DccexIncidents } from "../src/ui/dccex-incidents.js";
@@ -155,7 +155,7 @@ test("the period and the toggle change what is counted and ask nothing", async (
   expect(opened.read).toBe(1);
 });
 
-test("the periods on offer are the spans and the builds in the file", async () => {
+test("the periods on offer are the spans, the builds and the days in the file", async () => {
   const opened = await view();
   expect([...controls(opened.drawn).choices]).toStrictEqual([
     "all",
@@ -163,6 +163,8 @@ test("the periods on offer are the spans and the builds in the file", async () =
     "last 7 days",
     "g2",
     "g1",
+    // The day on the clock of the machine running this (#370).
+    when("2026-10-12T18:00:00.000+00:00").slice(0, 10),
   ]);
   expect(controls(opened.drawn).bytes).toBe(JOURNAL.bytes);
 });

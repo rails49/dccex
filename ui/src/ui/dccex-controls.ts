@@ -8,9 +8,9 @@
  * each, the way the **rail** hands a **view** up — a control that kept its
  * own answer would draw one period while the table counted another.
  *
- * **The periods are one list.** The three spans and every **build** the journal
- * carries are the same kind of answer — which lines are read — so they are
- * one chooser rather than a chooser and a second control beside it
+ * **The periods are one list.** The three spans, every **build** the journal
+ * carries and every day it has a line on are the same kind of answer — which
+ * lines are read — so they are one chooser rather than several controls
  * (`incidents.js`'s `choices()`).
  *
  * **The download is the browser's own fetch.** It is a link to the face's
