@@ -263,7 +263,10 @@ Every **release** the **mirror** is configured to read, newest first, each
 with its title on a line under the tag (left off where the title is the tag),
 its publication date and whether it carries a flashable asset — one with
 a digest to check it against, which is what the face answers `flashable` for
-(#8, #81). The one whose **tag** matches the build on the station now is
+(#8, #81). The list is two columns: the tag line and the title on the left,
+and each flashable release's *flash* button on the right, one under the
+next. A release with nothing to write has no button and says so on its tag
+line. The one whose **tag** matches the build on the station now is
 marked as such, so being up to date is something to see rather than to work
 out. The list is the releases view, and it is open: a reader who pressed
 *releases* on the rail has asked for them. It stays a row that opens and
