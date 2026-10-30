@@ -129,6 +129,11 @@ name after the colon is a commit, not a tag
 ([docs/dccex_usb/README.md](docs/dccex_usb/README.md#writing-the-firmware)).
 _Avoid_: version number, label, ref, latest, image tag
 
+**Title**:
+The one line a release is published with. It is not shown where it is the
+**tag** ([docs/ui/README.md](docs/ui/README.md#the-releases)).
+_Avoid_: description, name, summary
+
 **Client**:
 Anything connected to the mirror's port: the translator, JMRI, a hand-held
 throttle, the face carrying the **stream**

@@ -1,16 +1,18 @@
 import { css } from "lit";
 
 /**
- * The releases: the row a view of their own is, one release to a line.
+ * The releases: the row a view of their own is, in two columns. The first
+ * holds each release's tag line and its title; the second holds its flash
+ * button, against the right edge, one under the next.
  *
  * They are the work pane's rather than the chrome's, so their colours are
  * Shoelace's theme tokens and they follow the system's light or dark setting
  * (`look.css`). The chrome's colours stay on the chrome.
  *
  * **A release wraps rather than running off the side.** The phone at the
- * layout is where this is read and a **tag** is long: the date and what is
- * said of a release go under the tag when there is no room beside it, so a
- * narrow screen costs a line and never a reading (docs/ui/README.md).
+ * layout is where this is read and a **tag** is long: the date and the marks
+ * go under the tag when there is no room beside it, inside the first column,
+ * so a narrow screen costs a line and never a reading (docs/ui/README.md).
  *
  * **What is on the station is marked twice over.** A word and a weight, not a
  * colour alone: whether the station is up to date is the question the list
@@ -76,25 +78,46 @@ export const releasesStyles = css`
     font-size: var(--sl-font-size-small);
   }
 
+  /* Two columns for the whole list: the text, and the button. One grid, so
+     every row's button sits in the same column. */
   .releases {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.5rem;
     margin: 0;
     padding: 0 0.75rem 0.5rem;
     list-style: none;
   }
 
-  /* One release. It wraps: the tag takes what it needs and the date and the
-     marks follow it onto the next line at the width of a phone. */
+  /* One release: a row of the list's grid. The button is centred on the
+     row's lines. A release with nothing to write leaves the second cell
+     empty. */
   .release {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
     padding: 0.25rem 0;
     border-top: 1px solid var(--sl-color-neutral-100);
   }
 
   .release:first-child {
     border-top: none;
+  }
+
+  .about {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  /* The tag line. It wraps: the tag takes what it needs and the date and the
+     marks follow it onto the next line at the width of a phone. */
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0;
   }
 
   /* The tag: monospaced, because it is a name to be read character by
@@ -115,10 +138,8 @@ export const releasesStyles = css`
     font-variant-numeric: tabular-nums;
   }
 
-  /* What the release is, in a line. It takes a line of its own under the tag
-     and the date, because it is longer than the room beside them. */
+  /* What the release is, in a line, under the tag line. */
   .title {
-    flex: 1 0 100%;
     margin: 0;
     color: var(--sl-color-neutral-700);
     font-family: var(--sl-font-sans);
@@ -153,7 +174,7 @@ export const releasesStyles = css`
      It keeps its size whatever the width, because it is what a thumb has to
      hit. */
   button {
-    flex: none;
+    grid-column: 2;
     box-sizing: border-box;
     min-height: var(--rail-button);
     padding: 0 0.75rem;

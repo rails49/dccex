@@ -384,10 +384,10 @@ def test_the_row_works_no_reading_out_of_its_own() -> None:
 
 def test_the_rows_wrap_at_the_width_of_a_phone() -> None:
     """The phone at the layout is where this is read, and a tag is long: the
-    date and what is said of a release go under the tag rather than off the
-    side of the screen (docs/ui/README.md)."""
-    release = rule(STYLES.read_text(), ".release")
-    assert "flex-wrap: wrap;" in release, "a release row runs off the side"
+    date and the marks go under the tag rather than off the side of the screen
+    (docs/ui/README.md)."""
+    line = rule(STYLES.read_text(), ".line")
+    assert "flex-wrap: wrap;" in line, "a release row runs off the side"
 
 
 def test_the_row_is_the_work_pane_s_and_not_the_chrome_s() -> None:

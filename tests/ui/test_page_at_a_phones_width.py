@@ -244,10 +244,15 @@ MEASURE = """
           box: box(release),
           scrollWidth: release.scrollWidth,
           clientWidth: release.clientWidth,
-          parts: [...release.children].map((part) => ({
+          parts: [...release.querySelector(".line").children].map((part) => ({
             part: part.className,
             box: box(part),
           })),
+          about: box(release.querySelector(".about")),
+          button: (() => {
+            const button = release.querySelector(".chooses");
+            return button === null ? null : box(button);
+          })(),
         }),
       ),
     };
@@ -338,7 +343,7 @@ print(json.dumps(drawn))
 
 
 def lines(row: dict[str, Any]) -> int:
-    """How many lines one release row's parts were laid out on.
+    """How many lines one release row's tag line was laid out on.
 
     A flex line's boxes overlap each other vertically and never overlap the
     next line's, so a part whose top is at or below everything above it is on
@@ -553,7 +558,7 @@ def test_the_release_rows_wrap_on_a_phone_rather_than_running_off_the_side(
 ) -> None:
     """A long **tag** costs a line and never a reading.
 
-    The date and what is said of a release go under the tag when there is no
+    The date and the marks go under the tag when there is no
     room beside it, so nothing is off the side of a row and no row is off the
     side of the page. The row with the long tag is the one asserted to have
     taken a second line: the shorter two may or may not, which is the rule
@@ -574,3 +579,36 @@ def test_the_release_rows_wrap_on_a_phone_rather_than_running_off_the_side(
                 part["box"]["right"] <= release["box"]["right"] + SLACK
             ), f"{release['tag']}'s {part['part']} runs off the side of its row"
     assert lines(row(phone, LONG)) > 1, f"{LONG}'s row did not wrap"
+
+
+def test_the_flash_buttons_are_one_column_at_the_right(
+    drawn: dict[str, Any],
+) -> None:
+    """The releases are two columns: the text on the left, and each flashable
+    release's button on the right, one under the next.
+
+    Every button shares one left edge, sits against its row's right edge, is
+    right of its row's text and is inside its row's height.
+    """
+    for width, page in drawn.items():
+        rows = page[RELEASES_VIEW]["rows"]
+        buttons = [release for release in rows if release["button"] is not None]
+        assert len(buttons) == sum(
+            1 for carried in CARRIED if carried["flashable"]
+        ), f"the flash buttons were not drawn in a {width}"
+        lefts = {round(release["button"]["left"]) for release in buttons}
+        assert (
+            max(lefts) - min(lefts) <= SLACK
+        ), f"the flash buttons do not line up in a {width}: {lefts}"
+        for release in buttons:
+            button, box = release["button"], release["box"]
+            assert (
+                abs(button["right"] - box["right"]) <= SLACK
+            ), f"{release['tag']}'s button is not at the right in a {width}"
+            assert (
+                release["about"]["right"] <= button["left"] + SLACK
+            ), f"{release['tag']}'s text runs under its button in a {width}"
+            assert (
+                button["top"] >= box["top"] - SLACK
+                and button["bottom"] <= box["bottom"] + SLACK
+            ), f"{release['tag']}'s button is outside its row in a {width}"

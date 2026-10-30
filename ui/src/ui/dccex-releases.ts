@@ -190,11 +190,21 @@ export class DccexReleases extends LitElement {
           ${shown.rows.map(
             (release: Listed) => html`
               <li class=${release.onStation ? "release on" : "release"}>
-                <span class="tag">${release.tag}</span>
-                <span class="published">${release.published}</span>
-                ${release.onStation
-                  ? html`<span class="mark">${ON_STATION}</span>`
-                  : nothing}
+                <div class="about">
+                  <p class="line">
+                    <span class="tag">${release.tag}</span>
+                    <span class="published">${release.published}</span>
+                    ${release.onStation
+                      ? html`<span class="mark">${ON_STATION}</span>`
+                      : nothing}
+                    ${release.flashable
+                      ? nothing
+                      : html`<span class="bare">${NO_FIRMWARE}</span>`}
+                  </p>
+                  ${release.title === ""
+                    ? nothing
+                    : html`<p class="title">${release.title}</p>`}
+                </div>
                 ${release.flashable
                   ? html`<button
                       class="chooses"
@@ -205,10 +215,7 @@ export class DccexReleases extends LitElement {
                     >
                       ${CHOOSES}
                     </button>`
-                  : html`<span class="bare">${NO_FIRMWARE}</span>`}
-                ${release.title === ""
-                  ? nothing
-                  : html`<p class="title">${release.title}</p>`}
+                  : nothing}
               </li>
             `,
           )}
