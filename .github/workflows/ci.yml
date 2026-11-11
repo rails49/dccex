@@ -92,7 +92,7 @@ jobs:
 
   # The translator's suites that run against a real broker, which the gate
   # does not collect (#180). `mosquitto` is installed here and nowhere else,
-  # and `CI` being set makes a missing one a failure (`tests/brokers.py`).
+  # and `CI` being set makes a missing one a failure (`rails49_testing.broker`).
   # The packages come from a cache keyed on the runner image, and a hit makes
   # no network request (#385).
   #
