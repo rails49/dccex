@@ -9,6 +9,7 @@ certificate. Unset is a box started without its declaration, and is refused
 so it runs in the workflow's docker job and the gate does not collect it.
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -21,7 +22,7 @@ from tests.ui.test_compose_serves import environment
 pytestmark = pytest.mark.docker
 
 
-def config(**set_here: str) -> subprocess.CompletedProcess[str]:
+def config(*argument: str, **set_here: str) -> subprocess.CompletedProcess[str]:
     """`docker compose config` over both files, with no `.env` read."""
     if shutil.which("docker") is None:
         if os.environ.get("CI"):
@@ -38,7 +39,7 @@ def config(**set_here: str) -> subprocess.CompletedProcess[str]:
             "-f",
             "compose.box.yaml",
             "config",
-            "--quiet",
+            *(argument or ("--quiet",)),
         ],
         cwd=ROOT,
         env=environment(**set_here),
@@ -59,3 +60,13 @@ def test_a_box_with_no_declaration_is_refused() -> None:
     done = config()
     assert done.returncode != 0
     assert "/etc/rails49/box.env" in done.stderr
+
+
+@pytest.mark.parametrize("domain", ["", "example.org"])
+def test_a_box_publishes_the_page_on_no_port(domain: str) -> None:
+    """On a box the page is reached through the door alone, on HTTPS and on
+    its UI port (rails49/.github#69 d.3, #383). The clean clone's published
+    port is `test_compose_serves.py`'s."""
+    done = config("--format", "json", BOX_DOMAIN=domain)
+    assert done.returncode == 0, done.stderr
+    assert json.loads(done.stdout)["services"]["web"].get("ports", []) == []
