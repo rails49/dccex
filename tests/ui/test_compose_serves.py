@@ -282,7 +282,7 @@ def up() -> Iterator[Up]:
         yield Up(
             container=compose("ps", "-q", SERVICE, env=where),
             commit=commit,
-            image=f"dccex-ui:{commit}",
+            image=f"ghcr.io/rails49/dccex-ui:{commit}",
             port=port,
             environment=where,
         )
@@ -302,7 +302,8 @@ def test_the_project_comes_up_and_serves_the_page(up: Up) -> None:
 
 
 def test_the_image_is_named_by_the_commit_it_was_built_from(up: Up) -> None:
-    """`dccex-ui:<commit>`, and the name never moves (ADR-0005 d.1)."""
+    """`ghcr.io/rails49/dccex-ui:<commit>`, and the name never moves (ADR-0005
+    d.1)."""
     named = docker(
         "inspect", "--format", "{{.Config.Image}}", up.container, env=up.environment
     )
@@ -330,7 +331,7 @@ def test_a_clone_that_names_no_commit_builds_dev(up: Up) -> None:
     dropped, as the environment every command here runs in drops it — and asks
     the file what it would build under.
     """
-    assert compose("config", "--images") == "dccex-ui:dev"
+    assert compose("config", "--images") == "ghcr.io/rails49/dccex-ui:dev"
 
 
 def test_the_running_container_carries_the_route_the_door_reads(up: Up) -> None:

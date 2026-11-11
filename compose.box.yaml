@@ -121,7 +121,7 @@ services:
     # because the two are two images of one commit and the commit is the one
     # thing that differs between two deploys of this repository — so going
     # back is the one line d.7 asks for, in this project's `.env`.
-    image: dccex:${DCCEX_COMMIT:-dev}
+    image: ghcr.io/rails49/dccex:${DCCEX_COMMIT:-dev}
     restart: unless-stopped
     # 2560 on the LAN, raw. It is what it has always been: JMRI, a hand-held
     # throttle and the translator are programs on the wifi holding a serial
@@ -245,7 +245,7 @@ services:
   # dials it.
   translator:
     build: *image
-    image: dccex:${DCCEX_COMMIT:-dev}
+    image: ghcr.io/rails49/dccex:${DCCEX_COMMIT:-dev}
     restart: unless-stopped
     entrypoint: ["python", "-m", "dccex"]
     # The store is `control`'s, on the installation's network under its
