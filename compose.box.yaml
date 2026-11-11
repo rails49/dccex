@@ -19,12 +19,15 @@
 
 # Nothing reads this. It is **the box guard**: where the box's name is
 # required, so that a box started without its declaration is told which file
-# is missing rather than given routers under a blank name. Compose interpolates
-# the whole file before it runs any subcommand, so this one line covers every
-# rule below and every `logs` and `ps` besides — the shape `control` uses for
-# the same job. It lived inside the page's host rule until #40, which put it at
-# the mercy of whoever next rewrote that label; here it belongs to no label.
-x-require-box-domain: ${BOX_DOMAIN:?the box's declaration is missing or declares no BOX_DOMAIN - this stack is started against /etc/rails49/box.env, which is root-owned and edited by hand, and there is no default for it on a box}
+# is missing. Compose interpolates the whole file before it runs any
+# subcommand, so this one line covers every rule below and every `logs` and
+# `ps` besides — the shape `control` uses for the same job. It lived inside the
+# page's host rule until #40, which put it at the mercy of whoever next rewrote
+# that label; here it belongs to no label.
+#
+# `?` and not `:?`: an unset `BOX_DOMAIN` is refused, and an empty one is a box
+# with no certificate, served on the UI port alone (installation#53 d.1).
+x-require-box-domain: ${BOX_DOMAIN?the box's declaration is missing or declares no BOX_DOMAIN - this stack is started against /etc/rails49/box.env, which is root-owned and edited by hand; an empty BOX_DOMAIN is a box with no certificate}
 
 services:
   # The page, on a box. Everything about it is `compose.yaml`'s but the network
@@ -57,17 +60,30 @@ services:
     # reads no `Origin` and there is no app of ours in front of it — which is
     # where this differs from the face, whose refusal is its own (ADR-0004
     # d.4). The `-foreign` router claims the same prefix at a higher priority
-    # with the origin that is ours ruled out, and sends what it catches to a
+    # with the origins that are ours ruled out, and sends what it catches to a
     # middleware that allows one source address nothing can arrive from. The
     # `$$` is one `$` after compose has read the file: it is the end of the
     # regexp, so a host that only begins with ours is foreign.
+    #
+    # **The UI port.** Each router has a `-port` twin on the `dccex` entry
+    # point, 8082, with no TLS and no `Host()`: the entry point says which UI
+    # it is (installation#53 d.2, d.4). The twin has its original's service,
+    # middlewares and priority. On a box with no certificate there is no
+    # `websecure`, so Traefik drops the routers that name it and serves the
+    # twins. On 8082 the broker admits an `http://` origin on 8082 whose host
+    # is a `.local` name or an RFC 1918 address (d.5).
     labels:
       # The one label a box moves: the host rule carries the box's own domain
       # rather than the clean clone's `localhost`. Every other label of the
-      # page's own is `compose.yaml`'s and is merged in as written. No `:?`
+      # page's own is `compose.yaml`'s and is merged in as written. No `?`
       # anywhere here — the guard at the top of this file has already refused a
-      # box with no domain.
+      # box with no declaration. An empty domain leaves `Host(`dccex.`)` on a
+      # router whose entry point does not exist.
       - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN}`)
+      - traefik.http.routers.dccex-ui-port.rule=PathPrefix(`/`)
+      - traefik.http.routers.dccex-ui-port.priority=1
+      - traefik.http.routers.dccex-ui-port.entrypoints=dccex
+      - traefik.http.routers.dccex-ui-port.service=dccex-ui
       - traefik.http.routers.dccex-mqtt.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`)
       - traefik.http.routers.dccex-mqtt.priority=2
       - traefik.http.routers.dccex-mqtt.entrypoints=websecure
@@ -75,6 +91,11 @@ services:
       - traefik.http.routers.dccex-mqtt.middlewares=dccex-mqtt-strip
       - traefik.http.routers.dccex-mqtt.tls.certresolver=le
       - traefik.http.middlewares.dccex-mqtt-strip.stripprefix.prefixes=/mqtt
+      - traefik.http.routers.dccex-mqtt-port.rule=PathPrefix(`/mqtt`)
+      - traefik.http.routers.dccex-mqtt-port.priority=2
+      - traefik.http.routers.dccex-mqtt-port.entrypoints=dccex
+      - traefik.http.routers.dccex-mqtt-port.service=tc49-mqtt@docker
+      - traefik.http.routers.dccex-mqtt-port.middlewares=dccex-mqtt-strip
       - traefik.http.routers.dccex-mqtt-foreign.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`) && !HeaderRegexp(`Origin`, `^https://dccex\.${BOX_DOMAIN}$$`)
       - traefik.http.routers.dccex-mqtt-foreign.priority=3
       - traefik.http.routers.dccex-mqtt-foreign.entrypoints=websecure
@@ -82,6 +103,11 @@ services:
       - traefik.http.routers.dccex-mqtt-foreign.middlewares=dccex-mqtt-refused
       - traefik.http.routers.dccex-mqtt-foreign.tls.certresolver=le
       - traefik.http.middlewares.dccex-mqtt-refused.ipallowlist.sourcerange=255.255.255.255/32
+      - traefik.http.routers.dccex-mqtt-foreign-port.rule=PathPrefix(`/mqtt`) && !HeaderRegexp(`Origin`, `^http://([a-z0-9-]+\.local|10\.[0-9]+\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+|192\.168\.[0-9]+\.[0-9]+):8082$$`)
+      - traefik.http.routers.dccex-mqtt-foreign-port.priority=3
+      - traefik.http.routers.dccex-mqtt-foreign-port.entrypoints=dccex
+      - traefik.http.routers.dccex-mqtt-foreign-port.service=tc49-mqtt@docker
+      - traefik.http.routers.dccex-mqtt-foreign-port.middlewares=dccex-mqtt-refused
 
   # The mirror: the app that holds the command station's device and repeats it
   # on 2560. This is the service `control` deleted with its own copy of the
@@ -205,6 +231,11 @@ services:
       - traefik.http.routers.dccex-usb.middlewares=dccex-usb-strip
       - traefik.http.routers.dccex-usb.tls.certresolver=le
       - traefik.http.middlewares.dccex-usb-strip.stripprefix.prefixes=/dccex-usb
+      - traefik.http.routers.dccex-usb-port.rule=PathPrefix(`/dccex-usb`)
+      - traefik.http.routers.dccex-usb-port.priority=2
+      - traefik.http.routers.dccex-usb-port.entrypoints=dccex
+      - traefik.http.routers.dccex-usb-port.service=dccex-usb
+      - traefik.http.routers.dccex-usb-port.middlewares=dccex-usb-strip
     # The project's own network and the installation's, which is the one the
     # door dials the face on. Joined for the face alone: 2560 is published to
     # the LAN and needs neither.

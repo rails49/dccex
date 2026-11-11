@@ -106,6 +106,34 @@ BROKER = "tc49-mqtt@docker"
 #: The one host both routers answer for, as the overlay writes it.
 HOST = "Host(`dccex.${BOX_DOMAIN}`)"
 
+#: The UI port's entry point, port 8082, named by the installation, which owns
+#: the table of UI ports (installation#53 d.2).
+UI_PORT_ENTRY = "dccex"
+
+#: Each router on `websecure` and its twin on the UI port (#379).
+TWINS = {
+    "dccex-ui": "dccex-ui-port",
+    "dccex-mqtt": "dccex-mqtt-port",
+    "dccex-mqtt-foreign": "dccex-mqtt-foreign-port",
+    "dccex-usb": "dccex-usb-port",
+}
+
+#: The twins' rules: the original's with `Host()` taken out. The foreign
+#: twin's is its own test's.
+TWIN_RULES = {
+    "dccex-ui-port": "PathPrefix(`/`)",
+    "dccex-mqtt-port": f"PathPrefix(`{MQTT_PREFIX}`)",
+    "dccex-usb-port": f"PathPrefix(`{PREFIX}`)",
+}
+
+#: The origins the broker admits on the UI port, as compose spells it
+#: (installation#53 d.5).
+LAN_ORIGIN = (
+    r"^http://([a-z0-9-]+\.local|10\.[0-9]+\.[0-9]+\.[0-9]+"
+    r"|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+"
+    r"|192\.168\.[0-9]+\.[0-9]+):8082$$"
+)
+
 #: What a box has run, one line per deploy (ADR-0005 d.5).
 RECORD = "/var/lib/rails49/deploys/dccex"
 
@@ -250,19 +278,19 @@ def test_the_page_joins_the_network_the_door_dials_it_on() -> None:
 
 
 def test_a_missing_box_declaration_stops_the_stack_by_name() -> None:
-    """Compose's `:?`, on the one value a box must declare. Without the
+    """Compose's `?`, on the one value a box must declare. Without the
     declaration the stack does not come up on a default that is wrong for a
-    box — it stops, and the sentence names the file to go and look at.
+    box — it stops, and the sentence names the file to go and look at. An
+    empty value is a box with no certificate and is admitted, so the guard is
+    not `:?` (#379, installation#53 d.1).
 
     It is a top-level line of its own and not a default inside a label (#40),
     so a route can be rewritten without taking the guard with it."""
-    guards = [
-        line
-        for line in uncommented(BOX.read_text())
-        if re.search(r"\$\{BOX_DOMAIN:\?", line)
-    ]
+    lines = uncommented(BOX.read_text())
+    assert not [line for line in lines if "${BOX_DOMAIN:?" in line]
+    guards = [line for line in lines if "${BOX_DOMAIN?" in line]
     assert len(guards) == 1, guards
-    assert guards[0].startswith("x-require-box-domain: ${BOX_DOMAIN:?")
+    assert guards[0].startswith("x-require-box-domain: ${BOX_DOMAIN?")
     assert DECLARATION in guards[0]
 
 
@@ -597,13 +625,53 @@ def test_a_foreign_origin_at_the_broker_is_refused_by_the_door() -> None:
     ), "the refusal lets somebody through"
 
 
+def routers() -> dict[str, dict[str, str]]:
+    """Every router on a box, by name, with the page's labels merged as
+    compose merges them: the overlay's over the base's."""
+    merged = labels(BASE, "web") | labels(BOX, "web") | labels(BOX, "mirror")
+    found: dict[str, dict[str, str]] = {}
+    for key, value in merged.items():
+        named = re.fullmatch(r"traefik\.http\.routers\.([\w-]+)\.(.+)", key)
+        if named is not None:
+            found.setdefault(named.group(1), {})[named.group(2)] = value
+    return found
+
+
+def test_each_router_has_a_twin_on_the_ui_port() -> None:
+    """A box with no certificate has no `websecure`, so each router has a twin
+    on the UI port's entry point with no TLS and no `Host()` (#379,
+    installation#53 d.4). The twin keeps its original's service, middlewares
+    and priority, so the routes rank on 8082 as they do on 443."""
+    door = routers()
+    for original, twin in TWINS.items():
+        was, now = door[original], door[twin]
+        assert now["entrypoints"] == UI_PORT_ENTRY, twin
+        assert not [key for key in now if key.startswith("tls")], twin
+        for key in ("service", "middlewares", "priority"):
+            assert now.get(key) == was.get(key), f"{twin}.{key}"
+        if twin in TWIN_RULES:
+            assert now["rule"] == TWIN_RULES[twin], twin
+
+
+def test_a_foreign_origin_at_the_broker_is_refused_on_the_ui_port() -> None:
+    """The broker's refusal on 8082 admits an `http://` origin on 8082 whose
+    host is a `.local` name or an RFC 1918 address, and nothing else
+    (installation#53 d.5). A request with no `Origin` is refused, as on 443."""
+    door = routers()
+    foreign = door["dccex-mqtt-foreign-port"]
+    assert foreign["rule"] == (
+        f"PathPrefix(`{MQTT_PREFIX}`) && !HeaderRegexp(`Origin`, `{LAN_ORIGIN}`)"
+    )
+    assert int(foreign["priority"]) > int(door["dccex-mqtt-port"]["priority"])
+
+
 def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:
     """No `-foreign` router and no middleware that answers for the face: the
     face refuses with a status and a sentence (`face.py`, ADR-0004 d.4), and
     nothing on the route rewrites the `Host` that refusal compares against."""
     face = labels(BOX, "mirror")
     routers = {k.split(".")[3] for k in face if k.startswith("traefik.http.routers.")}
-    assert routers == {"dccex-usb"}
+    assert routers == {"dccex-usb", "dccex-usb-port"}
     middlewares = {
         k.split(".")[3] for k in face if k.startswith("traefik.http.middlewares.")
     }
