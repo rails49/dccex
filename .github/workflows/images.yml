@@ -1,0 +1,168 @@
+# Both images of one commit, published to GHCR for an installation release
+# (rails49/.github#71 d.1, d.2, d.8). The installation's release workflow calls
+# this; nothing else runs it.
+#
+# Each image is built on each architecture's own runner, pushed by digest, and
+# the two joined under `ghcr.io/rails49/<name>:<commit>`. An image already
+# there for the commit is not built again. The outputs are both digests. The
+# box files go up as the `dccex-box-files` artifact of the calling run.
+#
+# The caller grants `packages: write`. Each package grants the `installation`
+# repository write access.
+name: images
+
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: The commit to build, in full.
+        required: true
+        type: string
+    outputs:
+      dccex:
+        description: The digest of ghcr.io/rails49/dccex:<commit>.
+        value: ${{ jobs.join.outputs.dccex }}
+      dccex-ui:
+        description: The digest of ghcr.io/rails49/dccex-ui:<commit>.
+        value: ${{ jobs.join.outputs.dccex-ui }}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  COMMIT: ${{ inputs.commit }}
+  # Each image's name under ghcr.io/rails49 and the Dockerfile compose builds
+  # it from.
+  IMAGES: >-
+    [{"name": "dccex", "file": "deploy/Dockerfile"},
+     {"name": "dccex-ui", "file": "deploy/ui.Dockerfile"}]
+
+jobs:
+  # The images with no `:<commit>` on GHCR yet.
+  missing:
+    runs-on: ubuntu-24.04
+    outputs:
+      images: ${{ steps.missing.outputs.images }}
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: missing
+        run: |
+          if ! [[ $COMMIT =~ ^[0-9a-f]{40}$ ]]; then
+            echo "not a full commit: $COMMIT" >&2
+            exit 1
+          fi
+          missing='[]'
+          while read -r image; do
+            name=$(jq -r .name <<< "$image")
+            if said=$(docker buildx imagetools inspect "ghcr.io/rails49/$name:$COMMIT" 2>&1); then
+              echo "ghcr.io/rails49/$name:$COMMIT is there"
+            elif grep -q 'not found' <<< "$said"; then
+              missing=$(jq -c --argjson image "$image" '. + [$image]' <<< "$missing")
+            else
+              echo "$said" >&2
+              exit 1
+            fi
+          done < <(jq -c '.[]' <<< "$IMAGES")
+          echo "images=$missing" >> "$GITHUB_OUTPUT"
+
+  # One image on one architecture, pushed by its digest alone.
+  build:
+    needs: missing
+    if: needs.missing.outputs.images != '[]'
+    strategy:
+      matrix:
+        image: ${{ fromJSON(needs.missing.outputs.images) }}
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: rails49/dccex
+          ref: ${{ inputs.commit }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.file }}
+          build-args: DCCEX_COMMIT=${{ inputs.commit }}
+          outputs: type=image,name=ghcr.io/rails49/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
+      - env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "$DIGEST" > "$RUNNER_TEMP/digest"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ runner.arch }}-${{ matrix.image.name }}
+          path: ${{ runner.temp }}/digest
+          retention-days: 1
+          if-no-files-found: error
+
+  # Each built image's two digests joined under `:<commit>`, and every image
+  # checked for both architectures.
+  join:
+    needs: [missing, build]
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-24.04
+    outputs:
+      dccex: ${{ steps.digests.outputs.dccex }}
+      dccex-ui: ${{ steps.digests.outputs.dccex-ui }}
+    steps:
+      - if: needs.missing.outputs.images != '[]'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: digests
+        env:
+          MISSING: ${{ needs.missing.outputs.images }}
+        run: |
+          for name in $(jq -r '.[].name' <<< "$MISSING"); do
+            sources=()
+            for file in "$RUNNER_TEMP"/digests/digest-*-"$name"/digest; do
+              sources+=("ghcr.io/rails49/$name@$(cat "$file")")
+            done
+            docker buildx imagetools create \
+              --tag "ghcr.io/rails49/$name:$COMMIT" \
+              --annotation "index:org.opencontainers.image.source=https://github.com/rails49/dccex" \
+              "${sources[@]}"
+          done
+          for name in $(jq -r '.[].name' <<< "$IMAGES"); do
+            manifest=$(docker buildx imagetools inspect "ghcr.io/rails49/$name:$COMMIT" --format '{{json .Manifest}}')
+            if ! jq -e '[.manifests[].platform | "\(.os)/\(.architecture)"] | contains(["linux/amd64", "linux/arm64"])' <<< "$manifest" > /dev/null; then
+              echo "ghcr.io/rails49/$name:$COMMIT does not hold both linux/amd64 and linux/arm64" >&2
+              exit 1
+            fi
+            echo "$name=$(jq -r .digest <<< "$manifest")" >> "$GITHUB_OUTPUT"
+          done
+
+  # The files a box runs this stack from: both compose files and every file of
+  # this repository they mount.
+  box-files:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: rails49/dccex
+          ref: ${{ inputs.commit }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dccex-box-files
+          path: |
+            compose.yaml
+            compose.box.yaml
+          if-no-files-found: error
