@@ -93,6 +93,8 @@ jobs:
   # The translator's suites that run against a real broker, which the gate
   # does not collect (#180). `mosquitto` is installed here and nowhere else,
   # and `CI` being set makes a missing one a failure (`tests/brokers.py`).
+  # The packages come from a cache keyed on the runner image, and a hit makes
+  # no network request (#385).
   #
   # This job is required on the default branch beside `ci`, `docker` and
   # `node`.
@@ -104,6 +106,32 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync
-      - run: sudo apt-get update && sudo apt-get install -y mosquitto
+      - name: the cache key, from the runner image
+        id: image
+        run: echo "key=mosquitto-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+      - name: the mosquitto packages, restored
+        id: debs
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/mosquitto-debs/*.deb
+          key: ${{ steps.image.outputs.key }}
+      - name: mosquitto
+        id: mosquitto
+        timeout-minutes: 5
+        env:
+          HIT: ${{ steps.debs.outputs.cache-hit }}
+        run: |
+          if [ "$HIT" != true ]; then
+            mkdir -p ~/mosquitto-debs/partial
+            sudo apt-get update
+            sudo apt-get install -y --download-only -o Dir::Cache::archives="$HOME/mosquitto-debs" mosquitto
+          fi
+          sudo dpkg -i ~/mosquitto-debs/*.deb
+      - name: the mosquitto packages, saved
+        if: steps.debs.outputs.cache-hit != 'true' && steps.mosquitto.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/mosquitto-debs/*.deb
+          key: ${{ steps.image.outputs.key }}
       - name: the translator against a broker
         run: uv run --frozen pytest -q -m broker
