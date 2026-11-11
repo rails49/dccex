@@ -34,6 +34,10 @@ services:
   # it is reached on, the domain it is reached at, and the broker's prefix on
   # that domain.
   web:
+    # Nothing published: on a box the page is reached through the door alone,
+    # on HTTPS and on 8082 (rails49/.github#69 d.3). `!reset` empties the list
+    # `compose.yaml` publishes, which a merge would otherwise keep.
+    ports: !reset []
     networks:
       # The project's own, which is where `compose.yaml` puts it and where it
       # would be with nothing said here. Named because naming a second one
@@ -59,19 +63,17 @@ services:
     # **A page from another origin is refused by the door**, because mosquitto
     # reads no `Origin` and there is no app of ours in front of it — which is
     # where this differs from the face, whose refusal is its own (ADR-0004
-    # d.4). The `-foreign` router claims the same prefix at a higher priority
-    # with the origins that are ours ruled out, and sends what it catches to a
-    # middleware that allows one source address nothing can arrive from. The
-    # `$$` is one `$` after compose has read the file: it is the end of the
-    # regexp, so a host that only begins with ours is foreign.
+    # d.4). The check is the installation's `same-origin@docker`, ahead of the
+    # strip: a handshake is admitted when it carries no `Origin`, or when the
+    # host and port of its `Origin` equal its `Host`, and gets 403 otherwise
+    # (rails49/.github#69 d.1, d.2).
     #
     # **The UI port.** Each router has a `-port` twin on the `dccex` entry
     # point, 8082, with no TLS and no `Host()`: the entry point says which UI
     # it is (installation#53 d.2, d.4). The twin has its original's service,
-    # middlewares and priority. On a box with no certificate there is no
-    # `websecure`, so Traefik drops the routers that name it and serves the
-    # twins. On 8082 the broker admits an `http://` origin on 8082 whose host
-    # is a `.local` name or an RFC 1918 address (d.5).
+    # middlewares and priority, so the same check holds on 8082. On a box with
+    # no certificate there is no `websecure`, so Traefik drops the routers that
+    # name it and serves the twins.
     labels:
       # The one label a box moves: the host rule carries the box's own domain
       # rather than the clean clone's `localhost`. Every other label of the
@@ -88,26 +90,14 @@ services:
       - traefik.http.routers.dccex-mqtt.priority=2
       - traefik.http.routers.dccex-mqtt.entrypoints=websecure
       - traefik.http.routers.dccex-mqtt.service=tc49-mqtt@docker
-      - traefik.http.routers.dccex-mqtt.middlewares=dccex-mqtt-strip
+      - traefik.http.routers.dccex-mqtt.middlewares=same-origin@docker,dccex-mqtt-strip
       - traefik.http.routers.dccex-mqtt.tls.certresolver=le
       - traefik.http.middlewares.dccex-mqtt-strip.stripprefix.prefixes=/mqtt
       - traefik.http.routers.dccex-mqtt-port.rule=PathPrefix(`/mqtt`)
       - traefik.http.routers.dccex-mqtt-port.priority=2
       - traefik.http.routers.dccex-mqtt-port.entrypoints=dccex
       - traefik.http.routers.dccex-mqtt-port.service=tc49-mqtt@docker
-      - traefik.http.routers.dccex-mqtt-port.middlewares=dccex-mqtt-strip
-      - traefik.http.routers.dccex-mqtt-foreign.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`) && !HeaderRegexp(`Origin`, `^https://dccex\.${BOX_DOMAIN}$$`)
-      - traefik.http.routers.dccex-mqtt-foreign.priority=3
-      - traefik.http.routers.dccex-mqtt-foreign.entrypoints=websecure
-      - traefik.http.routers.dccex-mqtt-foreign.service=tc49-mqtt@docker
-      - traefik.http.routers.dccex-mqtt-foreign.middlewares=dccex-mqtt-refused
-      - traefik.http.routers.dccex-mqtt-foreign.tls.certresolver=le
-      - traefik.http.middlewares.dccex-mqtt-refused.ipallowlist.sourcerange=255.255.255.255/32
-      - traefik.http.routers.dccex-mqtt-foreign-port.rule=PathPrefix(`/mqtt`) && !HeaderRegexp(`Origin`, `^http://([a-z0-9-]+\.local|10\.[0-9]+\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+|192\.168\.[0-9]+\.[0-9]+):8082$$`)
-      - traefik.http.routers.dccex-mqtt-foreign-port.priority=3
-      - traefik.http.routers.dccex-mqtt-foreign-port.entrypoints=dccex
-      - traefik.http.routers.dccex-mqtt-foreign-port.service=tc49-mqtt@docker
-      - traefik.http.routers.dccex-mqtt-foreign-port.middlewares=dccex-mqtt-refused
+      - traefik.http.routers.dccex-mqtt-port.middlewares=same-origin@docker,dccex-mqtt-strip
 
   # The mirror: the app that holds the command station's device and repeats it
   # on 2560. This is the service `control` deleted with its own copy of the

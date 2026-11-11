@@ -20,9 +20,9 @@ missing box declaration stops the stack by name, that the mirror starts
 without the station, that 2560 is on the LAN and the
 face's port is on nothing, that the door is handed the page and the face on
 one host with the face's prefix stripped and 2560 routed by nobody, that the
-band's broker is on that host too and a page from another origin is refused
-there, that neither image's bases can move underneath a
-name that never moves, that the mirror is given a flash to be waited out and
+band's broker is on that host too behind the installation's origin check,
+that neither image's bases can move underneath a name that never moves,
+that the mirror is given a flash to be waited out and
 the cutover's stop is bounded by something else, that the repository a box
 pulls from is written down rather than taken from whoever ran the deploy, and
 that the deploy names the image after the commit and writes down what it
@@ -103,6 +103,10 @@ BUS_TS = ROOT / "ui" / "src" / "bus.ts"
 #: (ADR-0017 d.5), so this name is what the band's power button depends on.
 BROKER = "tc49-mqtt@docker"
 
+#: The origin check the installation declares on the door, for every UI's
+#: websocket and write paths (rails49/.github#69 d.2).
+SAME_ORIGIN = "same-origin@docker"
+
 #: The one host both routers answer for, as the overlay writes it.
 HOST = "Host(`dccex.${BOX_DOMAIN}`)"
 
@@ -114,25 +118,15 @@ UI_PORT_ENTRY = "dccex"
 TWINS = {
     "dccex-ui": "dccex-ui-port",
     "dccex-mqtt": "dccex-mqtt-port",
-    "dccex-mqtt-foreign": "dccex-mqtt-foreign-port",
     "dccex-usb": "dccex-usb-port",
 }
 
-#: The twins' rules: the original's with `Host()` taken out. The foreign
-#: twin's is its own test's.
+#: The twins' rules: the original's with `Host()` taken out.
 TWIN_RULES = {
     "dccex-ui-port": "PathPrefix(`/`)",
     "dccex-mqtt-port": f"PathPrefix(`{MQTT_PREFIX}`)",
     "dccex-usb-port": f"PathPrefix(`{PREFIX}`)",
 }
-
-#: The origins the broker admits on the UI port, as compose spells it
-#: (installation#53 d.5).
-LAN_ORIGIN = (
-    r"^http://([a-z0-9-]+\.local|10\.[0-9]+\.[0-9]+\.[0-9]+"
-    r"|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+"
-    r"|192\.168\.[0-9]+\.[0-9]+):8082$$"
-)
 
 #: What a box has run, one line per deploy (ADR-0005 d.5).
 RECORD = "/var/lib/rails49/deploys/dccex"
@@ -578,7 +572,7 @@ def test_the_broker_is_routed_on_the_pages_host_under_its_own_prefix() -> None:
         labels(BASE, "web")["traefik.http.routers.dccex-ui.priority"]
     ), "the page answers the broker's prefix"
     assert page["traefik.http.routers.dccex-mqtt.service"] == BROKER
-    middleware = page["traefik.http.routers.dccex-mqtt.middlewares"]
+    middleware = page["traefik.http.routers.dccex-mqtt.middlewares"].split(",")[-1]
     assert page[f"traefik.http.middlewares.{middleware}.stripprefix.prefixes"] == (
         MQTT_PREFIX
     )
@@ -598,31 +592,19 @@ def test_this_repository_declares_no_service_for_the_broker() -> None:
     assert declared == set(), f"the page declares {declared}"
 
 
-def test_a_foreign_origin_at_the_broker_is_refused_by_the_door() -> None:
+def test_the_broker_is_behind_the_installations_origin_check() -> None:
     """mosquitto reads no `Origin` and there is no app of ours in front of it,
-    so the refusal is the door's (ADR-0017 d.5).
-
-    That is where the broker's route differs from the face's, whose refusal is
-    its own. The `-foreign` router claims the same prefix above the broker's
-    own, with the one origin that is ours ruled out and anchored at both ends —
-    a host that merely begins with ours is somebody else's — and what it
-    catches goes to a middleware that allows one source address nothing can
-    arrive from.
+    so the check is the door's (ADR-0017 d.5). It is the installation's
+    `same-origin@docker`, on HTTPS and on the UI port, ahead of the strip
+    (rails49/.github#69 d.2, #383). No router of this file's refuses on its
+    own.
     """
+    door = routers_on_a_box()
+    for router in ("dccex-mqtt", "dccex-mqtt-port"):
+        chain = door[router]["middlewares"].split(",")
+        assert chain == [SAME_ORIGIN, "dccex-mqtt-strip"], router
     page = labels(BOX, "web")
-    rule = page["traefik.http.routers.dccex-mqtt-foreign.rule"]
-    assert rule == (
-        f"{HOST} && PathPrefix(`{MQTT_PREFIX}`) "
-        f"&& !HeaderRegexp(`Origin`, `^https://dccex\\.${{BOX_DOMAIN}}$$`)"
-    )
-    assert int(page["traefik.http.routers.dccex-mqtt-foreign.priority"]) > int(
-        page["traefik.http.routers.dccex-mqtt.priority"]
-    ), "the broker answers a foreign origin before the refusal is reached"
-    assert page["traefik.http.routers.dccex-mqtt-foreign.service"] == BROKER
-    middleware = page["traefik.http.routers.dccex-mqtt-foreign.middlewares"]
-    assert page[f"traefik.http.middlewares.{middleware}.ipallowlist.sourcerange"] == (
-        "255.255.255.255/32"
-    ), "the refusal lets somebody through"
+    assert not [k for k in page if "foreign" in k or "ipallowlist" in k]
 
 
 def routers_on_a_box() -> dict[str, dict[str, str]]:
@@ -651,18 +633,6 @@ def test_each_router_has_a_twin_on_the_ui_port() -> None:
             assert now.get(key) == was.get(key), f"{twin}.{key}"
         if twin in TWIN_RULES:
             assert now["rule"] == TWIN_RULES[twin], twin
-
-
-def test_a_foreign_origin_at_the_broker_is_refused_on_the_ui_port() -> None:
-    """The broker's refusal on 8082 admits an `http://` origin on 8082 whose
-    host is a `.local` name or an RFC 1918 address, and nothing else
-    (installation#53 d.5). A request with no `Origin` is refused, as on 443."""
-    door = routers_on_a_box()
-    foreign = door["dccex-mqtt-foreign-port"]
-    assert foreign["rule"] == (
-        f"PathPrefix(`{MQTT_PREFIX}`) && !HeaderRegexp(`Origin`, `{LAN_ORIGIN}`)"
-    )
-    assert int(foreign["priority"]) > int(door["dccex-mqtt-port"]["priority"])
 
 
 def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:

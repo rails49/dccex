@@ -2,7 +2,8 @@
 
 The UI for the command station: one page, served under the box's door at
 `https://dccex.$BOX_DOMAIN`, and on the UI port at
-`http://<hostname>.local:8082` and `http://<address>:8082`, about the
+`http://<hostname>.local:8082`, `http://<address>:8082`,
+`http://$BOX_DOMAIN:8082` and `http://dccex.$BOX_DOMAIN:8082`, about the
 **station** at the end of the cable and about nothing else.
 
 **The page is here, the monitor is a full client of the mirror, the page says
@@ -54,8 +55,9 @@ wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad'
                                                power, read and asked for
 ```
 
-On the UI port the same paths are at `http://<hostname>.local:8082` and
-`http://<address>:8082`, with `ws://` for the two streams. A box with no
+On the UI port the same paths are at `http://<hostname>.local:8082`,
+`http://<address>:8082`, `http://$BOX_DOMAIN:8082` and
+`http://dccex.$BOX_DOMAIN:8082`, with `ws://` for the two streams. A box with no
 certificate has the UI port alone (installation#53).
 
 Not the store directly. The organisation's ADR-0002 permits all three and this

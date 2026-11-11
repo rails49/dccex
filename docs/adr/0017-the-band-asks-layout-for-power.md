@@ -55,6 +55,10 @@ for the railroad name the band draws, per the organisation's ADR-0014
 (rails49/.github#30). d.5 covers it: the same connection, the same `/mqtt` and
 the same origin rule.
 
+**Amended, #383.** The door's check on `/mqtt` is the installation's
+`same-origin@docker`, on HTTPS and on the UI port, as it is on `control`'s
+route (rails49/.github#69). This repository's refusal routers are gone.
+
 ## Consequences
 
 - The page is a client of the bus and of the mirror's face. GLOSSARY.md's
