@@ -12,9 +12,11 @@ dependencies = [
 # moves with `uv lock --upgrade-package tc49` (d.3).
 [tool.uv.sources]
 tc49 = { git = "https://github.com/rails49/control", branch = "main" }
+# The broker and port helpers the tests share with the other repositories.
+rails49-testing = { git = "https://github.com/rails49/testing", branch = "main" }
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff", "black", "pyright"]
+dev = ["pytest>=8", "ruff", "black", "pyright", "rails49-testing"]
 
 [build-system]
 requires = ["hatchling"]
