@@ -1108,8 +1108,8 @@ on the box
 and CI publishes it to GHCR for an installation release
 (`.github/workflows/images.yml`). It is named by the commit it was built from
 like everything else here, as `ghcr.io/rails49/dccex-ui:<commit>`; it is a
-second image rather than the mirror's, which shares
-a lock file and an esptool pin with the translator and neither with a page.
+second image rather than the mirror's, which shares a lock file and an esptool
+pin with the translator and neither with a page.
 
 **Both bases are pinned by digest, and the tag is kept in front of it.** A tag
 is republished, so `node:22-alpine` and `nginx:alpine` are whatever was pushed

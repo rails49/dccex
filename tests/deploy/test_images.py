@@ -76,8 +76,8 @@ def images() -> dict[str, str]:
 
 
 def test_the_images_are_built_when_a_release_calls_for_them_and_never_else() -> None:
-    """No pull request, merge or tag builds or pushes an image (#71 d.1). The
-    release names the commit (d.8)."""
+    """No pull request or merge builds or pushes an image (#71 d.1). The
+    installation release names the commit (d.8)."""
     assert keys(under("on")) == ["workflow_call"]
     assert (
         within(under("on", "workflow_call", "inputs", "commit"), "required") == "true"
@@ -92,8 +92,8 @@ def test_each_image_is_built_on_each_architectures_own_runner() -> None:
 
 
 def built_by_compose() -> dict[str, str]:
-    """Each image compose names, without its tag, and the Dockerfile it builds
-    it from."""
+    """Each image compose names, without its commit, and the Dockerfile it
+    builds it from."""
     built: dict[str, str] = {}
     for block in (*services(BASE).values(), *services(BOX).values()):
         image = re.search(
@@ -114,7 +114,7 @@ def test_each_image_is_published_under_the_name_compose_builds_it_under() -> Non
 
 
 def test_the_outputs_are_both_images_digests() -> None:
-    """What the release pins (#71 d.10)."""
+    """What the installation release pins (#71 d.10)."""
     outputs = under("on", "workflow_call", "outputs")
     assert keys(outputs) == list(images())
     for name in images():
@@ -122,7 +122,7 @@ def test_the_outputs_are_both_images_digests() -> None:
         assert within(outputs, name, "value") == joined
 
 
-def test_each_build_carries_the_commit_as_its_revision() -> None:
+def test_each_build_is_given_the_commit_for_its_revision() -> None:
     """Both Dockerfiles turn `DCCEX_COMMIT` into
     `org.opencontainers.image.revision` (ADR-0005 d.4)."""
     steps = items(under("jobs", "build", "steps"))

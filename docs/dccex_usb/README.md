@@ -775,12 +775,12 @@ differs between two deploys of this repository, and writing it there is what
 makes `restart: unless-stopped` bring back what was rolled back *to*. **One line
 and not two**: the commit names the mirror's image and the page's both —
 `ghcr.io/rails49/dccex:<commit>` and `ghcr.io/rails49/dccex-ui:<commit>` — and
-ADR-0005 d.7 is amended for it,
-because when d.7 was written the page was not here to be rolled back with the
-mirror. Nothing about a rollback moves `main`: the box is behind the repository
-until somebody commits the fix and deploys it, and the record above is where
-that is visible. One step back is what is kept; older images are the box's to
-prune, and what pruning them costs is a second step.
+ADR-0005 d.7 is amended for it, because when d.7 was written the page was not
+here to be rolled back with the mirror. Nothing about a rollback moves `main`:
+the box is behind the repository until somebody commits the fix and deploys it,
+and the record above is where that is visible. One step back is what is kept;
+older images are the box's to prune, and what pruning them costs is a second
+step.
 
 **A deploy that fails is a deploy that did not happen.** `.env` has to say the
 new commit before the `up` — `--env-file .env` is how compose is told which
