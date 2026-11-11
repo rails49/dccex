@@ -20,9 +20,9 @@ TC49 = frozenset(
     {"tc49.lib.bus", "tc49.lib.mqtt", "tc49.lib.clock", "tc49.lib.inventory"}
 )
 
-TESTED_WITH = frozenset({"pytest", "playwright", "dccex_usb"})
-"""What the tests import beside the translator: the runner, the browser and
-the mirror."""
+TESTED_WITH = frozenset({"pytest", "playwright", "dccex_usb", "rails49_testing"})
+"""What the tests import beside the translator: the runner, the browser, the
+mirror, and the broker and port helpers."""
 
 
 def imported(module: Path) -> set[str]:
