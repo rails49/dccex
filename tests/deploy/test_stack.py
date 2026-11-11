@@ -59,6 +59,12 @@ SOURCE = "org.opencontainers.image.source=https://github.com/rails49/dccex"
 #: one build that tag pointed at when the pin was made.
 PINNED = re.compile(r"FROM (\S+:\S+)@sha256:[0-9a-f]{64}(?: AS \w+)?")
 
+#: Where each image is published, and what compose names a local build
+#: (rails49/.github#71 d.2). The mirror's and the translator's, then the
+#: page's.
+IMAGE = "ghcr.io/rails49/dccex"
+UI_IMAGE = "ghcr.io/rails49/dccex-ui"
+
 DEPLOY = ROOT / "scripts" / "deploy.sh"
 
 #: The page the evening the port changes hands is followed from. Its check 6
@@ -348,7 +354,7 @@ def test_the_translator_runs_on_a_box_alone() -> None:
 def test_the_translator_is_the_mirrors_image_run_as_the_other_package() -> None:
     """One image of one commit, so d.7's rollback moves both (ADR-0005)."""
     block = services(BOX)["translator"]
-    assert "image: dccex:${DCCEX_COMMIT:-dev}" in block
+    assert f"image: {IMAGE}:${{DCCEX_COMMIT:-dev}}" in block
     assert 'entrypoint: ["python", "-m", "dccex"]' in block
 
 
@@ -648,9 +654,10 @@ def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:
 
 def test_both_images_are_named_by_the_commit_they_were_built_from() -> None:
     """ADR-0005 d.1, and one variable for the two: the page and the mirror are
-    two images of one commit, so going back is the one line d.7 asks for."""
-    assert "image: dccex:${DCCEX_COMMIT:-dev}" in services(BOX)["mirror"]
-    assert "image: dccex-ui:${DCCEX_COMMIT:-dev}" in services(BASE)["web"]
+    two images of one commit, so going back is the one line d.7 asks for.
+    The names are the ones published on GHCR (rails49/.github#71 d.2)."""
+    assert f"image: {IMAGE}:${{DCCEX_COMMIT:-dev}}" in services(BOX)["mirror"]
+    assert f"image: {UI_IMAGE}:${{DCCEX_COMMIT:-dev}}" in services(BASE)["web"]
 
 
 def test_the_image_carries_the_commit_as_well_as_being_named_by_it() -> None:

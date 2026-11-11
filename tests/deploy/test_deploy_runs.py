@@ -47,7 +47,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from tests.deploy.test_stack import DECLARATION, DEPLOY, ORIGIN, RECORD
+from tests.deploy.test_stack import DECLARATION, DEPLOY, IMAGE, ORIGIN, RECORD
 
 #: The commit a box is on before the deploy under test — a full-length one,
 #: because that is what `git rev-parse HEAD` gives the script and what the
@@ -334,7 +334,7 @@ def test_a_failed_up_exits_non_zero_and_says_what_it_put_back(tmp_path: Path) ->
     )
     assert box.ran.returncode != 0
     assert DAEMON in box.ran.stderr
-    assert f"Put .env back to dccex:{RUNNING}" in box.ran.stderr
+    assert f"Put .env back to {IMAGE}:{RUNNING}" in box.ran.stderr
     assert box.commit not in box.ran.stdout
 
 
@@ -403,8 +403,12 @@ def test_a_deploy_that_comes_up_writes_the_commit_and_appends_one_line(
     assert box.ran.returncode == 0
     assert box.env == f"DCCEX_COMMIT={box.commit}\n"
     assert len(box.lines) == 1
-    assert box.lines[0].split()[1:] == [f"dccex:{RUNNING}", "->", f"dccex:{box.commit}"]
-    assert f"deployed dccex:{box.commit}" in box.ran.stdout
+    assert box.lines[0].split()[1:] == [
+        f"{IMAGE}:{RUNNING}",
+        "->",
+        f"{IMAGE}:{box.commit}",
+    ]
+    assert f"deployed {IMAGE}:{box.commit}" in box.ran.stdout
     assert box.lines[0] in box.ran.stdout, "the tail of the record is not printed"
 
 
@@ -415,7 +419,7 @@ def test_a_first_deploy_that_comes_up_records_that_it_replaced_nothing(
     box = deployed(tmp_path, env=None, comes_up=True)
     assert box.ran.returncode == 0
     assert box.env == f"DCCEX_COMMIT={box.commit}\n"
-    assert box.lines[0].split()[1:] == ["none", "->", f"dccex:{box.commit}"]
+    assert box.lines[0].split()[1:] == ["none", "->", f"{IMAGE}:{box.commit}"]
 
 
 def test_a_clone_with_no_origin_is_given_one_and_the_deploy_goes_on(

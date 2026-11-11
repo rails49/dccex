@@ -39,7 +39,7 @@ services:
     # builds under, so `up --build` works with nothing set; a box is given one
     # by the deploy (`scripts/deploy.sh`), and it names this image and the
     # mirror's both.
-    image: dccex-ui:${DCCEX_COMMIT:-dev}
+    image: ghcr.io/rails49/dccex-ui:${DCCEX_COMMIT:-dev}
     restart: unless-stopped
     # How the page is reached before there is a door in front of it — a clean
     # clone, or a development machine. A box reaches it by the route below.

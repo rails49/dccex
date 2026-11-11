@@ -697,8 +697,8 @@ app has never had and the reason it is trustworthy.
 
 ## Deploying it, and going back
 
-The mirror runs on the box as a container of `dccex:<commit>`, the **image**
-built from this repository's source at one commit and named by it
+The mirror runs on the box as a container of `ghcr.io/rails49/dccex:<commit>`,
+the **image** built from this repository's source at one commit and named by it
 ([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
 The name never moves: nothing runs `latest` and nothing runs `main`, because a
 name that means a different commit next week is a name nothing can be gone
@@ -707,6 +707,11 @@ too, so `docker inspect` still answers the question for one somebody renamed.
 **A tag is not what this is called** — a tag names a firmware release, which
 is the thing that gets written onto the station, and the two sentences are one
 `docker` command apart on the same box ([GLOSSARY.md](../../GLOSSARY.md)).
+
+**The name is the one the image is published under.** When an installation
+release is made, `.github/workflows/images.yml` builds both images at the
+release's commit for amd64 and arm64 and pushes them to GHCR under that name
+(rails49/.github#71). A deploy still builds on the box, under the same name.
 
 **An image built with no commit claims none.** That is what `docker compose up
 --build` on a clean clone makes, and the label it writes is empty: `dev` is what
@@ -739,8 +744,8 @@ abbreviated here to fit the page.
 
 ```
 $ tail -2 /var/lib/rails49/deploys/dccex
-2026-09-22T18:40:55Z  none            ->  dccex:8f2c1d4…
-2026-09-23T09:14:02Z  dccex:8f2c1d4…  ->  dccex:acb08f5…
+2026-09-22T18:40:55Z  none                            ->  ghcr.io/rails49/dccex:8f2c1d4…
+2026-09-23T09:14:02Z  ghcr.io/rails49/dccex:8f2c1d4…  ->  ghcr.io/rails49/dccex:acb08f5…
 ```
 
 **Going back is one command naming the commit on the line before.** A deploy
@@ -756,24 +761,26 @@ $ docker compose -f compose.yaml -f compose.box.yaml \
 
 `--no-build` is there for the day the old image has been pruned after all.
 Without it, compose would build the checkout the clone is on and name it after
-the older commit; with it, the command fails and says the image is missing.
+the older commit. With it, compose pulls the image from GHCR, which has it if
+the commit was in an installation release, and fails if not.
 
 The images are divided by toolchain, never by app. The mirror and the
 translator are one image run twice: they share a lock file and the esptool
 pin, and a second image of them would be a second answer to which esptool
 this repository was tested at. The page is built by node and served by nginx,
-so `dccex-ui:<commit>` is its own (`deploy/ui.Dockerfile`).
+so `ghcr.io/rails49/dccex-ui:<commit>` is its own (`deploy/ui.Dockerfile`).
 
 The stack's `.env` holds that one line, because the commit is the one thing that
 differs between two deploys of this repository, and writing it there is what
 makes `restart: unless-stopped` bring back what was rolled back *to*. **One line
 and not two**: the commit names the mirror's image and the page's both —
-`dccex:<commit>` and `dccex-ui:<commit>` — and ADR-0005 d.7 is amended for it,
-because when d.7 was written the page was not here to be rolled back with the
-mirror. Nothing about a rollback moves `main`: the box is behind the repository
-until somebody commits the fix and deploys it, and the record above is where
-that is visible. One step back is what is kept; older images are the box's to
-prune, and what pruning them costs is a second step.
+`ghcr.io/rails49/dccex:<commit>` and `ghcr.io/rails49/dccex-ui:<commit>` — and
+ADR-0005 d.7 is amended for it, because when d.7 was written the page was not
+here to be rolled back with the mirror. Nothing about a rollback moves `main`:
+the box is behind the repository until somebody commits the fix and deploys it,
+and the record above is where that is visible. One step back is what is kept;
+older images are the box's to prune, and what pruning them costs is a second
+step.
 
 **A deploy that fails is a deploy that did not happen.** `.env` has to say the
 new commit before the `up` — `--env-file .env` is how compose is told which

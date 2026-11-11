@@ -204,8 +204,9 @@ _Avoid_: card, widget, panel, badge, stat, metric, gauge
 
 **Image**:
 What the apps here run as on the box, built from this repository's source at
-one commit and named by it: `dccex:<commit>` for the mirror and the
-translator, `dccex-ui:<commit>` for the page
+one commit and named by it: `ghcr.io/rails49/dccex:<commit>` for the mirror
+and the translator, `ghcr.io/rails49/dccex-ui:<commit>` for the page. A deploy
+builds it on the box; CI publishes it to GHCR for an installation release
 ([docs/dccex_usb/README.md](docs/dccex_usb/README.md#deploying-it-and-going-back)).
 _Avoid_: version, build (the station's), release (firmware), tag (names a
 release), the container (one running of an image), latest

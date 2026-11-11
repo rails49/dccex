@@ -8,8 +8,8 @@
 # (ADR-0005 d.2). The page is the exception and says why in
 # `ui.Dockerfile`: node and nginx share neither.
 #
-# The name is the commit it was built from — `dccex:<commit>`, and the name
-# never moves (ADR-0005 d.1). The commit is on the image as
+# The name is the commit it was built from — `ghcr.io/rails49/dccex:<commit>`,
+# and the name never moves (ADR-0005 d.1). The commit is on the image as
 # `org.opencontainers.image.revision` as well, so `docker inspect` still
 # answers the question for one somebody renamed (d.4). **A tag is not what
 # this is called**: a tag names a firmware release, which is the thing that
