@@ -185,6 +185,10 @@ The first commit of #180 is the copy untouched. The second:
 `tests/dccex/test_layout_to_station.py` and
 `tests/dccex/test_what_it_imports.py` are this repository's.
 
+#388 deleted `tests/ports.py` and `Broker`, the `broker` fixture, `listening`,
+`until` and `no_broker` from `tests/brokers.py`. They come from the
+`rails49-testing` dev dependency.
+
 `control` deletes its copy in control#587. From then on a defect in the
 translator is fixed here (ADR-0003).
 
