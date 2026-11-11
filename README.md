@@ -29,12 +29,12 @@ top of them.
   [SOURCE.md](src/SOURCE.md)).
 - **The UI**, served under the box's door at `https://dccex.$BOX_DOMAIN`, and
   on the UI port at `http://<hostname>.local:8082` and `http://<address>:8082`
-  (installation#53). It
-  lists the firmware releases, flashes one, and shows the serial conversation
-  with a box to type into. **The page is here and the work pane is full** (#3,
-  #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
-  **view** in — the **tile**s and the **monitor** under them, the releases,
-  the railroad's **script**, or the **journal** (#169, #185, #266) — built by
+  (installation#53). It lists the firmware releases, flashes one, and shows
+  the serial conversation with a box to type into. **The page is here and the
+  work pane is full** (#3, #5–#9): `ui/` holds the band, the rail and a work
+  pane the rail picks a **view** in — the **tile**s and the **monitor** under
+  them, the releases, the railroad's **script**, or the **journal** (#169,
+  #185, #266) — built by
   node inside its own image and served by nginx out of it, drawing in the look
   rules from its first commit. The whole of what is on it is written down
   ([the page](docs/ui/README.md)). The mirror's face is what it talks to, on
