@@ -64,9 +64,7 @@ services:
     # reads no `Origin` and there is no app of ours in front of it — which is
     # where this differs from the face, whose refusal is its own (ADR-0004
     # d.4). The check is the installation's `same-origin@docker`, ahead of the
-    # strip: a handshake is admitted when it carries no `Origin`, or when the
-    # host and port of its `Origin` equal its `Host`, and gets 403 otherwise
-    # (rails49/.github#69 d.1, d.2).
+    # strip (rails49/.github#69 d.1, d.2).
     #
     # **The UI port.** Each router has a `-port` twin on the `dccex` entry
     # point, 8082, with no TLS and no `Host()`: the entry point says which UI
@@ -207,7 +205,7 @@ services:
     #
     # **No refusal router.** A page from another origin is refused by the face
     # itself, with a status and a sentence (`face.py`, `elsewhere`), which is
-    # how `control`'s store does it; the door gets no `-foreign` twin of this
+    # how `control`'s store does it; the door puts no check of its own on this
     # route (d.4). Nothing here rewrites `Host`, because that refusal compares
     # the page's origin to the host the door passes on.
     labels:

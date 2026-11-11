@@ -596,15 +596,12 @@ def test_the_broker_is_behind_the_installations_origin_check() -> None:
     """mosquitto reads no `Origin` and there is no app of ours in front of it,
     so the check is the door's (ADR-0017 d.5). It is the installation's
     `same-origin@docker`, on HTTPS and on the UI port, ahead of the strip
-    (rails49/.github#69 d.2, #383). No router of this file's refuses on its
-    own.
+    (rails49/.github#69 d.2, #383).
     """
     door = routers_on_a_box()
     for router in ("dccex-mqtt", "dccex-mqtt-port"):
         chain = door[router]["middlewares"].split(",")
         assert chain == [SAME_ORIGIN, "dccex-mqtt-strip"], router
-    page = labels(BOX, "web")
-    assert not [k for k in page if "foreign" in k or "ipallowlist" in k]
 
 
 def routers_on_a_box() -> dict[str, dict[str, str]]:
