@@ -1,8 +1,9 @@
 # The page
 
-The UI for the command station: one page, served at `dccex.$BOX_DOMAIN` as a
-label under the box's door, about the **station** at the end of the cable and
-about nothing else.
+The UI for the command station: one page, served under the box's door at
+`https://dccex.$BOX_DOMAIN`, and on the UI port at
+`http://<hostname>.local:8082` and `http://<address>:8082`, about the
+**station** at the end of the cable and about nothing else.
 
 **The page is here, the monitor is a full client of the mirror, the page says
 what the station is doing, it lists what the station could be written with, and
@@ -52,6 +53,10 @@ wss://dccex.$BOX_DOMAIN/dccex-usb/stream       the station's conversation, both 
 wss://dccex.$BOX_DOMAIN/mqtt                   `control`'s broker: the railroad's
                                                power, read and asked for
 ```
+
+On the UI port the same paths are at `http://<hostname>.local:8082` and
+`http://<address>:8082`, with `ws://` for the two streams. A box with no
+certificate has the UI port alone (installation#53).
 
 Not the store directly. The organisation's ADR-0002 permits all three and this
 page uses two of them. The face is the one its subject wants, because that

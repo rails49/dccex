@@ -27,7 +27,9 @@ top of them.
   ([the page](docs/dccex/README.md),
   [ADR-0014](docs/adr/0014-the-translator-is-on-the-bus-through-controls-package.md),
   [SOURCE.md](src/SOURCE.md)).
-- **The UI**, served at `dccex.$BOX_DOMAIN` as a label under the box's door. It
+- **The UI**, served under the box's door at `https://dccex.$BOX_DOMAIN`, and
+  on the UI port at `http://<hostname>.local:8082` and `http://<address>:8082`
+  (installation#53). It
   lists the firmware releases, flashes one, and shows the serial conversation
   with a box to type into. **The page is here and the work pane is full** (#3,
   #5–#9): `ui/` holds the band, the rail and a work pane the rail picks a
