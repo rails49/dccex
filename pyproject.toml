@@ -36,7 +36,7 @@ testpaths = ["tests"]
 # needs it is the modules of the page written as JavaScript so their real
 # functions can be run rather than read (`tests/ui/test_decoder.py`).
 markers = [
-  "docker: needs a Docker daemon",
+  "docker: needs Docker",
   "node: needs a node on the machine",
   "broker: needs a mosquitto on the machine",
 ]

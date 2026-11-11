@@ -5,9 +5,8 @@ Set to a name is a box with a certificate. Set and empty is a box with no
 certificate. Unset is a box started without its declaration, and is refused
 (installation#53 d.1).
 
-`config` needs the docker CLI and no daemon. It carries the `docker` marker so
-that it runs in the workflow's docker job, where the CLI is promised; the gate
-does not collect it.
+`config` needs the docker CLI and no daemon. It carries the `docker` marker,
+so it runs in the workflow's docker job and the gate does not collect it.
 """
 
 import os
@@ -17,17 +16,9 @@ import subprocess
 import pytest
 
 from tests.ui.paths import ROOT
+from tests.ui.test_compose_serves import environment
 
 pytestmark = pytest.mark.docker
-
-#: What is dropped from the environment, so a shell's own values do not decide
-#: what compose reads or substitutes.
-DROPPED = (
-    "BOX_DOMAIN",
-    "COMPOSE_PROJECT_NAME",
-    "COMPOSE_FILE",
-    "COMPOSE_ENV_FILE",
-)
 
 
 def config(**set_here: str) -> subprocess.CompletedProcess[str]:
@@ -36,7 +27,6 @@ def config(**set_here: str) -> subprocess.CompletedProcess[str]:
         if os.environ.get("CI"):
             pytest.fail("this job requires docker on the path")
         pytest.skip("no docker on the path")
-    env = {k: v for k, v in os.environ.items() if k not in DROPPED} | set_here
     return subprocess.run(
         [
             "docker",
@@ -51,7 +41,7 @@ def config(**set_here: str) -> subprocess.CompletedProcess[str]:
             "--quiet",
         ],
         cwd=ROOT,
-        env=env,
+        env=environment(**set_here),
         capture_output=True,
         text=True,
         timeout=60,
