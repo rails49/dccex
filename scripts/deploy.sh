@@ -55,6 +55,11 @@ BOX_ENV=/etc/rails49/box.env
 # What this box has run, one line per deploy, newest last (ADR-0005 d.5).
 RECORD=/var/lib/rails49/deploys/dccex
 
+# The mirror's image as the record names it: the name it is published under on
+# GHCR, which compose gives the box's own build too (rails49/.github#71 d.2).
+# The page's is the same commit under `ghcr.io/rails49/dccex-ui`.
+IMAGE=ghcr.io/rails49/dccex
+
 echo "+ ssh $BOX"
 
 # Unquoted, so the names set above are substituted into the script that goes
@@ -152,7 +157,7 @@ if [ -e .env ]; then had=yes; kept=\$(cat .env); else had=no; kept=; fi
 # deploys of this repository (ADR-0005 d.7). It names the mirror's image and the
 # page's both, because the two are two images of one commit.
 was=\$(printf '%s\n' "\$kept" | sed -n 's/^DCCEX_COMMIT=//p' | tail -1)
-if [ -n "\$was" ]; then went=dccex:\$was; else went=none; fi
+if [ -n "\$was" ]; then went=$IMAGE:\$was; else went=none; fi
 
 printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
 
@@ -174,7 +179,7 @@ if ! docker compose -f compose.yaml -f compose.box.yaml \
 then
   if [ "\$had" = yes ]; then printf '%s\n' "\$kept" > .env; else rm -f .env; fi
   echo >&2
-  echo "docker compose up failed, and dccex:\$commit did not come up." >&2
+  echo "docker compose up failed, and $IMAGE:\$commit did not come up." >&2
   if [ "\$had" = yes ]; then
     echo "Put .env back to \$went." >&2
   else
@@ -190,10 +195,10 @@ fi
 
 # Appended and never rewritten, newest last, plain text for somebody who has
 # just been handed the box and has nothing else on it (ADR-0005 d.5).
-printf '%s  %-46s  ->  %s\n' \
-  "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" "\$went" "dccex:\$commit" >> "\$record"
+printf '%s  %-62s  ->  %s\n' \
+  "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" "\$went" "$IMAGE:\$commit" >> "\$record"
 
 echo
-echo "deployed dccex:\$commit"
+echo "deployed $IMAGE:\$commit"
 tail -2 "\$record"
 REMOTE
