@@ -1102,11 +1102,13 @@ which is what the project builds pages with (#1, #58), at the version
 `ui/package.json` names and from `ui/pnpm-lock.yaml`, frozen: the image is the
 versions this repository was checked at, and a lock file that has drifted stops
 the image from building. Nothing outside the image installs anything, so
-building it is also the only step that catches the drift. No image is published
-anywhere: the box clones and builds
-([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)).
-It is named by the commit it was built from like everything else here, as
-`dccex-ui:<commit>`; it is a second image rather than the mirror's, which shares
+building it is also the only step that catches the drift. A deploy builds it
+on the box
+([ADR-0005](../adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
+and CI publishes it to GHCR for an installation release
+(`.github/workflows/images.yml`). It is named by the commit it was built from
+like everything else here, as `ghcr.io/rails49/dccex-ui:<commit>`; it is a
+second image rather than the mirror's, which shares
 a lock file and an esptool pin with the translator and neither with a page.
 
 **Both bases are pinned by digest, and the tag is kept in front of it.** A tag
