@@ -27,9 +27,9 @@ def test_a_line_is_one_json_object_stamped_with_when_it_arrived(
     the order a person reads them in."""
     path = tmp_path / "journal.jsonl"
     journal = Journal(path, at=lambda: AT)
-    journal.wrote({"railroad": "gleis49", "build": "v5.6.4", "link": "up"})
+    journal.wrote({"railroad": "yard", "build": "v5.6.4", "link": "up"})
     assert lines(path) == [
-        {"at": AT, "railroad": "gleis49", "build": "v5.6.4", "link": "up"}
+        {"at": AT, "railroad": "yard", "build": "v5.6.4", "link": "up"}
     ]
     assert list(lines(path)[0]) == ["at", "railroad", "build", "link"]
 

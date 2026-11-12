@@ -2467,7 +2467,7 @@ async def _line_about_a_district_carries_its_mode_and_its_limit(
     read out of it: a `TRACK C INVERT` is a line this app has no fact for.
     """
     bus, _ = bus_and_tap()
-    bus.publish(RAILROAD, {"name": "gleis49"})
+    bus.publish(RAILROAD, {"name": "yard"})
     bus.drain()
     port = Port()
     kept_in, path = journal(tmp_path)
@@ -2482,7 +2482,7 @@ async def _line_about_a_district_carries_its_mode_and_its_limit(
         await asyncio.sleep(QUIET_S)
         assert kept(path)[-1] == {
             "at": AT,
-            "railroad": "gleis49",
+            "railroad": "yard",
             "build": "v5.6.4-rails49.1",
             "said": "<* TRACK C INVERT (fast) *>",
             "district": "C",

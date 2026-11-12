@@ -20,7 +20,7 @@
 # replaced is still on the box, so a rollback names the commit on the line
 # before and skips the build:
 #
-#   ssh ttmetro@gleis49.org
+#   ssh rails49
 #   cd ~/dccex
 #   tail -2 /var/lib/rails49/deploys/dccex
 #   echo DCCEX_COMMIT=<commit> > .env
@@ -34,7 +34,7 @@ set -euo pipefail
 # is overridable, and every one of them has the answer for the box this
 # repository is deployed to: a different box or a different branch is an
 # ordinary thing to want, and neither of them decides whose code runs.
-BOX=${DCCEX_BOX:-ttmetro@gleis49.org}
+BOX=${DCCEX_BOX:-rails49}
 STACK=${DCCEX_STACK:-dccex}
 BRANCH=${DCCEX_BRANCH:-main}
 
