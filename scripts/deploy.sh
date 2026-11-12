@@ -24,7 +24,7 @@
 #   cd ~/dccex
 #   tail -2 /var/lib/rails49/deploys/dccex
 #   echo DCCEX_COMMIT=<commit> > .env
-#   docker compose -f compose.yaml -f compose.box.yaml \
+#   docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
 #     --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
 #     --env-file .env up -d --no-build
 
@@ -186,7 +186,7 @@ printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
 # the \`ps -a\` that shows which, and points to the rollback in this script's
 # header. The containers are not rolled back, which is ADR-0005 d.7 and a
 # person's command.
-if ! docker compose -f compose.yaml -f compose.box.yaml \
+if ! docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
   --env-file "\$box_env" --env-file "\$stack_env" --env-file .env \
   up -d --build --remove-orphans
 then
@@ -200,7 +200,7 @@ then
   fi
   echo "The up may have recreated some containers. To see which:" >&2
   echo "  cd \$stack" >&2
-  echo "  docker compose -f compose.yaml -f compose.box.yaml --env-file \$box_env --env-file \$stack_env --env-file .env ps -a" >&2
+  echo "  docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml --env-file \$box_env --env-file \$stack_env --env-file .env ps -a" >&2
   echo "To go back, see the rollback in the header of scripts/deploy.sh (ADR-0005 d.7)." >&2
   echo "Nothing was appended to \$record." >&2
   exit 1

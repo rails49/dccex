@@ -28,7 +28,8 @@ failure is only diagnosable if the changes go in one at a time.
 | the face | nowhere | the page's container came up with the stack, and #40 made it reachable ([ADR-0004](adr/0004-the-face-reaches-a-browser-through-the-door-and-never-the-lan.md)) |
 
 The stack that runs it is this repository's own — `compose.yaml` with
-`compose.box.yaml` over it, brought up by `scripts/deploy.sh` (#15) — the
+`compose.box.yaml` and `compose.https.yaml` over it, brought up by
+`scripts/deploy.sh` (#15) — the
 image is named by the commit it was built from
 ([ADR-0005](adr/0005-the-image-is-named-by-the-commit-it-was-built-from.md)),
 and what the mirror does once it is up is
@@ -240,7 +241,7 @@ stack's translator first, so that two translators are never on the bus:
 
 ```
 cd ~/dccex
-docker compose -f compose.yaml -f compose.box.yaml \
+docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
   --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
   --env-file .env rm -sf translator
 cd ~/control

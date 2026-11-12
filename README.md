@@ -115,17 +115,18 @@ recovered by hand
 not that one — `deploy/ui.Dockerfile`, node to build and nginx to serve, under
 the same naming rule — because a page shares neither the lock file nor the
 esptool pin the Python apps do, and the box that serves it has Docker and no
-node. `compose.yaml` carries that one server and its door route and nothing
-else, because the one thing it has to do is come up from a clean clone. The
-stack a **box** runs is that file and `compose.box.yaml` together: the mirror
-beside the page, the command station's device mapped in, 2560 published raw,
-the shared network the door dials containers on declared external, `/mqtt` on
-the page's host routed to `control`'s broker for the band's power button, and
+node. `compose.yaml` carries that one server and the service the door dials and
+nothing else, because the one thing it has to do is come up from a clean clone.
+The stack a **box** runs is that file and `compose.box.yaml` together: the
+mirror beside the page, the command station's device mapped in, 2560 published
+raw, the shared network the door dials containers on declared external, `/mqtt`
+on the page's host routed to `control`'s broker for the band's power button, and
 the box's own declaration required rather than defaulted, so a box the
 installation has not been run on stops with a sentence naming
-`/etc/rails49/box.env`. `scripts/deploy.sh` is what brings the two up there —
-one ssh, a pull, a clean tree, the image built under the commit, and a line
-appended to the record.
+`/etc/rails49/box.env`. A box with a name adds `compose.https.yaml`: the routers
+on HTTPS, whose host rule and certificate need that name. `scripts/deploy.sh` is
+what brings the three up there — one ssh, a pull, a clean tree, the image built
+under the commit, and a line appended to the record.
 
 What differs from box to box is in `/etc/rails49/dccex.env`, beside
 `box.env`. It holds no secret, is written by hand, and may be empty:

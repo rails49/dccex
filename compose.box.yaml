@@ -1,7 +1,7 @@
 # The box's half of this project: the mirror, the shared network the door is
 # on, and the box's own declaration required rather than defaulted.
 #
-#   docker compose -f compose.yaml -f compose.box.yaml \
+#   docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
 #     --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
 #     --env-file .env up -d --build
 #
@@ -9,25 +9,26 @@
 # its variables, and each has a default below.
 #
 # which is what `scripts/deploy.sh` runs, and what ADR-0005 d.7's rollback runs
-# without the `--build`.
+# without the `--build`. `compose.https.yaml` holds the routers that need the
+# box's name, and a box with no name leaves it out.
 #
 # **Why there are two files and not one.** `compose.yaml` has one thing it has
 # to do: come up from a clean clone with no box behind it (ADR-0008). That is
-# why the shared network is not declared external there and why `BOX_DOMAIN`
-# has a default — a project that declared a network the installation creates
-# would refuse to start on a laptop, and a laptop is where the page is worked
-# on. A box wants the opposite of both, and wants a device only a box has. So
-# the box's requirements are an overlay rather than a second project: the name
-# is still `compose.yaml`'s `name: dccex`, and every command above resolves to
-# the one project (ADR-0005 d.7's `.env` is that project's).
+# why the shared network is not declared external there — a project that
+# declared a network the installation creates would refuse to start on a
+# laptop, and a laptop is where the page is worked on. A box wants the
+# opposite, and wants a device only a box has. So the box's requirements are
+# an overlay rather than a second project: the name is still `compose.yaml`'s
+# `name: dccex`, and every command above resolves to the one project
+# (ADR-0005 d.7's `.env` is that project's).
 
 # Nothing reads this. It is **the box guard**: where the box's name is
 # required, so that a box started without its declaration is told which file
 # is missing. Compose interpolates the whole file before it runs any
-# subcommand, so this one line covers every rule below and every `logs` and
-# `ps` besides — the shape `control` uses for the same job. It lived inside the
-# page's host rule until #40, which put it at the mercy of whoever next rewrote
-# that label; here it belongs to no label.
+# subcommand, so this one line covers every rule in `compose.https.yaml` and
+# every `logs` and `ps` besides — the shape `control` uses for the same job. It
+# lived inside the page's host rule until #40, which put it at the mercy of
+# whoever next rewrote that label; here it belongs to no label.
 #
 # `?` and not `:?`: an unset `BOX_DOMAIN` is refused, and an empty one is a box
 # with no certificate, served on the UI port alone (installation#53 d.1).
@@ -35,8 +36,7 @@ x-require-box-domain: ${BOX_DOMAIN?the box's declaration is missing or declares 
 
 services:
   # The page, on a box. Everything about it is `compose.yaml`'s but the network
-  # it is reached on, the domain it is reached at, and the broker's prefix on
-  # that domain.
+  # it is reached on, its routes, and the broker's prefix.
   web:
     # Nothing published: on a box the page is reached through the door alone,
     # on HTTPS and on 8082 (rails49/.github#69 d.3). `!reset` empties the list
@@ -52,7 +52,7 @@ services:
       # `traefik.docker.network` on the label has named it since the label was
       # written, and joining it is what this file adds.
       - rails49
-    # The broker's prefix, beside the page's host rule. The band asks `layout`
+    # The broker's prefix, beside the page's route. The band asks `layout`
     # for power on the bus, and a browser served over this door cannot dial the
     # broker's own port — so `/mqtt` on this page's host is routed to
     # `control`'s broker and the prefix is stripped before it sees a request,
@@ -70,30 +70,18 @@ services:
     # d.4). The check is the installation's `same-origin@docker`, ahead of the
     # strip (rails49/.github#69 d.1, d.2).
     #
-    # **The UI port.** Each router has a `-port` twin on the `dccex` entry
-    # point, 8082, with no TLS and no `Host()`: the entry point says which UI
-    # it is (installation#53 d.2, d.4). The twin has its original's service,
-    # middlewares and priority, so the same check holds on 8082. On a box with
-    # no certificate there is no `websecure`, so Traefik drops the routers that
-    # name it and serves the twins.
+    # **The UI port.** Each router on `websecure` in `compose.https.yaml` has a
+    # `-port` twin here on the `dccex` entry point, 8082, with no TLS and no
+    # `Host()`: the entry point says which UI it is (installation#53 d.2,
+    # d.4). The twin has its original's service, middlewares and priority, so
+    # the same check holds on 8082. A box with no certificate has no
+    # `websecure` and leaves `compose.https.yaml` out, so it serves the twins
+    # alone.
     labels:
-      # The one label a box moves: the host rule carries the box's own domain
-      # rather than the clean clone's `localhost`. Every other label of the
-      # page's own is `compose.yaml`'s and is merged in as written. No `?`
-      # anywhere here — the guard at the top of this file has already refused a
-      # box with no declaration. An empty domain leaves `Host(`dccex.`)` on a
-      # router whose entry point does not exist.
-      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN}`)
       - traefik.http.routers.dccex-ui-port.rule=PathPrefix(`/`)
       - traefik.http.routers.dccex-ui-port.priority=1
       - traefik.http.routers.dccex-ui-port.entrypoints=dccex
       - traefik.http.routers.dccex-ui-port.service=dccex-ui
-      - traefik.http.routers.dccex-mqtt.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`)
-      - traefik.http.routers.dccex-mqtt.priority=2
-      - traefik.http.routers.dccex-mqtt.entrypoints=websecure
-      - traefik.http.routers.dccex-mqtt.service=tc49-mqtt@docker
-      - traefik.http.routers.dccex-mqtt.middlewares=same-origin@docker,dccex-mqtt-strip
-      - traefik.http.routers.dccex-mqtt.tls.certresolver=le
       - traefik.http.middlewares.dccex-mqtt-strip.stripprefix.prefixes=/mqtt
       - traefik.http.routers.dccex-mqtt-port.rule=PathPrefix(`/mqtt`)
       - traefik.http.routers.dccex-mqtt-port.priority=2
@@ -195,7 +183,9 @@ services:
     stop_grace_period: 330s
     # The face's route, and nothing over 2560. A browser reaches this
     # container, but only through its face, so the routers here name the
-    # face's port and no other (ADR-0004 d.1, d.5, as amended by #40).
+    # face's port and no other (ADR-0004 d.1, d.5, as amended by #40). The
+    # router on `websecure` is in `compose.https.yaml`; its twin on the UI port
+    # is here.
     #
     # Same host as the page, under `/dccex-usb`, at priority 2: the page's
     # router sits at 1 and keeps everything on the origin the face does not
@@ -216,12 +206,6 @@ services:
       - traefik.enable=true
       - traefik.docker.network=rails49
       - traefik.http.services.dccex-usb.loadbalancer.server.port=8080
-      - traefik.http.routers.dccex-usb.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/dccex-usb`)
-      - traefik.http.routers.dccex-usb.priority=2
-      - traefik.http.routers.dccex-usb.entrypoints=websecure
-      - traefik.http.routers.dccex-usb.service=dccex-usb
-      - traefik.http.routers.dccex-usb.middlewares=dccex-usb-strip
-      - traefik.http.routers.dccex-usb.tls.certresolver=le
       - traefik.http.middlewares.dccex-usb-strip.stripprefix.prefixes=/dccex-usb
       - traefik.http.routers.dccex-usb-port.rule=PathPrefix(`/dccex-usb`)
       - traefik.http.routers.dccex-usb-port.priority=2

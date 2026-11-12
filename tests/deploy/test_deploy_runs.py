@@ -374,7 +374,7 @@ def test_a_failed_up_says_how_to_see_which_containers_were_recreated(
         env=f"DCCEX_COMMIT={RUNNING}\n",
         comes_up=False,
     )
-    files = "-f compose.yaml -f compose.box.yaml"
+    files = "-f compose.yaml -f compose.box.yaml -f compose.https.yaml"
     assert files in box.called
     envs = box.called.split(files, 1)[1].split(" up ", 1)[0].strip()
     assert f"docker compose {files} {envs} ps -a" in box.ran.stderr

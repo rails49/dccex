@@ -1,0 +1,40 @@
+# The routers that need the box's name: each one on `websecure`, with its
+# host rule and its certificate resolver. A box with a name loads this over
+# the other two files; a box with no name has no `websecure` and no `le`, and
+# leaves it out (installation#92).
+#
+#   docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
+#     --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
+#     --env-file .env up -d --build
+#
+# Each router has a `-port` twin in `compose.box.yaml` with the same service,
+# middlewares and priority. The middlewares are declared there, since the twin
+# uses them too. `BOX_DOMAIN` has no default here: `compose.box.yaml`'s guard
+# has already refused a box with no declaration.
+
+services:
+  web:
+    # The page takes the host rule and the lowest priority on the label, so the
+    # face's own router — `/dccex-usb`, at priority 2 — claims its prefix and
+    # the page keeps everything else on the origin (ADR-0004 d.2).
+    labels:
+      - traefik.http.routers.dccex-ui.rule=Host(`dccex.${BOX_DOMAIN}`)
+      - traefik.http.routers.dccex-ui.priority=1
+      - traefik.http.routers.dccex-ui.entrypoints=websecure
+      - traefik.http.routers.dccex-ui.service=dccex-ui
+      - traefik.http.routers.dccex-ui.tls.certresolver=le
+      - traefik.http.routers.dccex-mqtt.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/mqtt`)
+      - traefik.http.routers.dccex-mqtt.priority=2
+      - traefik.http.routers.dccex-mqtt.entrypoints=websecure
+      - traefik.http.routers.dccex-mqtt.service=tc49-mqtt@docker
+      - traefik.http.routers.dccex-mqtt.middlewares=same-origin@docker,dccex-mqtt-strip
+      - traefik.http.routers.dccex-mqtt.tls.certresolver=le
+
+  mirror:
+    labels:
+      - traefik.http.routers.dccex-usb.rule=Host(`dccex.${BOX_DOMAIN}`) && PathPrefix(`/dccex-usb`)
+      - traefik.http.routers.dccex-usb.priority=2
+      - traefik.http.routers.dccex-usb.entrypoints=websecure
+      - traefik.http.routers.dccex-usb.service=dccex-usb
+      - traefik.http.routers.dccex-usb.middlewares=dccex-usb-strip
+      - traefik.http.routers.dccex-usb.tls.certresolver=le
