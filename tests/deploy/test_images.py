@@ -16,6 +16,7 @@ import textwrap
 from tests.deploy.test_stack import (
     BASE,
     BOX,
+    HTTPS,
     IMAGE,
     ROOT,
     UI_IMAGE,
@@ -131,7 +132,7 @@ def test_each_build_is_given_the_commit_for_its_revision() -> None:
     assert within(build, "with", "context") == "."
 
 
-def test_the_box_files_are_both_compose_files_and_what_they_mount() -> None:
+def test_the_box_files_are_the_compose_files_and_what_they_mount() -> None:
     """The installation's release archives them, and a box needs no clone
     (#71 d.10). A bind mount of a path in this repository starts with `.`."""
     steps = items(under("jobs", "box-files", "steps"))
@@ -139,9 +140,14 @@ def test_the_box_files_are_both_compose_files_and_what_they_mount() -> None:
     uploaded = set(within(upload, "with", "path").split())
     mounted = {
         re.sub(r"^\./", "", volume.split(":")[0])
-        for compose in (BASE, BOX)
+        for compose in (BASE, BOX, HTTPS)
         for block in services(compose).values()
         for volume in entries(block, "volumes")
         if volume.startswith(".")
     }
-    assert uploaded == {"compose.yaml", "compose.box.yaml", *mounted}
+    assert uploaded == {
+        "compose.yaml",
+        "compose.box.yaml",
+        "compose.https.yaml",
+        *mounted,
+    }

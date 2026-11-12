@@ -92,7 +92,8 @@ well, which is the railroad the band names and the row the **translator**
 loads a **script** off, and to nothing else: what a railroad is *doing* is
 `control`'s UI next door. The broker is `/mqtt` on this page's own origin,
 which the box's door routes to `control`'s service and refuses from any other
-origin (`compose.box.yaml`); the page names no host and no port, as it names
+origin (`compose.box.yaml`, `compose.https.yaml`); the page names no host and
+no port, as it names
 none for the face. The STOP is on the same row the power button writes and
 asks for `off` (ADR-0026 d.2). On a box
 with no `control` beside it neither row arrives: both presses are disabled and
@@ -1142,13 +1143,14 @@ compose up --build` on a clean clone makes — carries that label empty: the
 name says `dev`, where it is true, and a revision that reads like a commit
 reference and is none would be worse than none at all (#57).
 
-`compose.yaml` at the root is the compose project: one service, the door route
-as labels on its own container, and nothing more. `docker compose up --build`
-from a clean clone serves the page. The stack a **box** runs — the mirror
-beside it, the shared network the door dials containers on, the broker's prefix
-on the page's host, the deploy and the
-record it appends to — is that file and `compose.box.yaml` together, and the
-overlay exists so that this file keeps the promise in the sentence before.
+`compose.yaml` at the root is the compose project: one service, the door's
+service as labels on its own container, and nothing more. `docker compose up
+--build` from a clean clone serves the page. The stack a **box** runs — the
+mirror beside it, the shared network the door dials containers on, the routers,
+the broker's prefix on the page's host, the deploy and the record it appends to
+— is that file and `compose.box.yaml` together, with `compose.https.yaml` for
+the routers that need the box's name. The overlay exists so that this file
+keeps the promise in the sentence before.
 
 **It serves with no `control` clone present.** That is the installation this
 repository exists for, and it is the first thing the first ticket proves.
@@ -1169,7 +1171,7 @@ daemon answers it skips and says so.
 rather than reading it (#53): `docker compose up -d --build` against this
 repository's file with `DCCEX_UI_PORT=0` so the daemon picks the host port, the
 page fetched over HTTP on the port `docker compose port web 80` says it got, the
-image name, the commit the project built it from, and the eight route labels
+image name, the commit the project built it from, and the three door labels
 read back off the running container — which is where a door reads them from
 — and `docker compose down` with its volumes, its network and the image it
 built, in a `finally`, so a red assertion leaves nothing behind either. It

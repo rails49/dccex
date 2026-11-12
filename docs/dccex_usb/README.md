@@ -252,9 +252,10 @@ code here:
   certificate, the monitor's stream opens as `wss://`, and a fetch from
   another origin gets the face's `403`.
 
-The face's router is code, and it is in `compose.box.yaml` on the mirror's
+The face's router is code, and it is in `compose.https.yaml` on the mirror's
 container: the page's host at priority 2 under `/dccex-usb`, stripped before
-the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5).
+the face sees it, dialling 8080 and nothing else (ADR-0004 d.2, d.5). Its twin
+on the UI port is in `compose.box.yaml`.
 
 What it answers, which is nine things — eight questions and a conversation.
 Five are about the station and this app, two are the railroad's script
@@ -755,7 +756,7 @@ nothing is pulled, and no digest is recovered by hand.
 ```
 $ cd ~/dccex
 $ echo DCCEX_COMMIT=8f2c1d4… > .env
-$ docker compose -f compose.yaml -f compose.box.yaml \
+$ docker compose -f compose.yaml -f compose.box.yaml -f compose.https.yaml \
     --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
     --env-file .env up -d --no-build
 ```
@@ -799,7 +800,8 @@ its own.
 All of this is code here now. `deploy/Dockerfile` is the image; `compose.yaml`
 and `compose.box.yaml` are the project, the second being the box's half — the
 mirror, the device, 2560 raw, the shared network external and the box's
-declaration required rather than defaulted; `scripts/deploy.sh` is the deploy,
+declaration required rather than defaulted; `compose.https.yaml` adds the
+routers that need the box's name; `scripts/deploy.sh` is the deploy,
 one ssh and one heredoc, which refuses a clone that is not clean and appends
 the line above. The gate reaches no box and builds no image, so it is one
 command with one exit status as it was: the check that starts the built image

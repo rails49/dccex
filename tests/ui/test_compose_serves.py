@@ -13,8 +13,9 @@ published, reads the labels off the running container — which is where a door
 reads them from — and takes it down again. What is not held here is what a
 route *does*: there is no door on this machine, no certificate and no shared
 network, and that is the box's and #40's. What is held is that the file parses,
-builds, comes up, serves, carries the route a door would need, and hands the
-build the commit it names the image by (#57).
+builds, comes up, serves, carries the service a door dials, and hands the
+build the commit it names the image by (#57). The routers are the box's
+(`compose.box.yaml`, `compose.https.yaml`) and `tests/deploy/` holds them.
 
 The network is deliberately not declared external in `compose.yaml`, so `up`
 works on a clean clone. That is the one thing the file has to do, and this is
@@ -83,9 +84,10 @@ DOWN_SECONDS = 180
 #: and that check has no environment of its own (#113). Two reasons a name is
 #: on this list, and they are no longer the same job.
 #:
-#: The first three are what the file substitutes into itself: a value left in a
-#: shell would move the commit the image is named by, the port the check asks
-#: for the page on, or the host rule it reads off the container.
+#: The first two are what the file substitutes into itself: a value left in a
+#: shell would move the commit the image is named by, or the port the check
+#: asks for the page on. The third is what the box's files substitute, and
+#: `tests/deploy/test_compose_config.py` runs them in this environment.
 #:
 #: The rest decide which project a command acts on and which files it reads,
 #: and they outrank what is passed explicitly: `COMPOSE_PROJECT_NAME` beats the
@@ -103,21 +105,14 @@ DROPPED = (
     "COMPOSE_ENV_FILE",
 )
 
-#: The route, as the door reads it off the container: written out here rather
-#: than parsed out of `compose.yaml`, because a check that read the values from
-#: the file it is checking would pass on any values at all. `BOX_DOMAIN` is
-#: unset, so the host rule is the default a clean clone comes up with, and the
-#: priority is the low one the page takes so that the face's own router claims
-#: its prefix first (ADR-0004 d.2).
+#: The labels, as the door reads them off the container: written out here
+#: rather than parsed out of `compose.yaml`, because a check that read the
+#: values from the file it is checking would pass on any values at all. No
+#: router: those are a box's (`compose.box.yaml`, `compose.https.yaml`).
 ROUTE = {
     "traefik.enable": "true",
     "traefik.docker.network": "rails49",
     "traefik.http.services.dccex-ui.loadbalancer.server.port": "80",
-    "traefik.http.routers.dccex-ui.rule": "Host(`dccex.localhost`)",
-    "traefik.http.routers.dccex-ui.priority": "1",
-    "traefik.http.routers.dccex-ui.entrypoints": "websecure",
-    "traefik.http.routers.dccex-ui.service": "dccex-ui",
-    "traefik.http.routers.dccex-ui.tls.certresolver": "le",
 }
 
 

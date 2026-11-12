@@ -45,6 +45,10 @@ BASE = ROOT / "compose.yaml"
 #: declaration required rather than defaulted.
 BOX = ROOT / "compose.box.yaml"
 
+#: The routers that need the box's name: each one on `websecure`, loaded over
+#: the two above by a box that has a name (#396).
+HTTPS = ROOT / "compose.https.yaml"
+
 DOCKERFILE = ROOT / "deploy" / "Dockerfile"
 
 #: The page's own, which is the second image of a commit (ADR-0005 d.2, as
@@ -117,7 +121,7 @@ BROKER = "tc49-mqtt@docker"
 #: websocket and write paths (rails49/.github#69 d.2).
 SAME_ORIGIN = "same-origin@docker"
 
-#: The one host both routers answer for, as the overlay writes it.
+#: The one host the routers answer for, as `compose.https.yaml` writes it.
 HOST = "Host(`dccex.${BOX_DOMAIN}`)"
 
 #: The UI port's entry point, port 8082, named by the installation, which owns
@@ -500,7 +504,7 @@ MATCHERS = {
 def test_every_rule_uses_only_matchers_the_door_parses() -> None:
     rules = {
         key: value
-        for compose in (BASE, BOX)
+        for compose in (BASE, BOX, HTTPS)
         for service in services(compose)
         for key, value in labels(compose, service).items()
         if key.endswith(".rule")
@@ -516,7 +520,7 @@ def test_only_the_page_and_the_mirror_carry_door_labels() -> None:
     face is in the mirror's container, so the mirror is one of them."""
     carrying = {
         name
-        for compose in (BASE, BOX)
+        for compose in (BASE, BOX, HTTPS)
         for name, block in services(compose).items()
         if "traefik." in block
     }
@@ -526,7 +530,7 @@ def test_only_the_page_and_the_mirror_carry_door_labels() -> None:
 def test_the_mirrors_route_dials_the_face_and_nothing_routes_2560() -> None:
     """The mirror's one service is the face's port, taken from the package
     rather than written again, and 2560 is named by no label (d.5)."""
-    face = labels(BOX, "mirror")
+    face = on_a_box("mirror")
     ports = {v for k, v in face.items() if k.endswith(".loadbalancer.server.port")}
     assert ports == {str(FACE_PORT)}
     assert not [v for v in face.values() if "2560" in v]
@@ -536,10 +540,8 @@ def test_the_page_yields_the_prefix_to_the_face() -> None:
     """Two routers on one host. The page's is the catch-all at priority 1 and
     the face's claims `/dccex-usb` at 2; in Traefik the higher one wins, so the
     page keeps everything the face does not claim (ADR-0004 d.2)."""
-    page = labels(BOX, "web") | {
-        k: v for k, v in labels(BASE, "web").items() if not k.endswith(".rule")
-    }
-    face = labels(BOX, "mirror")
+    page = on_a_box("web")
+    face = on_a_box("mirror")
     assert page["traefik.http.routers.dccex-ui.rule"] == HOST
     assert page["traefik.http.routers.dccex-ui.priority"] == "1"
     assert face["traefik.http.routers.dccex-usb.rule"] == (
@@ -551,7 +553,7 @@ def test_the_page_yields_the_prefix_to_the_face() -> None:
 def test_the_prefix_is_stripped_as_the_page_spells_it() -> None:
     """The face answers `/releases`, not `/dccex-usb/releases`, and the prefix
     the door strips is the one the page builds every address from."""
-    face = labels(BOX, "mirror")
+    face = on_a_box("mirror")
     middleware = face["traefik.http.routers.dccex-usb.middlewares"]
     assert face[f"traefik.http.middlewares.{middleware}.stripprefix.prefixes"] == (
         PREFIX
@@ -574,12 +576,12 @@ def test_the_broker_is_routed_on_the_pages_host_under_its_own_prefix() -> None:
     catch-all, or the page would answer it. The prefix is the one the page
     builds the address from, spelt once there.
     """
-    page = labels(BOX, "web")
+    page = on_a_box("web")
     assert page["traefik.http.routers.dccex-mqtt.rule"] == (
         f"{HOST} && PathPrefix(`{MQTT_PREFIX}`)"
     )
     assert int(page["traefik.http.routers.dccex-mqtt.priority"]) > int(
-        labels(BASE, "web")["traefik.http.routers.dccex-ui.priority"]
+        page["traefik.http.routers.dccex-ui.priority"]
     ), "the page answers the broker's prefix"
     assert page["traefik.http.routers.dccex-mqtt.service"] == BROKER
     middleware = page["traefik.http.routers.dccex-mqtt.middlewares"].split(",")[-1]
@@ -597,7 +599,7 @@ def test_this_repository_declares_no_service_for_the_broker() -> None:
     name: a service declared here would be a second answer to where the broker
     is, and `control`'s deploy is what moves it.
     """
-    page = labels(BOX, "web")
+    page = labels(BOX, "web") | labels(HTTPS, "web")
     declared = {k for k in page if k.startswith("traefik.http.services.")}
     assert declared == set(), f"the page declares {declared}"
 
@@ -614,10 +616,19 @@ def test_the_broker_is_behind_the_installations_origin_check() -> None:
         assert chain == [SAME_ORIGIN, "dccex-mqtt-strip"], router
 
 
+def on_a_box(service: str) -> dict[str, str]:
+    """One service's door labels on a box with a name, merged as compose
+    merges them: each file's over the one before."""
+    merged: dict[str, str] = {}
+    for compose in (BASE, BOX, HTTPS):
+        if service in services(compose):
+            merged |= labels(compose, service)
+    return merged
+
+
 def routers_on_a_box() -> dict[str, dict[str, str]]:
-    """Every router on a box, by name, with the page's labels merged as
-    compose merges them: the overlay's over the base's."""
-    merged = labels(BASE, "web") | labels(BOX, "web") | labels(BOX, "mirror")
+    """Every router on a box with a name, by name."""
+    merged = on_a_box("web") | on_a_box("mirror")
     found: dict[str, dict[str, str]] = {}
     for key, value in merged.items():
         named = re.fullmatch(r"traefik\.http\.routers\.([\w-]+)\.(.+)", key)
@@ -642,11 +653,34 @@ def test_each_router_has_a_twin_on_the_ui_port() -> None:
             assert now["rule"] == TWIN_RULES[twin], twin
 
 
+def test_only_the_https_file_names_websecure_or_a_resolver() -> None:
+    """A box with no name leaves `compose.https.yaml` out and has no
+    `websecure` and no `le`, so the other two files name neither (#396,
+    rails49/installation#92). What the third holds is the routers on
+    `websecure` and nothing else."""
+    for compose in (BASE, BOX):
+        written = "\n".join(uncommented(compose.read_text()))
+        assert "websecure" not in written, compose.name
+        assert "certresolver" not in written, compose.name
+    https = {
+        key: value
+        for service in services(HTTPS)
+        for key, value in labels(HTTPS, service).items()
+    }
+    routers = {key.split(".")[3] for key in https}
+    assert routers == set(TWINS)
+    assert all(key.startswith("traefik.http.routers.") for key in https)
+    door = routers_on_a_box()
+    for router in TWINS:
+        assert door[router]["entrypoints"] == "websecure", router
+        assert door[router]["tls.certresolver"] == "le", router
+
+
 def test_a_foreign_origin_is_the_faces_to_refuse_and_not_the_doors() -> None:
     """No `-foreign` router and no middleware that answers for the face: the
     face refuses with a status and a sentence (`face.py`, ADR-0004 d.4), and
     nothing on the route rewrites the `Host` that refusal compares against."""
-    face = labels(BOX, "mirror")
+    face = on_a_box("mirror")
     routers = {k.split(".")[3] for k in face if k.startswith("traefik.http.routers.")}
     assert routers == {"dccex-usb", "dccex-usb-port"}
     middlewares = {

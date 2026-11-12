@@ -152,7 +152,7 @@ jobs:
             echo "$name=$(jq -r .digest <<< "$manifest")" >> "$GITHUB_OUTPUT"
           done
 
-  # The files a box runs this stack from: both compose files and every file of
+  # The files a box runs this stack from: the compose files and every file of
   # this repository they mount.
   box-files:
     runs-on: ubuntu-24.04
@@ -167,5 +167,6 @@ jobs:
           path: |
             compose.yaml
             compose.box.yaml
+            compose.https.yaml
           if-no-files-found: error
           overwrite: true
