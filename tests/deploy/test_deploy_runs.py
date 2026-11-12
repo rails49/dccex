@@ -47,7 +47,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from tests.deploy.test_stack import DECLARATION, DEPLOY, IMAGE, ORIGIN, RECORD
+from tests.deploy.test_stack import (
+    DECLARATION,
+    DEPLOY,
+    IMAGE,
+    ORIGIN,
+    RECORD,
+    SETTINGS,
+)
 
 #: The commit a box is on before the deploy under test — a full-length one,
 #: because that is what `git rev-parse HEAD` gives the script and what the
@@ -167,13 +174,14 @@ def deployed(
     env: str | None,
     comes_up: bool,
     remote: Remote = Remote.AS_CLONED,
+    settings: bool = True,
 ) -> Box:
     """The deploy, run against a box made here.
 
     `env` is what `.env` says before the run, or `None` for a box that has
     never had one — the first deploy onto a fresh box. `comes_up` is whether
     the `up` succeeds. `remote` is what the clone's `origin` says before the
-    run.
+    run. `settings` is whether the box has this stack's settings file.
     """
     home = tmp_path / "home"
     home.mkdir()
@@ -203,6 +211,9 @@ def deployed(
 
     declaration = tmp_path / "box.env"
     declaration.write_text("BOX_DOMAIN=box.example.invalid\n")
+    stack_settings = tmp_path / "dccex.env"
+    if settings:
+        stack_settings.write_text("")
     record = tmp_path / "var" / "lib" / "rails49" / "deploys" / "dccex"
 
     saved = tmp_path / "remote.sh"
@@ -237,6 +248,7 @@ def deployed(
     here = saved.read_text()
     for named, times, stands_in in (
         (DECLARATION, 1, str(declaration)),
+        (SETTINGS, 1, str(stack_settings)),
         (RECORD, 1, str(record)),
         (ORIGIN, 3, origin),
     ):
@@ -457,3 +469,33 @@ def test_a_clone_somebody_repointed_by_hand_ends_at_the_scripts_origin(
     assert box.ran.returncode == 0, box.ran.stderr
     assert box.origin == box.points_at
     assert box.told == f"DCCEX_COMMIT={box.commit}\n"
+
+
+def test_a_box_with_no_settings_stops_before_the_up_and_names_the_file(
+    tmp_path: Path,
+) -> None:
+    """`/etc/rails49/dccex.env` holds what differs from box to box
+    (installation#65 d.14). A box without it is told which file is missing,
+    and compose is never called."""
+    box = deployed(
+        tmp_path,
+        env=f"DCCEX_COMMIT={RUNNING}\n",
+        comes_up=True,
+        settings=False,
+    )
+    assert box.ran.returncode != 0
+    assert str(tmp_path / "dccex.env") in box.ran.stderr
+    assert box.called == ""
+    assert box.env == f"DCCEX_COMMIT={RUNNING}\n"
+
+
+def test_the_up_reads_the_declaration_then_the_settings_then_the_commit(
+    tmp_path: Path,
+) -> None:
+    """Every stack on a box takes `box.env` and its own `<stack>.env`
+    (installation#65 d.14). `.env` is last, and carries the commit alone."""
+    box = deployed(tmp_path, env=None, comes_up=True)
+    assert (
+        f"--env-file {tmp_path / 'box.env'} --env-file {tmp_path / 'dccex.env'}"
+        " --env-file .env up "
+    ) in box.called

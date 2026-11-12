@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -22,8 +23,11 @@ from tests.ui.test_compose_serves import environment
 pytestmark = pytest.mark.docker
 
 
-def config(*argument: str, **set_here: str) -> subprocess.CompletedProcess[str]:
-    """`docker compose config` over both files, with no `.env` read."""
+def config(
+    *argument: str, env_file: str = os.devnull, **set_here: str
+) -> subprocess.CompletedProcess[str]:
+    """`docker compose config` over both files, with no `.env` read unless
+    `env_file` names one."""
     if shutil.which("docker") is None:
         if os.environ.get("CI"):
             pytest.fail("this job requires docker on the path")
@@ -33,7 +37,7 @@ def config(*argument: str, **set_here: str) -> subprocess.CompletedProcess[str]:
             "docker",
             "compose",
             "--env-file",
-            os.devnull,
+            env_file,
             "-f",
             "compose.yaml",
             "-f",
@@ -70,3 +74,21 @@ def test_a_box_publishes_the_page_on_no_port(domain: str) -> None:
     done = config("--format", "json", BOX_DOMAIN=domain)
     assert done.returncode == 0, done.stderr
     assert json.loads(done.stdout)["services"]["web"].get("ports", []) == []
+
+
+def test_the_settings_file_moves_the_device_and_the_store(tmp_path: Path) -> None:
+    """`/etc/rails49/dccex.env` holds what differs from box to box
+    (installation#65 d.14), and both apps read the store it names."""
+    settings = tmp_path / "dccex.env"
+    settings.write_text(
+        "DCCEX_STATION_DEVICE=/dev/serial/by-id/a-station\n"
+        "DCCEX_STORE_URL=http://elsewhere:8765\n"
+    )
+    done = config("--format", "json", env_file=str(settings), BOX_DOMAIN="example.org")
+    assert done.returncode == 0, done.stderr
+    services = json.loads(done.stdout)["services"]
+    mirror = services["mirror"]["command"]
+    assert mirror[mirror.index("--device") + 1] == "/host/dev/serial/by-id/a-station"
+    assert mirror[mirror.index("--store") + 1] == "http://elsewhere:8765"
+    translator = services["translator"]["command"]
+    assert translator[translator.index("--store") + 1] == "http://elsewhere:8765"

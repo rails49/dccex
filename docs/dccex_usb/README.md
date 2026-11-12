@@ -756,7 +756,8 @@ nothing is pulled, and no digest is recovered by hand.
 $ cd ~/dccex
 $ echo DCCEX_COMMIT=8f2c1d4… > .env
 $ docker compose -f compose.yaml -f compose.box.yaml \
-    --env-file /etc/rails49/box.env --env-file .env up -d --no-build
+    --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
+    --env-file .env up -d --no-build
 ```
 
 `--no-build` is there for the day the old image has been pruned after all.

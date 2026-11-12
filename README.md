@@ -127,6 +127,18 @@ installation has not been run on stops with a sentence naming
 one ssh, a pull, a clean tree, the image built under the commit, and a line
 appended to the record.
 
+What differs from box to box is in `/etc/rails49/dccex.env`, beside
+`box.env`. It holds no secret, is written by hand, and may be empty:
+
+- `DCCEX_STATION_DEVICE`: the station's path on the host. Default
+  `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0`.
+- `DCCEX_STORE_URL`: `control`'s store. Default `http://store:8765`.
+
+The stack is started with `--env-file /etc/rails49/box.env --env-file
+/etc/rails49/dccex.env`, and the deploy adds the clone's `.env`, which names
+the commit. A box with no `dccex.env` is refused by the deploy with a sentence
+naming the file.
+
 The first time that happened on the layout box it was a **cutover** and not
 a deploy, #16, which followed [the cutover page](docs/cutover.md) — the
 order, the abort signal, going back, and the checks. 2560 is served there by
