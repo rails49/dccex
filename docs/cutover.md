@@ -84,7 +84,7 @@ nothing stopped):
    and the deploy are #15's. What was left was the clone, building the image on
    the box, and the deploy record's directory, which did not exist and needed
    somebody who can write `/var/lib` once:
-   `sudo install -d -o ttmetro -g ttmetro /var/lib/rails49/deploys`.
+   `sudo install -d -o "$USER" -g "$USER" /var/lib/rails49/deploys`.
 2. **Done.** The box's `control` checkout is at `ba611d6` (#557) and `control`'s
    `main` is 31 commits ahead of it — the store moving to loopback,
    broker-first startup, the store image's uid and table ownership, the stock
@@ -331,7 +331,7 @@ the acceptance was about.
    address and the port it dialled from, as the mirror prints them:
 
    ```
-   client disconnected ('192.168.1.47', 51274) too far behind
+   client disconnected ('192.0.2.47', 51274) too far behind
    ```
 
    After that line there is no deaf client left to hold the shutdown up, and a
@@ -389,8 +389,8 @@ on 2026-09-25.
 - Checks 1–4 and 6 passed. Check 6: full after 57 s, `docker stop` in 0.26 s,
   exit 0. The banner read `V-5.6.4 / ESP32 / EXCSB1_WITH_EX8874
   G-v5.6.4-rails49.1`.
-- From the laptop the broker answered at `192.168.178.56` and not at
-  `gleis49.org`, which gave "no route to host".
+- From the laptop the broker answered at `192.0.2.56` and not at
+  the box's domain, which gave "no route to host".
 - A person connected on 2560 and drove a locomotive.
 
 ## What happened, 2026-10-01

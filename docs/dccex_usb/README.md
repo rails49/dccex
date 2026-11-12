@@ -513,8 +513,8 @@ agree on nothing else (d.4):
 
 ```
 $ curl http://dccex-usb:8080/journal
-{"at":"2026-10-12T18:00:12.345+00:00","railroad":"gleis49","build":"v5.6.4-rails49.1","said":"<* TRACK C INVERT (fast) *>","district":"C","mode":"MAIN_AUTO","limit":500}
-{"at":"2026-10-12T18:00:19.004+00:00","railroad":"gleis49","build":"","link":"down"}
+{"at":"2026-10-12T18:00:12.345+00:00","railroad":"yard","build":"v5.6.4-rails49.1","said":"<* TRACK C INVERT (fast) *>","district":"C","mode":"MAIN_AUTO","limit":500}
+{"at":"2026-10-12T18:00:19.004+00:00","railroad":"yard","build":"","link":"down"}
 
 ```
 
@@ -830,7 +830,7 @@ the device closed before the runner is called and reopened after. Verifying
 the actual link is runtime's job, and it is one command:
 
 ```
-$ nc gleis49.org 2560
+$ nc box.example.org 2560
 <s>
 <iDCC-EX V-5.4.16 / ESP32 / EXCSB1_WITH_EX8874 G-9db8d0e>
 <p0>

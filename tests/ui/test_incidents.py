@@ -476,7 +476,7 @@ def test_a_line_the_translator_had_not_finished_writing_is_dropped() -> None:
     is of when something happened."""
     (served,) = run([{"served": lines(A_CLEAN_FLIP) + '{"at": "2026-10-12T18:00:0'}])
     assert len(served["lines"]) == len(A_CLEAN_FLIP)
-    (nothing,) = run([{"served": '{"railroad": "gleis49"}\n[]\n7\n'}])
+    (nothing,) = run([{"served": '{"railroad": "yard"}\n[]\n7\n'}])
     assert nothing["lines"] == []
 
 
