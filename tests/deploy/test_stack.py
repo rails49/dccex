@@ -898,6 +898,7 @@ def test_the_rollback_never_builds() -> None:
     for page in (DEPLOY, ROOT / "docs" / "dccex_usb" / "README.md"):
         said = page.read_text()
         assert "--env-file .env up -d --no-build" in said, page.name
+        assert f"--env-file {SETTINGS}" in said, page.name
         bare = re.search(r"--env-file \.env up -d$", said, re.MULTILINE)
         assert not bare, page.name
 

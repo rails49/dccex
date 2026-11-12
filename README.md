@@ -130,9 +130,10 @@ appended to the record.
 What differs from box to box is in `/etc/rails49/dccex.env`, beside
 `box.env`. It holds no secret, is written by hand, and may be empty:
 
-- `DCCEX_STATION_DEVICE`: the station's path on the host. Default
-  `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0`.
-- `DCCEX_STORE_URL`: `control`'s store. Default `http://store:8765`.
+- `DCCEX_STATION_DEVICE`: the station's path on the host.
+- `DCCEX_STORE_URL`: `control`'s store.
+
+Each has a default in `compose.box.yaml`.
 
 The stack is started with `--env-file /etc/rails49/box.env --env-file
 /etc/rails49/dccex.env`, and the deploy adds the clone's `.env`, which names

@@ -53,10 +53,9 @@ ORIGIN=https://github.com/rails49/dccex.git
 # repository and it is not this script's to write.
 BOX_ENV=/etc/rails49/box.env
 
-# This stack's settings, beside the declaration: what differs from box to box,
-# `DCCEX_STATION_DEVICE` and `DCCEX_STORE_URL` (installation#65 d.14). It holds
-# no secret, may be empty, and is written by hand.
-SETTINGS=/etc/rails49/dccex.env
+# What differs from box to box, beside the declaration. The README's box
+# section names its variables.
+STACK_ENV=/etc/rails49/dccex.env
 
 # What this box has run, one line per deploy, newest last (ADR-0005 d.5).
 RECORD=/var/lib/rails49/deploys/dccex
@@ -74,7 +73,7 @@ ssh "$BOX" bash -l <<REMOTE
 set -euo pipefail
 
 box_env=$BOX_ENV
-settings=$SETTINGS
+stack_env=$STACK_ENV
 record=$RECORD
 stack=\$HOME/$STACK
 
@@ -90,8 +89,8 @@ if [ ! -r "\$box_env" ]; then
   exit 1
 fi
 
-if [ ! -r "\$settings" ]; then
-  echo "no settings for this stack at \$settings, or it is not readable." >&2
+if [ ! -r "\$stack_env" ]; then
+  echo "no settings for this stack at \$stack_env, or it is not readable." >&2
   echo "It may be empty. It sets DCCEX_STATION_DEVICE and DCCEX_STORE_URL" >&2
   echo "where the box differs from the defaults in compose.box.yaml." >&2
   exit 1
@@ -188,7 +187,7 @@ printf 'DCCEX_COMMIT=%s\n' "\$commit" > .env
 # header. The containers are not rolled back, which is ADR-0005 d.7 and a
 # person's command.
 if ! docker compose -f compose.yaml -f compose.box.yaml \
-  --env-file "\$box_env" --env-file "\$settings" --env-file .env \
+  --env-file "\$box_env" --env-file "\$stack_env" --env-file .env \
   up -d --build --remove-orphans
 then
   if [ "\$had" = yes ]; then printf '%s\n' "\$kept" > .env; else rm -f .env; fi
@@ -201,7 +200,7 @@ then
   fi
   echo "The up may have recreated some containers. To see which:" >&2
   echo "  cd \$stack" >&2
-  echo "  docker compose -f compose.yaml -f compose.box.yaml --env-file \$box_env --env-file \$settings --env-file .env ps -a" >&2
+  echo "  docker compose -f compose.yaml -f compose.box.yaml --env-file \$box_env --env-file \$stack_env --env-file .env ps -a" >&2
   echo "To go back, see the rollback in the header of scripts/deploy.sh (ADR-0005 d.7)." >&2
   echo "Nothing was appended to \$record." >&2
   exit 1
