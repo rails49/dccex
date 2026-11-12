@@ -90,6 +90,10 @@ GATE = ROOT / "scripts" / "check.sh"
 #: every sentence that refuses to come up without it.
 DECLARATION = "/etc/rails49/box.env"
 
+#: This stack's settings on the box, beside the declaration: what differs from
+#: box to box (installation#65 d.14). No secret, and it may be empty.
+SETTINGS = "/etc/rails49/dccex.env"
+
 #: The prefix the face answers under on the page's origin, which the door
 #: strips (ADR-0004 d.2). The page spells it once, in `FACE_TS`, and the
 #: overlay spells it in its route; a test holds the two together.
@@ -894,6 +898,7 @@ def test_the_rollback_never_builds() -> None:
     for page in (DEPLOY, ROOT / "docs" / "dccex_usb" / "README.md"):
         said = page.read_text()
         assert "--env-file .env up -d --no-build" in said, page.name
+        assert f"--env-file {SETTINGS}" in said, page.name
         bare = re.search(r"--env-file \.env up -d$", said, re.MULTILINE)
         assert not bare, page.name
 

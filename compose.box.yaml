@@ -2,7 +2,11 @@
 # on, and the box's own declaration required rather than defaulted.
 #
 #   docker compose -f compose.yaml -f compose.box.yaml \
-#     --env-file /etc/rails49/box.env --env-file .env up -d --build
+#     --env-file /etc/rails49/box.env --env-file /etc/rails49/dccex.env \
+#     --env-file .env up -d --build
+#
+# `dccex.env` is what differs from box to box. The README's box section names
+# its variables, and each has a default below.
 #
 # which is what `scripts/deploy.sh` runs, and what ADR-0005 d.7's rollback runs
 # without the `--build`.
@@ -168,8 +172,8 @@ services:
     # (#364). The same path is named for both.
     #
     # The device is the `by-id` path under `/host/dev`. Its links are
-    # relative, so they resolve there. The variable is the host path, so a
-    # box that moves it overrides one line.
+    # relative, so they resolve there. The variable is the host path, set in
+    # `/etc/rails49/dccex.env` on a box whose station is elsewhere.
     command:
       ["--device", "/host${DCCEX_STATION_DEVICE:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}",
        "--port", "2560",
@@ -253,7 +257,8 @@ services:
     # railroad's **script** is read from, `GET /scripts/<railroad>`, and the
     # railroad is the one named on the bus rather than anything said here
     # (ADR-0015). Behind a variable so a box that serves the store somewhere
-    # else overrides one line, the way the device mapping above is.
+    # else sets one line in `/etc/rails49/dccex.env`, as the device mapping
+    # above does.
     #
     # **No startup file.** It went with #175: what a railroad wants of its
     # station is a document in the store, edited on the page, and the deploy
