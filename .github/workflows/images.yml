@@ -98,6 +98,10 @@ jobs:
           file: ${{ matrix.image.file }}
           build-args: DCCEX_COMMIT=${{ inputs.commit }}
           outputs: type=image,name=ghcr.io/rails49/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
+          # Layers that did not change since the last build are taken from GHCR,
+          # so a box pulls only the ones that did (rails49/.github#80).
+          cache-from: type=registry,ref=ghcr.io/rails49/${{ matrix.image.name }}:buildcache-${{ runner.arch }}
+          cache-to: type=registry,ref=ghcr.io/rails49/${{ matrix.image.name }}:buildcache-${{ runner.arch }},mode=max
       - env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: echo "$DIGEST" > "$RUNNER_TEMP/digest"
