@@ -151,3 +151,17 @@ def test_the_box_files_are_the_compose_files_and_what_they_mount() -> None:
         "compose.https.yaml",
         *mounted,
     }
+
+
+def test_each_build_caches_its_layers_in_ghcr() -> None:
+    """One cache per image and architecture, with the build stage's layers too,
+    so a release rebuilds and a box pulls only the layers that changed
+    (rails49/.github#80)."""
+    steps = items(under("jobs", "build", "steps"))
+    build = next(step for step in steps if "id: build\n" in step)
+    ref = (
+        "type=registry,ref=ghcr.io/rails49/${{ matrix.image.name }}"
+        ":buildcache-${{ runner.arch }}"
+    )
+    assert within(build, "with", "cache-from") == ref
+    assert within(build, "with", "cache-to") == ref + ",mode=max"
