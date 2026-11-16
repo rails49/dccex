@@ -726,11 +726,14 @@ export function read(lines, period = {}) {
     }
     const power = decoded(line.said);
     if (power !== null && power.hot !== undefined) {
+      // The journal keeps a `<p…>` only where it names a district
+      // (`replies.kept`).
+      const track = /** @type {string} */ (power.track);
       if (power.hot) {
-        powers(power.track);
+        powers(track);
       } else {
-        closes(power.track, index);
-        unpowers(power.track);
+        closes(track, index);
+        unpowers(track);
       }
       continue;
     }
