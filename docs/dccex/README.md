@@ -572,9 +572,9 @@ moves rather than on every sentence about it: a connect retried against a
 station that is not there says `down` on the row each time and writes one
 line. A `down` line carries `why`: `stopped` where this app is shutting down,
 `closed` where the mirror closed the connection, and `silent` where the
-station stopped answering the poll. A `down` line written before #367 has no
-`why`. A restart carries `restart: true`, and is the only record of one — the
-link did not go, so nothing says it on the row (ADR-0021 d.4).
+station stopped answering the poll. A restart carries `restart: true`, and is
+the only record of one — the link did not go, so nothing says it on the row
+(ADR-0021 d.4).
 
 **This app decides nothing about a line** (d.3). Whether a line is part of an
 **incident**, and which kind, is the page's as it reads the file
