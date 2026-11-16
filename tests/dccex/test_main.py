@@ -275,9 +275,8 @@ def test_a_cold_start_publishes_the_apps_own_rows(
     this app opens with, waiting for whoever subscribes next (control ADR-0059).
 
     The link it cannot make, keyed by the id it was started with (decision 7),
-    and a supply that is off carrying that same sentence as its reason — a
-    person reading why the railroad is dark reads it off the supply rather
-    than off a second row. What cannot be read may not be called good.
+    and a supply that is off with the reason `DCC-EX not reachable` (#403).
+    What cannot be read may not be called good.
     """
     witness, heard = watching(broker)
     app.start()
@@ -287,7 +286,7 @@ def test_a_cold_start_publishes_the_apps_own_rows(
     assert rows(heard, link)[-1]["link"] == "down"
     assert rows(heard, link)[-1]["id"] == app.id
     assert rows(heard, DEVICE_TRACK)[-1]["power"] == "off"
-    assert rows(heard, DEVICE_TRACK)[-1]["reason"] != ""
+    assert rows(heard, DEVICE_TRACK)[-1]["reason"] == "DCC-EX not reachable"
     assert app.running, "the app stopped on its own"
     witness.close()
 

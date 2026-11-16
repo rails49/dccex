@@ -170,6 +170,9 @@ DEVICE_POINT = "tc49/layout/state/device/point"
 UP = "up"
 DOWN = "down"
 
+UNREACHABLE_REASON = "DCC-EX not reachable"
+"""The supply's reason while the link is down (#403)."""
+
 STOPPED = "stopped"
 CLOSED = "closed"
 SILENT = "silent"
@@ -1305,14 +1308,13 @@ class DccEx:
         """Why the supply reads as it does, or None where there is nothing
         to say.
 
-        Where this app cannot reach the station it is the link row's own
-        words, said again on the supply, so a person reading why the railroad
-        is dark needs no second row (control ADR-0059). Otherwise it names the
+        Where this app cannot reach the station it is `UNREACHABLE_REASON`,
+        and the cause stays on the link row (#403). Otherwise it names the
         districts the station tripped (ADR-0016 d.5) and a lock the station
         reports (#290).
         """
         if self._link is not None and not self._link[0]:
-            return self._link[1]
+            return UNREACHABLE_REASON
         parts: list[str] = []
         if self._tripped:
             districts = sorted(self._tripped)
