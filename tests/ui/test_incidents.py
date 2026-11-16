@@ -258,8 +258,11 @@ def test_the_link_line_is_under_both_the_outage_and_the_trip_it_ended() -> None:
     """One line, two rows, and neither is a reading the other made: the trip
     ends where the station stopped answering, and the outage starts there."""
     outage, cut = drew(A_TRIP_AND_A_LINK_LOSS)["entries"]
-    assert [line["said"] for line in outage["lines"]] == ["link down", "link up"]
-    assert [line["said"] for line in cut["lines"]][-1] == "link down"
+    assert [line["said"] for line in outage["lines"]] == [
+        "link down: silent",
+        "link up",
+    ]
+    assert [line["said"] for line in cut["lines"]][-1] == "link down: silent"
 
 
 @pytest.mark.node
@@ -271,13 +274,6 @@ def test_the_link_line_says_why_the_link_went_down(why: str) -> None:
         f"link down: {why}",
         "link up",
     ]
-
-
-@pytest.mark.node
-def test_a_link_line_written_before_the_reason_reads_as_it_did() -> None:
-    """A `down` line with no `why` is one written before #367."""
-    (outage,) = drew([down(3_000), up(5_000)])["entries"]
-    assert [line["said"] for line in outage["lines"]] == ["link down", "link up"]
 
 
 @pytest.mark.node

@@ -139,7 +139,6 @@ const HOUR_MS = 3600000;
  * @property {number | null} [limit] the most it could draw, in milliamps
  * @property {string} [link] `down` or `up`, on a line about the link
  * @property {string} [why] `stopped`, `closed` or `silent`, on a `down` line
- *   written since #367
  * @property {boolean} [restart] true on a line about the station restarting
  */
 
@@ -727,21 +726,14 @@ export function read(lines, period = {}) {
     }
     const power = decoded(line.said);
     if (power !== null && power.hot !== undefined) {
-      // A `<p…>` naming no district is passed over, as `replies.kept` passes
-      // it over in the translator: the bare `<p0>` and `<p1>`, and the ones
-      // naming MAIN, PROG or JOIN, are printed in `broadcastPower()` alone and
-      // always after a `<pN X>` line for each district, so they say nothing
-      // those do not (ADR-0022 d.2 as amended, #269). A journal written before
-      // that still carries them, and read as every district's they would close
-      // every open incident and move every powered clock.
-      if (power.track === undefined) {
-        continue;
-      }
+      // The journal keeps a `<p…>` only where it names a district
+      // (`replies.kept`).
+      const track = /** @type {string} */ (power.track);
       if (power.hot) {
-        powers(power.track);
+        powers(track);
       } else {
-        closes(power.track, index);
-        unpowers(power.track);
+        closes(track, index);
+        unpowers(track);
       }
       continue;
     }
