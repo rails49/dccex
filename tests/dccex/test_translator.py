@@ -1334,7 +1334,7 @@ def test_a_script_that_does_not_load_says_why_on_the_link_row() -> None:
     assert said["link"] == "down"
     assert "does not load" in said["detail"]
     assert "division by zero" in said["detail"]
-    assert tap.values(DEVICE_TRACK)[-1]["reason"] == said["detail"]
+    assert tap.values(DEVICE_TRACK)[-1]["reason"] == "DCC-EX not reachable"
 
     app.load(LIMITS)
     bus.drain()
@@ -1566,17 +1566,15 @@ def test_the_supply_says_why_it_is_off_while_the_station_is_unreachable() -> Non
 
 
 async def _supply_says_why_it_is_off_while_the_station_is_unreachable() -> None:
-    """The link row's own words, said again on the supply, so a person
-    reading why the railroad is dark reads it off the supply itself rather
-    than off a second row (control ADR-0059). The reason goes when the station
+    """The supply names the command station that cannot be reached, and the
+    link row keeps the cause (#403). The reason goes when the station
     answers: what the row says then is the station's own word."""
     bus, tap = bus_and_tap()
     port = Port()
     async with running(bus, port):
         bus.drain()
         dark = tap.values(DEVICE_TRACK)[-1]
-        assert dark["power"] == "off"
-        assert dark["reason"] == tap.values(DEVICE_LINK)[-1]["detail"]
+        assert (dark["power"], dark["reason"]) == ("off", "DCC-EX not reachable")
 
         station = await port.opened()
         station.says(b"<p1>")
@@ -1585,6 +1583,13 @@ async def _supply_says_why_it_is_off_while_the_station_is_unreachable() -> None:
         lit = tap.values(DEVICE_TRACK)[-1]
         assert lit["power"] == "on"
         assert "reason" not in lit
+
+        station.hangs_up()
+        await port.opened(2)
+        bus.drain()
+        dark = tap.values(DEVICE_TRACK)[-1]
+        assert (dark["power"], dark["reason"]) == ("off", "DCC-EX not reachable")
+        assert tap.values(DEVICE_LINK)[-1]["detail"].endswith("closed")
 
 
 def test_a_dropped_link_is_published_and_so_is_the_reconnect() -> None:
@@ -2107,7 +2112,7 @@ async def _station_that_stops_answering_lowers_the_link() -> None:
 
         dark = tap.values(DEVICE_TRACK)[-1]
         assert dark["power"] == "off"
-        assert dark["reason"] == gone["detail"]
+        assert dark["reason"] == "DCC-EX not reachable"
 
 
 def test_a_station_answering_inside_the_window_keeps_the_link_up() -> None:

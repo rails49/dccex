@@ -458,11 +458,11 @@ whole outage, which is where a broken link becomes visible: at runtime, to a
 person who can act on it, and not in a gate that would need a powered layout
 to pass
 ([ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hardware-is-reported-never-worked-around.md)).
-The same words go on `device/track` as its `reason` while the station is
-unreachable, so a person reading why the railroad is dark reads it off the
-supply itself rather than off a second row. Otherwise, while a district is
-tripped, the `reason` names it: `district B tripped`, `districts B, C
-tripped` (ADR-0016 d.5).
+While the station is unreachable, `device/track` carries the `reason`
+`DCC-EX not reachable`, and the cause stays on the link row
+([#403](https://github.com/rails49/dccex/issues/403)). Otherwise, while a
+district is tripped, the `reason` names it: `district B tripped`,
+`districts B, C tripped` (ADR-0016 d.5).
 
 **A script that will not load rides on the same `detail`**, said beside what
 the station is doing, and leaves the word alone: the link is the station
