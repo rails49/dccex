@@ -74,6 +74,7 @@ CASES: dict[str, str] = {
     "<p0>": "track power is off",
     "<p1>": "track power is on",
     "<p1 MAIN>": "MAIN track power is on",
+    "<p1 PROG>": "PROG track power is on",
     "<H 12 1>": "turnout 12 is thrown",
     "<H 12 0>": "turnout 12 is closed",
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>": (
@@ -114,10 +115,11 @@ CASES: dict[str, str] = {
 #: Every reading the **band** and the **tile**s are made of is off one of these
 #: (ADR-0008 d.2); a line not named here says its sentence and nothing more.
 FACTS: dict[str, dict[str, object]] = {
-    "<p0>": {"hot": False},
+    "<p0>": {"hot": False, "joined": False},
     "<p1>": {"hot": True},
-    "<p1 MAIN>": {"hot": True},
-    " <p0> ": {"hot": False},
+    "<p1 MAIN>": {"hot": True, "joined": False},
+    "<p1 PROG>": {"hot": True, "joined": False},
+    " <p0> ": {"hot": False, "joined": False},
     "<iDCC-EX V-5.0.7 / MEGA / STANDARD_MOTOR G-9db6d10>": {"build": "9db6d10"},
     "<p0 B>": {"hot": False, "track": "B"},
     "<jI 13 2 0 0>": {"currents": [13, 2, 0, 0]},
@@ -130,7 +132,7 @@ FACTS: dict[str, dict[str, object]] = {
     "<= E BOOST I>": {"track": "E", "mode": "BOOST_INV"},
     "<= D MAIN A I>": {"track": "D", "mode": "MAIN_AUTO_INV"},
     "<= E BOOST A I>": {"track": "E", "mode": "BOOST_AUTO_INV"},
-    "<p1 JOIN>": {"hot": True},
+    "<p1 JOIN>": {"hot": True, "joined": True},
 }
 
 #: The near misses: a line the decoder half-recognises, and gets nothing for.

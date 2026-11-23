@@ -228,7 +228,7 @@ the station names, in letter order (#7, #170).
 | --- | --- |
 | the track's letter | A, B, C… |
 | a power symbol | green where the track has power, red where it has not, grey where the station has said nothing about it |
-| mode | what the track is set to: MAIN, PROG, DC… |
+| mode | what the track is set to: MAIN, PROG, DC…, or PROG+MAIN for a PROG track joined to MAIN |
 | current | the current it draws, in mA |
 | max current | the most it may draw, in mA, after `max`: `max 1233 mA` |
 
@@ -238,6 +238,14 @@ because a reader who cannot see the colour is owed the same reading, which is
 how the **link** is drawn on the band (#168). `<=>` lists every track the
 firmware is built with, so a track set to `NONE` has a tile too. One the station
 has given a current for and not yet a mode has a tile with a blank mode.
+
+A PROG track joined to MAIN (`<1 JOIN>`) reads `PROG+MAIN`. The station
+reports it as `<= B MAIN>` and ends its power summary with `<p1 JOIN>`. The
+tile that reads it is the last track that reported `PROG`, while the last
+summary was JOIN and the track's own mode is MAIN. `<p1 MAIN>`, `<p1 PROG>` or
+`<p0>` ends the join.
+A page opened while the station is already joined has seen no track report
+PROG, so every tile reads `MAIN` until one does (#405).
 
 The current is the station's own measure (`<JI>` → `<jI 120 2 0 0>`, A first),
 asked four times a second and shown as the mean of the last eight readings. The

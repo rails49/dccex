@@ -731,3 +731,58 @@ def test_the_same_facts_read_the_same_whatever_was_asked_before() -> None:
         {"said": [("<p0 A>", NOW)], "now": NOW, "layout": DRAINING},
     )
     assert run(scenarios) == tuple(reversed(run(tuple(reversed(scenarios)))))
+
+
+def modes(*lines: str) -> dict[str, str]:
+    """What each tile's mode reads after a station on two tracks, A and B
+    both MAIN, has said `lines` in turn."""
+    said = ["<= A MAIN>", "<= B MAIN>", *lines]
+    drawn = tiles(said=[(line, NOW - 10 + i) for i, line in enumerate(said)], now=NOW)
+    return {letter: tile["mode"] for letter, tile in drawn.items()}
+
+
+#: B set to PROG, then joined to MAIN, as `<1 JOIN>` on an ESP32 station
+#: reports it (#405).
+JOINED = ("<= B PROG>", "<= B MAIN>", "<p1 JOIN>")
+
+
+@pytest.mark.node
+def test_a_prog_track_joined_to_main_reads_prog_plus_main() -> None:
+    """The track that last reported PROG reads `PROG+MAIN` once the summary
+    says JOIN. Every other tile reads its plain mode."""
+    assert modes(*JOINED) == {"A": "MAIN", "B": "PROG+MAIN"}
+
+
+@pytest.mark.node
+@pytest.mark.parametrize("summary", ["<p1 MAIN>", "<p1 PROG>", "<p0>"])
+def test_a_summary_without_join_ends_the_join(summary: str) -> None:
+    """The tile goes back to the track's plain mode."""
+    assert modes(*JOINED, summary) == {"A": "MAIN", "B": "MAIN"}
+
+
+@pytest.mark.node
+def test_a_read_or_write_unjoins_the_track_and_joins_it_again() -> None:
+    """The station sets the track to PROG for the read or write, and back to
+    MAIN and joined afterwards."""
+    assert modes(*JOINED, "<= B PROG>")["B"] == "PROG"
+    assert modes(*JOINED, "<= B PROG>", "<= B MAIN>", "<p1 JOIN>")["B"] == "PROG+MAIN"
+
+
+@pytest.mark.node
+def test_a_join_with_no_track_reported_prog_reads_plain_modes() -> None:
+    """A page opened while the station was already joined has seen no track
+    report PROG. No guess is made from which tracks read MAIN."""
+    assert modes("<p1 JOIN>") == {"A": "MAIN", "B": "MAIN"}
+
+
+@pytest.mark.node
+def test_a_joined_station_with_its_power_off_stays_joined() -> None:
+    """With the power off, the station's summary is `<p0>` and then
+    `<p1 JOIN>`. The last line wins."""
+    assert modes(*JOINED, "<p0>", "<p1 JOIN>")["B"] == "PROG+MAIN"
+
+
+@pytest.mark.node
+def test_a_per_track_power_line_does_not_end_the_join() -> None:
+    """`<p1 B>` and `<p0 A>` are about one track, not the summary."""
+    assert modes(*JOINED, "<p1 B>", "<p0 A>")["B"] == "PROG+MAIN"
