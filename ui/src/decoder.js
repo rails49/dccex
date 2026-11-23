@@ -51,6 +51,9 @@ const CLOSE = ">";
  * @property {boolean} [hot] whether the rails have power
  * @property {string} [build] what the station says it is running
  * @property {string} [track] which track, A to H, a power or mode line is about
+ * @property {boolean} [joined] whether the PROG track is joined to MAIN, on a
+ *   power summary that says: `true` on `<p1 JOIN>`, `false` on `<p1 MAIN>`,
+ *   `<p1 PROG>` and `<p0>`
  * @property {string} [mode] what a track is set to: MAIN, PROG, DC and so on
  * @property {number[]} [currents] the milliamps on each track, A first
  * @property {number[]} [limits] the most each track may draw, in milliamps, A
@@ -68,6 +71,8 @@ const CLOSE = ">";
  *
  * `<p1 JOIN>` says the PROG track carries MAIN. The station sends it while
  * joined whether or not the tracks are on, so its sentence is not about power.
+ * `<p1 MAIN>`, `<p1 PROG>` and `<p0>` are the summaries it sends while not
+ * joined (#405).
  *
  * @param {string} rest what follows the `p`
  * @returns {Reading | null}
@@ -81,12 +86,20 @@ function power(rest) {
   const state = hot ? "on" : "off";
   const track = /^[A-H]$/.test(said[2] ?? "") ? { track: said[2] } : {};
   let say = `track power is ${state}`;
+  /** @type {{ joined?: boolean }} */
+  let joined = {};
   if (said[2] === "JOIN" && hot) {
     say = "the PROG track is joined to MAIN";
+    joined = { joined: true };
   } else if (said[2] !== undefined) {
     say = `${said[2]} track power is ${state}`;
+    if (said[2] === "MAIN" || said[2] === "PROG") {
+      joined = { joined: false };
+    }
+  } else if (!hot) {
+    joined = { joined: false };
   }
-  return { say, hot, ...track };
+  return { say, hot, ...track, ...joined };
 }
 
 /**

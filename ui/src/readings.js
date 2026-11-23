@@ -276,6 +276,13 @@ function mean(recent) {
   return recent.reduce((sum, milliamps) => sum + milliamps, 0) / recent.length;
 }
 
+/** A joined track's modes: PROG before the join, MAIN while joined (#405). */
+const PROG = "PROG";
+const MAIN = "MAIN";
+
+/** What the mode of a PROG track joined to MAIN reads on its tile (#405). */
+const PROG_MAIN = "PROG+MAIN";
+
 /** The letters the station names its tracks with, in the order `<jI>` gives
  *  their currents. */
 const LETTERS = "ABCDEFGH";
@@ -284,7 +291,8 @@ const LETTERS = "ABCDEFGH";
  * What the page has been told, and when — everything it keeps between one
  * line arriving and the next.
  *
- * Every field is the latest word on it and `null` until there has been one.
+ * Every field is the latest word on it, and `null` (`false` for `joined`)
+ * until there has been one.
  * Nothing here is derived: whether the **link** is up is a question about the
  * moment it is asked, which is `asOf`'s.
  *
@@ -294,6 +302,10 @@ const LETTERS = "ABCDEFGH";
  * @property {string | null} build what the station says it is running
  * @property {Readonly<Record<string, Track>>} tracks each track the station
  *   has said anything about, by its letter
+ * @property {string | null} prog the letter of the last track that reported
+ *   mode PROG
+ * @property {boolean} joined whether the station's last power summary was
+ *   `<p1 JOIN>`, and `false` until there has been one
  */
 
 /** A page that has just been opened: nothing said yet. The station is not
@@ -303,6 +315,8 @@ export const QUIET = /** @type {Kept} */ ({
   spokeAt: null,
   build: null,
   tracks: {},
+  prog: null,
+  joined: false,
 });
 
 /**
@@ -313,6 +327,9 @@ export const QUIET = /** @type {Kept} */ ({
  * @property {boolean} answering whether the station is answering — the link
  * @property {string | null} build what the station says it is running
  * @property {Readonly<Record<string, Track>>} tracks each track, by its letter
+ * @property {string | null} joined the letter of the PROG track joined to
+ *   MAIN, or `null` if no track is joined or the page does not know which
+ *   (#405)
  */
 
 /**
@@ -445,6 +462,8 @@ export function heard(kept, line, at) {
     spokeAt: at,
     build: reading?.build ?? kept.build,
     tracks,
+    prog: reading?.mode === PROG ? (reading.track ?? kept.prog) : kept.prog,
+    joined: reading?.joined ?? kept.joined,
   };
 }
 
@@ -465,8 +484,13 @@ export function heard(kept, line, at) {
 export function asOf(kept, now) {
   const answering = kept.spokeAt !== null && now - kept.spokeAt <= SILENT_MS;
   return answering
-    ? { answering, build: kept.build, tracks: kept.tracks }
-    : { answering, build: null, tracks: {} };
+    ? {
+        answering,
+        build: kept.build,
+        tracks: kept.tracks,
+        joined: kept.joined ? kept.prog : null,
+      }
+    : { answering, build: null, tracks: {}, joined: null };
 }
 
 /**
@@ -649,7 +673,10 @@ export function tiles(readings) {
       track: letter,
       hot: track.hot,
       says: says(letter, track.hot),
-      mode: track.mode ?? BLANK,
+      mode:
+        letter === readings.joined && track.mode === MAIN
+          ? PROG_MAIN
+          : (track.mode ?? BLANK),
       draws: milliamps(track.milliamps),
       most: track.most === null ? BLANK : `max ${milliamps(track.most)}`,
     }));
