@@ -4,7 +4,7 @@ The words this repository uses. Words used in more than one rails49 repository
 are in the organisation's
 [GLOSSARY.md](https://github.com/rails49/.github/blob/main/GLOSSARY.md). Every
 entry links to the doc that owns it (org
-[ADR-0021](https://github.com/rails49/.github/blob/main/docs/adr/0021-each-fact-has-one-owner-and-the-glossary-is-glossary-md.md)).
+[ADR-0025](https://github.com/rails49/.github/blob/main/docs/adr/0025-each-fact-has-one-owner-and-an-adr-is-written-after-its-decision-has-run.md)).
 
 ## Language
 
