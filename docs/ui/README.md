@@ -498,16 +498,18 @@ ADR-0050](https://github.com/rails49/control/blob/main/docs/adr/0050-broken-hard
 The editor marks the refused line until the next edit
 ([ADR-0019](../adr/0019-the-script-is-edited-in-codemirror.md)).
 
-**The view is split into the editor and the translator's log** (#365). The
-**log** is what the translator writes to stdout and stderr, which the mirror's
-face serves at `/log`
+**The view is split into the editor and the translator's log** (#365, #416).
+The **log** is what the translator writes to stdout and stderr, which the
+mirror's face serves at `/log`
 ([the mirror's page](../dccex_usb/README.md#the-log)). A divider between the
-two can be dragged, or moved with the arrow keys. Wider than 1100 px the log is
-to the right of the editor; narrower, it is below. Dragged to the log's edge
-the divider hides the log, and dragged back it shows it. The browser remembers
-where the divider is (`localStorage`); a browser that refuses the store opens
-it at its default. The log has no heading (`ui/src/ui/dccex-divider.ts`,
-`ui/src/ui/dccex-log.ts`).
+two can be dragged. It is look's `look-gap`, 6 px thick: grey at rest, and
+look's hover colour under the pointer and during a drag. Wider than 1100 px the
+log is to the right of the editor; narrower, it is below. Dragged to the log's
+edge the divider hides the log, and dragged back it shows it. The browser
+remembers where the divider is (`localStorage`); a browser that refuses the
+store opens it at its default. The editor and the log have no frame and reach
+the view's edges, and each scrolls on its own. The log has no heading
+(`ui/src/ui/dccex-divider.ts`, `ui/src/ui/dccex-log.ts`).
 
 **The log is read about once a second while the view is showing**, from the
 byte the page has read up to (`Range: bytes=N-`), and new lines are added at
