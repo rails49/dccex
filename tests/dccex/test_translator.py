@@ -2298,9 +2298,23 @@ async def _clock_that_cannot_be_read_sends_nothing() -> None:
     port = Port()
     async with running(bus, port):
         station = await port.opened()
-        bus.publish(CLOCK, {"time": 86400, "speed_up": 4})
+        bus.publish(CLOCK, {"time": -1, "speed_up": 4})
         bus.drain()
         await station.heard_nothing_more()
+
+
+def test_a_clock_past_day_0_sends_its_time_of_day() -> None:
+    asyncio.run(_clock_past_day_0_sends_its_time_of_day())
+
+
+async def _clock_past_day_0_sends_its_time_of_day() -> None:
+    bus, _ = bus_and_tap()
+    port = Port()
+    async with running(bus, port):
+        station = await port.opened()
+        bus.publish(CLOCK, {"time": 108000, "speed_up": 4})
+        bus.drain()
+        assert await station.heard(1) == [b"<JC 360 4>"]
 
 
 def test_the_held_clock_is_sent_on_connect_and_after_a_restart() -> None:

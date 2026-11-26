@@ -95,12 +95,17 @@ def test_a_clock_reads_as_its_time_and_its_speed_up() -> None:
     assert clock({"at": 1.0, "time": 86399, "speed_up": 0.5}) == (86399, 0.5)
 
 
-def test_a_clock_that_is_no_time_of_day_or_no_speed_up_reads_as_none() -> None:
+def test_a_clock_past_day_0_reads_as_its_time_of_day() -> None:
+    assert clock({"time": 86400, "speed_up": 4}) == (0, 4)
+    assert clock({"time": 108000, "speed_up": 4}) == (21600, 4)
+    assert clock({"time": 10 * 86400 + 59, "speed_up": 4}) == (59, 4)
+
+
+def test_a_clock_that_is_no_time_or_no_speed_up_reads_as_none() -> None:
     unreadable: list[object] = [
         23400,
         {"speed_up": 4},
         {"time": 23400},
-        {"time": 86400, "speed_up": 4},
         {"time": -1, "speed_up": 4},
         {"time": 23400.5, "speed_up": 4},
         {"time": True, "speed_up": 4},
