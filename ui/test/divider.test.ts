@@ -1,12 +1,14 @@
 /**
- * The divider between the script view's editor and its **log** (#365): the
- * share it opens with, the share a drag and a key move it to, the edge that
- * hides the log, and the share the browser remembers.
+ * The divider between the script view's editor and its **log** (#365, #416):
+ * the share it opens with, the way its `look-gap` is dragged, the share a
+ * drag moves it to, the edge that hides the log, and the share the browser
+ * remembers.
  *
  * happy-dom lays nothing out, so the room the divider is dragged in is given
  * its rectangle by the check.
  */
 
+import type { LookGap } from "@rails49/look";
 import { afterEach, expect, test } from "vitest";
 
 import {
@@ -40,19 +42,34 @@ async function divider(
   return [drawn, said];
 }
 
-/** A drag from the divider to (`x`, `y`). */
+/** The `look-gap` the divider drew. */
+function gap(drawn: DccexDivider): LookGap {
+  return drawn.renderRoot.querySelector("look-gap")!;
+}
+
+/** A drag of the divider's gap to (`x`, `y`). The gap says each move in a
+ *  `look-gap-move`. */
 function drags(drawn: DccexDivider, x: number, y: number): void {
-  drawn.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 1 }));
-  drawn.dispatchEvent(
-    new PointerEvent("pointermove", { pointerId: 1, clientX: x, clientY: y }),
-  );
-  drawn.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+  for (const name of ["pointerdown", "pointermove", "pointerup"]) {
+    gap(drawn).dispatchEvent(
+      new PointerEvent(name, { button: 0, clientX: x, clientY: y }),
+    );
+  }
 }
 
 test("it opens on the default share and says so", async () => {
-  const [drawn, said] = await divider();
+  const [, said] = await divider();
   expect(said).toStrictEqual([SHARE]);
-  expect(drawn.getAttribute("role")).toBe("separator");
+});
+
+test("the gap is dragged sideways beside the editor, and up and down below it", async () => {
+  const [drawn] = await divider();
+  drawn.across = true;
+  await drawn.updateComplete;
+  expect(gap(drawn).axis).toBe("x");
+  drawn.across = false;
+  await drawn.updateComplete;
+  expect(gap(drawn).axis).toBe("y");
 });
 
 test("a drag below the editor gives the log what is under the pointer", async () => {
@@ -71,7 +88,7 @@ test("a drag beside the editor gives the log what is right of the pointer", asyn
 
 test("a move with no press is not a drag", async () => {
   const [drawn, said] = await divider();
-  drawn.dispatchEvent(
+  gap(drawn).dispatchEvent(
     new PointerEvent("pointermove", { clientX: 10, clientY: 10 }),
   );
   expect(said).toStrictEqual([SHARE]);
@@ -84,15 +101,6 @@ test("dragged to the edge the log is hidden, and dragged back it shows", async (
   expect(said.at(-1)).toBe(0);
   drags(drawn, 500, 500);
   expect(said.at(-1)).toBeCloseTo(0.5);
-});
-
-test("the arrow keys move it", async () => {
-  const [drawn, said] = await divider();
-  drawn.across = false;
-  drawn.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-  expect(said.at(-1)).toBeCloseTo(SHARE + 0.05);
-  drawn.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-  expect(said.at(-1)).toBeCloseTo(SHARE);
 });
 
 test("the share is remembered and a new divider opens on it", async () => {
