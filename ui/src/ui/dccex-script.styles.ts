@@ -7,6 +7,11 @@ import { ACROSS } from "./dccex-divider.styles.js";
  * of a divider and the translator's **log** on the other. The band
  * names the railroad, so the view does not.
  *
+ * **The view has no padding and the editor no frame** (issue 416). The
+ * editor's side and the log reach the view's edges, and the divider is the
+ * only thing between them. The rows that hold text or presses are padded at
+ * the sides, and the last of them at the foot.
+ *
  * It is the work pane's rather than the chrome's, so its colours are Shoelace's
  * theme tokens and it follows the system's light or dark setting (`look.css`).
  * The chrome's colours stay on the chrome.
@@ -38,7 +43,6 @@ export const scriptStyles = css`
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    padding: 0.5rem;
     min-height: 0;
   }
 
@@ -82,6 +86,20 @@ export const scriptStyles = css`
     min-height: 0;
   }
 
+  /* The rows that hold text or presses keep 0.5rem from the view's sides, and
+     the last of them from the foot. */
+  .says,
+  .warning,
+  .unloaded,
+  .controls,
+  .became {
+    padding: 0 0.5rem;
+  }
+
+  .edits > :last-child {
+    padding-bottom: 0.5rem;
+  }
+
   /* What is said about the script in the editor: that the railroad has none,
      or that it could not be read. Quiet, because it is the page saying what it
      knows rather than a reading. */
@@ -108,8 +126,6 @@ export const scriptStyles = css`
     flex: 1 1 auto;
     box-sizing: border-box;
     min-width: 0;
-    border: 1px solid var(--sl-color-neutral-300);
-    border-radius: var(--sl-border-radius-medium);
     background: var(--sl-color-neutral-0);
     color: var(--sl-color-neutral-900);
     overflow: hidden;

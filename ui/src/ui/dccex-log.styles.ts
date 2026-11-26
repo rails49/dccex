@@ -1,9 +1,10 @@
 import { css } from "lit";
 
 /**
- * The log: monospace, as the translator wrote it, scrolling inside its own
- * box. Long lines wrap, so a narrow pane beside the editor does not scroll
- * sideways. The face's sentence, where it will not serve the log, is quieter.
+ * The log: monospace, as the translator wrote it, with no frame and with
+ * padding of its own, scrolling on its own. Long lines wrap, so a narrow pane
+ * beside the editor does not scroll sideways. The face's sentence, where it
+ * will not serve the log, is quieter.
  */
 export const logStyles = css`
   :host {
@@ -23,8 +24,6 @@ export const logStyles = css`
     min-height: 6rem;
     margin: 0;
     padding: 0.25rem 0.5rem;
-    border: 1px solid var(--sl-color-neutral-300);
-    border-radius: var(--sl-border-radius-medium);
     background: var(--sl-color-neutral-0);
     color: var(--sl-color-neutral-900);
     font-family: var(--sl-font-mono);
