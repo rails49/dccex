@@ -18,6 +18,7 @@ import {
   held,
   remembered,
 } from "../src/ui/dccex-divider.js";
+import { part } from "./mounted.js";
 
 afterEach(() => {
   localStorage.clear();
@@ -44,7 +45,7 @@ async function divider(
 
 /** The `look-gap` the divider drew. */
 function gap(drawn: DccexDivider): LookGap {
-  return drawn.renderRoot.querySelector("look-gap")!;
+  return part(drawn, "look-gap") as LookGap;
 }
 
 /** A drag of the divider's gap to (`x`, `y`). The gap says each move in a
