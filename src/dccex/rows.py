@@ -66,19 +66,20 @@ def desired_function(payload: object) -> bool | None:
 
 
 def clock(payload: object) -> tuple[int, float] | None:
-    """The fast clock a `state/clock` value says: whole fast seconds since
-    midnight, `0..86399`, and the fast seconds per real second, finite and
-    more than `0`. None where the payload says no such clock (control
-    ADR-0090)."""
+    """The fast clock a `state/clock` value says, as the station gets it:
+    the time of day in whole fast seconds since midnight, `0..86399`, and
+    the fast seconds per real second, finite and more than `0`. The row's
+    `time` counts from midnight of day 0 and has no upper limit. None where
+    the payload says no such clock (control ADR-0090)."""
     if not isinstance(payload, dict):
         return None
     said = cast(dict[str, object], payload)
     time, speed_up = said.get("time"), said.get("speed_up")
-    if isinstance(time, bool) or not isinstance(time, int) or not 0 <= time < 86400:
+    if isinstance(time, bool) or not isinstance(time, int) or time < 0:
         return None
     if isinstance(speed_up, bool) or not isinstance(speed_up, (int, float)):
         return None
-    return (time, speed_up) if 0 < speed_up < math.inf else None
+    return (time % 86400, speed_up) if 0 < speed_up < math.inf else None
 
 
 def _stated(payload: object, field: str) -> str | None:
