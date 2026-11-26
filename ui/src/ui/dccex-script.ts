@@ -53,12 +53,14 @@
  * What is decided here is the drawing: where the name sits, where the warnings
  * open, and where the editor goes.
  *
- * **The log is beside the editor** (#365). The view is split into the editor
- * and the translator's **log**, with a divider between them that can be
- * dragged (`dccex-divider.ts`). Wide, the log is to the right; narrow, it is
- * below. Dragged to the edge the log is hidden. The log asks for new lines
- * about once a second while the view is showing and not otherwise
- * (`dccex-log.ts`), through the hand the page passes down.
+ * **The log is beside the editor** (#365, #416). The view is split into the
+ * editor and the translator's **log**, with a divider between them that can
+ * be dragged, drawn by look's `look-gap` (`dccex-divider.ts`). Wide, the log
+ * is to the right; narrow, it is below. Dragged to the edge the log is hidden.
+ * Neither has a frame: both reach the view's edges, and the divider is the
+ * only thing between them. The log asks for new lines about once a second
+ * while the view is showing and not otherwise (`dccex-log.ts`), through the
+ * hand the page passes down.
  *
  * **The editor is CodeMirror and it is not Lit's** (ADR-0019). What it is made
  * of is `editor.ts`'s; what is here is one of them, made over the place the
