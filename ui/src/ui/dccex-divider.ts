@@ -18,6 +18,7 @@
  */
 
 import "@rails49/look";
+import { keepDivider, keptDivider } from "@rails49/look";
 import type { LookGapMoveDetail } from "@rails49/look";
 import { LitElement, html, type TemplateResult } from "lit";
 
@@ -51,21 +52,13 @@ export function held(share: number): number {
 
 /** The share the browser remembers, or `SHARE`. */
 export function remembered(): number {
-  try {
-    const kept = localStorage.getItem(REMEMBERED);
-    return kept === null ? SHARE : held(Number(kept));
-  } catch {
-    return SHARE;
-  }
+  const kept = keptDivider(REMEMBERED);
+  return kept === null ? SHARE : held(kept);
 }
 
 /** Remember `share`, where the browser lets the page. */
 function remember(share: number): void {
-  try {
-    localStorage.setItem(REMEMBERED, String(share));
-  } catch {
-    // A store that refuses forgets the share. The divider still moves.
-  }
+  keepDivider(REMEMBERED, share);
 }
 
 export class DccexDivider extends LitElement {
